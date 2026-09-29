@@ -15,17 +15,23 @@ O repositório oficial do projeto é:
 4. O branch principal é o `main` — nunca fazer force push no `main`.
 5. Toda mensagem de commit (título e corpo) deve obrigatoriamente estar em **português do Brasil**.
 6. É OBRIGATÓRIO manter o arquivo `README.md` atualizado com a versão corrente antes de realizar qualquer commit ou push.
-7. É OBRIGATÓRIO executar a auditoria de segurança de dependências (`pip-audit`) antes de qualquer commit ou push no repositório, garantindo que o código enviado esteja livre de vulnerabilidades conhecidas.
+7. É OBRIGATÓRIO executar a auditoria unificada de segurança de dependências (`python scripts/audit_security.py`, cobrindo Backend com `pip-audit` e Frontend com `npm audit`) antes de qualquer commit ou push no repositório.
+8. **Bloqueio Obrigatório por Falhas de Segurança:** Se a auditoria detectar qualquer vulnerabilidade, o push é **TERMINANTEMENTE BLOQUEADO**. O agente deve reportar detalhadamente o problema ao usuário antes de aplicar correções.
 
-## 🛡️ Auditoria de Segurança de Dependências (pip-audit) Antes do Push
+## 🛡️ Auditoria de Segurança de Dependências (Backend + Frontend) Antes do Push
 
-**Antes de qualquer `git push` ou atualização no repositório, é obrigatório executar a verificação de segurança das bibliotecas:**
-1. Executar o script de auditoria:
+**Antes de qualquer `git push` ou atualização no repositório, é obrigatório executar a verificação completa de segurança das bibliotecas:**
+1. Executar o script de auditoria unificado:
    ```bash
    python scripts/audit_security.py
    ```
-   *(ou `$env:PYTHONUTF8="1"; python -m pip_audit -r backend/requirements.txt`)*
-2. Certificar-se de que as dependências do `backend/requirements.txt` foram auditadas e estão sem vulnerabilidades críticas conhecidas.
+2. **Critério de Aprovação (100% Obrigatório):**
+   - O Backend (`pip-audit` no `backend/requirements.txt`) deve passar com 0 vulnerabilidades críticas.
+   - O Frontend (`npm audit` no `frontend/package.json`) deve passar com 0 vulnerabilidades.
+3. **Conduta em caso de vulnerabilidades encontradas:**
+   - O agente **NÃO pode realizar o push** enquanto a auditoria não passar 100%.
+   - O agente **DEVE mencionar e listar detalhadamente para o usuário** o que foi encontrado (nome do pacote, versão, severidade da falha e recomendação).
+   - O agente só aplica a correção após detalhar o problema e só realiza o push depois que a auditoria for reexecutada e passar 100% sem erros.
 
 ## 🧹 Limpeza Obrigatória da Raiz Antes do Push
 
