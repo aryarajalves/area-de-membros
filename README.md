@@ -14,10 +14,12 @@ Template base e robusto para sistemas modernos com **FastAPI (Backend)**, **Reac
   - Renomeação de backups existentes diretamente no S3/B2 e banco de dados;
   - Agendador automático periódico (APScheduler) com política de retenção FIFO configurável;
   - Restauração de banco de dados e download seguro.
-- 🖥️ **Gerenciamento de Logs em Tempo Real**:
-  - Visualização dos logs dos contêineres Docker (`backend`, `frontend`, `db`) via socket Unix nativo;
-  - Terminal com destaque por severidade (erros, avisos, sucessos);
-  - Busca e filtro por texto, seletor de linhas (`--tail`), auto-refresh e botão de cópia.
+- 🖥️ **Gerenciamento Avançado de Logs**:
+  - Visualização em tempo real dos logs dos contêineres Docker da aplicação (`backend` e `frontend`) via socket Unix nativo;
+  - Timestamps padronizados automaticamente no **Horário de Brasília (America/Sao_Paulo - UTC-3)** para todos os contêineres;
+  - **Filtro por Data e Horário:** Seleção de dias específicos e janelas horárias com resgate histórico via `since` e `until` da Docker API;
+  - **Classificação Visual e Separação por Tipo:** Filtros rápidos com contadores e badges coloridos (`Todos`, `Info`, `Avisos`, `Erros`, `HTTP 2xx/3xx/4xx/5xx`);
+  - Busca e filtro textual dinâmico, seletor de quantidade de linhas (`--tail`), auto-refresh a cada 4s e botão de cópia de logs formatados.
 
 ---
 

@@ -18,7 +18,6 @@ def list_available_services(
     labels = {
         "backend": "Backend (FastAPI)",
         "frontend": "Frontend (Nginx / Vite)",
-        "db": "Banco de Dados (PostgreSQL)",
     }
     return [
         {"id": key, "name": labels.get(key, key), "container": container}
@@ -29,7 +28,16 @@ def list_available_services(
 def get_service_logs(
     service_name: str,
     tail: int = Query(100, ge=10, le=1000, description="Quantidade de linhas de log a retornar"),
+    date: str = Query(None, description="Data específica no formato YYYY-MM-DD"),
+    start_time: str = Query(None, description="Hora inicial no formato HH:MM"),
+    end_time: str = Query(None, description="Hora final no formato HH:MM"),
     current_user: User = Depends(require_superadmin)
 ) -> Dict[str, Any]:
-    """Retorna as últimas linhas de log de um contêiner específico."""
-    return fetch_container_logs(service_name=service_name.lower(), tail=tail)
+    """Retorna as linhas de log de um contêiner específico com suporte a filtro por data e horário de Brasília."""
+    return fetch_container_logs(
+        service_name=service_name.lower(),
+        tail=tail,
+        target_date=date,
+        start_time=start_time,
+        end_time=end_time
+    )

@@ -1,28 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, RefreshCw, Copy, Check, Filter, ArrowDown, ChevronRight, Activity } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Terminal, RefreshCw, Copy, Check, Filter, ArrowDown, Activity } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { LogTypeFilter, LogDateFilter, TerminalLogLine, classifyLogLine } from './log-management';
 
 export default function LogManagement({ currentUser }) {
-  const [services, setServices] = useState([
+  // Apenas contêineres de backend e frontend (sem banco de dados postgres)
+  const [services] = useState([
     { id: 'backend', name: 'Backend (FastAPI)', container: 'projeto_base_backend' },
     { id: 'frontend', name: 'Frontend (Nginx / Vite)', container: 'projeto_base_frontend' },
-    { id: 'db', name: 'Banco de Dados (PostgreSQL)', container: 'projeto_base_db' },
   ]);
   const [selectedService, setSelectedService] = useState('backend');
   const [tailLines, setTailLines] = useState(100);
   const [logs, setLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const terminalEndRef = useRef(null);
   const { addToast } = useToast();
 
-  const fetchLogs = async (silent = false) => {
+  const isDateFilterActive = Boolean(filterDate || startTime || endTime);
+
+  const fetchLogs = async (silent = false, customParams = null) => {
     if (!silent) setLoading(true);
     const token = localStorage.getItem('auth_token');
+
+    const dateParam = customParams ? customParams.filterDate : filterDate;
+    const startParam = customParams ? customParams.startTime : startTime;
+    const endParam = customParams ? customParams.endTime : endTime;
+
+    let url = `/api/v1/logs/${selectedService}?tail=${tailLines}`;
+    if (dateParam) url += `&date=${encodeURIComponent(dateParam)}`;
+    if (startParam) url += `&start_time=${encodeURIComponent(startParam)}`;
+    if (endParam) url += `&end_time=${encodeURIComponent(endParam)}`;
+
     try {
-      const res = await fetch(`/api/v1/logs/${selectedService}?tail=${tailLines}`, {
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -44,18 +61,58 @@ export default function LogManagement({ currentUser }) {
     fetchLogs();
   }, [selectedService, tailLines]);
 
-  // Auto-refresh a cada 4 segundos se habilitado
+  // Auto-refresh a cada 4 segundos se habilitado (apenas quando não há filtro de data histórica ativa)
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchLogs(true);
     }, 4000);
     return () => clearInterval(interval);
-  }, [autoRefresh, selectedService, tailLines]);
+  }, [autoRefresh, selectedService, tailLines, filterDate, startTime, endTime]);
+
+  const handleApplyDateFilter = () => {
+    fetchLogs(false);
+    addToast('Buscando logs pelo período especificado...', 'info');
+  };
+
+  const handleClearDateFilter = () => {
+    setFilterDate('');
+    setStartTime('');
+    setEndTime('');
+    fetchLogs(false, { filterDate: '', startTime: '', endTime: '' });
+  };
+
+  // Classifica todas as linhas e converte para Horário de Brasília
+  const parsedLogs = useMemo(() => {
+    return logs.map((line) => classifyLogLine(line));
+  }, [logs]);
+
+  // Contagens para os botões de separação por tipo
+  const counts = useMemo(() => {
+    const summary = { all: parsedLogs.length, info: 0, warning: 0, error: 0, http: 0 };
+    parsedLogs.forEach((item) => {
+      if (summary[item.type] !== undefined) {
+        summary[item.type] += 1;
+      }
+    });
+    return summary;
+  }, [parsedLogs]);
+
+  // Filtra por tipo e por termo de busca
+  const filteredLogs = useMemo(() => {
+    return parsedLogs.filter((item) => {
+      const matchesType = selectedType === 'all' || item.type === selectedType;
+      const matchesSearch = searchTerm
+        ? item.formattedLine.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+      return matchesType && matchesSearch;
+    });
+  }, [parsedLogs, selectedType, searchTerm]);
 
   const handleCopyLogs = () => {
-    if (logs.length === 0) return;
-    navigator.clipboard.writeText(logs.join('\n'));
+    if (filteredLogs.length === 0) return;
+    const textToCopy = filteredLogs.map((item) => item.formattedLine).join('\n');
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     addToast('Logs copiados para a área de transferência!', 'success');
     setTimeout(() => setCopied(false), 2000);
@@ -65,10 +122,6 @@ export default function LogManagement({ currentUser }) {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const filteredLogs = logs.filter((line) =>
-    searchTerm ? line.toLowerCase().includes(searchTerm.toLowerCase()) : true
-  );
-
   return (
     <div className="backup-page-container" data-testid="log-management-page">
       {/* Cabeçalho */}
@@ -76,17 +129,20 @@ export default function LogManagement({ currentUser }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1>Gerenciamento de logs</h1>
         </div>
-        <p>Acompanhe e diagnostique em tempo real os logs dos contêineres Docker do sistema.</p>
+        <p>Acompanhe e diagnostique logs por contêiner, data e horário de Brasília.</p>
       </div>
 
-      {/* Seleção de Serviço / Contêiner */}
+      {/* Seleção de Serviço / Contêiner (Sem PostgreSQL) */}
       <div className="sub-tabs-container">
         {services.map((srv) => (
           <button
             key={srv.id}
             type="button"
             className={`sub-tab-btn ${selectedService === srv.id ? 'active' : ''}`}
-            onClick={() => setSelectedService(srv.id)}
+            onClick={() => {
+              setSelectedService(srv.id);
+              setSelectedType('all');
+            }}
             data-testid={`tab-service-${srv.id}`}
           >
             <Terminal size={16} />
@@ -95,8 +151,21 @@ export default function LogManagement({ currentUser }) {
         ))}
       </div>
 
+      {/* Barra de Filtro de Data e Horário (Novo) */}
+      <LogDateFilter
+        selectedDate={filterDate}
+        onDateChange={setFilterDate}
+        startTime={startTime}
+        onStartTimeChange={setStartTime}
+        endTime={endTime}
+        onEndTimeChange={setEndTime}
+        onApplyFilter={handleApplyDateFilter}
+        onClearFilter={handleClearDateFilter}
+        isActive={isDateFilterActive}
+      />
+
       {/* Barra de Ferramentas / Controles do Log */}
-      <div className="table-card" style={{ marginBottom: '20px' }}>
+      <div className="table-card" style={{ marginBottom: '12px' }}>
         <div className="table-toolbar" style={{ flexWrap: 'wrap', gap: '12px' }}>
           {/* Busca de texto */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 250px' }}>
@@ -171,7 +240,7 @@ export default function LogManagement({ currentUser }) {
           <button
             type="button"
             onClick={handleCopyLogs}
-            disabled={logs.length === 0}
+            disabled={filteredLogs.length === 0}
             className="pagination-btn"
             data-testid="copy-logs-btn"
           >
@@ -192,6 +261,13 @@ export default function LogManagement({ currentUser }) {
           </button>
         </div>
       </div>
+
+      {/* Separação por Tipo de Log */}
+      <LogTypeFilter
+        currentFilter={selectedType}
+        onSelectFilter={setSelectedType}
+        counts={counts}
+      />
 
       {/* Terminal View Container */}
       <div
@@ -224,57 +300,41 @@ export default function LogManagement({ currentUser }) {
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
             <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 600, marginLeft: '8px' }}>
               docker logs --tail {tailLines} {services.find((s) => s.id === selectedService)?.container}
+              {filterDate && ` [${filterDate}${startTime ? ` ${startTime}` : ''}${endTime ? ` - ${endTime}` : ''}]`}
             </span>
           </div>
           <span style={{ color: '#64748b', fontSize: '12px' }}>
-            {filteredLogs.length} linha(s) {searchTerm && `(filtrado de ${logs.length})`}
+            {filteredLogs.length} linha(s) {(searchTerm || selectedType !== 'all') && `(filtrado de ${logs.length})`}
           </span>
         </div>
 
-        {/* Terminal Body */}
+        {/* Terminal Body com Linhas Coloridas e Badges */}
         <div
           style={{
-            padding: '16px',
+            padding: '14px',
             maxHeight: '520px',
             minHeight: '320px',
             overflowY: 'auto',
-            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-            fontSize: '13px',
-            lineHeight: 1.6,
-            color: '#e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
           }}
           data-testid="terminal-logs-body"
         >
           {loading && logs.length === 0 ? (
-            <div style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>
+            <div style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0', fontFamily: 'monospace' }}>
               Carregando logs do contêiner...
             </div>
           ) : filteredLogs.length === 0 ? (
-            <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0' }}>
-              {searchTerm ? 'Nenhuma linha encontrada para o filtro informado.' : 'Nenhum log registrado para este contêiner.'}
+            <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontFamily: 'monospace' }}>
+              {isDateFilterActive || searchTerm || selectedType !== 'all'
+                ? 'Nenhum log encontrado para o período ou filtro informado.'
+                : 'Nenhum log registrado para este contêiner.'}
             </div>
           ) : (
-            filteredLogs.map((line, index) => {
-              // Destaques de cores por severidade
-              let lineStyle = { color: '#cbd5e1' };
-              const lower = line.toLowerCase();
-              if (lower.includes('error') || lower.includes('erro') || lower.includes('failed') || lower.includes('exception')) {
-                lineStyle = { color: '#f87171', fontWeight: 600 };
-              } else if (lower.includes('warn') || lower.includes('aviso')) {
-                lineStyle = { color: '#fbbf24' };
-              } else if (lower.includes('success') || lower.includes('sucesso') || lower.includes('healthy') || lower.includes('started')) {
-                lineStyle = { color: '#4ade80' };
-              }
-
-              return (
-                <div key={index} style={{ display: 'flex', gap: '12px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                  <span style={{ color: '#475569', userSelect: 'none', minWidth: '35px', textAlign: 'right' }}>
-                    {index + 1}
-                  </span>
-                  <span style={lineStyle}>{line}</span>
-                </div>
-              );
-            })
+            filteredLogs.map((item, index) => (
+              <TerminalLogLine key={index} parsed={item} index={index} />
+            ))
           )}
           <div ref={terminalEndRef} />
         </div>

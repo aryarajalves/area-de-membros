@@ -28,9 +28,10 @@ describe('LogManagement Component', () => {
     container: 'projeto_base_frontend',
     available: true,
     logs: [
-      '172.31.0.1 - - [29/Sep/2026:17:35:00 +0000] "GET / HTTP/1.1" 200 450',
+      '172.31.0.1 - - [29/Sep/2026:17:59:35 +0000] "GET /assets/index.js HTTP/1.1" 200 450',
+      '172.31.0.1 - - [29/Sep/2026:17:59:40 +0000] "GET /api/v1/unknown HTTP/1.1" 404 120',
     ],
-    total_lines: 1,
+    total_lines: 2,
     error: null,
   };
 
@@ -43,7 +44,7 @@ describe('LogManagement Component', () => {
     });
   };
 
-  it('renders log management header and service tabs', async () => {
+  it('renders log management header and only backend/frontend service tabs (no postgres)', async () => {
     setupFetchMock();
     render(
       <ToastProvider>
@@ -54,16 +55,17 @@ describe('LogManagement Component', () => {
     expect(screen.getByText('Gerenciamento de logs')).toBeInTheDocument();
     expect(screen.getByTestId('tab-service-backend')).toBeInTheDocument();
     expect(screen.getByTestId('tab-service-frontend')).toBeInTheDocument();
-    expect(screen.getByTestId('tab-service-db')).toBeInTheDocument();
+    // Confirma explicitamente que a aba do PostgreSQL foi removida
+    expect(screen.queryByTestId('tab-service-db')).not.toBeInTheDocument();
 
     // Aguarda carregar logs do backend
     await waitFor(() => {
-      expect(screen.getByText('[INFO] [projeto_base]: Servidor iniciado com sucesso.')).toBeInTheDocument();
-      expect(screen.getByText('[ERROR] [projeto_base]: Falha simulada para teste de log.')).toBeInTheDocument();
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
+      expect(screen.getByText(/Falha simulada para teste de log/)).toBeInTheDocument();
     });
   });
 
-  it('switches container service and updates logs view', async () => {
+  it('renders log type filter bar with categories and badges', async () => {
     setupFetchMock();
     render(
       <ToastProvider>
@@ -71,7 +73,58 @@ describe('LogManagement Component', () => {
       </ToastProvider>
     );
 
-    // Clica na aba frontend
+    expect(screen.getByTestId('log-type-filter-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-btn-all')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-btn-info')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-btn-warning')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-btn-error')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-btn-http')).toBeInTheDocument();
+
+    // Aguarda carregar e verificar badges
+    await waitFor(() => {
+      expect(screen.getByTestId('badge-log-error')).toHaveTextContent('ERRO');
+      expect(screen.getByTestId('badge-log-warning')).toHaveTextContent('AVISO');
+      expect(screen.getByTestId('badge-log-info')).toHaveTextContent('INFO');
+    });
+  });
+
+  it('filters logs by type when clicking filter buttons', async () => {
+    setupFetchMock();
+    render(
+      <ToastProvider>
+        <LogManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
+    });
+
+    // Clica no filtro "Erros"
+    const errorFilterBtn = screen.getByTestId('filter-btn-error');
+    fireEvent.click(errorFilterBtn);
+
+    // Apenas a linha de erro deve aparecer
+    expect(screen.getByText(/Falha simulada para teste de log/)).toBeInTheDocument();
+    expect(screen.queryByText(/Servidor iniciado com sucesso/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Conexão lenta detectada/)).not.toBeInTheDocument();
+
+    // Clica no filtro "Avisos"
+    const warnFilterBtn = screen.getByTestId('filter-btn-warning');
+    fireEvent.click(warnFilterBtn);
+
+    expect(screen.getByText(/Conexão lenta detectada/)).toBeInTheDocument();
+    expect(screen.queryByText(/Falha simulada para teste de log/)).not.toBeInTheDocument();
+  });
+
+  it('switches container to frontend and displays HTTP logs with Brasilia time', async () => {
+    setupFetchMock();
+    render(
+      <ToastProvider>
+        <LogManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
     const frontTab = screen.getByTestId('tab-service-frontend');
     fireEvent.click(frontTab);
 
@@ -80,11 +133,13 @@ describe('LogManagement Component', () => {
         expect.stringContaining('/api/v1/logs/frontend'),
         expect.anything()
       );
-      expect(screen.getByText('172.31.0.1 - - [29/Sep/2026:17:35:00 +0000] "GET / HTTP/1.1" 200 450')).toBeInTheDocument();
+      // Confirma que 17:59 UTC foi exibido como 14:59 (Horário de Brasília)
+      expect(screen.getByText(/14:59:35/)).toBeInTheDocument();
+      expect(screen.getByText(/HTTP 200/)).toBeInTheDocument();
     });
   });
 
-  it('filters logs by search input', async () => {
+  it('filters logs by text search input', async () => {
     setupFetchMock();
     render(
       <ToastProvider>
@@ -93,18 +148,17 @@ describe('LogManagement Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('[INFO] [projeto_base]: Servidor iniciado com sucesso.')).toBeInTheDocument();
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
     });
 
     const searchInput = screen.getByTestId('log-search-input');
     fireEvent.change(searchInput, { target: { value: 'Falha simulada' } });
 
-    // Apenas a linha do erro deve permanecer
-    expect(screen.getByText('[ERROR] [projeto_base]: Falha simulada para teste de log.')).toBeInTheDocument();
-    expect(screen.queryByText('[INFO] [projeto_base]: Servidor iniciado com sucesso.')).not.toBeInTheDocument();
+    expect(screen.getByText(/Falha simulada para teste de log/)).toBeInTheDocument();
+    expect(screen.queryByText(/Servidor iniciado com sucesso/)).not.toBeInTheDocument();
   });
 
-  it('copies logs to clipboard when clicking copy button', async () => {
+  it('copies filtered logs to clipboard', async () => {
     setupFetchMock();
     const writeTextMock = vi.fn().mockResolvedValue();
     Object.assign(navigator, {
@@ -120,12 +174,61 @@ describe('LogManagement Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('[INFO] [projeto_base]: Servidor iniciado com sucesso.')).toBeInTheDocument();
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
     });
 
     const copyBtn = screen.getByTestId('copy-logs-btn');
     fireEvent.click(copyBtn);
 
     expect(writeTextMock).toHaveBeenCalled();
+  });
+
+  it('filters logs by date and time when clicking apply date filter button', async () => {
+    setupFetchMock();
+    render(
+      <ToastProvider>
+        <LogManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
+    });
+
+    const dateInput = screen.getByTestId('log-date-input');
+    const startTimeInput = screen.getByTestId('log-start-time-input');
+    const endTimeInput = screen.getByTestId('log-end-time-input');
+
+    fireEvent.change(dateInput, { target: { value: '2026-09-29' } });
+    fireEvent.change(startTimeInput, { target: { value: '14:00' } });
+    fireEvent.change(endTimeInput, { target: { value: '16:00' } });
+
+    const applyBtn = screen.getByTestId('apply-date-filter-btn');
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('date=2026-09-29'),
+        expect.anything()
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('start_time=14%3A00'),
+        expect.anything()
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('end_time=16%3A00'),
+        expect.anything()
+      );
+    });
+
+    // Limpar filtros de data
+    const clearBtn = screen.getByTestId('clear-date-filter-btn');
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(dateInput).toHaveValue('');
+      expect(startTimeInput).toHaveValue('');
+      expect(endTimeInput).toHaveValue('');
+    });
   });
 });
