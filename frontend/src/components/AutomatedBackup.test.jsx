@@ -93,7 +93,7 @@ describe('AutomatedBackup Component', () => {
     expect(screen.getByTestId('metric-retention')).toBeInTheDocument();
     expect(screen.getByTestId('metric-b2-status')).toBeInTheDocument();
 
-    expect(screen.getByText('1 / máx 30')).toBeInTheDocument();
+    expect(await screen.findByText('1 / máx 30')).toBeInTheDocument();
     expect(screen.getByText('Conectado')).toBeInTheDocument();
     expect(screen.getByText('A cada 6 hora(s)')).toBeInTheDocument();
   });

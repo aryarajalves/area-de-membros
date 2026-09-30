@@ -44,7 +44,7 @@ export default function UserTableTab({
             <option value="all">Todos os perfis</option>
             <option value="superadmin">Super Admin</option>
             <option value="admin">Administrador (Admin)</option>
-            <option value="user">Usuário comum</option>
+            <option value="aluno">Aluno</option>
           </select>
         </div>
 
@@ -120,7 +120,7 @@ export default function UserTableTab({
                   <td className="text-secondary">{u.email}</td>
                   <td>
                     <span className={`badge badge-${u.role}`} data-testid={`badge-role-${u.id}`}>
-                      {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'Usuário'}
+                      {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'aluno' ? 'Aluno' : 'Usuário'}
                     </span>
                   </td>
                   <td>

@@ -12,9 +12,19 @@ export default function RegisterOtpStep({
   resendCooldown,
   onResendCode,
   onBackToForm,
+  bgColor = '#090d16',
+  isLightBg = false,
 }) {
   return (
-    <div className="auth-page-container">
+    <div
+      className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+      style={{
+        backgroundColor: bgColor,
+        minHeight: '100vh',
+        width: '100%',
+        transition: 'background-color 0.3s ease'
+      }}
+    >
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo-badge">

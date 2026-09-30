@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 import AutomatedBackup from './components/AutomatedBackup';
 import LogManagement from './components/LogManagement';
+import CourseManagement from './components/CourseManagement';
+import LessonReportsManagement from './components/LessonReportsManagement';
+import PlatformSettings from './components/PlatformSettings';
+import StudentManagement from './components/student-management';
+import IntegrationManagement from './components/integration-management';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
@@ -15,13 +20,36 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
+  const [isInsideCourse, setIsInsideCourse] = useState(false);
+  const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
+    return localStorage.getItem('member_area_bg_color') || '#090d16';
+  });
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('active_tab') || 'users';
+    try {
+      const savedUserStr = localStorage.getItem('auth_user');
+      if (savedUserStr) {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed?.role === 'aluno') {
+          return 'courses';
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return localStorage.getItem('active_tab') || 'courses';
   });
   const [pathname, setPathname] = useState(window.location.pathname);
   const { addToast } = useToast();
 
+  const handleThemeColorChange = useCallback((newColor) => {
+    if (!newColor) return;
+    setMemberAreaBgColor(newColor);
+    localStorage.setItem('member_area_bg_color', newColor);
+  }, []);
+
   const handleSelectTab = (tabId) => {
+    setIsInsideCourse(false);
     setActiveTab(tabId);
     localStorage.setItem('active_tab', tabId);
   };
@@ -33,7 +61,13 @@ function App() {
     if (savedToken && savedUser) {
       setToken(savedToken);
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        if (parsed?.role === 'aluno') {
+          setActiveTab('courses');
+          localStorage.setItem('active_tab', 'courses');
+          setIsInsideCourse(false);
+        }
       } catch {
         // ignore error
       }
@@ -53,9 +87,66 @@ function App() {
     };
   }, [addToast]);
 
+  const fetchPlatformTheme = useCallback(async () => {
+    const currentToken = token || localStorage.getItem('auth_token');
+    if (!currentToken) return;
+    try {
+      const res = await fetch('/api/v1/courses/platform-theme', {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.bg_color) {
+          handleThemeColorChange(data.bg_color);
+        }
+      }
+    } catch {
+      // Ignora erro silenciosamente
+    }
+  }, [token, handleThemeColorChange]);
+
+  const fetchReportsSummary = useCallback(async () => {
+    const currentToken = token || localStorage.getItem('auth_token');
+    const currentUserStr = localStorage.getItem('auth_user');
+    let userRole = user?.role;
+    if (!userRole && currentUserStr) {
+      try { userRole = JSON.parse(currentUserStr).role; } catch { /* ignore */ }
+    }
+    if (!currentToken || !['superadmin', 'admin'].includes(userRole)) return;
+    try {
+      const res = await fetch('/api/v1/courses/reports/summary', {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingReportsCount(data.pending_count || 0);
+      }
+    } catch {
+      // Ignora erro silenciosamente
+    }
+  }, [token, user?.role]);
+
+  useEffect(() => {
+    fetchPlatformTheme();
+    fetchReportsSummary();
+  }, [fetchPlatformTheme, fetchReportsSummary]);
+
+  useEffect(() => {
+    if (user?.role === 'aluno' && activeTab !== 'courses') {
+      setActiveTab('courses');
+      localStorage.setItem('active_tab', 'courses');
+      setIsInsideCourse(false);
+    }
+  }, [user?.role, activeTab]);
+
   const handleLoginSuccess = (loggedInUser, userToken) => {
     setUser(loggedInUser);
     setToken(userToken);
+    if (loggedInUser?.role === 'aluno') {
+      setActiveTab('courses');
+      localStorage.setItem('active_tab', 'courses');
+      setIsInsideCourse(false);
+    }
   };
 
   const handlePromptLogout = () => {
@@ -104,23 +195,73 @@ function App() {
 
   // Se autenticado, exibe a tela inicial com a Sidebar e as funcionalidades
   const isSuperAdmin = user?.role === 'superadmin';
+  const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
 
   return (
-    <div className="app-container">
-      <Sidebar
-        activeTab={activeTab}
-        onSelectTab={handleSelectTab}
-        user={user}
-        onLogout={handlePromptLogout}
-      />
-      <main className="main-content" aria-label="Conteúdo Principal">
-        {isSuperAdmin ? (
+    <div
+      className={`app-container ${!isLightBg ? 'app-dark-theme classroom-dark-theme' : ''}`}
+      style={{ backgroundColor: memberAreaBgColor, '--classroom-modal-bg': memberAreaBgColor }}
+    >
+      {!isInsideCourse && (
+        <Sidebar
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          user={user}
+          onLogout={handlePromptLogout}
+          pendingReportsCount={pendingReportsCount}
+          bgColor={memberAreaBgColor}
+        />
+      )}
+      <main
+        className="main-content"
+        aria-label="Conteúdo Principal"
+        style={{
+          backgroundColor: memberAreaBgColor,
+          ...(isInsideCourse || activeTab === 'courses' || activeTab === 'settings'
+            ? { padding: 0, width: '100%', maxWidth: '100%' }
+            : {})
+        }}
+      >
+        {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <CourseManagement
+            currentUser={user}
+            onCourseViewChange={setIsInsideCourse}
+            bgColor={memberAreaBgColor}
+            onThemeColorChange={handleThemeColorChange}
+          />
+        )}
+        {activeTab === 'lesson-reports' && ['superadmin', 'admin'].includes(user?.role) && (
+          <LessonReportsManagement
+            onUpdateSummary={fetchReportsSummary}
+            bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'students' && ['superadmin', 'admin'].includes(user?.role) && (
+          <StudentManagement bgColor={memberAreaBgColor} />
+        )}
+        {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && (
+          <IntegrationManagement bgColor={memberAreaBgColor} />
+        )}
+        {activeTab === 'settings' && ['superadmin', 'admin'].includes(user?.role) && (
+          <PlatformSettings
+            bgColor={memberAreaBgColor}
+            onThemeColorChange={handleThemeColorChange}
+          />
+        )}
+        {isSuperAdmin && (
           <>
-            {activeTab === 'users' && <UserManagement currentUser={user} />}
-            {activeTab === 'backup' && <AutomatedBackup currentUser={user} />}
-            {activeTab === 'logs' && <LogManagement currentUser={user} />}
+            {activeTab === 'users' && <UserManagement currentUser={user} bgColor={memberAreaBgColor} />}
+            {activeTab === 'backup' && <AutomatedBackup currentUser={user} bgColor={memberAreaBgColor} />}
+            {activeTab === 'logs' && <LogManagement currentUser={user} bgColor={memberAreaBgColor} />}
           </>
-        ) : (
+        )}
+        {!isSuperAdmin && !(
+          (activeTab === 'courses' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'lesson-reports' && user?.role === 'admin') ||
+          (activeTab === 'students' && user?.role === 'admin') ||
+          (activeTab === 'integrations' && user?.role === 'admin') ||
+          (activeTab === 'settings' && user?.role === 'admin')
+        ) && (
           <div className="restricted-access-container user-welcome-container" data-testid="restricted-access-screen">
             <div className="restricted-card user-welcome-card">
               <div className="user-welcome-icon-box">
@@ -130,7 +271,7 @@ function App() {
               </div>
               <h2>Olá, {user?.name || 'Usuário'}!</h2>
               <p className="welcome-subtext">
-                Bem-vindo ao <strong>Projeto Base</strong>. Sua conta está ativa e pronta para uso.
+                Bem-vindo à <strong>Área de Membros</strong>. Sua conta está ativa e pronta para uso.
               </p>
 
               <div className="welcome-info-grid">

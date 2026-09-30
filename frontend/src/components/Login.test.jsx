@@ -10,7 +10,7 @@ describe('Login Component', () => {
         <Login />
       </ToastProvider>
     );
-    expect(screen.getByText('Projeto Base')).toBeInTheDocument();
+    expect(screen.getByText('Área de Membros')).toBeInTheDocument();
     expect(screen.getByTestId('login-email-input')).toBeInTheDocument();
     expect(screen.getByTestId('login-password-input')).toBeInTheDocument();
     expect(screen.getByTestId('login-submit-btn')).toBeInTheDocument();
@@ -49,5 +49,37 @@ describe('Login Component', () => {
 
     expect(emailInput.value).toBe('usuario@exemplo.com');
     expect(passwordInput.value).toBe('Senha@123456');
+  });
+
+  it('sets active_tab to courses in localStorage when logged in user is aluno', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        access_token: 'fake-token-aluno',
+        user: { id: 10, name: 'Aluno Teste', email: 'aluno@teste.com', role: 'aluno' },
+      }),
+    });
+
+    const onLoginSuccess = vi.fn();
+
+    render(
+      <ToastProvider>
+        <Login onLoginSuccess={onLoginSuccess} />
+      </ToastProvider>
+    );
+
+    fireEvent.change(screen.getByTestId('login-email-input'), { target: { value: 'aluno@teste.com' } });
+    fireEvent.change(screen.getByTestId('login-password-input'), { target: { value: 'SenhaForte123!' } });
+    fireEvent.click(screen.getByTestId('login-submit-btn'));
+
+    // Aguarda o login concluir
+    await vi.waitFor(() => {
+      expect(onLoginSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ role: 'aluno' }),
+        'fake-token-aluno'
+      );
+    });
+
+    expect(localStorage.getItem('active_tab')).toBe('courses');
   });
 });

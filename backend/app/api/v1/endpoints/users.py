@@ -1,4 +1,5 @@
 import secrets
+import json
 from datetime import datetime, timedelta, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Header
@@ -12,10 +13,12 @@ from app.core.security import (
     decode_access_token
 )
 from app.models.user import User, Invite, PasswordResetToken, RegistrationVerification
+from app.models.course import UserCourse
 from app.services.email import send_verification_email
 from app.schemas.user import (
     UserLogin,
     Token,
+    CourseAccessItem,
     UserResponse,
     UserUpdate,
     BulkDeleteRequest,
@@ -32,6 +35,51 @@ from app.schemas.user import (
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth & Users"])
+
+ACCESS_DURATION_DAYS = {
+    "lifetime": None,
+    "1_month": 30,
+    "3_months": 90,
+    "6_months": 180,
+    "1_year": 365,
+    "2_years": 730,
+    "3_years": 1095,
+}
+
+
+def calculate_course_expiration(access_duration: str = "lifetime", base_time: datetime = None):
+    if not access_duration or access_duration == "lifetime":
+        return None
+    days = ACCESS_DURATION_DAYS.get(access_duration)
+    if not days:
+        return None
+    now = base_time or datetime.now(timezone.utc)
+    return now + timedelta(days=days)
+
+
+def _parse_invite_courses(raw_json: str):
+    """Retorna (allowed_course_ids: List[int], course_access: List[CourseAccessItem])."""
+    if not raw_json:
+        return [], []
+    try:
+        parsed = json.loads(raw_json)
+    except Exception:
+        return [], []
+    if not isinstance(parsed, list):
+        return [], []
+    c_ids = []
+    c_access = []
+    for item in parsed:
+        if isinstance(item, dict) and "course_id" in item:
+            cid = int(item["course_id"])
+            dur = item.get("access_duration") or "lifetime"
+            c_ids.append(cid)
+            c_access.append(CourseAccessItem(course_id=cid, access_duration=dur))
+        elif isinstance(item, int):
+            c_ids.append(item)
+            c_access.append(CourseAccessItem(course_id=item, access_duration="lifetime"))
+    return c_ids, c_access
+
 
 def get_current_user(
     authorization: str = Header(None),
@@ -103,7 +151,27 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin)
 ):
-    return db.query(User).order_by(User.id.asc()).all()
+    users = db.query(User).order_by(User.id.asc()).all()
+    user_courses = db.query(UserCourse).all()
+    courses_map = {}
+    access_map = {}
+    for uc in user_courses:
+        courses_map.setdefault(uc.user_id, []).append(uc.course_id)
+        access_map.setdefault(uc.user_id, []).append(
+            CourseAccessItem(
+                course_id=uc.course_id,
+                access_duration=uc.access_duration or "lifetime",
+                expires_at=uc.expires_at
+            )
+        )
+
+    results = []
+    for u in users:
+        res = UserResponse.model_validate(u)
+        res.course_ids = courses_map.get(u.id, [])
+        res.course_access = access_map.get(u.id, [])
+        results.append(res)
+    return results
 
 @router.patch("/users/{user_id}", response_model=UserResponse)
 def update_user(
@@ -123,14 +191,60 @@ def update_user(
             detail="Não é permitido editar as informações do Super Admin."
         )
 
-    # Apenas admin ou user podem ser atribuídos
-    if user_update.role not in ["admin", "user"]:
+    # Apenas admin, user ou aluno podem ser atribuídos
+    if user_update.role not in ["admin", "user", "aluno"]:
         raise HTTPException(status_code=400, detail="Perfil inválido.")
 
     target_user.role = user_update.role
+
+    # Atualiza cursos liberados e tempos de acesso se informado
+    if user_update.course_access is not None or user_update.course_ids is not None:
+        existing_ucs = db.query(UserCourse).filter(UserCourse.user_id == user_id).all()
+        existing_map = {uc.course_id: uc for uc in existing_ucs}
+        db.query(UserCourse).filter(UserCourse.user_id == user_id).delete()
+
+        if user_update.role == "aluno":
+            now = datetime.now(timezone.utc)
+            items_to_save = []
+            if user_update.course_access is not None:
+                for item in user_update.course_access:
+                    items_to_save.append((item.course_id, item.access_duration or "lifetime"))
+            elif user_update.course_ids is not None:
+                for cid in user_update.course_ids:
+                    prev_dur = existing_map[cid].access_duration if cid in existing_map else "lifetime"
+                    items_to_save.append((cid, prev_dur or "lifetime"))
+
+            seen_cids = set()
+            for cid, dur in items_to_save:
+                if cid in seen_cids:
+                    continue
+                seen_cids.add(cid)
+                if cid in existing_map and (existing_map[cid].access_duration or "lifetime") == dur:
+                    exp = None if dur == "lifetime" else (existing_map[cid].expires_at or calculate_course_expiration(dur, now))
+                else:
+                    exp = calculate_course_expiration(dur, now)
+                db.add(UserCourse(
+                    user_id=user_id,
+                    course_id=cid,
+                    access_duration=dur,
+                    expires_at=exp
+                ))
+
     db.commit()
     db.refresh(target_user)
-    return target_user
+
+    updated_ucs = db.query(UserCourse).filter(UserCourse.user_id == user_id).all()
+    res = UserResponse.model_validate(target_user)
+    res.course_ids = [uc.course_id for uc in updated_ucs]
+    res.course_access = [
+        CourseAccessItem(
+            course_id=uc.course_id,
+            access_duration=uc.access_duration or "lifetime",
+            expires_at=uc.expires_at
+        )
+        for uc in updated_ucs
+    ]
+    return res
 
 @router.delete("/users/{user_id}")
 def delete_user(
@@ -282,10 +396,10 @@ def create_invite(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin)
 ):
-    if invite_in.role not in ["admin", "user"]:
+    if invite_in.role not in ["admin", "user", "aluno"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tipo de usuário inválido para convite. Apenas 'admin' ou 'user' são permitidos.",
+            detail="Tipo de usuário inválido para convite. Apenas 'admin', 'user' ou 'aluno' são permitidos.",
         )
 
     duration = max(1, invite_in.duration_hours)
@@ -293,20 +407,39 @@ def create_invite(
     expires_at = now + timedelta(hours=duration)
     token = secrets.token_urlsafe(32)
 
+    allowed_courses_json = None
+    access_items = []
+    if invite_in.course_access is not None:
+        access_items = [
+            {"course_id": item.course_id, "access_duration": item.access_duration or "lifetime"}
+            for item in invite_in.course_access
+        ]
+        allowed_courses_json = json.dumps(access_items)
+    elif invite_in.course_ids is not None:
+        access_items = [
+            {"course_id": cid, "access_duration": "lifetime"}
+            for cid in invite_in.course_ids
+        ]
+        allowed_courses_json = json.dumps(access_items)
+
     invite = Invite(
         token=token,
         role=invite_in.role,
         expires_at=expires_at,
-        is_used=False
+        is_used=False,
+        allowed_course_ids=allowed_courses_json
     )
     db.add(invite)
     db.commit()
     db.refresh(invite)
-    
+
+    c_ids, c_access = _parse_invite_courses(invite.allowed_course_ids)
     invite_res = InviteResponse.model_validate(invite)
     invite_res.invite_url = f"/register?token={token}"
     invite_res.is_expired = False
     invite_res.time_remaining = f"{duration}h"
+    invite_res.allowed_course_ids = c_ids
+    invite_res.course_access = c_access
     return invite_res
 
 def format_time_remaining(expires_at: datetime) -> str:
@@ -339,11 +472,15 @@ def list_invites(
             exp = exp.replace(tzinfo=timezone.utc)
         is_expired = now > exp
         time_rem = format_time_remaining(inv.expires_at)
-        
+
+        c_ids, c_access = _parse_invite_courses(inv.allowed_course_ids)
+
         inv_dto = InviteResponse.model_validate(inv)
         inv_dto.invite_url = f"/register?token={inv.token}"
         inv_dto.is_expired = is_expired
         inv_dto.time_remaining = time_rem
+        inv_dto.allowed_course_ids = c_ids
+        inv_dto.course_access = c_access
         results.append(inv_dto)
     return results
 
@@ -514,10 +651,40 @@ def verify_registration(
     verification.is_used = True
     invite.is_used = True
     invite.used_by_email = verification.email
+    db.flush()
+
+    # Se o convite continha cursos liberados, vincula-os ao novo aluno com seus respectivos prazos
+    if invite.allowed_course_ids:
+        _, c_access = _parse_invite_courses(invite.allowed_course_ids)
+        seen_cids = set()
+        for item in c_access:
+            if item.course_id in seen_cids:
+                continue
+            seen_cids.add(item.course_id)
+            dur = item.access_duration or "lifetime"
+            exp = calculate_course_expiration(dur, now)
+            db.add(UserCourse(
+                user_id=new_user.id,
+                course_id=item.course_id,
+                access_duration=dur,
+                expires_at=exp
+            ))
+
     db.commit()
     db.refresh(new_user)
 
-    return new_user
+    assigned_ucs = db.query(UserCourse).filter(UserCourse.user_id == new_user.id).all()
+    res = UserResponse.model_validate(new_user)
+    res.course_ids = [uc.course_id for uc in assigned_ucs]
+    res.course_access = [
+        CourseAccessItem(
+            course_id=uc.course_id,
+            access_duration=uc.access_duration or "lifetime",
+            expires_at=uc.expires_at
+        )
+        for uc in assigned_ucs
+    ]
+    return res
 
 @router.post("/register/resend-code")
 async def resend_registration_code(

@@ -29,6 +29,11 @@ export default function UserManagement({ currentUser }) {
     copied,
     error,
     setError,
+    courses,
+    selectedCourseIds,
+    setSelectedCourseIds,
+    courseAccessMap,
+    setCourseAccessMap,
     handleCreateInvite,
     copyToClipboard,
     editModalOpen,
@@ -94,6 +99,8 @@ export default function UserManagement({ currentUser }) {
               setModalOpen(true);
               setGeneratedInvite(null);
               setError('');
+              setSelectedCourseIds([]);
+              setCourseAccessMap({});
             }}
             className="primary-btn"
             data-testid="open-invite-modal-btn"
@@ -187,6 +194,11 @@ export default function UserManagement({ currentUser }) {
         setInviteRole={setInviteRole}
         expireHours={expireHours}
         setExpireHours={setExpireHours}
+        courses={courses}
+        selectedCourseIds={selectedCourseIds}
+        setSelectedCourseIds={setSelectedCourseIds}
+        courseAccessMap={courseAccessMap}
+        setCourseAccessMap={setCourseAccessMap}
         generatedInvite={generatedInvite}
         copied={copied}
         onCopy={() => copyToClipboard()}
@@ -205,6 +217,11 @@ export default function UserManagement({ currentUser }) {
         editingUser={editingUser}
         selectedRole={selectedRole}
         setSelectedRole={setSelectedRole}
+        courses={courses}
+        selectedCourseIds={selectedCourseIds}
+        setSelectedCourseIds={setSelectedCourseIds}
+        courseAccessMap={courseAccessMap}
+        setCourseAccessMap={setCourseAccessMap}
         onSave={handleSaveRole}
       />
 

@@ -58,3 +58,9 @@ modal_saved_*.png
 Thumbs.db
 *.swp
 *.swo
+
+# Uploads locais de mídia
+backend/app/uploads/thumbnails/
+backend/app/uploads/videos/
+backend/app/uploads/attachments/
+backend/app/uploads/*.json

@@ -33,6 +33,9 @@ export default function Login({ onLoginSuccess }) {
 
       localStorage.setItem('auth_token', data.access_token);
       localStorage.setItem('auth_user', JSON.stringify(data.user));
+      if (data.user?.role === 'aluno') {
+        localStorage.setItem('active_tab', 'courses');
+      }
       addToast(`Bem-vindo, ${data.user.name}!`, 'success');
       if (onLoginSuccess) {
         onLoginSuccess(data.user, data.access_token);
@@ -55,7 +58,7 @@ export default function Login({ onLoginSuccess }) {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <h2>Projeto Base</h2>
+            <h2>Área de Membros</h2>
             <p>Informe suas credenciais para acessar o painel</p>
           </div>
 

@@ -30,6 +30,7 @@ describe('App Component', () => {
         role: 'superadmin',
       })
     );
+    localStorage.setItem('active_tab', 'users');
 
     render(
       <ToastProvider>
@@ -161,6 +162,33 @@ describe('App Component', () => {
     expect(await screen.findByTestId('login-email-input')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: /menu lateral/i })).not.toBeInTheDocument();
     expect(screen.getByText('Sua sessão expirou. Por favor, faça login novamente.')).toBeInTheDocument();
+  });
+
+  it('always opens courses tab for aluno user even if previous active_tab was different', async () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 7,
+        name: 'Fernandes Aluno',
+        email: 'fernandes@exemplo.com',
+        role: 'aluno',
+      })
+    );
+    // Simula resquício de outra aba usada anteriormente
+    localStorage.setItem('active_tab', 'backup');
+
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    // O aluno não tem acesso a backup e deve ser redirecionado para a aba Cursos
+    expect(screen.getByRole('complementary', { name: /menu lateral/i })).toBeInTheDocument();
+    expect(screen.getByText('Cursos da Plataforma')).toBeInTheDocument();
+    expect(screen.queryByTestId('automated-backup-page')).not.toBeInTheDocument();
+    expect(localStorage.getItem('active_tab')).toBe('courses');
   });
 });
 

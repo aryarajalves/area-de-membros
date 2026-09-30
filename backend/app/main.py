@@ -7,6 +7,8 @@ from app.core.database import engine, Base, SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.backup import BackupSchedule, BackupHistory
+from app.models.course import Course, UserCourse
+from app.models.webhook import Webhook, WebhookLog
 from app.api.v1.api import api_router
 from app.services.scheduler import setup_scheduler, scheduler
 
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import text
         try:
             conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS used_by_email VARCHAR;"))
+            conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS allowed_course_ids VARCHAR;"))
             conn.commit()
         except Exception:
             pass

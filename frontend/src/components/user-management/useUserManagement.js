@@ -19,8 +19,11 @@ export function useUserManagement(currentUser) {
 
   const [users, setUsers] = useState([]);
   const [invites, setInvites] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [inviteRole, setInviteRole] = useState('user');
+  const [inviteRole, setInviteRole] = useState('aluno');
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
+  const [courseAccessMap, setCourseAccessMap] = useState({});
   const [expireHours, setExpireHours] = useState(24);
   const [generatedInvite, setGeneratedInvite] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -29,7 +32,7 @@ export function useUserManagement(currentUser) {
   // Edição de Usuário
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('user');
+  const [selectedRole, setSelectedRole] = useState('aluno');
 
   // Redefinição de Senha
   const [resetModalOpen, setResetModalOpen] = useState(false);
@@ -90,8 +93,24 @@ export function useUserManagement(currentUser) {
     }
   };
 
+  const fetchCourses = async () => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/v1/courses', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCourses(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchCourses();
     if (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') {
       fetchInvites();
     }
@@ -101,6 +120,10 @@ export function useUserManagement(currentUser) {
     e.preventDefault();
     setError('');
     const token = localStorage.getItem('auth_token');
+    const courseAccessList = selectedCourseIds.map((cid) => ({
+      course_id: cid,
+      access_duration: courseAccessMap[cid] || 'lifetime',
+    }));
     try {
       const res = await fetch('/api/v1/auth/invites', {
         method: 'POST',
@@ -111,6 +134,8 @@ export function useUserManagement(currentUser) {
         body: JSON.stringify({
           role: inviteRole,
           duration_hours: Number(expireHours),
+          course_ids: inviteRole === 'aluno' ? selectedCourseIds : undefined,
+          course_access: inviteRole === 'aluno' ? courseAccessList : undefined,
         }),
       });
 
@@ -149,7 +174,16 @@ export function useUserManagement(currentUser) {
 
   const handleOpenEdit = (user) => {
     setEditingUser(user);
-    setSelectedRole(user.role);
+    setSelectedRole(user.role === 'user' ? 'aluno' : user.role);
+    setSelectedCourseIds(user.course_ids || []);
+    const map = {};
+    (user.course_access || []).forEach((item) => {
+      map[item.course_id] = item.access_duration || 'lifetime';
+    });
+    (user.course_ids || []).forEach((cid) => {
+      if (!map[cid]) map[cid] = 'lifetime';
+    });
+    setCourseAccessMap(map);
     setEditModalOpen(true);
   };
 
@@ -157,6 +191,10 @@ export function useUserManagement(currentUser) {
     e.preventDefault();
     if (!editingUser) return;
     const token = localStorage.getItem('auth_token');
+    const courseAccessList = selectedCourseIds.map((cid) => ({
+      course_id: cid,
+      access_duration: courseAccessMap[cid] || 'lifetime',
+    }));
     try {
       const res = await fetch(`/api/v1/auth/users/${editingUser.id}`, {
         method: 'PATCH',
@@ -164,7 +202,11 @@ export function useUserManagement(currentUser) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ role: selectedRole }),
+        body: JSON.stringify({
+          role: selectedRole,
+          course_ids: selectedRole === 'aluno' ? selectedCourseIds : [],
+          course_access: selectedRole === 'aluno' ? courseAccessList : [],
+        }),
       });
 
       const data = await res.json();
@@ -370,8 +412,14 @@ export function useUserManagement(currentUser) {
     handleSelectSubTab,
     users,
     invites,
+    courses,
+    selectedCourseIds,
+    setSelectedCourseIds,
+    courseAccessMap,
+    setCourseAccessMap,
     fetchUsers,
     fetchInvites,
+    fetchCourses,
     modalOpen,
     setModalOpen,
     inviteRole,

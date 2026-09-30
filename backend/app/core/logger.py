@@ -2,7 +2,7 @@ import logging
 import sys
 
 # Configuração do Logger Padrão do Sistema
-logger = logging.getLogger("projeto_base")
+logger = logging.getLogger("area_de_membros")
 logger.setLevel(logging.INFO)
 
 if not logger.handlers:

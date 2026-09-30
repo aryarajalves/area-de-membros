@@ -12,6 +12,13 @@ class Token(BaseModel):
     token_type: str
     user: "UserResponse"
 
+class CourseAccessItem(BaseModel):
+    course_id: int
+    access_duration: Optional[str] = "lifetime"
+    expires_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
@@ -19,18 +26,24 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
+    course_ids: Optional[List[int]] = []
+    course_access: Optional[List[CourseAccessItem]] = []
 
     model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
-    role: Literal["admin", "user"]
+    role: Literal["admin", "user", "aluno"]
+    course_ids: Optional[List[int]] = None
+    course_access: Optional[List[CourseAccessItem]] = None
 
 class BulkDeleteRequest(BaseModel):
     ids: List[int]
 
 class InviteCreate(BaseModel):
-    role: Literal["admin", "user"]
+    role: Literal["admin", "user", "aluno"]
     duration_hours: int = 24  # tempo para expirar o convite
+    course_ids: Optional[List[int]] = None
+    course_access: Optional[List[CourseAccessItem]] = None
 
 class InviteResponse(BaseModel):
     id: int
@@ -43,8 +56,31 @@ class InviteResponse(BaseModel):
     is_expired: Optional[bool] = False
     time_remaining: Optional[str] = None
     used_by_email: Optional[str] = None
+    allowed_course_ids: Optional[List[int]] = None
+    course_access: Optional[List[CourseAccessItem]] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("allowed_course_ids", mode="before")
+    @classmethod
+    def parse_allowed_courses(cls, v):
+        if isinstance(v, str):
+            try:
+                import json
+                parsed = json.loads(v)
+            except Exception:
+                return []
+        else:
+            parsed = v
+        if isinstance(parsed, list):
+            result = []
+            for item in parsed:
+                if isinstance(item, dict) and "course_id" in item:
+                    result.append(int(item["course_id"]))
+                elif isinstance(item, int):
+                    result.append(item)
+            return result
+        return []
 
 class InviteValidateResponse(BaseModel):
     valid: bool

@@ -45,6 +45,21 @@
   }
 }
 
+@keyframes indeterminate-progress {
+  0% {
+    margin-left: 0%;
+    width: 25%;
+  }
+  50% {
+    margin-left: 35%;
+    width: 50%;
+  }
+  100% {
+    margin-left: 100%;
+    width: 25%;
+  }
+}
+
 .toast-success {
   border-left: 4px solid #10b981;
 }
@@ -148,7 +163,29 @@
 .nav-menu {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.nav-category-group {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+
+.nav-category-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  padding: 0 14px 2px;
+  user-select: none;
+}
+
+.nav-category-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .nav-button {
@@ -420,6 +457,97 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+/* Auth Dark Theme (adaptação à cor da Área de Membros) */
+.auth-dark-theme .auth-card {
+  background-color: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  color: #f8fafc;
+}
+
+.auth-dark-theme .auth-header h2 {
+  color: #f8fafc;
+}
+
+.auth-dark-theme .auth-header p {
+  color: #94a3b8;
+}
+
+.auth-dark-theme .auth-header p strong {
+  color: #f8fafc;
+}
+
+.auth-dark-theme .form-group label {
+  color: #e2e8f0;
+}
+
+.auth-dark-theme .input-wrapper input,
+.auth-dark-theme .form-group .input-wrapper input {
+  background-color: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+}
+
+.auth-dark-theme .input-wrapper input::placeholder {
+  color: #64748b;
+}
+
+.auth-dark-theme .input-wrapper input:focus,
+.auth-dark-theme .form-group .input-wrapper input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+.auth-dark-theme .password-rules-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-dark-theme .rules-title {
+  color: #cbd5e1;
+}
+
+.auth-dark-theme .rule-unmet {
+  color: #64748b;
+}
+
+.auth-dark-theme .rule-met {
+  color: #34d399;
+}
+
+.auth-dark-theme .otp-code-input {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+.auth-dark-theme .text-btn {
+  color: #38bdf8;
+}
+
+.auth-dark-theme .toggle-pwd-btn {
+  color: #94a3b8;
+}
+
+.auth-dark-theme .toggle-pwd-btn:hover {
+  color: #f8fafc;
+}
+
+.auth-dark-theme .auth-submit-btn,
+.auth-dark-theme .auth-form .primary-btn {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.auth-dark-theme .auth-submit-btn:hover,
+.auth-dark-theme .auth-form .primary-btn:hover {
+  background: linear-gradient(135deg, #0369a1, #1d4ed8);
 }
 
 .auth-form {
@@ -754,6 +882,11 @@
 .badge-user {
   background-color: #f1f5f9;
   color: #475569;
+}
+
+.badge-aluno {
+  background-color: #e0e7ff;
+  color: #4338ca;
 }
 
 .badge-success {
@@ -1111,21 +1244,33 @@
 
 .invite-success-badge {
   text-align: center;
-  background-color: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #f8fafc;
   padding: 16px;
   border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+
+.invite-success-badge svg {
+  color: #10b981;
+  margin: 0 auto 4px auto;
 }
 
 .invite-success-badge h4 {
   font-size: 15px;
   margin: 6px 0;
+  color: #34d399;
+  font-weight: 700;
 }
 
 .invite-success-badge p {
   font-size: 13px;
-  color: #047857;
+  color: #94a3b8;
+}
+
+.invite-success-badge p strong {
+  color: #f8fafc;
 }
 
 .invite-link-box {
@@ -1803,7 +1948,7 @@
 }
 
 /* Inputs Modernos e Elegantes para Formulários e Agendamento */
-.form-group input,
+.form-group input:not([type="checkbox"]):not([type="radio"]),
 .form-control-modern {
   width: 100%;
   padding: 12px 16px;
@@ -1818,22 +1963,108 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.form-group input:hover,
+.form-group input:not([type="checkbox"]):not([type="radio"]):hover,
 .form-control-modern:hover {
   border-color: #cbd5e1;
   background-color: #fafbfc;
 }
 
-.form-group input:focus,
+.form-group input:not([type="checkbox"]):not([type="radio"]):focus,
 .form-control-modern:focus {
   border-color: #0284c7;
   background-color: #ffffff;
   box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15), 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
-.form-group input::placeholder {
+.form-group input:not([type="checkbox"]):not([type="radio"])::placeholder {
   color: #94a3b8;
   font-weight: 400;
+}
+
+/* Lista moderna de seleção de cursos para Alunos */
+.course-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.course-selection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.course-selection-item:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+.course-selection-item.selected {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.course-selection-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.course-selection-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.course-selection-icon-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.course-selection-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-selection-item.selected .course-selection-title {
+  color: #1d4ed8;
+}
+
+.course-selection-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Espaçamento interno para inputs que possuem ícone à esquerda e/ou botão à direita */
@@ -1843,6 +2074,381 @@
   padding-right: 46px !important;
 }
 
+/* Course Management Component Styles */
+.courses-header-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
 
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
 
+.course-card-thumb {
+  height: 180px;
+  background-color: #1e293b;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.course-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-card-placeholder {
+  text-align: center;
+  color: #94a3b8;
+}
+
+.course-card-body {
+  padding: 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.course-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  margin-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.thumbnail-size-notice {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.thumbnail-preview-box {
+  border-radius: 8px;
+  overflow: hidden;
+  height: 140px;
+  background-color: #0f172a;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .classroom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tema Escuro dos Popups dentro da Área de Membros (Estilo Netflix) */
+.classroom-dark-theme .custom-modal-overlay > .table-card,
+.classroom-dark-theme .modal-overlay > .modal-content,
+.modal-overlay.classroom-dark-theme > .modal-content {
+  background-color: var(--classroom-modal-bg, #0f172a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay h2,
+.classroom-dark-theme .custom-modal-overlay h3,
+.classroom-dark-theme .custom-modal-overlay h4,
+.classroom-dark-theme .custom-modal-overlay label,
+.classroom-dark-theme .modal-overlay h2,
+.classroom-dark-theme .modal-overlay h3,
+.classroom-dark-theme .modal-overlay h4,
+.classroom-dark-theme .modal-overlay label:not(.primary-btn),
+.modal-overlay.classroom-dark-theme h3,
+.modal-overlay.classroom-dark-theme label:not(.primary-btn) {
+  color: #f8fafc !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay p,
+.classroom-dark-theme .modal-overlay p,
+.modal-overlay.classroom-dark-theme p {
+  color: #94a3b8 !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay input:not([type="color"]),
+.classroom-dark-theme .custom-modal-overlay textarea,
+.classroom-dark-theme .custom-modal-overlay select,
+.classroom-dark-theme .modal-overlay input:not([type="color"]),
+.classroom-dark-theme .modal-overlay textarea,
+.classroom-dark-theme .modal-overlay select,
+.modal-overlay.classroom-dark-theme input:not([type="color"]),
+.modal-overlay.classroom-dark-theme textarea,
+.modal-overlay.classroom-dark-theme select {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.classroom-dark-theme .thumbnail-size-notice,
+.modal-overlay.classroom-dark-theme .thumbnail-size-notice {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #94a3b8 !important;
+}
+
+.classroom-dark-theme .modal-header,
+.modal-overlay.classroom-dark-theme .modal-header,
+.classroom-dark-theme .modal-actions,
+.modal-overlay.classroom-dark-theme .modal-actions {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay .secondary-btn,
+.classroom-dark-theme .modal-overlay .secondary-btn,
+.modal-overlay.classroom-dark-theme .secondary-btn {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay .secondary-btn:hover:not(:disabled),
+.classroom-dark-theme .modal-overlay .secondary-btn:hover:not(:disabled),
+.modal-overlay.classroom-dark-theme .secondary-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ==========================================================================
+   TEMA GLOBAL DA ÁREA DE MEMBROS EM TODAS AS ABAS (.app-dark-theme)
+   Cobre: Relatos de Aulas, Backup Automático, Gerenciamento de Logs e Usuários
+   ========================================================================== */
+.app-dark-theme .page-header h2,
+.app-dark-theme .backup-page-header h1,
+.app-dark-theme .metric-value,
+.app-dark-theme .manual-backup-title,
+.app-dark-theme .schedule-settings-header h3,
+.app-dark-theme .toggle-main-label,
+.app-dark-theme .dropzone-header h3,
+.app-dark-theme .dropzone-title,
+.app-dark-theme .dropzone-notes-title,
+.app-dark-theme .restricted-card h2,
+.app-dark-theme .confirm-delete-title,
+.app-dark-theme .confirm-delete-message strong {
+  color: #f8fafc !important;
+}
+
+.app-dark-theme .page-header p,
+.app-dark-theme .backup-page-header p,
+.app-dark-theme .metric-label,
+.app-dark-theme .metric-subtext,
+.app-dark-theme .manual-backup-desc,
+.app-dark-theme .schedule-settings-header p,
+.app-dark-theme .toggle-sub-label,
+.app-dark-theme .dropzone-header p,
+.app-dark-theme .dropzone-subtitle,
+.app-dark-theme .dropzone-notes-list,
+.app-dark-theme .restricted-card p,
+.app-dark-theme .confirm-delete-message,
+.app-dark-theme .text-secondary,
+.app-dark-theme .help-text {
+  color: #94a3b8 !important;
+}
+
+.app-dark-theme .sub-tabs-container,
+.app-dark-theme .backup-sub-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.app-dark-theme .sub-tab-btn {
+  color: #94a3b8;
+}
+
+.app-dark-theme .sub-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+.app-dark-theme .sub-tab-btn.active {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.15);
+}
+
+.app-dark-theme .table-card,
+.app-dark-theme .backup-metric-card,
+.app-dark-theme .manual-backup-banner,
+.app-dark-theme .schedule-settings-card,
+.app-dark-theme .dropzone-card,
+.app-dark-theme .restricted-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.app-dark-theme .backup-metric-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.app-dark-theme .table-toolbar,
+.app-dark-theme .table-pagination-footer {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.app-dark-theme .table-toolbar label,
+.app-dark-theme .table-filter-group label,
+.app-dark-theme .selected-count-badge,
+.app-dark-theme .pagination-page-indicator {
+  color: #cbd5e1 !important;
+}
+
+.app-dark-theme .users-table th {
+  background-color: rgba(15, 23, 42, 0.55);
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-dark-theme .users-table td {
+  color: #f1f5f9;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.app-dark-theme .empty-table-state {
+  color: #94a3b8;
+}
+
+.app-dark-theme .text-primary {
+  color: #38bdf8;
+}
+
+.app-dark-theme .status-indicator {
+  color: #4ade80;
+}
+
+.app-dark-theme .pagination-btn,
+.app-dark-theme .btn-secondary,
+.app-dark-theme .secondary-btn,
+.app-dark-theme .cancel-btn {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+.app-dark-theme .pagination-btn:hover:not(:disabled),
+.app-dark-theme .btn-secondary:hover,
+.app-dark-theme .secondary-btn:hover:not(:disabled),
+.app-dark-theme .cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.app-dark-theme .schedule-toggle-row,
+.app-dark-theme .dropzone-area,
+.app-dark-theme .dropzone-notes-card,
+.app-dark-theme .user-details-summary,
+.app-dark-theme .welcome-info-grid {
+  background-color: rgba(15, 23, 42, 0.55);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.app-dark-theme .dropzone-area:hover,
+.app-dark-theme .dropzone-area.drag-active {
+  background-color: rgba(56, 189, 248, 0.08);
+  border-color: #38bdf8;
+}
+
+.app-dark-theme .dropzone-formats-badge {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.app-dark-theme .form-group label {
+  color: #e2e8f0;
+}
+
+.app-dark-theme .form-group input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.app-dark-theme .form-group select,
+.app-dark-theme .form-control-modern,
+.app-dark-theme .table-filter-group select,
+.app-dark-theme .table-toolbar input,
+.app-dark-theme .table-toolbar select,
+.app-dark-theme .invite-link-box input {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+}
+
+.app-dark-theme .course-selection-item {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.app-dark-theme .course-selection-item:hover {
+  background-color: rgba(30, 41, 59, 0.8);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.app-dark-theme .course-selection-title {
+  color: #f8fafc;
+}
+
+.app-dark-theme .course-selection-item.selected {
+  background-color: rgba(37, 99, 235, 0.22);
+  border-color: #3b82f6;
+}
+
+.app-dark-theme .course-selection-item.selected .course-selection-title {
+  color: #60a5fa;
+}
+
+.app-dark-theme .restricted-access-container {
+  background-color: transparent;
+}
 

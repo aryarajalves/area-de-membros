@@ -7,12 +7,29 @@ import { ToastProvider } from '../context/ToastContext';
 global.fetch = vi.fn();
 
 describe('Register Component', () => {
-  it('enforces password rules: >= 12 chars, upper, lower, number, special char', async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ valid: true, role: 'admin' }),
+  beforeEach(() => {
+    global.fetch.mockReset();
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ bg_color: '#090d16' }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ valid: true, role: 'admin' }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({}),
+      });
     });
+  });
 
+  it('enforces password rules: >= 12 chars, upper, lower, number, special char', async () => {
     render(
       <ToastProvider>
         <Register token="valid-test-token" />
@@ -50,11 +67,6 @@ describe('Register Component', () => {
   });
 
   it('toggles password visibility', async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ valid: true, role: 'user' }),
-    });
-
     render(
       <ToastProvider>
         <Register token="test-token" />
@@ -74,6 +86,12 @@ describe('Register Component', () => {
 
   it('submits registration, advances to OTP verification step, and completes registration', async () => {
     global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ bg_color: '#090d16' }),
+        });
+      }
       if (url.includes('/validate')) {
         return Promise.resolve({
           ok: true,

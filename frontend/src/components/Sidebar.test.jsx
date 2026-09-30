@@ -3,25 +3,35 @@ import { describe, it, expect, vi } from 'vitest';
 import Sidebar from './Sidebar';
 
 describe('Sidebar Component', () => {
-  it('renders "Projeto Base" title and logo', () => {
+  it('renders "Área de Membros" title and logo', () => {
     render(<Sidebar />);
-    expect(screen.getByText('Projeto Base')).toBeInTheDocument();
+    expect(screen.getByText('Área de Membros')).toBeInTheDocument();
     expect(screen.getByTestId('logo-icon')).toBeInTheDocument();
   });
 
-  it('renders "Backup Automático", "Gerenciamento de logs" and "Gestão de Usuário" buttons only for superadmin', () => {
-    // Superadmin vê os botões
+  it('renders "Cursos" button for superadmin and aluno, and superadmin-only buttons', () => {
+    // Superadmin vê Cursos, Backup, Logs e Gestão
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
-    expect(screen.queryByText('Meus vídeos')).not.toBeInTheDocument();
+    expect(screen.getByText('Cursos')).toBeInTheDocument();
     expect(screen.getByText('Backup Automático')).toBeInTheDocument();
     expect(screen.getByText('Gerenciamento de logs')).toBeInTheDocument();
     expect(screen.getByText('Gestão de Usuário')).toBeInTheDocument();
     unmount();
 
-    // Usuário comum NÃO vê os botões
+    // Aluno vê Cursos, mas NÃO vê Backup, Logs e Gestão de Usuários
+    const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
+    const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
+    expect(screen.getByText('Cursos')).toBeInTheDocument();
+    expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gerenciamento de logs')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gestão de Usuário')).not.toBeInTheDocument();
+    unmountAluno();
+
+    // Usuário comum NÃO vê Cursos, Backup, Logs ou Gestão
     const regularUser = { name: 'Comum', email: 'comum@test.com', role: 'user' };
     render(<Sidebar user={regularUser} />);
+    expect(screen.queryByText('Cursos')).not.toBeInTheDocument();
     expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
     expect(screen.queryByText('Gerenciamento de logs')).not.toBeInTheDocument();
     expect(screen.queryByText('Gestão de Usuário')).not.toBeInTheDocument();
@@ -49,5 +59,72 @@ describe('Sidebar Component', () => {
     const backupBtn = screen.getByTestId('nav-item-backup');
     fireEvent.click(backupBtn);
     expect(onSelectTabMock).toHaveBeenCalledWith('backup');
+  });
+
+  it('renders categories "Geral" and "Segurança" for superadmin, and only "Geral" for aluno', () => {
+    // Superadmin vê ambas as categorias
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    const { unmount } = render(<Sidebar user={superAdminUser} />);
+    expect(screen.getByTestId('nav-category-geral')).toBeInTheDocument();
+    expect(screen.getByText('Geral')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-seguranca')).toBeInTheDocument();
+    expect(screen.getByText('Segurança')).toBeInTheDocument();
+    unmount();
+
+    // Aluno vê apenas a categoria Geral (com Cursos), sem Segurança
+    const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
+    const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
+    expect(screen.getByTestId('nav-category-geral')).toBeInTheDocument();
+    expect(screen.queryByTestId('nav-category-seguranca')).not.toBeInTheDocument();
+    expect(screen.queryByText('Segurança')).not.toBeInTheDocument();
+    unmountAluno();
+  });
+
+  it('renders "Relatos de Aulas" with notification badge for superadmin when pendingReportsCount > 0', () => {
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    render(<Sidebar user={superAdminUser} pendingReportsCount={3} />);
+
+    expect(screen.getByText('Relatos de Aulas')).toBeInTheDocument();
+    const badge = screen.getByTestId('pending-reports-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('3');
+  });
+
+  it('applies member area background color to Sidebar and renders Configurações button for managers only', () => {
+    const onSelectTab = vi.fn();
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    const { container, unmount } = render(<Sidebar user={superAdminUser} bgColor="#090d16" onSelectTab={onSelectTab} />);
+    const aside = container.querySelector('aside.sidebar');
+    expect(aside).toHaveStyle({ backgroundColor: '#090d16' });
+
+    const settingsBtn = screen.getByTestId('nav-item-settings');
+    expect(settingsBtn).toBeInTheDocument();
+    fireEvent.click(settingsBtn);
+    expect(onSelectTab).toHaveBeenCalledWith('settings');
+    unmount();
+
+    const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
+    render(<Sidebar user={alunoUser} bgColor="#090d16" />);
+    expect(screen.queryByTestId('nav-item-settings')).not.toBeInTheDocument();
+  });
+
+  it('renders "Integrações" button for superadmin and admin, and handles tab selection', () => {
+    const onSelectTab = vi.fn();
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    const { unmount } = render(<Sidebar user={superAdminUser} onSelectTab={onSelectTab} />);
+
+    const integrationsBtn = screen.getByTestId('nav-item-integrations');
+    expect(integrationsBtn).toBeInTheDocument();
+    expect(screen.getByText('Integrações')).toBeInTheDocument();
+
+    fireEvent.click(integrationsBtn);
+    expect(onSelectTab).toHaveBeenCalledWith('integrations');
+    unmount();
+
+    // Aluno NÃO deve ver o botão de Integrações
+    const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
+    render(<Sidebar user={alunoUser} />);
+    expect(screen.queryByTestId('nav-item-integrations')).not.toBeInTheDocument();
+    expect(screen.queryByText('Integrações')).not.toBeInTheDocument();
   });
 });

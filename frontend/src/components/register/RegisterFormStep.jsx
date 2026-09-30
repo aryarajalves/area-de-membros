@@ -21,10 +21,20 @@ export default function RegisterFormStep({
   isPasswordValid,
   passwordsMatch,
   submitting,
+  bgColor = '#090d16',
+  isLightBg = false,
   onSubmit,
 }) {
   return (
-    <div className="auth-page-container">
+    <div
+      className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+      style={{
+        backgroundColor: bgColor,
+        minHeight: '100vh',
+        width: '100%',
+        transition: 'background-color 0.3s ease'
+      }}
+    >
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo-badge">
@@ -34,7 +44,7 @@ export default function RegisterFormStep({
           </div>
           <h2>Criar Conta</h2>
           <p>
-            Você foi convidado como <strong>{inviteInfo?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>. Preencha seus dados.
+            Você foi convidado como <strong>{inviteInfo?.role === 'admin' ? 'Administrador' : 'Aluno'}</strong>. Preencha seus dados.
           </p>
         </div>
 

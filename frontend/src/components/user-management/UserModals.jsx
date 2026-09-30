@@ -1,5 +1,109 @@
 import React from 'react';
-import { X, ShieldCheck, Check, Copy, KeyRound } from 'lucide-react';
+import { X, ShieldCheck, Check, Copy, KeyRound, BookOpen, Layers, Clock } from 'lucide-react';
+
+export const COURSE_ACCESS_DURATION_OPTIONS = [
+  { value: 'lifetime', label: 'Vitalício' },
+  { value: '1_month', label: '1 mês' },
+  { value: '3_months', label: '3 meses' },
+  { value: '6_months', label: '6 meses' },
+  { value: '1_year', label: '1 ano' },
+  { value: '2_years', label: '2 anos' },
+  { value: '3_years', label: '3 anos' },
+];
+
+function CourseSelectionList({
+  prefix,
+  courses,
+  selectedCourseIds,
+  courseAccessMap,
+  setCourseAccessMap,
+  toggleCourse,
+  emptyText,
+}) {
+  if (courses.length === 0) {
+    return (
+      <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12.5px', color: '#64748b' }}>
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <div className="course-selection-list" data-testid={`${prefix}-courses-list`}>
+      {courses.map((course) => {
+        const isSelected = selectedCourseIds.includes(course.id);
+        const currentDuration = courseAccessMap[course.id] || 'lifetime';
+        return (
+          <div
+            key={course.id}
+            className={`course-selection-item ${isSelected ? 'selected' : ''}`}
+            onClick={() => toggleCourse(course.id, !isSelected)}
+            data-testid={`${prefix}-course-item-${course.id}`}
+          >
+            <div className="course-selection-info" style={{ flex: 1, minWidth: 0 }}>
+              {course.thumbnail_url ? (
+                <img src={course.thumbnail_url} alt={course.title} className="course-selection-thumb" />
+              ) : (
+                <div className="course-selection-icon-placeholder">
+                  <Layers size={16} />
+                </div>
+              )}
+              <span className="course-selection-title">{course.title}</span>
+            </div>
+
+            {isSelected && (
+              <div
+                className="course-duration-selector"
+                onClick={(e) => e.stopPropagation()}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', marginRight: '8px' }}
+              >
+                <Clock size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                <select
+                  value={currentDuration}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setCourseAccessMap((prev) => ({ ...prev, [course.id]: e.target.value }));
+                  }}
+                  className="course-duration-select"
+                  data-testid={`${prefix}-course-duration-${course.id}`}
+                  title="Tempo de acesso para este produto"
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: '1px solid rgba(245, 158, 11, 0.45)',
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    color: '#d97706',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  {COURSE_ACCESS_DURATION_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <input
+              type="checkbox"
+              className="course-selection-checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleCourse(course.id, e.target.checked);
+              }}
+              data-testid={`${prefix}-course-check-${course.id}`}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CreateInviteModal({
   isOpen,
@@ -10,6 +114,11 @@ export function CreateInviteModal({
   setInviteRole,
   expireHours,
   setExpireHours,
+  courses = [],
+  selectedCourseIds = [],
+  setSelectedCourseIds = () => {},
+  courseAccessMap = {},
+  setCourseAccessMap = () => {},
   generatedInvite,
   copied,
   onCopy,
@@ -17,6 +126,17 @@ export function CreateInviteModal({
   onRedirect,
 }) {
   if (!isOpen) return null;
+
+  const toggleCourse = (courseId, checked) => {
+    if (checked) {
+      setSelectedCourseIds([...selectedCourseIds, courseId]);
+      if (!courseAccessMap[courseId]) {
+        setCourseAccessMap((prev) => ({ ...prev, [courseId]: 'lifetime' }));
+      }
+    } else {
+      setSelectedCourseIds(selectedCourseIds.filter((id) => id !== courseId));
+    }
+  };
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -45,7 +165,7 @@ export function CreateInviteModal({
                 onChange={(e) => setInviteRole(e.target.value)}
                 data-testid="invite-role-select"
               >
-                <option value="user">Usuário comum</option>
+                <option value="aluno">Aluno</option>
                 <option value="admin">Administrador (Admin)</option>
               </select>
               <small className="help-text">
@@ -53,8 +173,29 @@ export function CreateInviteModal({
               </small>
             </div>
 
+            {inviteRole === 'aluno' && (
+              <div className="form-group" data-testid="invite-courses-section">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <BookOpen size={15} color="#2563eb" />
+                  <span>Produtos / Cursos Liberados e Tempo de Acesso</span>
+                </label>
+                <small className="help-text" style={{ display: 'block', marginBottom: '6px' }}>
+                  Marque os produtos que o aluno terá acesso e escolha o tempo de duração de cada um:
+                </small>
+                <CourseSelectionList
+                  prefix="invite"
+                  courses={courses}
+                  selectedCourseIds={selectedCourseIds}
+                  courseAccessMap={courseAccessMap}
+                  setCourseAccessMap={setCourseAccessMap}
+                  toggleCourse={toggleCourse}
+                  emptyText="Nenhum curso cadastrado ainda. Você poderá liberá-los após o aluno criar a conta."
+                />
+              </div>
+            )}
+
             <div className="form-group">
-              <label htmlFor="expire-hours">Tempo para expirar</label>
+              <label htmlFor="expire-hours">Tempo para expirar o link do convite</label>
               <select
                 id="expire-hours"
                 value={expireHours}
@@ -71,18 +212,10 @@ export function CreateInviteModal({
             </div>
 
             <div className="modal-actions">
-              <button
-                type="button"
-                onClick={onClose}
-                className="cancel-btn"
-              >
+              <button type="button" onClick={onClose} className="cancel-btn">
                 Cancelar
               </button>
-              <button
-                type="submit"
-                className="primary-btn"
-                data-testid="generate-invite-submit-btn"
-              >
+              <button type="submit" className="primary-btn" data-testid="generate-invite-submit-btn">
                 Gerar Convite
               </button>
             </div>
@@ -93,7 +226,7 @@ export function CreateInviteModal({
               <ShieldCheck size={28} />
               <h4>Link de convite criado com sucesso!</h4>
               <p>
-                Perfil: <strong>{generatedInvite.role === 'admin' ? 'Admin' : 'Usuário'}</strong> | 
+                Perfil: <strong>{generatedInvite.role === 'admin' ? 'Admin' : 'Aluno'}</strong> | 
                 Expira em <strong>{expireHours} hora(s)</strong>
               </p>
             </div>
@@ -147,9 +280,25 @@ export function EditUserRoleModal({
   editingUser,
   selectedRole,
   setSelectedRole,
+  courses = [],
+  selectedCourseIds = [],
+  setSelectedCourseIds = () => {},
+  courseAccessMap = {},
+  setCourseAccessMap = () => {},
   onSave,
 }) {
   if (!isOpen || !editingUser) return null;
+
+  const toggleCourse = (courseId, checked) => {
+    if (checked) {
+      setSelectedCourseIds([...selectedCourseIds, courseId]);
+      if (!courseAccessMap[courseId]) {
+        setCourseAccessMap((prev) => ({ ...prev, [courseId]: 'lifetime' }));
+      }
+    } else {
+      setSelectedCourseIds(selectedCourseIds.filter((id) => id !== courseId));
+    }
+  };
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -180,7 +329,7 @@ export function EditUserRoleModal({
               onChange={(e) => setSelectedRole(e.target.value)}
               data-testid="edit-role-select"
             >
-              <option value="user">Usuário comum</option>
+              <option value="aluno">Aluno</option>
               <option value="admin">Administrador (Admin)</option>
             </select>
             <small className="help-text">
@@ -188,19 +337,32 @@ export function EditUserRoleModal({
             </small>
           </div>
 
+          {selectedRole === 'aluno' && (
+            <div className="form-group" data-testid="edit-user-courses-section">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <BookOpen size={15} color="#2563eb" />
+                <span>Produtos / Cursos Liberados e Tempo de Acesso</span>
+              </label>
+              <small className="help-text" style={{ display: 'block', marginBottom: '6px' }}>
+                Marque os produtos que este aluno tem acesso e defina o período de acesso para cada um:
+              </small>
+              <CourseSelectionList
+                prefix="edit"
+                courses={courses}
+                selectedCourseIds={selectedCourseIds}
+                courseAccessMap={courseAccessMap}
+                setCourseAccessMap={setCourseAccessMap}
+                toggleCourse={toggleCourse}
+                emptyText='Nenhum curso cadastrado no momento. Cadastre cursos na aba "Cursos".'
+              />
+            </div>
+          )}
+
           <div className="modal-actions">
-            <button
-              type="button"
-              onClick={onClose}
-              className="cancel-btn"
-            >
+            <button type="button" onClick={onClose} className="cancel-btn">
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="primary-btn"
-              data-testid="save-role-btn"
-            >
+            <button type="submit" className="primary-btn" data-testid="save-role-btn">
               Salvar Alteração
             </button>
           </div>

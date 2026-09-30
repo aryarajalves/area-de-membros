@@ -153,7 +153,6 @@ def rename_backup_file(old_s3_key: str, old_filename: str, new_filename: str, fo
             logger.info(f"Arquivo renomeado no S3 de {old_s3_key} para {new_s3_key}")
         except Exception as e:
             logger.error(f"Erro ao renomear arquivo no S3: {e}")
-            raise RuntimeError(f"Falha ao renomear arquivo no S3: {e}")
 
     # Fallback local
     old_local = os.path.join("/app/backups_local", old_filename)
@@ -165,3 +164,62 @@ def rename_backup_file(old_s3_key: str, old_filename: str, new_filename: str, fo
             logger.error(f"Erro ao renomear arquivo local: {e}")
 
     return new_s3_key
+
+
+def upload_media_file(file_bytes: bytes, filename: str, content_type: str, folder: str = "AreaDeMembros/videos/") -> str:
+    """
+    Faz upload de arquivo de mídia (vídeo de aula ou thumbnail de curso) para o Backblaze B2.
+    Retorna a URL pública/direta do arquivo no Backblaze B2, ou None se falhar.
+    """
+    s3 = get_s3_client()
+    target_folder = folder
+    if not target_folder.endswith("/"):
+        target_folder += "/"
+    s3_key = f"{target_folder}{filename}"
+
+    if s3 and settings.B2_BUCKET_NAME:
+        try:
+            s3.put_object(
+                Bucket=settings.B2_BUCKET_NAME,
+                Key=s3_key,
+                Body=file_bytes,
+                ContentType=content_type
+            )
+            # URL de acesso direto ao Backblaze B2
+            if settings.BACKBLAZE_CDN_URL:
+                base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")
+                if settings.B2_BUCKET_NAME not in base_url:
+                    media_url = f"{base_url}/{settings.B2_BUCKET_NAME}/{s3_key}"
+                else:
+                    media_url = f"{base_url}/{s3_key}"
+            else:
+                endpoint = settings.B2_ENDPOINT_URL.rstrip("/")
+                media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
+
+            logger.info(f"Mídia {filename} enviada para Backblaze B2 com sucesso: {media_url}")
+            return media_url
+        except Exception as e:
+            logger.error(f"Erro ao enviar mídia {filename} para Backblaze B2: {e}")
+
+    return None
+
+
+def delete_media_file(media_url: str) -> bool:
+    """Exclui um arquivo de mídia do Backblaze B2 caso esteja armazenado lá."""
+    if not media_url:
+        return False
+    s3 = get_s3_client()
+    if not s3 or not settings.B2_BUCKET_NAME:
+        return False
+
+    try:
+        # Se for uma URL do Backblaze B2 contendo a chave
+        if settings.B2_BUCKET_NAME in media_url and "AreaDeMembros/" in media_url:
+            s3_key = media_url.split(f"{settings.B2_BUCKET_NAME}/")[-1]
+            s3.delete_object(Bucket=settings.B2_BUCKET_NAME, Key=s3_key)
+            logger.info(f"Mídia {s3_key} deletada do Backblaze B2 com sucesso.")
+            return True
+    except Exception as e:
+        logger.error(f"Erro ao excluir mídia {media_url} do Backblaze B2: {e}")
+
+    return False

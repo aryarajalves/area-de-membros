@@ -26,6 +26,7 @@ class Invite(Base):
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
     used_by_email = Column(String, nullable=True)
+    allowed_course_ids = Column(String, nullable=True) # JSON array com IDs dos cursos vinculados
     created_at = Column(DateTime, default=utc_now)
 
 

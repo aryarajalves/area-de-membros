@@ -14,7 +14,30 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+  const [platformBgColor, setPlatformBgColor] = useState(() => {
+    return localStorage.getItem('platform_theme_bg') || '#090d16';
+  });
   const { addToast } = useToast();
+
+  useEffect(() => {
+    try {
+      const p = fetch('/api/v1/courses/platform-theme');
+      if (p && typeof p.then === 'function') {
+        p.then((res) => (res && res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.bg_color) {
+              setPlatformBgColor(data.bg_color);
+              localStorage.setItem('platform_theme_bg', data.bg_color);
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // Ignora falhas em mock de teste ou rede
+    }
+  }, []);
+
+  const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((platformBgColor || '').toLowerCase());
 
   const rules = [
     { label: 'No mínimo 12 caracteres', valid: password.length >= 12 },
@@ -112,7 +135,10 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
 
   if (validating) {
     return (
-      <div className="auth-page-container">
+      <div
+        className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+        style={{ backgroundColor: platformBgColor, minHeight: '100vh', width: '100%' }}
+      >
         <div className="auth-card text-center">
           <p>Verificando link de redefinição...</p>
         </div>
@@ -122,7 +148,10 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
 
   if (tokenError) {
     return (
-      <div className="auth-page-container">
+      <div
+        className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+        style={{ backgroundColor: platformBgColor, minHeight: '100vh', width: '100%' }}
+      >
         <div className="auth-card text-center">
           <div className="auth-error-banner">
             <AlertCircle size={20} />
@@ -141,7 +170,10 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
 
   if (success) {
     return (
-      <div className="auth-page-container">
+      <div
+        className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+        style={{ backgroundColor: platformBgColor, minHeight: '100vh', width: '100%' }}
+      >
         <div className="auth-card text-center">
           <CheckCircle size={44} color="#10b981" style={{ margin: '0 auto 16px' }} />
           <h3>Senha atualizada com sucesso!</h3>
@@ -157,7 +189,15 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
   }
 
   return (
-    <div className="auth-page-container">
+    <div
+      className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
+      style={{
+        backgroundColor: platformBgColor,
+        minHeight: '100vh',
+        width: '100%',
+        transition: 'background-color 0.3s ease'
+      }}
+    >
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo-badge">

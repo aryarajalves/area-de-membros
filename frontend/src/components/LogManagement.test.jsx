@@ -12,12 +12,12 @@ describe('LogManagement Component', () => {
 
   const mockLogsBackend = {
     service: 'backend',
-    container: 'projeto_base_backend',
+    container: 'area_de_membros_backend',
     available: true,
     logs: [
-      '[INFO] [projeto_base]: Servidor iniciado com sucesso.',
-      '[WARNING] [projeto_base]: Conexão lenta detectada.',
-      '[ERROR] [projeto_base]: Falha simulada para teste de log.',
+      '[INFO] [area_de_membros]: Servidor iniciado com sucesso.',
+      '[WARNING] [area_de_membros]: Conexão lenta detectada.',
+      '[ERROR] [area_de_membros]: Falha simulada para teste de log.',
     ],
     total_lines: 3,
     error: null,
@@ -25,7 +25,7 @@ describe('LogManagement Component', () => {
 
   const mockLogsFrontend = {
     service: 'frontend',
-    container: 'projeto_base_frontend',
+    container: 'area_de_membros_frontend',
     available: true,
     logs: [
       '172.31.0.1 - - [29/Sep/2026:17:59:35 +0000] "GET /assets/index.js HTTP/1.1" 200 450',

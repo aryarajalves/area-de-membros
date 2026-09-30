@@ -27,7 +27,30 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [formError, setFormError] = useState('');
+  const [platformBgColor, setPlatformBgColor] = useState(() => {
+    return localStorage.getItem('platform_theme_bg') || '#090d16';
+  });
   const { addToast } = useToast();
+
+  useEffect(() => {
+    try {
+      const p = fetch('/api/v1/courses/platform-theme');
+      if (p && typeof p.then === 'function') {
+        p.then((res) => (res && res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.bg_color) {
+              setPlatformBgColor(data.bg_color);
+              localStorage.setItem('platform_theme_bg', data.bg_color);
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // Ignora falhas em mock de teste ou rede
+    }
+  }, []);
+
+  const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((platformBgColor || '').toLowerCase());
 
   // Password rules validation
   const rules = [
@@ -163,6 +186,7 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
       }
 
       setSuccess(true);
+      localStorage.setItem('active_tab', 'courses');
       addToast('E-mail validado e conta criada com sucesso!', 'success');
       if (onRegisterSuccess) {
         setTimeout(() => {
@@ -207,15 +231,15 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
   };
 
   if (loading) {
-    return <RegisterLoadingState />;
+    return <RegisterLoadingState bgColor={platformBgColor} isLightBg={isLightBg} />;
   }
 
   if (inviteError) {
-    return <RegisterInviteErrorState inviteError={inviteError} />;
+    return <RegisterInviteErrorState inviteError={inviteError} bgColor={platformBgColor} isLightBg={isLightBg} />;
   }
 
   if (success) {
-    return <RegisterSuccessState inviteInfo={inviteInfo} />;
+    return <RegisterSuccessState inviteInfo={inviteInfo} bgColor={platformBgColor} isLightBg={isLightBg} />;
   }
 
   if (step === 'verify') {
@@ -230,6 +254,8 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
         resending={resending}
         resendCooldown={resendCooldown}
         onResendCode={handleResendCode}
+        bgColor={platformBgColor}
+        isLightBg={isLightBg}
         onBackToForm={() => {
           setStep('form');
           setOtpCode('');
@@ -259,6 +285,8 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
       isPasswordValid={isPasswordValid}
       passwordsMatch={passwordsMatch}
       submitting={submitting}
+      bgColor={platformBgColor}
+      isLightBg={isLightBg}
       onSubmit={handleSubmit}
     />
   );

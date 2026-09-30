@@ -1,3 +1,5 @@
+import io
+import openpyxl
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,7 +10,10 @@ from app.main import app, init_superadmin
 from app.core.database import Base, get_db
 from app.core.config import settings
 from app.core.security import get_password_hash
+from datetime import datetime, timezone
 from app.models.user import User, Invite, RegistrationVerification
+from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
+from app.models.webhook import Webhook, WebhookLog
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -48,6 +53,13 @@ def setup_database():
 
 client = TestClient(app)
 
+def get_superadmin_headers():
+    res = client.post("/api/v1/auth/login", json={
+        "email": settings.SUPERADMIN_EMAIL,
+        "password": settings.SUPERADMIN_PASSWORD
+    })
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
 def test_health_and_root():
     res = client.get("/health")
     assert res.status_code == 200
@@ -55,7 +67,7 @@ def test_health_and_root():
 
     res_root = client.get("/")
     assert res_root.status_code == 200
-    assert "Projeto Base" in res_root.json()["message"]
+    assert "Area de Membros" in res_root.json()["message"]
 
 def test_login_superadmin_success():
     login_payload = {
@@ -550,6 +562,328 @@ def test_docker_logs_endpoints():
     # 3. Acesso bloqueado sem token
     unauth_res = client.get("/api/v1/logs/backend")
     assert unauth_res.status_code == 401
+
+
+def test_export_students_csv_and_xlsx():
+    """Valida exportação de alunos em formato CSV e XLSX."""
+    headers = get_superadmin_headers()
+    db = TestingSessionLocal()
+    student = User(
+        name="Aluno Exportacao",
+        email="aluno_export@teste.com",
+        role="aluno",
+        hashed_password=get_password_hash("123456"),
+        is_active=True
+    )
+    db.add(student)
+    db.commit()
+    db.close()
+
+    res_csv = client.get("/api/v1/students/export?format=csv", headers=headers)
+    assert res_csv.status_code == 200
+    assert "text/csv" in res_csv.headers["content-type"]
+    assert "aluno_export@teste.com" in res_csv.text
+
+    res_xlsx = client.get("/api/v1/students/export?format=xlsx", headers=headers)
+    assert res_xlsx.status_code == 200
+    assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in res_xlsx.headers["content-type"]
+    assert len(res_xlsx.content) > 0
+
+
+def test_download_import_template():
+    """Valida download de modelo de planilha para importação."""
+    headers = get_superadmin_headers()
+    res_csv = client.get("/api/v1/students/import/template?format=csv", headers=headers)
+    assert res_csv.status_code == 200
+    assert "Nome;Email;Senha;Cursos;Tempo de Acesso" in res_csv.text
+
+    res_xlsx = client.get("/api/v1/students/import/template?format=xlsx", headers=headers)
+    assert res_xlsx.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(res_xlsx.content))
+    assert "Modelo_Importacao_Alunos" in wb.sheetnames
+
+
+def test_import_students_csv_and_xlsx_flow():
+    """Valida importação de alunos via CSV e XLSX com cursos e prazos."""
+    headers = get_superadmin_headers()
+    db = TestingSessionLocal()
+    curso = Course(title="Curso Import Flow", description="Desc", is_published=True)
+    db.add(curso)
+    db.commit()
+    course_id = curso.id
+    db.close()
+
+    # 1. Importação via CSV
+    csv_content = (
+        "Nome;Email;Senha;Cursos;Tempo de Acesso\n"
+        "Aluno Import CSV;import_csv@teste.com;123456;Curso Import Flow;1 ano\n"
+    ).encode("utf-8-sig")
+
+    files = {"file": ("alunos.csv", io.BytesIO(csv_content), "text/csv")}
+    res_csv = client.post("/api/v1/students/import", headers=headers, files=files, data={"default_access_duration": "lifetime"})
+    assert res_csv.status_code == 200
+    payload = res_csv.json()
+    assert payload["created_count"] == 1
+
+    db = TestingSessionLocal()
+    aluno_csv = db.query(User).filter(User.email == "import_csv@teste.com").first()
+    assert aluno_csv is not None
+    uc = db.query(UserCourse).filter(UserCourse.user_id == aluno_csv.id).first()
+    assert uc is not None
+    assert uc.access_duration == "1_year"
+    db.close()
+
+    # 2. Importação via XLSX
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Alunos"
+    ws.append(["Nome", "Email", "Senha", "Cursos", "Tempo de Acesso"])
+    ws.append(["Aluno Import XLSX", "import_xlsx@teste.com", "senha123", str(course_id), "6 meses"])
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    files_xlsx = {"file": ("alunos.xlsx", buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    res_xlsx = client.post("/api/v1/students/import", headers=headers, files=files_xlsx, data={"default_course_ids": str(course_id)})
+    assert res_xlsx.status_code == 200
+    assert res_xlsx.json()["created_count"] == 1
+
+    # 3. Atualização (reimportar mesmo email)
+    buffer.seek(0)
+    files_xlsx2 = {"file": ("alunos.xlsx", buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    res_reimport = client.post("/api/v1/students/import", headers=headers, files=files_xlsx2, data={})
+    assert res_reimport.status_code == 200
+    assert res_reimport.json()["created_count"] == 0
+    assert res_reimport.json()["updated_count"] == 1
+
+
+def test_webhook_integrations_crud_and_validation():
+    """Valida criação, listagem, atualização e exclusão de integrações de webhooks."""
+    headers = get_superadmin_headers()
+
+    # 1. Listar inicialmente (vazio ou existente)
+    res_list = client.get("/api/v1/integrations", headers=headers)
+    assert res_list.status_code == 200
+
+    # 2. Criar integração válida
+    payload = {
+        "name": "Webhook Notificação Alunos",
+        "url": "https://api.meusite.com/webhook",
+        "events": ["course.progress.25", "course.progress.50", "course.progress.75", "course.progress.100"],
+        "secret_key": "chave_secreta_teste",
+        "is_active": True
+    }
+    res_create = client.post("/api/v1/integrations", json=payload, headers=headers)
+    assert res_create.status_code == 201
+    wh_data = res_create.json()
+    assert wh_data["name"] == "Webhook Notificação Alunos"
+    assert wh_data["url"] == "https://api.meusite.com/webhook"
+    assert "course.progress.50" in wh_data["events"]
+    wh_id = wh_data["id"]
+
+    # 3. Consultar detalhes por ID
+    res_get = client.get(f"/api/v1/integrations/{wh_id}", headers=headers)
+    assert res_get.status_code == 200
+    assert res_get.json()["id"] == wh_id
+
+    # 4. Atualizar integração
+    res_update = client.put(f"/api/v1/integrations/{wh_id}", json={
+        "name": "Webhook Notificação Editado",
+        "is_active": False
+    }, headers=headers)
+    assert res_update.status_code == 200
+    assert res_update.json()["name"] == "Webhook Notificação Editado"
+    assert res_update.json()["is_active"] is False
+
+    # 5. Acesso não autorizado sem permissão de admin
+    db = TestingSessionLocal()
+    aluno_user = User(
+        name="Aluno Comum",
+        email="aluno_comum_wh@teste.com",
+        role="aluno",
+        hashed_password=get_password_hash("123456"),
+        is_active=True
+    )
+    db.add(aluno_user)
+    db.commit()
+    db.close()
+
+    aluno_token = client.post("/api/v1/auth/login", json={"email": "aluno_comum_wh@teste.com", "password": "123456"}).json()["access_token"]
+    assert client.get("/api/v1/integrations", headers={"Authorization": f"Bearer {aluno_token}"}).status_code == 403
+
+    # 6. Excluir integração
+    res_delete = client.delete(f"/api/v1/integrations/{wh_id}", headers=headers)
+    assert res_delete.status_code == 200
+    assert client.get(f"/api/v1/integrations/{wh_id}", headers=headers).status_code == 404
+
+
+def test_webhook_test_dispatch_and_logs():
+    """Valida disparo de evento de teste de webhook e consulta de logs."""
+    headers = get_superadmin_headers()
+
+    # Cria webhook de teste
+    res_create = client.post("/api/v1/integrations", json={
+        "name": "Webhook de Teste Logs",
+        "url": "https://httpbin.org/status/200",
+        "events": ["course.progress.100"],
+        "is_active": True
+    }, headers=headers)
+    wh_id = res_create.json()["id"]
+
+    # Dispara teste
+    res_test = client.post(f"/api/v1/integrations/{wh_id}/test", headers=headers)
+    assert res_test.status_code == 200
+    test_json = res_test.json()
+    assert "status_code" in test_json
+
+    # Consulta logs do webhook
+    res_logs = client.get(f"/api/v1/integrations/{wh_id}/logs", headers=headers)
+    assert res_logs.status_code == 200
+    logs = res_logs.json()
+    assert len(logs) >= 1
+    assert logs[0]["event"] == "webhook.test"
+    assert "student" in logs[0]["payload"]["data"]
+
+    # Limpeza
+    client.delete(f"/api/v1/integrations/{wh_id}", headers=headers)
+
+
+def test_student_course_history_and_expiration_timeline():
+    """Valida cálculo de tempo restante, progresso de validade e histórico detalhado de aulas do aluno."""
+    headers = get_superadmin_headers()
+    db = TestingSessionLocal()
+
+    # Cria curso com módulo e aulas
+    curso = Course(title="Curso Histórico Teste", description="Desc")
+    db.add(curso)
+    db.commit()
+
+    modulo = Module(title="Módulo 1 - Fundamentos", course_id=curso.id, order_index=1)
+    db.add(modulo)
+    db.commit()
+
+    aula1 = Lesson(title="Aula 1 - Boas Vindas", module_id=modulo.id, order_index=1)
+    aula2 = Lesson(title="Aula 2 - Primeiros Passos", module_id=modulo.id, order_index=2)
+    db.add_all([aula1, aula2])
+    db.commit()
+
+    aula1_id = aula1.id
+    course_id = curso.id
+
+    # Cria aluno
+    aluno = User(
+        name="Aluno Com Histórico",
+        email="aluno_historico@teste.com",
+        role="aluno",
+        hashed_password=get_password_hash("123456"),
+        is_active=True
+    )
+    db.add(aluno)
+    db.commit()
+
+    # Vincula curso com validade de 30 dias a partir de agora
+    now = datetime.now(timezone.utc)
+    from datetime import timedelta
+    expires_at = now + timedelta(days=30)
+    uc = UserCourse(
+        user_id=aluno.id,
+        course_id=course_id,
+        access_duration="1_month",
+        expires_at=expires_at
+    )
+    db.add(uc)
+
+    # Marca aula 1 como concluída
+    lp = LessonProgress(
+        lesson_id=aula1_id,
+        user_id=aluno.id,
+        is_completed=True,
+        completed_at=now
+    )
+    db.add(lp)
+    db.commit()
+    db.close()
+
+    # 1. Valida listagem de estudantes com dados de tempo restante
+    res_students = client.get("/api/v1/students?search=aluno_historico@teste.com", headers=headers)
+    assert res_students.status_code == 200
+    st_data = res_students.json()["items"][0]
+    assert len(st_data["courses"]) == 1
+    c_info = st_data["courses"][0]
+    assert c_info["days_remaining"] is not None
+    assert c_info["days_remaining"] >= 29
+    assert c_info["is_expired"] is False
+    assert c_info["time_progress_percent"] is not None
+
+    # 2. Valida consulta do histórico de aulas assistidas
+    res_history = client.get(f"/api/v1/students/{st_data['id']}/courses/{c_info['course_id']}/history", headers=headers)
+    assert res_history.status_code == 200
+    history = res_history.json()
+    assert len(history) == 1
+    assert history[0]["lesson_id"] == aula1_id
+    assert history[0]["lesson_title"] == "Aula 1 - Boas Vindas"
+    assert history[0]["module_title"] == "Módulo 1 - Fundamentos"
+    assert history[0]["is_completed"] is True
+    assert history[0]["completed_at"] is not None
+
+
+def test_check_renewals_and_events():
+    """Valida endpoint POST /api/v1/integrations/check-renewals e eventos de aviso de renovação e expiração."""
+    headers = get_superadmin_headers()
+    from datetime import timedelta
+    db = TestingSessionLocal()
+
+    curso = Course(title="Curso Renovação Teste", description="Desc")
+    db.add(curso)
+    db.commit()
+
+    aluno_expirado = User(
+        name="Aluno Vencido",
+        email="vencido@teste.com",
+        role="aluno",
+        hashed_password=get_password_hash("123456"),
+        is_active=True
+    )
+    aluno_aviso = User(
+        name="Aluno Aviso 7d",
+        email="aviso7d@teste.com",
+        role="aluno",
+        hashed_password=get_password_hash("123456"),
+        is_active=True
+    )
+    db.add_all([aluno_expirado, aluno_aviso])
+    db.commit()
+
+    now = datetime.now(timezone.utc)
+    # 1 expirado
+    uc1 = UserCourse(user_id=aluno_expirado.id, course_id=curso.id, expires_at=now - timedelta(days=2))
+    # 1 a vencer em 7 dias
+    uc2 = UserCourse(user_id=aluno_aviso.id, course_id=curso.id, expires_at=now + timedelta(days=7))
+    db.add_all([uc1, uc2])
+    db.commit()
+    db.close()
+
+    # Cria webhook de escuta para renovação
+    res_wh = client.post("/api/v1/integrations", json={
+        "name": "Webhook Renovação",
+        "url": "https://httpbin.org/status/200",
+        "events": ["course.renewal.warning_7d", "course.renewal.expired"],
+        "is_active": True
+    }, headers=headers)
+    assert res_wh.status_code == 201
+    wh_id = res_wh.json()["id"]
+
+    # Dispara checagem de renovação
+    res_check = client.post("/api/v1/integrations/check-renewals", headers=headers)
+    assert res_check.status_code == 200
+    check_json = res_check.json()
+    assert check_json["success"] is True
+    assert "details" in check_json
+
+    # Limpeza
+    client.delete(f"/api/v1/integrations/{wh_id}", headers=headers)
+
+
 
 
 

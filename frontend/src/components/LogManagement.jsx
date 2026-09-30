@@ -6,8 +6,8 @@ import { LogTypeFilter, LogDateFilter, TerminalLogLine, classifyLogLine } from '
 export default function LogManagement({ currentUser }) {
   // Apenas contêineres de backend e frontend (sem banco de dados postgres)
   const [services] = useState([
-    { id: 'backend', name: 'Backend (FastAPI)', container: 'projeto_base_backend' },
-    { id: 'frontend', name: 'Frontend (Nginx / Vite)', container: 'projeto_base_frontend' },
+    { id: 'backend', name: 'Backend (FastAPI)', container: 'area_de_membros_backend' },
+    { id: 'frontend', name: 'Frontend (Nginx / Vite)', container: 'area_de_membros_frontend' },
   ]);
   const [selectedService, setSelectedService] = useState('backend');
   const [tailLines, setTailLines] = useState(100);

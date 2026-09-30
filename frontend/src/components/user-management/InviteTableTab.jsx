@@ -113,7 +113,7 @@ export default function InviteTableTab({
                   </td>
                   <td>
                     <span className={`badge badge-${inv.role}`}>
-                      {inv.role === 'admin' ? 'Admin' : 'Usuário'}
+                      {inv.role === 'admin' ? 'Admin' : inv.role === 'aluno' ? 'Aluno' : 'Usuário'}
                     </span>
                   </td>
                   <td>
