@@ -271,6 +271,10 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - `course.renewal.expired`: Disparado quando termina o prazo do curso, enviando notificação com status explícito: **"Renovação do Curso"**.
 - **Verificação Programada e Manual de Renovações:**
   - Endpoint `POST /api/v1/integrations/check-renewals` disponível para rotas cron/agendamentos periódicos e checagens manuais no painel.
+  - **Frequência e Regra de Disparo (Verificação Diária):**
+    - A checagem dos eventos `course.renewal.warning_7d` (aviso 7 dias antes) e `course.renewal.expired` (expiração com status "Renovação do Curso") deve ser realizada através de uma **verificação periódica diária** (rotina agendada uma vez ao dia).
+    - Aplica-se apenas para alunos que estão efetivamente matriculados em cursos com prazo determinado.
+    - Se um aluno for matriculado com prazo curto (ex: faltando menos de 7 dias para vencer), o sistema não dispara imediatamente no ato da matrícula, mantendo a cadência da verificação diária automática para evitar disparos descontextualizados no momento do onboarding.
 - **Configuração do Webhook:**
   - **Nome:** Identificador legível da integração (ex: "Disparo n8n Marcos Alunos", "Zapier Parabéns 100%").
   - **URL de Destino:** Endpoint público seguro que receberá os payloads via método POST.
@@ -290,8 +294,9 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 
 ---
 
-## 8. Perguntas em Aberto
-*(Nenhuma pergunta em aberto no momento)*
+## 8. Perguntas em Aberto e Histórico de Decisões
+- [x] [RESOLVIDO] Como devem ser tratados os disparos do evento "Renovação do Curso (7 dias antes)" caso o aluno seja matriculado faltando menos de 7 dias para expirar? Deve disparar imediatamente no momento da matrícula ou apenas na verificação periódica do cron diário?
+  - **Decisão do Dono do Projeto:** Deve ser uma verificação periódica diária e aplicada apenas para alunos que forem efetivamente matriculados (sem disparo forçado imediato no momento do cadastro do aluno, respeitando o ciclo da verificação diária).
 
 
 
