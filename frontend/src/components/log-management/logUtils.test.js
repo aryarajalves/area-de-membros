@@ -16,6 +16,14 @@ describe('logUtils Helper', () => {
     expect(converted).toContain('14:30:00');
   });
 
+  it('removes redundant internal UTC timestamp when Docker converted Brasilia time is already present', () => {
+    const rawLine = '2026-09-30T22:40:30.123Z 2026/09/30 22:40:30 [notice] 41#41: gracefully shutting down';
+    const converted = formatToBrasiliaTime(rawLine);
+    expect(converted).toContain('19:40:30');
+    expect(converted).not.toContain('22:40:30');
+    expect(converted).toContain('[notice] 41#41: gracefully shutting down');
+  });
+
   it('classifies error log lines with red badge and styling', () => {
     const errorLine = '[ERROR] [backend]: Falha crítica ao conectar ao banco';
     const parsed = classifyLogLine(errorLine);

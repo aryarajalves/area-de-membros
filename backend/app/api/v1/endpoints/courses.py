@@ -76,13 +76,25 @@ def _get_saved_platform_bg_color(db: Session) -> str:
     return "#090d16"
 
 
-@router.get("/platform-theme", response_model=PlatformThemeResponse)
+@router.get(
+    "/platform-theme",
+    response_model=PlatformThemeResponse,
+    tags=["Cursos e Módulos"],
+    summary="Obter Tema Global da Plataforma",
+    description="Retorna a cor de fundo padrão da Área de Membros configurada pelo administrador."
+)
 def get_platform_theme(db: Session = Depends(get_db)):
     """Retorna a cor de fundo global configurada para a Área de Membros (público para páginas de registro e login)."""
     return {"bg_color": _get_saved_platform_bg_color(db)}
 
 
-@router.patch("/platform-theme", response_model=PlatformThemeResponse)
+@router.patch(
+    "/platform-theme",
+    response_model=PlatformThemeResponse,
+    tags=["Cursos e Módulos"],
+    summary="Atualizar Tema Global da Plataforma",
+    description="Atualiza a cor de fundo global e sincroniza automaticamente com todos os cursos cadastrados."
+)
 def update_platform_theme(
     theme_in: PlatformThemeUpdate,
     db: Session = Depends(get_db),
@@ -104,7 +116,13 @@ def update_platform_theme(
 # CURSOS (COURSES)
 # ============================================================================
 
-@router.get("", response_model=List[CourseResponse])
+@router.get(
+    "",
+    response_model=List[CourseResponse],
+    tags=["Cursos e Módulos"],
+    summary="Listar Cursos",
+    description="Retorna os cursos disponíveis. Alunos recebem apenas os cursos que possuem matrícula ativa."
+)
 def list_courses(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
@@ -129,7 +147,14 @@ def list_courses(
 
     return []
 
-@router.post("", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CourseResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Cursos e Módulos"],
+    summary="Criar Novo Curso",
+    description="Cadastra um novo curso na Área de Membros com título, descrição, capa e tema visual."
+)
 def create_course(
     course_in: CourseCreate,
     db: Session = Depends(get_db),
@@ -150,7 +175,12 @@ def create_course(
     db.refresh(new_course)
     return new_course
 
-@router.post("/upload-thumbnail")
+@router.post(
+    "/upload-thumbnail",
+    tags=["Cursos e Módulos"],
+    summary="Upload de Capa/Thumbnail do Curso",
+    description="Envia imagem de capa do curso (JPG, PNG, WEBP até 5 MB) com upload para Backblaze B2 ou armazenamento local."
+)
 async def upload_thumbnail(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -203,7 +233,7 @@ async def upload_thumbnail(
 
     return {"thumbnail_url": f"/api/v1/courses/thumbnails/{unique_name}"}
 
-@router.get("/thumbnails/{filename}")
+@router.get("/thumbnails/{filename}", include_in_schema=False)
 def get_thumbnail(filename: str):
     """Serve uma imagem de thumbnail de curso armazenada localmente no servidor."""
     safe_filename = os.path.basename(filename)
@@ -212,7 +242,12 @@ def get_thumbnail(filename: str):
         raise HTTPException(status_code=404, detail="Imagem não encontrada.")
     return FileResponse(filepath)
 
-@router.post("/upload-video")
+@router.post(
+    "/upload-video",
+    tags=["Aulas e Conteúdos"],
+    summary="Upload de Vídeo de Aula",
+    description="Envia arquivo de vídeo (MP4, WebM, MOV, MKV até 2 GB) para a nuvem Backblaze B2 ou servidor local."
+)
 async def upload_video(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -264,7 +299,7 @@ async def upload_video(
 
     return {"video_url": f"/api/v1/courses/videos/{unique_name}"}
 
-@router.get("/videos/{filename}")
+@router.get("/videos/{filename}", include_in_schema=False)
 def get_video(filename: str):
     """Serve um arquivo de vídeo de aula armazenado localmente com streaming de mídia."""
     safe_filename = os.path.basename(filename)
@@ -273,7 +308,12 @@ def get_video(filename: str):
         raise HTTPException(status_code=404, detail="Vídeo não encontrado.")
     return FileResponse(filepath, media_type="video/mp4")
 
-@router.post("/upload-attachment")
+@router.post(
+    "/upload-attachment",
+    tags=["Aulas e Conteúdos"],
+    summary="Upload de Material Complementar",
+    description="Envia documento ou arquivo anexo da aula (PDF, Word, Excel, ZIP até 100 MB)."
+)
 async def upload_attachment(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -341,7 +381,7 @@ async def upload_attachment(
         "file_size_bytes": len(content)
     }
 
-@router.get("/attachments/{filename}")
+@router.get("/attachments/{filename}", include_in_schema=False)
 def get_attachment(filename: str):
     """Serve um documento complementar armazenado localmente no servidor."""
     safe_filename = os.path.basename(filename)
@@ -351,7 +391,13 @@ def get_attachment(filename: str):
     return FileResponse(filepath)
 
 
-@router.get("/{course_id}", response_model=CourseDetailResponse)
+@router.get(
+    "/{course_id}",
+    response_model=CourseDetailResponse,
+    tags=["Cursos e Módulos"],
+    summary="Obter Detalhes do Curso",
+    description="Retorna dados completos de um curso com seus módulos e aulas para a sala de aula."
+)
 def get_course(
     course_id: int,
     db: Session = Depends(get_db),
@@ -367,7 +413,13 @@ def get_course(
 
     return course
 
-@router.patch("/{course_id}", response_model=CourseResponse)
+@router.patch(
+    "/{course_id}",
+    response_model=CourseResponse,
+    tags=["Cursos e Módulos"],
+    summary="Atualizar Curso",
+    description="Atualiza título, descrição, capa, cor de fundo ou publicação de um curso existente."
+)
 def update_course(
     course_id: int,
     course_update: CourseUpdate,
@@ -400,7 +452,12 @@ def update_course(
     db.refresh(course)
     return course
 
-@router.delete("/{course_id}")
+@router.delete(
+    "/{course_id}",
+    tags=["Cursos e Módulos"],
+    summary="Excluir Curso",
+    description="Exclui um curso e remove permanentemente todos os módulos, aulas, vídeos e anexos vinculados."
+)
 def delete_course(
     course_id: int,
     db: Session = Depends(get_db),
@@ -439,7 +496,12 @@ def delete_course(
 # MÓDULOS (MODULES)
 # ============================================================================
 
-@router.get("/{course_id}/modules", response_model=List[ModuleDetailResponse])
+@router.get(
+    "/{course_id}/modules",
+    response_model=List[ModuleDetailResponse],
+    tags=["Cursos e Módulos"],
+    summary="Listar Módulos do Curso"
+)
 def list_course_modules(
     course_id: int,
     db: Session = Depends(get_db),
@@ -456,7 +518,13 @@ def list_course_modules(
     modules = db.query(Module).filter(Module.course_id == course_id).order_by(Module.order_index.asc(), Module.id.asc()).all()
     return modules
 
-@router.post("/{course_id}/modules", response_model=ModuleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/modules",
+    response_model=ModuleResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Cursos e Módulos"],
+    summary="Criar Módulo no Curso"
+)
 def create_module(
     course_id: int,
     module_in: ModuleCreate,
@@ -480,7 +548,12 @@ def create_module(
     db.refresh(new_module)
     return new_module
 
-@router.patch("/{course_id}/modules/{module_id}", response_model=ModuleResponse)
+@router.patch(
+    "/{course_id}/modules/{module_id}",
+    response_model=ModuleResponse,
+    tags=["Cursos e Módulos"],
+    summary="Atualizar Módulo"
+)
 def update_module(
     course_id: int,
     module_id: int,
@@ -508,7 +581,11 @@ def update_module(
     db.refresh(module)
     return module
 
-@router.delete("/{course_id}/modules/{module_id}")
+@router.delete(
+    "/{course_id}/modules/{module_id}",
+    tags=["Cursos e Módulos"],
+    summary="Excluir Módulo"
+)
 def delete_module(
     course_id: int,
     module_id: int,
@@ -532,7 +609,13 @@ def delete_module(
 # AULAS (LESSONS)
 # ============================================================================
 
-@router.post("/{course_id}/modules/{module_id}/lessons", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons",
+    response_model=LessonResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Cursos e Módulos"],
+    summary="Criar Aula no Módulo"
+)
 def create_lesson(
     course_id: int,
     module_id: int,
@@ -561,7 +644,10 @@ def create_lesson(
         thumbnail_url=lesson_in.thumbnail_url,
         duration=lesson_in.duration,
         order_index=lesson_in.order_index or 0,
-        availability_status=lesson_in.availability_status or "available"
+        availability_status=lesson_in.availability_status or "available",
+        content_type=lesson_in.content_type or "video",
+        text_content=lesson_in.text_content,
+        passing_score_pct=lesson_in.passing_score_pct if lesson_in.passing_score_pct is not None else 70
     )
     db.add(new_lesson)
     db.commit()
@@ -609,7 +695,12 @@ def create_lesson(
 
     return new_lesson
 
-@router.patch("/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonResponse)
+@router.patch(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}",
+    response_model=LessonResponse,
+    tags=["Cursos e Módulos"],
+    summary="Atualizar Aula"
+)
 def update_lesson(
     course_id: int,
     module_id: int,
@@ -633,6 +724,12 @@ def update_lesson(
         lesson.order_index = lesson_in.order_index
     if lesson_in.availability_status is not None:
         lesson.availability_status = lesson_in.availability_status
+    if lesson_in.content_type is not None:
+        lesson.content_type = lesson_in.content_type
+    if lesson_in.text_content is not None:
+        lesson.text_content = lesson_in.text_content
+    if lesson_in.passing_score_pct is not None:
+        lesson.passing_score_pct = lesson_in.passing_score_pct
     if lesson_in.thumbnail_url is not None:
         if lesson.thumbnail_url and lesson.thumbnail_url != lesson_in.thumbnail_url:
             delete_media_file(lesson.thumbnail_url)
@@ -688,7 +785,11 @@ def update_lesson(
     db.refresh(lesson)
     return lesson
 
-@router.delete("/{course_id}/modules/{module_id}/lessons/{lesson_id}")
+@router.delete(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}",
+    tags=["Cursos e Módulos"],
+    summary="Excluir Aula"
+)
 def delete_lesson(
     course_id: int,
     module_id: int,
@@ -718,7 +819,13 @@ def delete_lesson(
     db.commit()
     return {"message": "Aula excluída com sucesso."}
 
-@router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments", response_model=LessonAttachmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments",
+    response_model=LessonAttachmentResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Cursos e Módulos"],
+    summary="Adicionar Anexo na Aula"
+)
 def add_lesson_attachment(
     course_id: int,
     module_id: int,
@@ -744,7 +851,11 @@ def add_lesson_attachment(
     db.refresh(new_att)
     return new_att
 
-@router.delete("/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}")
+@router.delete(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}",
+    tags=["Cursos e Módulos"],
+    summary="Excluir Anexo da Aula"
+)
 def delete_lesson_attachment(
     course_id: int,
     module_id: int,
@@ -773,7 +884,12 @@ def delete_lesson_attachment(
 # COMENTÁRIOS DE AULAS (LESSON COMMENTS)
 # ============================================================================
 
-@router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments", response_model=List[CommentResponse])
+@router.get(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments",
+    response_model=List[CommentResponse],
+    tags=["Comentários da Aula"],
+    summary="Listar Comentários da Aula"
+)
 def list_lesson_comments(
     course_id: int,
     module_id: int,
@@ -791,7 +907,13 @@ def list_lesson_comments(
     ).order_by(LessonComment.created_at.asc()).all()
     return comments
 
-@router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments", response_model=CommentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments",
+    response_model=CommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Comentários da Aula"],
+    summary="Criar Comentário ou Resposta"
+)
 def create_lesson_comment(
     course_id: int,
     module_id: int,
@@ -833,7 +955,11 @@ def create_lesson_comment(
     db.refresh(new_comment)
     return new_comment
 
-@router.delete("/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments/{comment_id}")
+@router.delete(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments/{comment_id}",
+    tags=["Comentários da Aula"],
+    summary="Excluir Comentário da Aula"
+)
 def delete_lesson_comment(
     course_id: int,
     module_id: int,

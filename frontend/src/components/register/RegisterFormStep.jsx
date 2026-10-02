@@ -1,6 +1,8 @@
 import React from 'react';
 import { Eye, EyeOff, Lock, Mail, User, AlertCircle, ArrowRight } from 'lucide-react';
 import PasswordRequirements from './PasswordRequirements';
+import PhoneInputWithCountry from './PhoneInputWithCountry';
+import { DEFAULT_COUNTRY, formatPhoneNumber } from './countryData';
 
 export default function RegisterFormStep({
   inviteInfo,
@@ -9,6 +11,10 @@ export default function RegisterFormStep({
   setName,
   email,
   setEmail,
+  phone = '',
+  setPhone = () => {},
+  selectedCountry = DEFAULT_COUNTRY,
+  setSelectedCountry = () => {},
   password,
   setPassword,
   passwordConfirm,
@@ -20,11 +26,22 @@ export default function RegisterFormStep({
   rules,
   isPasswordValid,
   passwordsMatch,
+  isPhoneValid = false,
   submitting,
   bgColor = '#090d16',
   isLightBg = false,
   onSubmit,
 }) {
+  const handlePhoneInputChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value, selectedCountry.ddi);
+    setPhone(formatted);
+  };
+
+  const handleCountryChange = (newCountry) => {
+    setSelectedCountry(newCountry);
+    const formatted = formatPhoneNumber(phone, newCountry.ddi);
+    setPhone(formatted);
+  };
   return (
     <div
       className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
@@ -90,6 +107,19 @@ export default function RegisterFormStep({
                 data-testid="reg-email-input"
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reg-phone">
+              WhatsApp / Telefone <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <PhoneInputWithCountry
+              phone={phone}
+              onPhoneChange={handlePhoneInputChange}
+              selectedCountry={selectedCountry}
+              onCountryChange={handleCountryChange}
+              isLightBg={isLightBg}
+            />
           </div>
 
           <div className="form-group">
@@ -159,7 +189,7 @@ export default function RegisterFormStep({
           <button
             type="submit"
             className="auth-submit-btn"
-            disabled={submitting || !isPasswordValid || !passwordsMatch}
+            disabled={submitting || !isPasswordValid || !passwordsMatch || !isPhoneValid}
             data-testid="register-submit-btn"
           >
             {submitting ? 'Criando conta...' : (

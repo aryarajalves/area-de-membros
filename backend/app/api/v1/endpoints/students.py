@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List
 from math import ceil
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Query, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -11,10 +11,12 @@ from app.core.logger import logger
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
+from app.models.webhook import Webhook
 from app.schemas.student import (
     StudentListResponse, StudentListItem, StudentCourseProgressItem, StudentImportResponse,
-    StudentLessonActivityItem
+    StudentLessonActivityItem, StudentTriggerWebhookRequest, StudentTriggerWebhookResponse
 )
+from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
 from app.api.v1.endpoints.users import require_admin_or_superadmin, calculate_course_expiration
 from app.services.student_import_export import (
     export_students_csv, export_students_xlsx,
@@ -22,7 +24,7 @@ from app.services.student_import_export import (
     parse_imported_file, generate_random_password, normalize_duration
 )
 
-router = APIRouter(prefix="/students", tags=["Students"])
+router = APIRouter(prefix="/students", tags=["Alunos e Matrículas"])
 
 
 def _build_students_details(students: List[User], db: Session) -> List[StudentListItem]:
@@ -119,6 +121,7 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 id=student.id,
                 name=student.name,
                 email=student.email,
+                phone=student.phone,
                 is_active=student.is_active,
                 created_at=student.created_at,
                 courses=courses_data,
@@ -130,17 +133,25 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
     return items
 
 
-@router.get("", response_model=StudentListResponse)
+@router.get(
+    "",
+    response_model=StudentListResponse,
+    summary="Listar Alunos e Métricas",
+    description="Retorna a lista paginada de alunos com busca por nome/email, filtro por curso, data/mês e ordenação avançada."
+)
 def list_students(
     search: Optional[str] = None,
     course_id: Optional[int] = None,
+    registration_date: Optional[str] = None,
+    registration_month: Optional[str] = None,
+    order_by: Optional[str] = Query("recent"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
 ):
     """
-    Lista alunos da plataforma com seus cursos vinculados e progresso de aulas.
+    Lista alunos da plataforma com seus cursos vinculados, filtros e ordenação avançada.
     """
     try:
         query = db.query(User).filter(User.role == "aluno")
@@ -159,14 +170,77 @@ def list_students(
                 UserCourse.course_id == course_id
             )
 
-        total = query.count()
-        pages = ceil(total / limit) if total > 0 else 1
-        offset = (page - 1) * limit
+        # Filtro por data específica (YYYY-MM-DD no horário de Brasília UTC-3)
+        if registration_date:
+            try:
+                parsed_d = datetime.strptime(registration_date.strip(), "%Y-%m-%d")
+                start_utc = parsed_d + timedelta(hours=3)
+                end_utc = start_utc + timedelta(days=1)
+                query = query.filter(User.created_at >= start_utc, User.created_at < end_utc)
+            except ValueError:
+                pass
 
-        students = query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
-        items = _build_students_details(students, db)
+        # Filtro por mês (YYYY-MM no horário de Brasília UTC-3)
+        if registration_month:
+            try:
+                parts = registration_month.strip().split("-")
+                year = int(parts[0])
+                month = int(parts[1])
+                start_br = datetime(year, month, 1)
+                if month == 12:
+                    end_br = datetime(year + 1, 1, 1)
+                else:
+                    end_br = datetime(year, month + 1, 1)
+                start_utc = start_br + timedelta(hours=3)
+                end_utc = end_br + timedelta(hours=3)
+                query = query.filter(User.created_at >= start_utc, User.created_at < end_utc)
+            except (ValueError, IndexError):
+                pass
 
-        logger.info(f"Listagem de alunos: {len(items)} alunos retornados (página {page}/{pages}).")
+        # Ordenação
+        if order_by in ["recent", "oldest", "name_asc", "name_desc"]:
+            if order_by == "name_asc":
+                query = query.order_by(func.lower(User.name).asc())
+            elif order_by == "name_desc":
+                query = query.order_by(func.lower(User.name).desc())
+            elif order_by == "oldest":
+                query = query.order_by(User.created_at.asc())
+            else:  # recent
+                query = query.order_by(User.created_at.desc())
+
+            total = query.count()
+            pages = ceil(total / limit) if total > 0 else 1
+            offset = (page - 1) * limit
+
+            students = query.offset(offset).limit(limit).all()
+            items = _build_students_details(students, db)
+
+        else:
+            # Ordenação por métricas calculadas (progresso ou renovação)
+            all_students = query.all()
+            all_items = _build_students_details(all_students, db)
+
+            if order_by == "progress_desc":
+                # Alunos mais perto de terminar o curso (maior percentual de conclusão)
+                all_items.sort(key=lambda s: s.overall_progress_percent, reverse=True)
+            elif order_by == "renewal_asc":
+                # Alunos quase precisando renovar o curso (menor número de dias restantes primeiro)
+                def renewal_sort_key(s):
+                    expiring_days = [c.days_remaining for c in s.courses if c.days_remaining is not None and not c.is_expired]
+                    if expiring_days:
+                        return (0, min(expiring_days))
+                    if any(c.is_expired for c in s.courses):
+                        return (1, 0)
+                    return (2, 999999)
+
+                all_items.sort(key=renewal_sort_key)
+
+            total = len(all_items)
+            pages = ceil(total / limit) if total > 0 else 1
+            offset = (page - 1) * limit
+            items = all_items[offset : offset + limit]
+
+        logger.info(f"Listagem de alunos: {len(items)} alunos retornados (página {page}/{pages}, order_by={order_by}).")
         return StudentListResponse(
             items=items,
             total=total,
@@ -183,7 +257,11 @@ def list_students(
         )
 
 
-@router.get("/export")
+@router.get(
+    "/export",
+    summary="Exportar Alunos (CSV/XLSX)",
+    description="Gera e faz download de uma planilha completa com todos os alunos, e-mails, cursos matriculados e prazos."
+)
 def export_students(
     format: str = Query("csv", pattern="^(csv|xlsx|excel)$"),
     db: Session = Depends(get_db),
@@ -225,7 +303,11 @@ def export_students(
         )
 
 
-@router.get("/import/template")
+@router.get(
+    "/import/template",
+    summary="Baixar Modelo de Planilha para Importação",
+    description="Faz download da planilha modelo (CSV ou XLSX) com as colunas corretas para importação em lote."
+)
 def download_import_template(
     format: str = Query("csv", pattern="^(csv|xlsx|excel)$"),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -260,7 +342,12 @@ def download_import_template(
         )
 
 
-@router.post("/import", response_model=StudentImportResponse)
+@router.post(
+    "/import",
+    response_model=StudentImportResponse,
+    summary="Importar Alunos em Lote",
+    description="Recebe planilha CSV/XLSX de alunos, cadastra os novos usuários, matricula nos cursos e gera credenciais de acesso."
+)
 async def import_students(
     file: UploadFile = File(...),
     default_course_ids: Optional[str] = Form(None),
@@ -405,7 +492,12 @@ async def import_students(
         )
 
 
-@router.get("/{student_id}/courses/{course_id}/history", response_model=List[StudentLessonActivityItem])
+@router.get(
+    "/{student_id}/courses/{course_id}/history",
+    response_model=List[StudentLessonActivityItem],
+    summary="Histórico Detalhado do Aluno no Curso",
+    description="Retorna a lista cronológica de aulas assistidas, avaliações atribuídas e comentários feitos pelo aluno em um curso específico."
+)
 def get_student_course_history(
     student_id: int,
     course_id: int,
@@ -460,4 +552,170 @@ def get_student_course_history(
         )
 
     return activities
+
+
+@router.post(
+    "/{student_id}/courses/{course_id}/trigger-webhook",
+    response_model=StudentTriggerWebhookResponse,
+    summary="Disparar Manualmente Evento de Integração/Webhook para o Aluno",
+    description="Dispara manualmente um evento de webhook específico para o aluno e curso selecionados."
+)
+def trigger_student_webhook(
+    student_id: int,
+    course_id: int,
+    data: StudentTriggerWebhookRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    student = db.query(User).filter(User.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+
+    event = data.event.strip()
+    if event not in SUPPORTED_EVENTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Evento '{event}' inválido. Eventos suportados: {', '.join(SUPPORTED_EVENTS)}"
+        )
+
+    # Busca a matrícula
+    uc = db.query(UserCourse).filter(
+        UserCourse.user_id == student_id,
+        UserCourse.course_id == course_id
+    ).first()
+
+    now = datetime.now(timezone.utc)
+    days_remaining = None
+    if uc and uc.expires_at:
+        exp_dt = uc.expires_at if uc.expires_at.tzinfo else uc.expires_at.replace(tzinfo=timezone.utc)
+        diff_seconds = (exp_dt - now).total_seconds()
+        days_remaining = int(diff_seconds // 86400) if diff_seconds > 0 else 0
+
+    # Busca métricas de aulas
+    lessons = (
+        db.query(Lesson.id, Lesson.title)
+        .join(Module, Lesson.module_id == Module.id)
+        .filter(Module.course_id == course_id)
+        .all()
+    )
+    total_lessons = len(lessons)
+    lesson_ids = [l.id for l in lessons]
+
+    completed_lessons = 0
+    last_lesson_title = None
+    if lesson_ids:
+        progress_records = (
+            db.query(LessonProgress)
+            .filter(
+                LessonProgress.user_id == student_id,
+                LessonProgress.lesson_id.in_(lesson_ids),
+                LessonProgress.is_completed == True
+            )
+            .order_by(LessonProgress.updated_at.desc(), LessonProgress.id.desc())
+            .all()
+        )
+        completed_lessons = len(progress_records)
+        if progress_records:
+            last_record = progress_records[0]
+            l_dict = {l.id: l.title for l in lessons}
+            last_lesson_title = l_dict.get(last_record.lesson_id)
+
+    progress_percent = int(round((completed_lessons / total_lessons) * 100)) if total_lessons > 0 else 0
+
+    payload_data = {
+        "student": {
+            "id": student.id,
+            "name": student.name,
+            "email": student.email,
+            "phone": student.phone,
+        },
+        "course": {
+            "id": course.id,
+            "title": course.title,
+            "thumbnail_url": course.thumbnail_url or course.cover_image_url,
+        },
+        "enrollment": {
+            "access_duration": uc.access_duration if uc else "lifetime",
+            "expires_at": uc.expires_at.isoformat() if uc and uc.expires_at else None,
+            "days_remaining": days_remaining,
+        },
+        "progress": {
+            "progress_percent": progress_percent,
+            "completed_lessons": completed_lessons,
+            "total_lessons": total_lessons,
+            "last_lesson_title": last_lesson_title,
+        },
+        "manual_trigger": True,
+        "triggered_by": current_user.email,
+    }
+
+    if data.lesson_id:
+        lesson_obj = db.query(Lesson).filter(Lesson.id == data.lesson_id).first()
+        if lesson_obj:
+            payload_data["lesson"] = {
+                "id": lesson_obj.id,
+                "title": lesson_obj.title,
+                "module_id": lesson_obj.module_id,
+            }
+
+    # Se o usuário especificou uma integração configurada específica
+    if data.webhook_id:
+        target_wh = db.query(Webhook).filter(Webhook.id == data.webhook_id, Webhook.is_active == True).first()
+        if not target_wh:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A integração selecionada não existe ou está inativa."
+            )
+        if target_wh.course_id is not None and target_wh.course_id != course_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A integração selecionada não é vinculada a este curso."
+            )
+        target_webhooks = [target_wh]
+    else:
+        # Busca webhooks ativos que escutam este evento e este curso (ou todos)
+        active_webhooks = db.query(Webhook).filter(Webhook.is_active == True).all()
+        target_webhooks = []
+        for wh in active_webhooks:
+            subscribed = [e.strip() for e in wh.events.split(",") if e.strip()]
+            if event in subscribed:
+                if wh.course_id is None or wh.course_id == course_id:
+                    target_webhooks.append(wh)
+
+    if not target_webhooks:
+        return StudentTriggerWebhookResponse(
+            status="warning",
+            dispatched_count=0,
+            event=event,
+            message=f"Nenhum webhook ativo assina o evento '{event}' para este curso."
+        )
+
+    full_payload = {
+        "event": event,
+        "timestamp": now.isoformat(),
+        "data": payload_data,
+    }
+
+    for wh in target_webhooks:
+        execute_webhook_request(
+            webhook_id=wh.id,
+            url=wh.url,
+            event=event,
+            payload=full_payload,
+            secret_key=wh.secret_key,
+            db=db
+        )
+
+    logger.info(f"Disparo manual do evento {event} para aluno {student_id} enviado para {len(target_webhooks)} webhook(s).")
+    return StudentTriggerWebhookResponse(
+        status="success",
+        dispatched_count=len(target_webhooks),
+        event=event,
+        message=f"Evento '{event}' disparado com sucesso para {len(target_webhooks)} integração(ões)!"
+    )
+
 

@@ -77,26 +77,59 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ---
 
-### 🎨 4. Customização de Tema e Cores (`/settings`)
-- **Seletor de Paleta Global:**
-  - Presets elegantes: Dark Neon (Azul/Ciano), Obsidian Dark, Roxo Escuro, etc.
-  - Color Picker hexadecimal livre para personalização da cor de fundo de toda a plataforma.
-  - Persistência e aplicação dinâmica sem recarregar a aplicação.
+---
+
+### 🔑 4. Chaves de API e Tokens de Acesso (`/settings`)
+- **Geração Segura de Chaves (`sk_live_...`):**
+  - Chaves com 32 bytes de entropia criptográfica e hash persistido no banco de dados.
+  - Prazos de expiração configuráveis: `30 dias`, `60 dias`, `90 dias`, `1 ano` ou `Não expira (Permanente)`.
+  - Exibição única de segurança (`raw_token`) no momento da criação com botão de cópia e fallback garantido.
+  - Gestão de chaves: listagem com mascaramento, ativação/pausa instantânea (toggle) e revogação definitiva.
+- **Autenticação Dupla na API:**
+  - Suporte transparente tanto a `Authorization: Bearer sk_live_...` quanto ao header `X-API-Key: sk_live_...`.
+  - Atualização automática em background da data e horário do último uso (`last_used_at`).
 
 ---
 
-### 💾 5. Backup Automático & Manual no S3 / Backblaze B2
-- Geração de dumps compactados (`.dump.gz`) do PostgreSQL com envio seguro para a nuvem.
-- Timestamps padronizados no **Horário Oficial de Brasília (UTC-3)**.
-- Agendamento periódico configurável via APScheduler com política de retenção FIFO.
-- Download direto e restauração de dados pelo painel.
+### 📝 5. Aulas de Leitura (Artigos) e Quizes Interativos
+- **Aulas de Artigo / Leitura (`content_type = 'text'`):**
+  - Editor visual com abas de escrita e pré-visualização, formatação de títulos, listas e upload de imagens no Backblaze B2.
+  - Visualizador editorial cinematográfico com barra de ações para conclusão e avaliação.
+- **Aulas de Quiz Interativo (`content_type = 'quiz'`):**
+  - Definição de porcentagem mínima de acertos (`passing_score_pct`) e pontuação personalizada por questão.
+  - Cálculo ponderado de nota, conclusão automática ao atingir a nota de corte e proteção antifraude ocultando gabaritos.
 
 ---
 
-### 🖥️ 6. Gerenciamento Avançado de Logs do Docker
-- Terminal em tempo real dos contêineres Docker da aplicação (`backend` e `frontend`) via socket Unix nativo.
-- Timestamps sincronizados no **Horário de Brasília (America/Sao_Paulo - UTC-3)**.
-- Filtros por data, hora e severidade (`Todos`, `Info`, `Avisos`, `Erros`, `HTTP 2xx/3xx/4xx/5xx`).
+### 💬 6. Comunidade & Suporte dos Cursos (`/support`)
+- **Fórum Integrado de Dúvidas:**
+  - Dúvidas vinculadas aos cursos liberados com histórico cronológico de respostas.
+  - Curtidas (Likes) idempotentes e contadores em tempo real.
+  - Eleição de **Solução Oficial / Melhor Resposta** pelos instrutores com destaque dourado e resolução automática da dúvida.
+  - Cards de métricas no topo e pílulas de filtros rápidos (`Todas`, `Populares`, `Aguardando Resposta`, `Resolvidas`, `Minhas Dúvidas`).
+  - Anexo de imagens com abertura em modal Lightbox de alta definição.
+
+---
+
+### 🎨 7. Customização de Tema e Navegação
+- **Seletor de Paleta Global (`/settings`):**
+  - Presets elegantes: Netflix Dark, Deep Navy, Obsidian, Slate, Emerald e Color Picker hexadecimal livre.
+- **Menu Lateral Reorganizado por Foco Operacional:**
+  - 🎓 **Gestão de Ensino:** Cursos, Alunos, Suporte e Relatos de Aulas.
+  - 🛠️ **Administração:** Integrações e Configurações da Plataforma.
+  - 🛡️ **Segurança:** Backup Automático, Gerenciamento de Logs e Gestão de Usuários (Super Admin).
+
+---
+
+### 💾 8. Backup Automático & Manual no S3 / Backblaze B2
+- Dumps compactados (`.dump.gz`) do PostgreSQL com envio seguro para a nuvem.
+- Timestamps no **Horário Oficial de Brasília (UTC-3)** e política de retenção FIFO.
+
+---
+
+### 🖥️ 9. Gerenciamento Avançado de Logs do Docker
+- Terminal em tempo real dos contêineres Docker da aplicação (`backend` e `frontend`).
+- Timestamps sincronizados no **Horário de Brasília (America/Sao_Paulo - UTC-3)** com filtros de data e severidade.
 
 ---
 
@@ -106,9 +139,9 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 Area de Membros - Alunos/
 ├── backend/                       # API Python com FastAPI
 │   ├── app/
-│   │   ├── api/v1/endpoints/      # Rotas (courses, students, integrations, users, backups, logs)
+│   │   ├── api/v1/endpoints/      # Rotas (courses, students, integrations, users, api_tokens, support, quiz, backups, logs)
 │   │   ├── core/                  # Configurações, segurança, database e logger
-│   │   ├── models/                # Modelos SQLAlchemy (user, course, webhook)
+│   │   ├── models/                # Modelos SQLAlchemy (user, course, webhook, api_token, support)
 │   │   ├── schemas/               # Schemas Pydantic v2
 │   │   ├── services/              # Serviços de negócio (storage, webhooks, import/export, backup)
 │   │   └── main.py                # Entrypoint da aplicação FastAPI
@@ -120,16 +153,17 @@ Area de Membros - Alunos/
 ├── frontend/                      # Interface React + Vite (Design Glassmorphism)
 │   ├── src/
 │   │   ├── components/            # Componentes modulares (< 500 linhas)
-│   │   │   ├── course-classroom/  # Sala de aula, player de vídeo, comentários, anexos
+│   │   │   ├── course-classroom/  # Sala de aula, player, artigos, quiz, comentários, anexos
 │   │   │   ├── course-management/ # Vitrine de cursos e modais
 │   │   │   ├── student-management/# Painel de alunos, linha do tempo, histórico, import/export
+│   │   │   ├── support-management/# Fórum de dúvidas, solução oficial, lightbox
+│   │   │   ├── platform-settings/ # Aparência, cores e gestão de Chaves de API
 │   │   │   ├── integration-management/ # Webhooks, eventos de marcos, logs de disparo
 │   │   │   ├── automated-backup/  # Gerenciamento de backups
-│   │   │   ├── user-management/   # Gestão de convites e usuários
-│   │   │   ├── PlatformSettings.jsx # Personalização de cor e tema
+│   │   │   ├── user-management/   # Gestão de convites e usuários (com WhatsApp e fuso Brasília)
 │   │   │   ├── LogManagement.jsx  # Logs de contêineres Docker
-│   │   │   └── Sidebar.jsx        # Menu de navegação lateral
-│   │   ├── context/               # ToastContext e autenticação
+│   │   │   └── Sidebar.jsx        # Menu de navegação lateral por categorias
+│   │   ├── context/               # ToastContext (z-index 999999) e autenticação
 │   │   ├── services/              # authInterceptor e api client
 │   │   └── App.jsx
 │   ├── Dockerfile
@@ -137,7 +171,8 @@ Area de Membros - Alunos/
 │   └── package.json
 │
 ├── docker/                        # Orquestração de contêineres Docker
-│   └── docker-compose.yml
+│   ├── docker-compose.yml
+│   └── docker-compose-producao.yml
 └── scripts/
     └── audit_security.py          # Auditoria unificada de dependências (pip-audit + npm audit)
 ```
@@ -153,8 +188,8 @@ docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 - **Frontend (Nginx + React)**: `http://localhost:3010`
-- **Backend API (FastAPI)**: `http://localhost:8000`
-- **Documentação Interativa Swagger**: `http://localhost:8000/docs`
+- **Backend API (FastAPI)**: `http://localhost:8010`
+- **Documentação Interativa Swagger**: `http://localhost:8010/docs`
 - **Banco PostgreSQL**: `localhost:5435`
 
 ---
@@ -166,16 +201,16 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **171 testes unitários passando (100% de aprovação em 35 arquivos de teste)** cobrindo sala de aula, player de vídeo, histórico de alunos, webhooks e modais.
+> **239 testes unitários passando (100% de aprovação em 53 arquivos de teste)** cobrindo sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília e WhatsApp.
 
 ### Backend (Pytest)
 ```bash
-docker exec area_de_membros_backend pytest tests/test_api.py
+docker exec area_de_membros_backend pytest tests
 # ou localmente na pasta backend:
 cd backend
 pytest
 ```
-> **19 testes unitários passando (100% de aprovação)** cobrindo endpoints de autenticação, cursos, cálculo de marcos de progresso, rotas de histórico e eventos de renovação.
+> **41 testes unitários passando (100% de aprovação)** cobrindo autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte e eventos de renovação.
 
 ---
 
@@ -186,9 +221,11 @@ O projeto conta com um script de auditoria unificado que inspeciona pacotes do P
 ```bash
 python scripts/audit_security.py
 ```
+> **Aprovado com 0 vulnerabilidades no Backend e 0 vulnerabilidades no Frontend.**
 
 ---
 
 ## 📄 Regras de Negócio e Documentação
 
 Para consultar a documentação completa de requisitos e comportamentos de domínio da plataforma, consulte o arquivo [BUSINESS_RULES.md](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/Arquivos/BUSINESS_RULES.md) e o histórico de migrações de banco em [DATABASE_SCHEMA_LOG.md](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/Arquivos/DATABASE_SCHEMA_LOG.md).
+

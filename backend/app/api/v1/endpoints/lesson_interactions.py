@@ -20,7 +20,7 @@ from app.api.v1.endpoints.users import get_current_user, require_admin_or_supera
 from app.core.logger import logger
 from app.services.webhook_service import check_and_dispatch_progress_events
 
-router = APIRouter(prefix="/courses", tags=["Lesson Interactions"])
+router = APIRouter(prefix="/courses", tags=["Interações e Progresso"])
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -44,7 +44,12 @@ def verify_course_access(db: Session, user: User, course_id: int):
 # PROGRESSO DA AULA (MARCAR COMO ASSISTIDA / CONCLUÍDA)
 # ============================================================================
 
-@router.get("/{course_id}/progress", response_model=CourseProgressResponse)
+@router.get(
+    "/{course_id}/progress",
+    response_model=CourseProgressResponse,
+    summary="Obter Progresso Geral do Curso",
+    description="Retorna a lista de IDs de todas as aulas que o aluno já concluiu/assistiu no curso selecionado."
+)
 def get_course_progress(
     course_id: int,
     db: Session = Depends(get_db),
@@ -73,7 +78,12 @@ def get_course_progress(
     return CourseProgressResponse(course_id=course_id, completed_lesson_ids=completed_ids)
 
 
-@router.post("/{course_id}/lessons/{lesson_id}/progress", response_model=LessonProgressResponse)
+@router.post(
+    "/{course_id}/lessons/{lesson_id}/progress",
+    response_model=LessonProgressResponse,
+    summary="Marcar/Desmarcar Aula Concluída",
+    description="Alterna o status de conclusão da aula pelo aluno. Dispara automaticamente eventos de webhook quando marcos de 25%, 50%, 75% ou 100% são alcançados."
+)
 def toggle_lesson_progress(
     course_id: int,
     lesson_id: int,
@@ -159,7 +169,12 @@ def toggle_lesson_progress(
 # AVALIAÇÃO DA AULA (0 A 5 ESTRELAS)
 # ============================================================================
 
-@router.get("/{course_id}/lessons/{lesson_id}/rating", response_model=LessonRatingResponse)
+@router.get(
+    "/{course_id}/lessons/{lesson_id}/rating",
+    response_model=LessonRatingResponse,
+    summary="Obter Avaliação da Aula",
+    description="Retorna a nota dada pelo aluno logado, a média geral (1 a 5 estrelas) e o total de avaliações da aula."
+)
 def get_lesson_rating(
     course_id: int,
     lesson_id: int,
@@ -200,7 +215,12 @@ def get_lesson_rating(
     )
 
 
-@router.post("/{course_id}/lessons/{lesson_id}/rating", response_model=LessonRatingResponse)
+@router.post(
+    "/{course_id}/lessons/{lesson_id}/rating",
+    response_model=LessonRatingResponse,
+    summary="Avaliar Aula com Estrelas",
+    description="Atribui nota de 1 a 5 estrelas para a aula pelo aluno logado (envie 0 para remover a nota)."
+)
 def rate_lesson(
     course_id: int,
     lesson_id: int,
@@ -264,7 +284,13 @@ def rate_lesson(
 # RELATO DE PROBLEMA NA AULA
 # ============================================================================
 
-@router.post("/{course_id}/lessons/{lesson_id}/reports", response_model=LessonReportResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/lessons/{lesson_id}/reports",
+    response_model=LessonReportResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Denunciar/Reportar Problema na Aula",
+    description="Permite ao aluno reportar problemas técnicos ou de conteúdo em uma aula (vídeo, áudio, material, conteúdo)."
+)
 def report_lesson_issue(
     course_id: int,
     lesson_id: int,
@@ -311,7 +337,12 @@ def report_lesson_issue(
     )
 
 
-@router.get("/reports/summary", response_model=LessonReportsCountResponse)
+@router.get(
+    "/reports/summary",
+    response_model=LessonReportsCountResponse,
+    summary="Resumo de Relatórios de Problemas",
+    description="Retorna o consolidado de contadores de problemas reportados nas aulas (pendentes, resolvidos e total). Exige perfil de Admin ou Superadmin."
+)
 def get_reports_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -323,7 +354,12 @@ def get_reports_summary(
     return LessonReportsCountResponse(pending_count=pending, resolved_count=resolved, total_count=total)
 
 
-@router.get("/reports", response_model=List[LessonReportResponse])
+@router.get(
+    "/reports",
+    response_model=List[LessonReportResponse],
+    summary="Listar Problemas Reportados",
+    description="Lista todos os relatórios de problemas técnicos ou de conteúdo enviados pelos alunos nas aulas. Exige perfil de Admin ou Superadmin."
+)
 def list_reported_issues(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -357,7 +393,12 @@ def list_reported_issues(
     return results
 
 
-@router.patch("/reports/{report_id}", response_model=LessonReportResponse)
+@router.patch(
+    "/reports/{report_id}",
+    response_model=LessonReportResponse,
+    summary="Atualizar Status do Relato de Problema",
+    description="Atualiza o estado de resolução de um problema reportado ('open' para pendente, 'resolved' para resolvido). Exige perfil de Admin ou Superadmin."
+)
 def update_report_status(
     report_id: int,
     report_update: LessonReportUpdate,
@@ -403,7 +444,11 @@ def update_report_status(
     )
 
 
-@router.delete("/reports/{report_id}")
+@router.delete(
+    "/reports/{report_id}",
+    summary="Excluir Relato de Problema",
+    description="Remove definitivamente o registro de relato de problema de aula do banco de dados. Exige perfil de Admin ou Superadmin."
+)
 def delete_reported_issue(
     report_id: int,
     db: Session = Depends(get_db),
@@ -424,7 +469,12 @@ def delete_reported_issue(
 # ANOTAÇÕES PESSOAIS DA AULA (LESSON NOTES) - PRIVADAS POR ALUNO
 # ============================================================================
 
-@router.get("/{course_id}/lessons/{lesson_id}/notes", response_model=List[LessonNoteResponse])
+@router.get(
+    "/{course_id}/lessons/{lesson_id}/notes",
+    response_model=List[LessonNoteResponse],
+    summary="Listar Anotações Pessoais da Aula",
+    description="Retorna todas as notas e apontamentos privados criados pelo aluno logado na respectiva aula."
+)
 def list_lesson_notes(
     course_id: int,
     lesson_id: int,
@@ -446,7 +496,12 @@ def list_lesson_notes(
     return notes
 
 
-@router.post("/{course_id}/lessons/{lesson_id}/notes", response_model=LessonNoteResponse)
+@router.post(
+    "/{course_id}/lessons/{lesson_id}/notes",
+    response_model=LessonNoteResponse,
+    summary="Criar Anotação Pessoal na Aula",
+    description="Cria uma nova anotação/bloco de notas pessoal associada à aula e visível apenas para o próprio aluno."
+)
 def create_lesson_note(
     course_id: int,
     lesson_id: int,
@@ -476,7 +531,12 @@ def create_lesson_note(
     return note
 
 
-@router.put("/{course_id}/lessons/{lesson_id}/notes/{note_id}", response_model=LessonNoteResponse)
+@router.put(
+    "/{course_id}/lessons/{lesson_id}/notes/{note_id}",
+    response_model=LessonNoteResponse,
+    summary="Atualizar Anotação Pessoal da Aula",
+    description="Atualiza o texto de uma anotação pessoal existente do aluno logado."
+)
 def update_lesson_note(
     course_id: int,
     lesson_id: int,
@@ -508,7 +568,11 @@ def update_lesson_note(
     return note
 
 
-@router.delete("/{course_id}/lessons/{lesson_id}/notes/{note_id}")
+@router.delete(
+    "/{course_id}/lessons/{lesson_id}/notes/{note_id}",
+    summary="Excluir Anotação Pessoal da Aula",
+    description="Remove definitivamente uma anotação pessoal de aula pertencente ao aluno logado."
+)
 def delete_lesson_note(
     course_id: int,
     lesson_id: int,

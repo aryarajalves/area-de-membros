@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
-      <div className="toast-container" data-testid="toast-container" aria-live="polite">
+      <div className="toast-container" data-testid="toast-container" aria-live="polite" style={{ zIndex: 999999 }}>
         {toasts.map((toast) => {
           let Icon = CheckCircle2;
           let typeClass = 'toast-success';

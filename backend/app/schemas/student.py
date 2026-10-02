@@ -23,6 +23,7 @@ class StudentListItem(BaseModel):
     name: str
     email: str
     is_active: bool
+    phone: Optional[str] = None
     created_at: Optional[datetime] = None
     courses: List[StudentCourseProgressItem] = []
     total_courses: int = 0
@@ -49,3 +50,15 @@ class StudentLessonActivityItem(BaseModel):
     is_completed: bool = True
     completed_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class StudentTriggerWebhookRequest(BaseModel):
+    event: str
+    lesson_id: Optional[int] = None
+    webhook_id: Optional[int] = None
+
+class StudentTriggerWebhookResponse(BaseModel):
+    status: str
+    dispatched_count: int
+    message: str
+    event: str
+

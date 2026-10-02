@@ -10,6 +10,7 @@ import LessonReportsManagement from './components/LessonReportsManagement';
 import PlatformSettings from './components/PlatformSettings';
 import StudentManagement from './components/student-management';
 import IntegrationManagement from './components/integration-management';
+import SupportManagement from './components/support-management/SupportManagement';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
@@ -31,7 +32,8 @@ function App() {
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
         if (parsed?.role === 'aluno') {
-          return 'courses';
+          const savedTab = localStorage.getItem('active_tab') || 'courses';
+          return ['courses', 'support'].includes(savedTab) ? savedTab : 'courses';
         }
       }
     } catch {
@@ -64,8 +66,11 @@ function App() {
         const parsed = JSON.parse(savedUser);
         setUser(parsed);
         if (parsed?.role === 'aluno') {
-          setActiveTab('courses');
-          localStorage.setItem('active_tab', 'courses');
+          const currentTab = localStorage.getItem('active_tab') || 'courses';
+          if (!['courses', 'support'].includes(currentTab)) {
+            setActiveTab('courses');
+            localStorage.setItem('active_tab', 'courses');
+          }
           setIsInsideCourse(false);
         }
       } catch {
@@ -132,7 +137,7 @@ function App() {
   }, [fetchPlatformTheme, fetchReportsSummary]);
 
   useEffect(() => {
-    if (user?.role === 'aluno' && activeTab !== 'courses') {
+    if (user?.role === 'aluno' && !['courses', 'support'].includes(activeTab)) {
       setActiveTab('courses');
       localStorage.setItem('active_tab', 'courses');
       setIsInsideCourse(false);
@@ -143,8 +148,10 @@ function App() {
     setUser(loggedInUser);
     setToken(userToken);
     if (loggedInUser?.role === 'aluno') {
-      setActiveTab('courses');
-      localStorage.setItem('active_tab', 'courses');
+      const currentTab = localStorage.getItem('active_tab') || 'courses';
+      const initialTab = ['courses', 'support'].includes(currentTab) ? currentTab : 'courses';
+      setActiveTab(initialTab);
+      localStorage.setItem('active_tab', initialTab);
       setIsInsideCourse(false);
     }
   };
@@ -230,6 +237,12 @@ function App() {
             onThemeColorChange={handleThemeColorChange}
           />
         )}
+        {activeTab === 'support' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <SupportManagement
+            currentUser={user}
+            bgColor={memberAreaBgColor}
+          />
+        )}
         {activeTab === 'lesson-reports' && ['superadmin', 'admin'].includes(user?.role) && (
           <LessonReportsManagement
             onUpdateSummary={fetchReportsSummary}
@@ -257,6 +270,7 @@ function App() {
         )}
         {!isSuperAdmin && !(
           (activeTab === 'courses' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'support' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'lesson-reports' && user?.role === 'admin') ||
           (activeTab === 'students' && user?.role === 'admin') ||
           (activeTab === 'integrations' && user?.role === 'admin') ||

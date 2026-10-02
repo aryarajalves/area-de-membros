@@ -9,6 +9,7 @@ const mockStudentsData = {
       id: 1,
       name: 'Fernandes Aluno',
       email: 'fernandes@exemplo.com',
+      phone: '(11) 98765-4321',
       is_active: true,
       created_at: '2026-09-30T10:00:00Z',
       total_courses: 2,
@@ -170,15 +171,23 @@ describe('StudentManagement Component', () => {
   });
 
   it('displays empty state when no students match the filter', async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        items: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        pages: 1,
-      }),
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/api/v1/students')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            items: [],
+            total: 0,
+            page: 1,
+            limit: 20,
+            pages: 1,
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ([]),
+      });
     });
 
     render(
@@ -367,6 +376,19 @@ describe('StudentManagement Component', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('student-history-modal-content')).not.toBeInTheDocument();
     });
+  });
+
+  it('renders student whatsapp link when student has phone', async () => {
+    render(
+      <ToastProvider>
+        <StudentManagement />
+      </ToastProvider>
+    );
+
+    const zapLink = await screen.findByTestId('student-phone-1');
+    expect(zapLink).toBeInTheDocument();
+    expect(zapLink).toHaveAttribute('href', 'https://wa.me/5511987654321');
+    expect(zapLink).toHaveTextContent('(11) 98765-4321');
   });
 });
 

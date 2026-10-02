@@ -13,17 +13,22 @@ from app.core.logger import logger
 DOCKER_SOCKET_PATH = "/var/run/docker.sock"
 BR_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
-# Contêineres monitorados do projeto (apenas backend e frontend)
+# Contêineres monitorados do projeto (backend, frontend e worker)
 CONTAINER_SERVICES = {
     "backend": "area_de_membros_backend",
     "frontend": "area_de_membros_frontend",
+    "worker": "area_de_membros_worker",
 }
 
 # 1. Regex para timestamp oficial do Docker no início da linha: 2026-09-29T18:04:29.123456789Z
 DOCKER_TS_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s*')
-# 2. Regex para Nginx: [29/Sep/2026:17:59:35 +0000]
+# 2. Regex para Nginx access log: [29/Sep/2026:17:59:35 +0000]
 NGINX_DATE_RE = re.compile(r'\[(\d{2})/([A-Za-z]{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?\]')
-# 3. Regex para ISO 8601 avulso: 2026-09-29T17:59:35.123456Z ou 2026-09-29T17:59:35Z
+# 3. Regex para Nginx error log interno: 2026/09/30 22:40:30
+NGINX_ERROR_DATE_RE = re.compile(r'(\d{4})/(\d{2})/(\d{2}) (\d{2}):(\d{2}):(\d{2})')
+# 4. Regex para data redundante após o timestamp convertido de Brasília: [DD/MM/AAAA HH:MM:SS] YYYY/MM/DD HH:MM:SS ou [YYYY-MM-DD HH:MM:SS]
+DUPLICATE_DATE_RE = re.compile(r'^(\[\d{2}/\d{2}/\d{4},?\s*\d{2}:\d{2}:\d{2}\])\s+(?:\[?\d{4}[/-]\d{2}[/-]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:,\d+)?\]?)\s*')
+# 5. Regex para ISO 8601 avulso: 2026-09-29T17:59:35.123456Z ou 2026-09-29T17:59:35Z
 ISO_DATE_RE = re.compile(r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)(?:Z|([+-]\d{2}:?\d{2}))?')
 
 MONTH_MAP = {
@@ -60,7 +65,23 @@ def format_to_brasilia_time(line: str) -> str:
 
     line = NGINX_DATE_RE.sub(replace_nginx_date, line)
 
-    # 3. Converter formato ISO 8601 se presente
+    # 3. Remover timestamp redundante interno caso já tenhamos o timestamp oficial de Brasília no início
+    line = DUPLICATE_DATE_RE.sub(r'\1 ', line)
+
+    # 4. Converter formato Nginx error log (YYYY/MM/DD HH:MM:SS) se presente sem timestamp inicial
+    def replace_nginx_error_date(match):
+        year, month, day, hour, minute, sec = match.groups()
+        try:
+            dt = datetime(int(year), int(month), int(day), int(hour), int(minute), int(sec), tzinfo=ZoneInfo("UTC"))
+            br_dt = dt.astimezone(BR_TIMEZONE)
+            return f"[{br_dt.strftime('%d/%m/%Y %H:%M:%S')}]"
+        except Exception:
+            return match.group(0)
+
+    if not line.startswith("["):
+        line = NGINX_ERROR_DATE_RE.sub(replace_nginx_error_date, line)
+
+    # 5. Converter formato ISO 8601 se presente
     def replace_iso_date(match):
         iso_str, tz_offset = match.groups()
         try:
@@ -131,7 +152,7 @@ def fetch_container_logs(
             "container": "unknown",
             "available": False,
             "logs": [],
-            "error": f"Serviço '{service_name}' inválido. Disponíveis: backend, frontend."
+            "error": f"Serviço '{service_name}' inválido. Disponíveis: backend, frontend, worker."
         }
 
     if not os.path.exists(DOCKER_SOCKET_PATH):

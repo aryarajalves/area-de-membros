@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle } from 'lucide-react';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 function ProgressRing({ percent = 0, size = 24, strokeWidth = 2.5, activeColor = '#eab308', trackColor = 'rgba(255,255,255,0.14)' }) {
@@ -278,7 +278,7 @@ export default function ModuleTimelineSidebar({
                                 style={{ flexShrink: 0 }}
                               />
                             )}
-                            {lesson.thumbnail_url && (
+                            {lesson.thumbnail_url ? (
                               <img
                                 src={lesson.thumbnail_url}
                                 alt=""
@@ -292,7 +292,11 @@ export default function ModuleTimelineSidebar({
                                   opacity: isActive ? 1 : 0.75
                                 }}
                               />
-                            )}
+                            ) : lesson.content_type === 'text' ? (
+                              <FileText size={13} color="#38bdf8" style={{ flexShrink: 0 }} data-testid={`lesson-type-icon-text-${lesson.id}`} />
+                            ) : lesson.content_type === 'quiz' ? (
+                              <HelpCircle size={13} color="#a855f7" style={{ flexShrink: 0 }} data-testid={`lesson-type-icon-quiz-${lesson.id}`} />
+                            ) : null}
                             <span
                               data-testid={`lesson-title-${lesson.id}`}
                               style={{

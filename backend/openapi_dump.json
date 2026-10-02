@@ -1,0 +1,4484 @@
+{
+  "/api/v1/auth/login": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Realizar Login de Usuário",
+      "description": "Autentica aluno ou administrador com e-mail e senha (Argon2id + Pepper) e retorna o Token de Acesso JWT.",
+      "operationId": "login_api_v1_auth_login_post",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UserLogin"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Token"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/me": {
+    "get": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Obter Perfil do Usuário Logado",
+      "description": "Retorna os dados do usuário atualmente autenticado a partir do token JWT.",
+      "operationId": "get_me_api_v1_auth_me_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/users": {
+    "get": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Listar Todos os Usuários",
+      "description": "Retorna a lista completa de usuários cadastrados com seus cursos vinculados e prazos (Apenas SuperAdmin).",
+      "operationId": "list_users_api_v1_auth_users_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/UserResponse"
+                },
+                "title": "Response List Users Api V1 Auth Users Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/users/{user_id}": {
+    "patch": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Update User",
+      "operationId": "update_user_api_v1_auth_users__user_id__patch",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UserUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Excluir Usuário",
+      "description": "Exclui definitivamente um usuário da plataforma. Não permite excluir Superadmin ou o próprio usuário logado. Exige perfil de Superadmin.",
+      "operationId": "delete_user_api_v1_auth_users__user_id__delete",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/users/bulk-delete": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Excluir Usuários em Lote",
+      "description": "Remove múltiplos usuários selecionados de uma só vez, preservando automaticamente contas Superadmin e o usuário logado. Exige perfil de Superadmin.",
+      "operationId": "bulk_delete_users_api_v1_auth_users_bulk_delete_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BulkDeleteRequest"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/users/{user_id}/reset-password-request": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Gerar Link de Redefinição de Senha",
+      "description": "Gera um token seguro e link de recuperação de senha com validade de 24 horas para o usuário especificado. Exige perfil de Superadmin.",
+      "operationId": "request_password_reset_api_v1_auth_users__user_id__reset_password_request_post",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/reset-password/validate": {
+    "get": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Validar Token de Redefinição de Senha",
+      "description": "Valida se o token de recuperação de senha informado existe, se não expirou e se ainda não foi utilizado.",
+      "operationId": "validate_reset_password_token_api_v1_auth_reset_password_validate_get",
+      "parameters": [
+        {
+          "name": "token",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Token"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetValidateResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/reset-password/confirm": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Confirmar Nova Senha com Token",
+      "description": "Altera a senha do usuário utilizando o token de recuperação validado, aplicando hash criptográfico e invalidando o token.",
+      "operationId": "confirm_password_reset_api_v1_auth_reset_password_confirm_post",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PasswordResetConfirm"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/invites": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Criar Convite de Acesso",
+      "description": "Gera um link de convite exclusivo com validade configurável em horas e cursos pré-vinculados (vitalício, 1 ano, etc). Exige perfil de Superadmin.",
+      "operationId": "create_invite_api_v1_auth_invites_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/InviteCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "get": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Listar Convites de Acesso",
+      "description": "Retorna a lista completa de convites gerados com status de uso, tempo restante e cursos vinculados. Exige perfil de Superadmin.",
+      "operationId": "list_invites_api_v1_auth_invites_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InviteResponse"
+                },
+                "title": "Response List Invites Api V1 Auth Invites Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/invites/{invite_id}": {
+    "delete": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Excluir Convite",
+      "description": "Remove definitivamente um token de convite do sistema. Exige perfil de Superadmin.",
+      "operationId": "delete_invite_api_v1_auth_invites__invite_id__delete",
+      "parameters": [
+        {
+          "name": "invite_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Invite Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/invites/bulk-delete": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Excluir Convites em Lote",
+      "description": "Remove múltiplos convites selecionados de uma única vez. Exige perfil de Superadmin.",
+      "operationId": "bulk_delete_invites_api_v1_auth_invites_bulk_delete_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BulkDeleteRequest"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/invites/validate": {
+    "get": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Validar Token de Convite",
+      "description": "Valida se o token de convite de cadastro é válido, não expirou e ainda não foi utilizado.",
+      "operationId": "validate_invite_api_v1_auth_invites_validate_get",
+      "parameters": [
+        {
+          "name": "token",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Token"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteValidateResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/register": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Iniciar Cadastro com Convite",
+      "description": "Inicia o processo de cadastro do aluno com o token de convite e envia código de verificação de 6 dígitos por e-mail.",
+      "operationId": "register_user_api_v1_auth_register_post",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RegisterWithInvite"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInitiateResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/register/verify": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Confirmar Código OTP e Criar Conta",
+      "description": "Valida o código de 6 dígitos enviado por e-mail, cria a conta do aluno e vincula os cursos concedidos pelo convite.",
+      "operationId": "verify_registration_api_v1_auth_register_verify_post",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/VerifyCodeRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/auth/register/resend-code": {
+    "post": {
+      "tags": [
+        "Autenticação e Usuários"
+      ],
+      "summary": "Reenviar Código OTP de Cadastro",
+      "description": "Gera um novo código de verificação de 6 dígitos e reenvia por e-mail para confirmação da conta.",
+      "operationId": "resend_registration_code_api_v1_auth_register_resend_code_post",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ResendCodeRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/progress": {
+    "get": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Obter Progresso Geral do Curso",
+      "description": "Retorna a lista de IDs de todas as aulas que o aluno já concluiu/assistiu no curso selecionado.",
+      "operationId": "get_course_progress_api_v1_courses__course_id__progress_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseProgressResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/progress": {
+    "post": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Marcar/Desmarcar Aula Concluída",
+      "description": "Alterna o status de conclusão da aula pelo aluno. Dispara automaticamente eventos de webhook quando marcos de 25%, 50%, 75% ou 100% são alcançados.",
+      "operationId": "toggle_lesson_progress_api_v1_courses__course_id__lessons__lesson_id__progress_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LessonProgressUpdate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Progress In"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonProgressResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/rating": {
+    "get": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Obter Avaliação da Aula",
+      "description": "Retorna a nota dada pelo aluno logado, a média geral (1 a 5 estrelas) e o total de avaliações da aula.",
+      "operationId": "get_lesson_rating_api_v1_courses__course_id__lessons__lesson_id__rating_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonRatingResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Avaliar Aula com Estrelas",
+      "description": "Atribui nota de 1 a 5 estrelas para a aula pelo aluno logado (envie 0 para remover a nota).",
+      "operationId": "rate_lesson_api_v1_courses__course_id__lessons__lesson_id__rating_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonRatingUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonRatingResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/reports": {
+    "post": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Denunciar/Reportar Problema na Aula",
+      "description": "Permite ao aluno reportar problemas técnicos ou de conteúdo em uma aula (vídeo, áudio, material, conteúdo).",
+      "operationId": "report_lesson_issue_api_v1_courses__course_id__lessons__lesson_id__reports_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonReportCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonReportResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/reports/summary": {
+    "get": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Resumo de Relatórios de Problemas",
+      "description": "Retorna o consolidado de contadores de problemas reportados nas aulas (pendentes, resolvidos e total). Exige perfil de Admin ou Superadmin.",
+      "operationId": "get_reports_summary_api_v1_courses_reports_summary_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonReportsCountResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/reports": {
+    "get": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Listar Problemas Reportados",
+      "description": "Lista todos os relatórios de problemas técnicos ou de conteúdo enviados pelos alunos nas aulas. Exige perfil de Admin ou Superadmin.",
+      "operationId": "list_reported_issues_api_v1_courses_reports_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LessonReportResponse"
+                },
+                "title": "Response List Reported Issues Api V1 Courses Reports Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/reports/{report_id}": {
+    "patch": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Atualizar Status do Relato de Problema",
+      "description": "Atualiza o estado de resolução de um problema reportado ('open' para pendente, 'resolved' para resolvido). Exige perfil de Admin ou Superadmin.",
+      "operationId": "update_report_status_api_v1_courses_reports__report_id__patch",
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Report Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonReportUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonReportResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Excluir Relato de Problema",
+      "description": "Remove definitivamente o registro de relato de problema de aula do banco de dados. Exige perfil de Admin ou Superadmin.",
+      "operationId": "delete_reported_issue_api_v1_courses_reports__report_id__delete",
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Report Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/notes": {
+    "get": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Listar Anotações Pessoais da Aula",
+      "description": "Retorna todas as notas e apontamentos privados criados pelo aluno logado na respectiva aula.",
+      "operationId": "list_lesson_notes_api_v1_courses__course_id__lessons__lesson_id__notes_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LessonNoteResponse"
+                },
+                "title": "Response List Lesson Notes Api V1 Courses  Course Id  Lessons  Lesson Id  Notes Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Criar Anotação Pessoal na Aula",
+      "description": "Cria uma nova anotação/bloco de notas pessoal associada à aula e visível apenas para o próprio aluno.",
+      "operationId": "create_lesson_note_api_v1_courses__course_id__lessons__lesson_id__notes_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonNoteCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonNoteResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/notes/{note_id}": {
+    "put": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Atualizar Anotação Pessoal da Aula",
+      "description": "Atualiza o texto de uma anotação pessoal existente do aluno logado.",
+      "operationId": "update_lesson_note_api_v1_courses__course_id__lessons__lesson_id__notes__note_id__put",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "note_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Note Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonNoteUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonNoteResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Interações e Progresso"
+      ],
+      "summary": "Excluir Anotação Pessoal da Aula",
+      "description": "Remove definitivamente uma anotação pessoal de aula pertencente ao aluno logado.",
+      "operationId": "delete_lesson_note_api_v1_courses__course_id__lessons__lesson_id__notes__note_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "note_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Note Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/platform-theme": {
+    "get": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Obter Tema Global da Plataforma",
+      "description": "Retorna a cor de fundo padrão da Área de Membros configurada pelo administrador.",
+      "operationId": "get_platform_theme_api_v1_courses_platform_theme_get",
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformThemeResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "patch": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Atualizar Tema Global da Plataforma",
+      "description": "Atualiza a cor de fundo global e sincroniza automaticamente com todos os cursos cadastrados.",
+      "operationId": "update_platform_theme_api_v1_courses_platform_theme_patch",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PlatformThemeUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformThemeResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses": {
+    "get": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Listar Cursos",
+      "description": "Retorna os cursos disponíveis. Alunos recebem apenas os cursos que possuem matrícula ativa.",
+      "operationId": "list_courses_api_v1_courses_get",
+      "parameters": [
+        {
+          "name": "skip",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "title": "Skip"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 200,
+            "minimum": 1,
+            "default": 100,
+            "title": "Limit"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CourseResponse"
+                },
+                "title": "Response List Courses Api V1 Courses Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Criar Novo Curso",
+      "description": "Cadastra um novo curso na Área de Membros com título, descrição, capa e tema visual.",
+      "operationId": "create_course_api_v1_courses_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CourseCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/upload-thumbnail": {
+    "post": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Upload de Capa/Thumbnail do Curso",
+      "description": "Envia imagem de capa do curso (JPG, PNG, WEBP até 5 MB) com upload para Backblaze B2 ou armazenamento local.",
+      "operationId": "upload_thumbnail_api_v1_courses_upload_thumbnail_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_upload_thumbnail_api_v1_courses_upload_thumbnail_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/upload-video": {
+    "post": {
+      "tags": [
+        "Courses",
+        "Aulas e Conteúdos"
+      ],
+      "summary": "Upload de Vídeo de Aula",
+      "description": "Envia arquivo de vídeo (MP4, WebM, MOV, MKV até 2 GB) para a nuvem Backblaze B2 ou servidor local.",
+      "operationId": "upload_video_api_v1_courses_upload_video_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_upload_video_api_v1_courses_upload_video_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/upload-attachment": {
+    "post": {
+      "tags": [
+        "Courses",
+        "Aulas e Conteúdos"
+      ],
+      "summary": "Upload de Material Complementar",
+      "description": "Envia documento ou arquivo anexo da aula (PDF, Word, Excel, ZIP até 100 MB).",
+      "operationId": "upload_attachment_api_v1_courses_upload_attachment_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_upload_attachment_api_v1_courses_upload_attachment_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}": {
+    "get": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Obter Detalhes do Curso",
+      "description": "Retorna dados completos de um curso com seus módulos e aulas para a sala de aula.",
+      "operationId": "get_course_api_v1_courses__course_id__get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseDetailResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "patch": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Atualizar Curso",
+      "description": "Atualiza título, descrição, capa, cor de fundo ou publicação de um curso existente.",
+      "operationId": "update_course_api_v1_courses__course_id__patch",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CourseUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Excluir Curso",
+      "description": "Exclui um curso e remove permanentemente todos os módulos, aulas, vídeos e anexos vinculados.",
+      "operationId": "delete_course_api_v1_courses__course_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules": {
+    "get": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Listar Módulos do Curso",
+      "description": "Lista todos os módulos de um curso com suas respectivas aulas ordenadas.",
+      "operationId": "list_course_modules_api_v1_courses__course_id__modules_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ModuleDetailResponse"
+                },
+                "title": "Response List Course Modules Api V1 Courses  Course Id  Modules Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Criar Módulo no Curso",
+      "description": "Cria um novo módulo dentro de um curso.",
+      "operationId": "create_module_api_v1_courses__course_id__modules_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ModuleCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}": {
+    "patch": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Atualizar Módulo",
+      "description": "Atualiza título, descrição, capa ou ordem de um módulo.",
+      "operationId": "update_module_api_v1_courses__course_id__modules__module_id__patch",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ModuleUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Excluir Módulo",
+      "description": "Exclui um módulo e todas as suas aulas.",
+      "operationId": "delete_module_api_v1_courses__course_id__modules__module_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons": {
+    "post": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Criar Aula no Módulo",
+      "description": "Cria uma nova aula dentro de um módulo com suporte a múltiplos idiomas.",
+      "operationId": "create_lesson_api_v1_courses__course_id__modules__module_id__lessons_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}": {
+    "patch": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Atualizar Aula",
+      "description": "Atualiza as informações de uma aula e sua lista de vídeos e anexos.",
+      "operationId": "update_lesson_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__patch",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Excluir Aula",
+      "description": "Exclui uma aula específica e todos os seus vídeos e anexos em nuvem.",
+      "operationId": "delete_lesson_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments": {
+    "post": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Adicionar Anexo na Aula",
+      "description": "Adiciona um anexo a uma aula já existente.",
+      "operationId": "add_lesson_attachment_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__attachments_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LessonAttachmentCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonAttachmentResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}": {
+    "delete": {
+      "tags": [
+        "Courses",
+        "Cursos e Módulos"
+      ],
+      "summary": "Excluir Anexo da Aula",
+      "description": "Exclui um documento anexo da aula e limpa do Backblaze B2.",
+      "operationId": "delete_lesson_attachment_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__attachments__attachment_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "attachment_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Attachment Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments": {
+    "get": {
+      "tags": [
+        "Courses",
+        "Comentários da Aula"
+      ],
+      "summary": "Listar Comentários da Aula",
+      "description": "Lista todos os comentários raiz de uma aula específica com suas respectivas respostas.",
+      "operationId": "list_lesson_comments_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__comments_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                },
+                "title": "Response List Lesson Comments Api V1 Courses  Course Id  Modules  Module Id  Lessons  Lesson Id  Comments Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Courses",
+        "Comentários da Aula"
+      ],
+      "summary": "Criar Comentário ou Resposta",
+      "description": "Cria um novo comentário ou resposta em uma aula.",
+      "operationId": "create_lesson_comment_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__comments_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CommentCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments/{comment_id}": {
+    "delete": {
+      "tags": [
+        "Courses",
+        "Comentários da Aula"
+      ],
+      "summary": "Excluir Comentário da Aula",
+      "description": "Exclui um comentário de aula. Alunos podem excluir seus próprios comentários, e admins podem moderar qualquer comentário.",
+      "operationId": "delete_lesson_comment_api_v1_courses__course_id__modules__module_id__lessons__lesson_id__comments__comment_id__delete",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "module_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Module Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "comment_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Comment Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/students": {
+    "get": {
+      "tags": [
+        "Alunos e Matrículas"
+      ],
+      "summary": "Listar Alunos e Métricas",
+      "description": "Retorna a lista paginada de alunos com busca por nome/email, filtro por curso e percentual de progresso.",
+      "operationId": "list_students_api_v1_students_get",
+      "parameters": [
+        {
+          "name": "search",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search"
+          }
+        },
+        {
+          "name": "course_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "title": "Page"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 200,
+            "minimum": 1,
+            "default": 20,
+            "title": "Limit"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentListResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/students/export": {
+    "get": {
+      "tags": [
+        "Alunos e Matrículas"
+      ],
+      "summary": "Exportar Alunos (CSV/XLSX)",
+      "description": "Gera e faz download de uma planilha completa com todos os alunos, e-mails, cursos matriculados e prazos.",
+      "operationId": "export_students_api_v1_students_export_get",
+      "parameters": [
+        {
+          "name": "format",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "pattern": "^(csv|xlsx|excel)$",
+            "default": "csv",
+            "title": "Format"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/students/import/template": {
+    "get": {
+      "tags": [
+        "Alunos e Matrículas"
+      ],
+      "summary": "Baixar Modelo de Planilha para Importação",
+      "description": "Faz download da planilha modelo (CSV ou XLSX) com as colunas corretas para importação em lote.",
+      "operationId": "download_import_template_api_v1_students_import_template_get",
+      "parameters": [
+        {
+          "name": "format",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "pattern": "^(csv|xlsx|excel)$",
+            "default": "csv",
+            "title": "Format"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/students/import": {
+    "post": {
+      "tags": [
+        "Alunos e Matrículas"
+      ],
+      "summary": "Importar Alunos em Lote",
+      "description": "Recebe planilha CSV/XLSX de alunos, cadastra os novos usuários, matricula nos cursos e gera credenciais de acesso.",
+      "operationId": "import_students_api_v1_students_import_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_import_students_api_v1_students_import_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentImportResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/students/{student_id}/courses/{course_id}/history": {
+    "get": {
+      "tags": [
+        "Alunos e Matrículas"
+      ],
+      "summary": "Histórico Detalhado do Aluno no Curso",
+      "description": "Retorna a lista cronológica de aulas assistidas, avaliações atribuídas e comentários feitos pelo aluno em um curso específico.",
+      "operationId": "get_student_course_history_api_v1_students__student_id__courses__course_id__history_get",
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Student Id"
+          }
+        },
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StudentLessonActivityItem"
+                },
+                "title": "Response Get Student Course History Api V1 Students  Student Id  Courses  Course Id  History Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/integrations": {
+    "get": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Listar Webhooks Cadastrados",
+      "description": "Retorna todas as integrações de webhook cadastradas com métricas de disparos (sucesso/falha) e cursos vinculados.",
+      "operationId": "list_integrations_api_v1_integrations_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                },
+                "title": "Response List Integrations Api V1 Integrations Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Cadastrar Novo Webhook",
+      "description": "Cria uma integração de webhook para envio de eventos em tempo real (progresso do aluno, conclusão de aula, matrícula e avisos de renovação).",
+      "operationId": "create_integration_api_v1_integrations_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/WebhookCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/integrations/{id}": {
+    "get": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Obter Detalhes do Webhook",
+      "description": "Retorna dados cadastrais da integração, curso vinculado, chave de assinatura e métricas de disparos.",
+      "operationId": "get_integration_api_v1_integrations__id__get",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "put": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Atualizar Configurações do Webhook",
+      "description": "Atualiza a URL de destino, eventos assinados, curso alvo ou status de ativação da integração.",
+      "operationId": "update_integration_api_v1_integrations__id__put",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/WebhookUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Excluir Webhook",
+      "description": "Remove a integração e todos os registros históricos de logs de envio associados.",
+      "operationId": "delete_integration_api_v1_integrations__id__delete",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/integrations/{id}/test": {
+    "post": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Testar Disparo do Webhook",
+      "description": "Envia uma requisição HTTP POST imediata com dados fictícios para validar a conectividade com a URL cadastrada.",
+      "operationId": "test_integration_api_v1_integrations__id__test_post",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookTestResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/integrations/{id}/logs": {
+    "get": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Listar Histórico de Disparos",
+      "description": "Retorna os últimos logs de envio do webhook contendo status HTTP recebido, payload transmitido e data.",
+      "operationId": "get_integration_logs_api_v1_integrations__id__logs_get",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 200,
+            "default": 50,
+            "title": "Limit"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WebhookLogResponse"
+                },
+                "title": "Response Get Integration Logs Api V1 Integrations  Id  Logs Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/integrations/check-renewals": {
+    "post": {
+      "tags": [
+        "integrations"
+      ],
+      "summary": "Verificação Manual de Renovações",
+      "description": "Dispara checagem manual imediata de renovação e expiração de cursos enviando eventos de webhook pendentes.",
+      "operationId": "trigger_check_renewals_api_v1_integrations_check_renewals_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/my-courses": {
+    "get": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Listar Cursos Permitidos para Dúvidas",
+      "description": "Retorna a lista de cursos aos quais o usuário logado tem acesso ativo para seleção ao criar dúvidas.",
+      "operationId": "get_my_courses_for_support_api_v1_support_my_courses_get",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SupportCourseItem"
+                },
+                "title": "Response Get My Courses For Support Api V1 Support My Courses Get"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/topics": {
+    "get": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Listar Dúvidas da Comunidade",
+      "description": "Retorna dúvidas da comunidade com suporte a busca textual, filtro por curso e ordenação (recentes, populares, sem resposta).",
+      "operationId": "list_support_topics_api_v1_support_topics_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filtrar por curso específico",
+            "title": "Course Id"
+          },
+          "description": "Filtrar por curso específico"
+        },
+        {
+          "name": "search",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Busca textual no título ou conteúdo",
+            "title": "Search"
+          },
+          "description": "Busca textual no título ou conteúdo"
+        },
+        {
+          "name": "sort",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "description": "recent | popular | unanswered",
+            "default": "recent",
+            "title": "Sort"
+          },
+          "description": "recent | popular | unanswered"
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "title": "Page"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1,
+            "default": 20,
+            "title": "Limit"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportTopicListResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Publicar Nova Dúvida",
+      "description": "Cria uma nova dúvida associada a um curso com título, conteúdo detalhado e print/imagem opcional.",
+      "operationId": "create_support_topic_api_v1_support_topics_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SupportTopicCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportTopicListItem"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/topics/{topic_id}": {
+    "get": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Obter Detalhes da Dúvida",
+      "description": "Retorna a dúvida completa com autor, data, curtidas e a lista cronológica de respostas de instrutores e alunos.",
+      "operationId": "get_support_topic_detail_api_v1_support_topics__topic_id__get",
+      "parameters": [
+        {
+          "name": "topic_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Topic Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportTopicDetail"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Excluir Dúvida",
+      "description": "Exclui o tópico de dúvida e todas as suas respostas (Apenas o autor ou SuperAdmin).",
+      "operationId": "delete_support_topic_api_v1_support_topics__topic_id__delete",
+      "parameters": [
+        {
+          "name": "topic_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Topic Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/topics/{topic_id}/replies": {
+    "post": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Responder a uma Dúvida",
+      "description": "Envia uma resposta para a dúvida. Identifica automaticamente respostas de instrutores/superadministradores.",
+      "operationId": "add_support_reply_api_v1_support_topics__topic_id__replies_post",
+      "parameters": [
+        {
+          "name": "topic_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Topic Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SupportReplyCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportReplyResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/topics/{topic_id}/like": {
+    "post": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Curtir/Descurtir Dúvida",
+      "description": "Alterna a curtida do usuário autenticado no tópico de suporte selecionado.",
+      "operationId": "toggle_support_topic_like_api_v1_support_topics__topic_id__like_post",
+      "parameters": [
+        {
+          "name": "topic_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Topic Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/topics/{topic_id}/replies/{reply_id}": {
+    "delete": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Excluir Resposta de Dúvida",
+      "description": "Exclui uma resposta de suporte (Apenas o autor da resposta ou SuperAdmin).",
+      "operationId": "delete_support_reply_api_v1_support_topics__topic_id__replies__reply_id__delete",
+      "parameters": [
+        {
+          "name": "topic_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Topic Id"
+          }
+        },
+        {
+          "name": "reply_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Reply Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/support/upload-image": {
+    "post": {
+      "tags": [
+        "support",
+        "Suporte e Dúvidas"
+      ],
+      "summary": "Upload de Imagem para Suporte",
+      "description": "Recebe arquivos de imagem (PNG, JPG, WEBP até 10 MB) para anexar em dúvidas ou respostas.",
+      "operationId": "upload_support_image_api_v1_support_upload_image_post",
+      "parameters": [
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "$ref": "#/components/schemas/Body_upload_support_image_api_v1_support_upload_image_post"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/quiz": {
+    "get": {
+      "tags": [
+        "Quizzes e Avaliações"
+      ],
+      "summary": "Obter Perguntas e Quiz da Aula",
+      "description": "Retorna as perguntas e alternativas de uma aula com quiz. Para alunos, o gabarito ('is_correct') é ocultado para segurança.",
+      "operationId": "get_lesson_quiz_api_v1_courses__course_id__lessons__lesson_id__quiz_get",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonQuizDetails"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Quizzes e Avaliações"
+      ],
+      "summary": "Cadastrar/Atualizar Quiz da Aula",
+      "description": "Cria ou substitui as perguntas, opções de múltipla escolha e gabarito de uma aula. (Exclusivo SuperAdmin/Manager).",
+      "operationId": "save_lesson_quiz_api_v1_courses__course_id__lessons__lesson_id__quiz_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/QuizBulkUpdate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonQuizDetails"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/courses/{course_id}/lessons/{lesson_id}/quiz/submit": {
+    "post": {
+      "tags": [
+        "Quizzes e Avaliações"
+      ],
+      "summary": "Submeter Respostas do Quiz (Aluno)",
+      "description": "Registra a tentativa do aluno, compara as respostas com o gabarito e conclui a aula automaticamente se a nota for maior ou igual a 70%.",
+      "operationId": "submit_lesson_quiz_api_v1_courses__course_id__lessons__lesson_id__quiz_submit_post",
+      "parameters": [
+        {
+          "name": "course_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Course Id"
+          }
+        },
+        {
+          "name": "lesson_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "title": "Lesson Id"
+          }
+        },
+        {
+          "name": "authorization",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "title": "Authorization"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/QuizSubmissionCreate"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizSubmissionResponse"
+              }
+            }
+          }
+        },
+        "422": {
+          "description": "Validation Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/health": {
+    "get": {
+      "tags": [
+        "Sistema"
+      ],
+      "summary": "Status e Saúde da API",
+      "description": "Verifica se o backend e a conexão geral estão operacionais.",
+      "operationId": "health_check_health_get",
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -39,7 +39,18 @@ export function formatToBrasiliaTime(line) {
     return `[${utcDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false })}]`;
   });
 
-  // 3. Padrão ISO 8601 UTC avulso: 2026-09-29T17:59:35.123Z
+  // 3. Remove timestamp secundário redundante após o timestamp convertido de Brasília (ex: [30/09/2026 19:40:30] 2026/09/30 22:40:30 ou [2026-09-30 22:40:30])
+  result = result.replace(/^(\[\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2}:\d{2}\])\s+(?:\[?\d{4}[/-]\d{2}[/-]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:,\d+)?\]?)\s*/, '$1 ');
+
+  // 4. Formato de erro Nginx (YYYY/MM/DD HH:MM:SS) quando vier sem timestamp inicial
+  if (!result.startsWith('[')) {
+    result = result.replace(/^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})\s*/, (match, year, month, day, hour, min, sec) => {
+      const utcDate = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hour, 10), parseInt(min, 10), parseInt(sec, 10)));
+      return `[${utcDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false })}] `;
+    });
+  }
+
+  // 5. Padrão ISO 8601 UTC avulso: 2026-09-29T17:59:35.123Z
   const isoRegex = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)(?:Z|([+-]\d{2}:?\d{2}))?/g;
   result = result.replace(isoRegex, (match, baseIso) => {
     try {

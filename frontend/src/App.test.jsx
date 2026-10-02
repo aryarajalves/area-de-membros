@@ -190,6 +190,15 @@ describe('App Component', () => {
     expect(screen.queryByTestId('automated-backup-page')).not.toBeInTheDocument();
     expect(localStorage.getItem('active_tab')).toBe('courses');
   });
+
+  it('defines page title as "Area de Alunos" in index.html', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const htmlPath = path.resolve(__dirname, '../index.html');
+    const content = fs.readFileSync(htmlPath, 'utf-8');
+    expect(content).toContain('<title>Area de Alunos</title>');
+    expect(content).toContain('lang="pt-BR"');
+  });
 });
 
 

@@ -61,22 +61,25 @@ describe('Sidebar Component', () => {
     expect(onSelectTabMock).toHaveBeenCalledWith('backup');
   });
 
-  it('renders categories "Geral" and "Segurança" for superadmin, and only "Geral" for aluno', () => {
-    // Superadmin vê ambas as categorias
+  it('renders categories "Gestão de Ensino", "Administração" and "Segurança" for superadmin, and only "Meu Aprendizado" for aluno', () => {
+    // Superadmin vê as categorias de Ensino, Administração e Segurança
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
-    expect(screen.getByTestId('nav-category-geral')).toBeInTheDocument();
-    expect(screen.getByText('Geral')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-ensino')).toBeInTheDocument();
+    expect(screen.getByText('Gestão de Ensino')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-administracao')).toBeInTheDocument();
+    expect(screen.getByText('Administração')).toBeInTheDocument();
     expect(screen.getByTestId('nav-category-seguranca')).toBeInTheDocument();
     expect(screen.getByText('Segurança')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê apenas a categoria Geral (com Cursos), sem Segurança
+    // Aluno vê apenas a categoria de Ensino (com Cursos e Suporte), sem Administração e sem Segurança
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
-    expect(screen.getByTestId('nav-category-geral')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-ensino')).toBeInTheDocument();
+    expect(screen.getByText('Meu Aprendizado')).toBeInTheDocument();
+    expect(screen.queryByTestId('nav-category-administracao')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nav-category-seguranca')).not.toBeInTheDocument();
-    expect(screen.queryByText('Segurança')).not.toBeInTheDocument();
     unmountAluno();
   });
 
@@ -126,5 +129,29 @@ describe('Sidebar Component', () => {
     render(<Sidebar user={alunoUser} />);
     expect(screen.queryByTestId('nav-item-integrations')).not.toBeInTheDocument();
     expect(screen.queryByText('Integrações')).not.toBeInTheDocument();
+  });
+
+  it('renders "Suporte" button for superadmin and aluno, and handles tab selection', () => {
+    const onSelectTab = vi.fn();
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    const { unmount } = render(<Sidebar user={superAdminUser} onSelectTab={onSelectTab} />);
+
+    const supportBtn = screen.getByTestId('nav-item-support');
+    expect(supportBtn).toBeInTheDocument();
+    expect(screen.getByText('Suporte')).toBeInTheDocument();
+
+    fireEvent.click(supportBtn);
+    expect(onSelectTab).toHaveBeenCalledWith('support');
+    unmount();
+
+    // Aluno também DEVE ver o botão de Suporte
+    const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
+    render(<Sidebar user={alunoUser} onSelectTab={onSelectTab} />);
+    const alunoSupportBtn = screen.getByTestId('nav-item-support');
+    expect(alunoSupportBtn).toBeInTheDocument();
+    expect(screen.getByText('Suporte')).toBeInTheDocument();
+
+    fireEvent.click(alunoSupportBtn);
+    expect(onSelectTab).toHaveBeenCalledWith('support');
   });
 });

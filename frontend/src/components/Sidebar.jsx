@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle, Settings, UserCheck, Webhook } from 'lucide-react';
+import { Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle, Settings, UserCheck, Webhook, HelpCircle } from 'lucide-react';
 
 export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLogout, pendingReportsCount = 0, bgColor = '#090d16' }) {
   const isSuperAdmin = user?.role === 'superadmin';
@@ -8,21 +8,37 @@ export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLo
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
 
-  // Categorias de navegação:
-  // - Geral: Cursos (visível para superadmin, admin e aluno), Relatos de Aulas, Alunos, Integrações e Configurações (admin e superadmin)
+  // Categorias de navegação (Proposta 2):
+  // - Gestão de Ensino: Cursos, Alunos, Suporte e Relatos de Aulas
+  // - Administração: Integrações e Configurações
   // - Segurança: Backup, Logs e Gestão de Usuários (restrito a superadmin)
   const categories = [
     {
-      id: 'geral',
-      title: 'Geral',
+      id: 'ensino',
+      title: isAluno ? 'Meu Aprendizado' : 'Gestão de Ensino',
       items: [
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'courses', label: 'Cursos', icon: GraduationCap }]
           : []),
         ...(isSuperAdmin || isAdmin
+          ? [{ id: 'students', label: 'Alunos', icon: UserCheck }]
+          : []),
+        ...(isSuperAdmin || isAdmin || isAluno
+          ? [{ id: 'support', label: 'Suporte', icon: HelpCircle }]
+          : []),
+        ...(isSuperAdmin || isAdmin
           ? [
               { id: 'lesson-reports', label: 'Relatos de Aulas', icon: AlertTriangle, badge: pendingReportsCount },
-              { id: 'students', label: 'Alunos', icon: UserCheck },
+            ]
+          : []),
+      ],
+    },
+    {
+      id: 'administracao',
+      title: 'Administração',
+      items: [
+        ...(isSuperAdmin || isAdmin
+          ? [
               { id: 'integrations', label: 'Integrações', icon: Webhook },
               { id: 'settings', label: 'Configurações', icon: Settings },
             ]

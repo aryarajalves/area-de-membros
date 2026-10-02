@@ -60,9 +60,15 @@ describe('Register Component', () => {
     expect(submitBtn).toBeDisabled();
     expect(screen.getByTestId('register-password-match-indicator')).toHaveTextContent('As senhas não coincidem');
 
-    // Type matching confirmation -> enabled with match indicator
+    // Type matching confirmation -> enabled with match indicator (após preencher telefone)
     fireEvent.change(confirmInput, { target: { value: 'StrongPassword123!' } });
     expect(screen.getByTestId('register-password-match-indicator')).toHaveTextContent('As senhas conferem');
+    // Ainda desabilitado pois telefone é obrigatório
+    expect(submitBtn).toBeDisabled();
+
+    // Preenche telefone válido
+    const phoneInput = screen.getByTestId('reg-phone-input');
+    fireEvent.change(phoneInput, { target: { value: '11999998888' } });
     expect(submitBtn).not.toBeDisabled();
   });
 
@@ -132,6 +138,7 @@ describe('Register Component', () => {
 
     fireEvent.change(screen.getByTestId('reg-name-input'), { target: { value: 'Novo Usuário' } });
     fireEvent.change(screen.getByTestId('reg-email-input'), { target: { value: 'novouser@teste.com' } });
+    fireEvent.change(screen.getByTestId('reg-phone-input'), { target: { value: '11988887777' } });
     fireEvent.change(screen.getByTestId('reg-password-input'), { target: { value: 'MinhaSenhaSegura123!' } });
     fireEvent.change(screen.getByTestId('reg-password-confirm-input'), { target: { value: 'MinhaSenhaSegura123!' } });
 
@@ -156,5 +163,67 @@ describe('Register Component', () => {
 
     fireEvent.click(verifyBtn);
     expect(await screen.findByText('Conta criada com sucesso!')).toBeInTheDocument();
+  });
+
+  it('formats whatsapp/phone input with Brazil +55 DDI and allows switching to international country code', async () => {
+    let capturedBody = null;
+    global.fetch.mockImplementation((url, options) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (url.includes('/validate')) {
+        return Promise.resolve({ ok: true, json: async () => ({ valid: true, role: 'aluno' }) });
+      }
+      if (url === '/api/v1/auth/register') {
+        capturedBody = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            message: 'Código enviado.',
+            email: 'alunozap@teste.com',
+            requires_verification: true,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register token="token-zap" />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText('Criar Conta')).toBeInTheDocument();
+
+    // Verifica padrão Brasil (+55)
+    expect(screen.getByTestId('phone-country-selector-box')).toHaveTextContent('🇧🇷');
+    expect(screen.getByTestId('phone-country-selector-box')).toHaveTextContent('+55');
+
+    const phoneInput = screen.getByTestId('reg-phone-input');
+    expect(phoneInput).toBeInTheDocument();
+
+    // Digita telefone brasileiro
+    fireEvent.change(phoneInput, { target: { value: '11987654321' } });
+    expect(phoneInput.value).toBe('(11) 98765-4321');
+
+    // Troca para Portugal (+351)
+    const countrySelect = screen.getByTestId('phone-country-select');
+    fireEvent.change(countrySelect, { target: { value: 'PT' } });
+
+    expect(screen.getByTestId('phone-country-selector-box')).toHaveTextContent('🇵🇹');
+    expect(screen.getByTestId('phone-country-selector-box')).toHaveTextContent('+351');
+
+    fireEvent.change(screen.getByTestId('reg-name-input'), { target: { value: 'Aluno Zap' } });
+    fireEvent.change(screen.getByTestId('reg-email-input'), { target: { value: 'alunozap@teste.com' } });
+    fireEvent.change(screen.getByTestId('reg-password-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+    fireEvent.change(screen.getByTestId('reg-password-confirm-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+
+    const submitBtn = screen.getByTestId('register-submit-btn');
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
+
+    expect(capturedBody).not.toBeNull();
+    expect(capturedBody.phone).toContain('+351');
   });
 });

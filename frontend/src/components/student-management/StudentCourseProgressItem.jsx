@@ -1,7 +1,8 @@
 import React from 'react';
-import { BookOpen, CheckCircle, Clock, Calendar, AlertCircle, History, Hourglass } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Calendar, AlertCircle, History, Hourglass, Zap } from 'lucide-react';
+import { formatBrasiliaDateTime, formatBrasiliaDate } from './studentDateUtils';
 
-export default function StudentCourseProgressItem({ course, isLightBg, onOpenHistory }) {
+export default function StudentCourseProgressItem({ course, isLightBg, onOpenHistory, onOpenTriggerWebhook }) {
   const isCompleted = course.total_lessons > 0 && course.completed_lessons >= course.total_lessons;
   const isStarted = course.completed_lessons > 0;
 
@@ -10,25 +11,8 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
   const textTitle = isLightBg ? '#1e293b' : '#f8fafc';
   const textMuted = isLightBg ? '#64748b' : '#94a3b8';
 
-  const formatDateTime = (dateStr) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-    } catch {
-      return '—';
-    }
-  };
-
-  const formatDateOnly = (dateStr) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('pt-BR');
-    } catch {
-      return '—';
-    }
-  };
+  const formatDateTime = (dateStr) => formatBrasiliaDateTime(dateStr);
+  const formatDateOnly = (dateStr) => formatBrasiliaDate(dateStr);
 
   // Cálculo de dias restantes se não vier do backend
   const calculateDaysRemaining = () => {
@@ -116,8 +100,34 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
           </div>
         </div>
 
-        {/* Botão de Histórico e Badge de Conclusão */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Botão de Histórico, Disparar Webhook e Badge de Conclusão */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          {onOpenTriggerWebhook && (
+            <button
+              type="button"
+              onClick={() => onOpenTriggerWebhook(course)}
+              style={{
+                padding: '5px 10px',
+                borderRadius: '6px',
+                backgroundColor: isLightBg ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                border: isLightBg ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(245, 158, 11, 0.3)',
+                color: '#f59e0b',
+                fontSize: '0.76rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.15s ease',
+              }}
+              title="Disparar manualmente um evento de webhook/integração para este aluno e curso"
+              data-testid={`trigger-webhook-btn-${course.course_id}`}
+            >
+              <Zap size={13} style={{ color: '#f59e0b' }} />
+              <span>Disparar Evento</span>
+            </button>
+          )}
+
           {onOpenHistory && (
             <button
               type="button"

@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     name: str
     role: str
     is_active: bool
+    phone: Optional[str] = None
     created_at: datetime
     course_ids: Optional[List[int]] = []
     course_access: Optional[List[CourseAccessItem]] = []
@@ -33,6 +34,8 @@ class UserResponse(BaseModel):
 
 class UserUpdate(BaseModel):
     role: Literal["admin", "user", "aluno"]
+    name: Optional[str] = None
+    phone: Optional[str] = None
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
 
@@ -41,7 +44,7 @@ class BulkDeleteRequest(BaseModel):
 
 class InviteCreate(BaseModel):
     role: Literal["admin", "user", "aluno"]
-    duration_hours: int = 24  # tempo para expirar o convite
+    duration_hours: Optional[int] = 24  # 0 ou None = indefinido (não expira)
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
 
@@ -49,7 +52,7 @@ class InviteResponse(BaseModel):
     id: int
     token: str
     role: str
-    expires_at: datetime
+    expires_at: Optional[datetime] = None
     is_used: bool
     created_at: datetime
     invite_url: Optional[str] = None
@@ -104,8 +107,16 @@ class RegisterWithInvite(BaseModel):
     token: str
     name: str
     email: EmailStr
+    phone: str
     password: str
     password_confirm: Optional[str] = None
+
+    @field_validator("phone")
+    def validate_phone(cls, v: str) -> str:
+        cleaned = v.strip() if v else ""
+        if len(cleaned) < 6:
+            raise ValueError("O número de WhatsApp / Telefone é obrigatório.")
+        return cleaned
 
     @field_validator("password")
     def validate_password_strength(cls, v: str) -> str:

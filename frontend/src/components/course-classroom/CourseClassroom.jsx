@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ArrowLeft, Plus, FolderPlus, X } from 'lucide-react';
 import { useCourseContent } from './useCourseContent';
 import LessonPlayer from './LessonPlayer';
+import LessonTextViewer from './LessonTextViewer';
+import LessonQuizViewer from './LessonQuizViewer';
 import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
@@ -307,41 +309,113 @@ export default function CourseClassroom({ course: initialCourse, currentUser, on
                 </div>
               </div>
 
-              {/* Player Widescreen no Topo + Layout 2 Colunas (Conteúdo à Esquerda e Timeline de Módulos/Aulas à Direita) */}
-              <LessonPlayer
-                lesson={activeLesson}
-                courseTitle={course?.title || initialCourse.title}
-                moduleTitle={selectedModule.title}
-                courseId={course?.id || initialCourse.id}
-                moduleId={selectedModule.id}
-                currentUser={currentUser}
-                prevLesson={prevLesson}
-                nextLesson={nextLesson}
-                onSelectLesson={handleSelectLessonAndModule}
-                isCompleted={completedLessonIds?.includes(activeLesson?.id)}
-                onToggleComplete={handleToggleLessonComplete}
-                isLightBg={isLightBg}
-                onCloseModule={() => setSelectedModuleId(null)}
-                onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
-                rightSidebar={
-                  <ModuleTimelineSidebar
-                    modules={modules}
-                    selectedModule={selectedModule}
-                    activeLesson={activeLesson}
-                    completedLessonIds={completedLessonIds}
-                    totalLessonsCount={totalLessonsCount}
-                    isManager={isManager}
-                    isLightBg={isLightBg}
-                    onSelectModule={handleSelectModule}
-                    onSelectLesson={setActiveLesson}
-                    onOpenCreateLesson={handleOpenCreateLesson}
-                    onOpenEditModule={handleOpenEditModule}
-                    onPromptDeleteModule={handlePromptDeleteModule}
-                    onOpenEditLesson={handleOpenEditLesson}
-                    onPromptDeleteLesson={handlePromptDeleteLesson}
-                  />
-                }
-              />
+              {/* Visualizador da Aula: Texto, Quiz ou Vídeo */}
+              {activeLesson?.content_type === 'text' ? (
+                <LessonTextViewer
+                  lesson={activeLesson}
+                  courseTitle={course?.title || initialCourse.title}
+                  moduleTitle={selectedModule.title}
+                  courseId={course?.id || initialCourse.id}
+                  moduleId={selectedModule.id}
+                  currentUser={currentUser}
+                  prevLesson={prevLesson}
+                  nextLesson={nextLesson}
+                  onSelectLesson={handleSelectLessonAndModule}
+                  isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  onToggleComplete={handleToggleLessonComplete}
+                  isLightBg={isLightBg}
+                  onCloseModule={() => setSelectedModuleId(null)}
+                  onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
+                  rightSidebar={
+                    <ModuleTimelineSidebar
+                      modules={modules}
+                      selectedModule={selectedModule}
+                      activeLesson={activeLesson}
+                      completedLessonIds={completedLessonIds}
+                      totalLessonsCount={totalLessonsCount}
+                      isManager={isManager}
+                      isLightBg={isLightBg}
+                      onSelectModule={handleSelectModule}
+                      onSelectLesson={setActiveLesson}
+                      onOpenCreateLesson={handleOpenCreateLesson}
+                      onOpenEditModule={handleOpenEditModule}
+                      onPromptDeleteModule={handlePromptDeleteModule}
+                      onOpenEditLesson={handleOpenEditLesson}
+                      onPromptDeleteLesson={handlePromptDeleteLesson}
+                    />
+                  }
+                />
+              ) : activeLesson?.content_type === 'quiz' ? (
+                <LessonQuizViewer
+                  lesson={activeLesson}
+                  courseTitle={course?.title || initialCourse.title}
+                  moduleTitle={selectedModule.title}
+                  courseId={course?.id || initialCourse.id}
+                  moduleId={selectedModule.id}
+                  currentUser={currentUser}
+                  prevLesson={prevLesson}
+                  nextLesson={nextLesson}
+                  onSelectLesson={handleSelectLessonAndModule}
+                  isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  onToggleComplete={handleToggleLessonComplete}
+                  isLightBg={isLightBg}
+                  onCloseModule={() => setSelectedModuleId(null)}
+                  onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
+                  rightSidebar={
+                    <ModuleTimelineSidebar
+                      modules={modules}
+                      selectedModule={selectedModule}
+                      activeLesson={activeLesson}
+                      completedLessonIds={completedLessonIds}
+                      totalLessonsCount={totalLessonsCount}
+                      isManager={isManager}
+                      isLightBg={isLightBg}
+                      onSelectModule={handleSelectModule}
+                      onSelectLesson={setActiveLesson}
+                      onOpenCreateLesson={handleOpenCreateLesson}
+                      onOpenEditModule={handleOpenEditModule}
+                      onPromptDeleteModule={handlePromptDeleteModule}
+                      onOpenEditLesson={handleOpenEditLesson}
+                      onPromptDeleteLesson={handlePromptDeleteLesson}
+                    />
+                  }
+                />
+              ) : (
+                <LessonPlayer
+                  lesson={activeLesson}
+                  courseTitle={course?.title || initialCourse.title}
+                  moduleTitle={selectedModule.title}
+                  courseId={course?.id || initialCourse.id}
+                  moduleId={selectedModule.id}
+                  currentUser={currentUser}
+                  prevLesson={prevLesson}
+                  nextLesson={nextLesson}
+                  onSelectLesson={handleSelectLessonAndModule}
+                  isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  onToggleComplete={handleToggleLessonComplete}
+                  isLightBg={isLightBg}
+                  onCloseModule={() => setSelectedModuleId(null)}
+                  onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
+                  rightSidebar={
+                    <ModuleTimelineSidebar
+                      modules={modules}
+                      selectedModule={selectedModule}
+                      activeLesson={activeLesson}
+                      completedLessonIds={completedLessonIds}
+                      totalLessonsCount={totalLessonsCount}
+                      isManager={isManager}
+                      isLightBg={isLightBg}
+                      onSelectModule={handleSelectModule}
+                      onSelectLesson={setActiveLesson}
+                      onOpenCreateLesson={handleOpenCreateLesson}
+                      onOpenEditModule={handleOpenEditModule}
+                      onPromptDeleteModule={handlePromptDeleteModule}
+                      onOpenEditLesson={handleOpenEditLesson}
+                      onPromptDeleteLesson={handlePromptDeleteLesson}
+                    />
+                  }
+                />
+              )}
             </div>
           )}
         </>
@@ -366,6 +440,7 @@ export default function CourseClassroom({ course: initialCourse, currentUser, on
         onClose={() => setLessonModalOpen(false)}
         editingLesson={editingLesson}
         moduleTitle={targetModuleTitle}
+        courseId={course?.id || initialCourse.id}
         loading={actionLoading}
         bgColor={bgColor}
         onUploadVideo={uploadLessonVideo}

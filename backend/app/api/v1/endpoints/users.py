@@ -1,7 +1,7 @@
 import secrets
 import json
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -34,7 +34,7 @@ from app.schemas.user import (
     PasswordResetValidateResponse
 )
 
-router = APIRouter(prefix="/auth", tags=["Auth & Users"])
+router = APIRouter(prefix="/auth", tags=["Autenticação e Usuários"])
 
 ACCESS_DURATION_DAYS = {
     "lifetime": None,
@@ -83,15 +83,49 @@ def _parse_invite_courses(raw_json: str):
 
 def get_current_user(
     authorization: str = Header(None),
+    x_api_key: str = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
+    # 1. Suporte a chave de API (ApiToken: sk_live_...)
+    token_str = None
+    if authorization and authorization.startswith("Bearer "):
+        token_str = authorization.split(" ")[1].strip()
+    raw_api_key = x_api_key or (token_str if token_str and token_str.startswith("sk_live_") else None)
+
+    if raw_api_key:
+        from app.models.api_token import ApiToken
+        api_token = db.query(ApiToken).filter(ApiToken.token == raw_api_key, ApiToken.is_active == True).first()
+        if not api_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Chave de API inválida ou inativa",
+            )
+        now = datetime.now(timezone.utc)
+        if api_token.expires_at:
+            exp = api_token.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if now > exp:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Chave de API expirada",
+                )
+        api_token.last_used_at = now
+        db.commit()
+        if not api_token.user or not api_token.user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuário associado à chave de API está inativo ou não existe",
+            )
+        return api_token.user
+
+    # 2. Suporte padrão a JWT Bearer Token
+    if not token_str:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de autenticação não fornecido ou inválido",
         )
-    token = authorization.split(" ")[1]
-    payload = decode_access_token(token)
+    payload = decode_access_token(token_str)
     if not payload or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -122,7 +156,12 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
         )
     return current_user
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    summary="Realizar Login de Usuário",
+    description="Autentica aluno ou administrador com e-mail e senha (Argon2id + Pepper) e retorna o Token de Acesso JWT."
+)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
@@ -142,11 +181,21 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         user=user
     )
 
-@router.get("/me", response_model=UserResponse)
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Obter Perfil do Usuário Logado",
+    description="Retorna os dados do usuário atualmente autenticado a partir do token JWT."
+)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get(
+    "/users",
+    response_model=List[UserResponse],
+    summary="Listar Todos os Usuários",
+    description="Retorna a lista completa de usuários cadastrados com seus cursos vinculados e prazos (Apenas SuperAdmin)."
+)
 def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin)
@@ -173,7 +222,12 @@ def list_users(
         results.append(res)
     return results
 
-@router.patch("/users/{user_id}", response_model=UserResponse)
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    summary="Atualizar Usuário",
+    description="Atualiza nome, perfil de permissão (admin/user/aluno), status ativo e cursos liberados com seus respectivos prazos de acesso. Exige perfil de Superadmin."
+)
 def update_user(
     user_id: int,
     user_update: UserUpdate,
@@ -196,6 +250,10 @@ def update_user(
         raise HTTPException(status_code=400, detail="Perfil inválido.")
 
     target_user.role = user_update.role
+    if user_update.name is not None:
+        target_user.name = user_update.name
+    if user_update.phone is not None:
+        target_user.phone = user_update.phone.strip() if user_update.phone else None
 
     # Atualiza cursos liberados e tempos de acesso se informado
     if user_update.course_access is not None or user_update.course_ids is not None:
@@ -246,7 +304,11 @@ def update_user(
     ]
     return res
 
-@router.delete("/users/{user_id}")
+@router.delete(
+    "/users/{user_id}",
+    summary="Excluir Usuário",
+    description="Exclui definitivamente um usuário da plataforma. Não permite excluir Superadmin ou o próprio usuário logado. Exige perfil de Superadmin."
+)
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -272,7 +334,11 @@ def delete_user(
     db.commit()
     return {"message": "Usuário excluído com sucesso."}
 
-@router.post("/users/bulk-delete")
+@router.post(
+    "/users/bulk-delete",
+    summary="Excluir Usuários em Lote",
+    description="Remove múltiplos usuários selecionados de uma só vez, preservando automaticamente contas Superadmin e o usuário logado. Exige perfil de Superadmin."
+)
 def bulk_delete_users(
     data: BulkDeleteRequest,
     db: Session = Depends(get_db),
@@ -294,7 +360,12 @@ def bulk_delete_users(
     db.commit()
     return {"message": f"{deleted_count} usuário(s) excluído(s) com sucesso.", "deleted_count": deleted_count}
 
-@router.post("/users/{user_id}/reset-password-request", response_model=PasswordResetRequestResponse)
+@router.post(
+    "/users/{user_id}/reset-password-request",
+    response_model=PasswordResetRequestResponse,
+    summary="Gerar Link de Redefinição de Senha",
+    description="Gera um token seguro e link de recuperação de senha com validade de 24 horas para o usuário especificado. Exige perfil de Superadmin."
+)
 def request_password_reset(
     user_id: int,
     db: Session = Depends(get_db),
@@ -332,7 +403,12 @@ def request_password_reset(
         user_name=target_user.name
     )
 
-@router.get("/reset-password/validate", response_model=PasswordResetValidateResponse)
+@router.get(
+    "/reset-password/validate",
+    response_model=PasswordResetValidateResponse,
+    summary="Validar Token de Redefinição de Senha",
+    description="Valida se o token de recuperação de senha informado existe, se não expirou e se ainda não foi utilizado."
+)
 def validate_reset_password_token(token: str, db: Session = Depends(get_db)):
     record = db.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
     if not record:
@@ -357,7 +433,11 @@ def validate_reset_password_token(token: str, db: Session = Depends(get_db)):
         name=target_user.name
     )
 
-@router.post("/reset-password/confirm")
+@router.post(
+    "/reset-password/confirm",
+    summary="Confirmar Nova Senha com Token",
+    description="Altera a senha do usuário utilizando o token de recuperação validado, aplicando hash criptográfico e invalidando o token."
+)
 def confirm_password_reset(
     data: PasswordResetConfirm,
     db: Session = Depends(get_db)
@@ -390,7 +470,13 @@ def confirm_password_reset(
 
     return {"message": "Senha redefinida com sucesso."}
 
-@router.post("/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/invites",
+    response_model=InviteResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar Convite de Acesso",
+    description="Gera um link de convite exclusivo com validade configurável em horas e cursos pré-vinculados (vitalício, 1 ano, etc). Exige perfil de Superadmin."
+)
 def create_invite(
     invite_in: InviteCreate,
     db: Session = Depends(get_db),
@@ -402,9 +488,14 @@ def create_invite(
             detail="Tipo de usuário inválido para convite. Apenas 'admin', 'user' ou 'aluno' são permitidos.",
         )
 
-    duration = max(1, invite_in.duration_hours)
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=duration)
+    duration = invite_in.duration_hours
+    expires_at = None
+    time_rem_str = "Indefinido"
+    if duration and duration > 0:
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(hours=duration)
+        time_rem_str = f"{duration}h"
+
     token = secrets.token_urlsafe(32)
 
     allowed_courses_json = None
@@ -437,12 +528,14 @@ def create_invite(
     invite_res = InviteResponse.model_validate(invite)
     invite_res.invite_url = f"/register?token={token}"
     invite_res.is_expired = False
-    invite_res.time_remaining = f"{duration}h"
+    invite_res.time_remaining = time_rem_str
     invite_res.allowed_course_ids = c_ids
     invite_res.course_access = c_access
     return invite_res
 
-def format_time_remaining(expires_at: datetime) -> str:
+def format_time_remaining(expires_at: Optional[datetime]) -> str:
+    if expires_at is None:
+        return "Indefinido"
     now = datetime.now(timezone.utc)
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -458,7 +551,12 @@ def format_time_remaining(expires_at: datetime) -> str:
         return f"{hours}h {minutes}m restantes"
     return f"{minutes}m restantes"
 
-@router.get("/invites", response_model=List[InviteResponse])
+@router.get(
+    "/invites",
+    response_model=List[InviteResponse],
+    summary="Listar Convites de Acesso",
+    description="Retorna a lista completa de convites gerados com status de uso, tempo restante e cursos vinculados. Exige perfil de Superadmin."
+)
 def list_invites(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin)
@@ -467,11 +565,15 @@ def list_invites(
     results = []
     now = datetime.now(timezone.utc)
     for inv in invites:
-        exp = inv.expires_at
-        if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-        is_expired = now > exp
-        time_rem = format_time_remaining(inv.expires_at)
+        if inv.expires_at is None:
+            is_expired = False
+            time_rem = "Indefinido"
+        else:
+            exp = inv.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            is_expired = now > exp
+            time_rem = format_time_remaining(inv.expires_at)
 
         c_ids, c_access = _parse_invite_courses(inv.allowed_course_ids)
 
@@ -484,7 +586,11 @@ def list_invites(
         results.append(inv_dto)
     return results
 
-@router.delete("/invites/{invite_id}")
+@router.delete(
+    "/invites/{invite_id}",
+    summary="Excluir Convite",
+    description="Remove definitivamente um token de convite do sistema. Exige perfil de Superadmin."
+)
 def delete_invite(
     invite_id: int,
     db: Session = Depends(get_db),
@@ -498,7 +604,11 @@ def delete_invite(
     db.commit()
     return {"message": "Convite excluído com sucesso."}
 
-@router.post("/invites/bulk-delete")
+@router.post(
+    "/invites/bulk-delete",
+    summary="Excluir Convites em Lote",
+    description="Remove múltiplos convites selecionados de uma única vez. Exige perfil de Superadmin."
+)
 def bulk_delete_invites(
     data: BulkDeleteRequest,
     db: Session = Depends(get_db),
@@ -515,7 +625,12 @@ def bulk_delete_invites(
     db.commit()
     return {"message": f"{deleted_count} convite(s) excluído(s) com sucesso.", "deleted_count": deleted_count}
 
-@router.get("/invites/validate", response_model=InviteValidateResponse)
+@router.get(
+    "/invites/validate",
+    response_model=InviteValidateResponse,
+    summary="Validar Token de Convite",
+    description="Valida se o token de convite de cadastro é válido, não expirou e ainda não foi utilizado."
+)
 def validate_invite(token: str, db: Session = Depends(get_db)):
     invite = db.query(Invite).filter(Invite.token == token).first()
     if not invite:
@@ -523,17 +638,31 @@ def validate_invite(token: str, db: Session = Depends(get_db)):
     if invite.is_used:
         return InviteValidateResponse(valid=False, detail="Este convite já foi utilizado.")
     
-    now = datetime.now(timezone.utc)
-    expires_at = invite.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-        
-    if now > expires_at:
-        return InviteValidateResponse(valid=False, detail="Este convite expirou.")
+    if invite.expires_at is not None:
+        now = datetime.now(timezone.utc)
+        expires_at = invite.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+        if now > expires_at:
+            return InviteValidateResponse(valid=False, detail="Este convite expirou.")
 
     return InviteValidateResponse(valid=True, role=invite.role)
 
-@router.post("/register", response_model=RegisterInitiateResponse, status_code=status.HTTP_200_OK)
+invites_router = APIRouter(prefix="/invites", tags=["Convites"])
+invites_router.add_api_route("", create_invite, methods=["POST"], response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
+invites_router.add_api_route("", list_invites, methods=["GET"], response_model=List[InviteResponse])
+invites_router.add_api_route("/{invite_id}", delete_invite, methods=["DELETE"])
+invites_router.add_api_route("/bulk-delete", bulk_delete_invites, methods=["POST"])
+invites_router.add_api_route("/validate", validate_invite, methods=["GET"], response_model=InviteValidateResponse)
+
+@router.post(
+    "/register",
+    response_model=RegisterInitiateResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Iniciar Cadastro com Convite",
+    description="Inicia o processo de cadastro do aluno com o token de convite e envia código de verificação de 6 dígitos por e-mail."
+)
 async def register_user(
     data: RegisterWithInvite,
     db: Session = Depends(get_db)
@@ -544,12 +673,13 @@ async def register_user(
     if invite.is_used:
         raise HTTPException(status_code=400, detail="Este convite já foi utilizado.")
     
-    now = datetime.now(timezone.utc)
-    expires_at = invite.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if now > expires_at:
-        raise HTTPException(status_code=400, detail="Este convite expirou.")
+    if invite.expires_at is not None:
+        now = datetime.now(timezone.utc)
+        expires_at = invite.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if now > expires_at:
+            raise HTTPException(status_code=400, detail="Este convite expirou.")
 
     if data.password_confirm is not None and data.password != data.password_confirm:
         raise HTTPException(
@@ -566,7 +696,7 @@ async def register_user(
 
     # Gera código OTP de 6 dígitos
     otp_code = f"{secrets.randbelow(900000) + 100000}"
-    code_expires_at = now + timedelta(minutes=15)
+    code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
     hashed_pw = get_password_hash(data.password)
 
     # Invalida tentativas anteriores para esse e-mail
@@ -575,9 +705,12 @@ async def register_user(
         RegistrationVerification.is_used == False
     ).update({"is_used": True})
 
+    clean_phone = data.phone.strip() if data.phone else None
+
     verification = RegistrationVerification(
         email=data.email,
         name=data.name,
+        phone=clean_phone,
         hashed_password=hashed_pw,
         role=invite.role,
         invite_token=data.token,
@@ -601,7 +734,13 @@ async def register_user(
         requires_verification=True
     )
 
-@router.post("/register/verify", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register/verify",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirmar Código OTP e Criar Conta",
+    description="Valida o código de 6 dígitos enviado por e-mail, cria a conta do aluno e vincula os cursos concedidos pelo convite."
+)
 def verify_registration(
     data: VerifyCodeRequest,
     db: Session = Depends(get_db)
@@ -643,6 +782,7 @@ def verify_registration(
     new_user = User(
         email=verification.email,
         name=verification.name,
+        phone=verification.phone,
         hashed_password=verification.hashed_password,
         role=verification.role,
         is_active=True
@@ -686,7 +826,11 @@ def verify_registration(
     ]
     return res
 
-@router.post("/register/resend-code")
+@router.post(
+    "/register/resend-code",
+    summary="Reenviar Código OTP de Cadastro",
+    description="Gera um novo código de verificação de 6 dígitos e reenvia por e-mail para confirmação da conta."
+)
 async def resend_registration_code(
     data: ResendCodeRequest,
     db: Session = Depends(get_db)

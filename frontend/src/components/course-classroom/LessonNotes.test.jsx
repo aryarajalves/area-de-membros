@@ -322,5 +322,19 @@ describe('LessonNotes Component & Badges', () => {
     });
     expect(screen.getByText(/Página 1 de 2/i)).toBeInTheDocument();
   });
+
+  it('renders container, header and textarea immediately even while loading notes without screen flicker', () => {
+    // Retorna uma Promise pendente para manter o estado loading ativo
+    global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+    render(<LessonNotes courseId={1} lessonId={10} currentUser={{ id: 5, role: 'aluno' }} />);
+
+    // Container, cabeçalho e textarea já devem estar presentes imediatamente para evitar layout shift e piscada
+    expect(screen.getByTestId('lesson-notes-container')).toBeInTheDocument();
+    expect(screen.getByText('Minhas Anotações')).toBeInTheDocument();
+    expect(screen.getByTestId('lesson-note-textarea')).toBeInTheDocument();
+    expect(screen.getByTestId('save-note-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('notes-loading-state')).toBeInTheDocument();
+  });
 });
 

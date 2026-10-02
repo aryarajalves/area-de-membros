@@ -14,6 +14,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user") # 'superadmin', 'admin', 'user'
     is_active = Column(Boolean, default=True)
+    phone = Column(String, nullable=True) # WhatsApp / Telefone do usuário
     created_at = Column(DateTime, default=utc_now)
 
 
@@ -23,7 +24,7 @@ class Invite(Base):
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String, unique=True, index=True, nullable=False)
     role = Column(String, nullable=False) # 'admin', 'user'
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=True) # None = indefinido (não expira)
     is_used = Column(Boolean, default=False)
     used_by_email = Column(String, nullable=True)
     allowed_course_ids = Column(String, nullable=True) # JSON array com IDs dos cursos vinculados
@@ -51,6 +52,7 @@ class RegistrationVerification(Base):
     role = Column(String, nullable=False)
     invite_token = Column(String, nullable=False)
     code = Column(String, nullable=False)
+    phone = Column(String, nullable=True) # WhatsApp
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)

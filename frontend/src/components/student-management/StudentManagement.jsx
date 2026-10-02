@@ -3,6 +3,7 @@ import { Users, Search, RefreshCw, BookOpen, CheckCircle, TrendingUp, X } from '
 import StudentCard from './StudentCard';
 import StudentImportModal from './StudentImportModal';
 import StudentHeaderActions from './StudentHeaderActions';
+import StudentFilterBar from './StudentFilterBar';
 import { useToast } from '../../context/ToastContext';
 
 export default function StudentManagement({ bgColor = '#090d16' }) {
@@ -10,6 +11,11 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [orderBy, setOrderBy] = useState('recent');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [courses, setCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
@@ -25,6 +31,25 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)';
 
+  // Carregar lista de cursos para o filtro
+  useEffect(() => {
+    const fetchCoursesList = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/v1/courses', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCourses(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        // silencioso
+      }
+    };
+    fetchCoursesList();
+  }, []);
+
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
@@ -32,9 +57,19 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
+        order_by: orderBy,
       });
       if (appliedSearch.trim()) {
         params.append('search', appliedSearch.trim());
+      }
+      if (selectedCourseId) {
+        params.append('course_id', selectedCourseId);
+      }
+      if (selectedMonth) {
+        params.append('registration_month', selectedMonth);
+      }
+      if (selectedDate) {
+        params.append('registration_date', selectedDate);
       }
 
       const res = await fetch(`/api/v1/students?${params.toString()}`, {
@@ -54,7 +89,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedSearch, addToast]);
+  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, addToast]);
 
   useEffect(() => {
     fetchStudents();
@@ -71,6 +106,25 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     setAppliedSearch('');
     setPage(1);
   };
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setAppliedSearch('');
+    setOrderBy('recent');
+    setSelectedCourseId('');
+    setSelectedMonth('');
+    setSelectedDate('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    appliedSearch ||
+    search ||
+    orderBy !== 'recent' ||
+    selectedCourseId ||
+    selectedMonth ||
+    selectedDate
+  );
 
   const handleExport = async (format) => {
     setIsExportDropdownOpen(false);
@@ -171,114 +225,41 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
         ))}
       </div>
 
-      {/* Barra de Filtros e Busca */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '20px',
+      {/* Barra de Filtros, Busca e Ordenação */}
+      <StudentFilterBar
+        search={search}
+        setSearch={setSearch}
+        onSearchSubmit={handleSearchSubmit}
+        onClearSearch={handleClearSearch}
+        orderBy={orderBy}
+        setOrderBy={(newOrder) => {
+          setOrderBy(newOrder);
+          setPage(1);
         }}
-      >
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', maxWidth: '460px' }}>
-          <div
-            style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-            }}
-          >
-            <Search
-              size={18}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                color: subTextColor,
-                pointerEvents: 'none',
-              }}
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar aluno por nome ou e-mail..."
-              style={{
-                width: '100%',
-                padding: '10px 38px 10px 38px',
-                borderRadius: '8px',
-                border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
-                color: textColor,
-                fontSize: '0.9rem',
-                outline: 'none',
-              }}
-              data-testid="student-search-input"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  background: 'transparent',
-                  border: 'none',
-                  color: subTextColor,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                data-testid="clear-student-search-btn"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            style={{
-              padding: '10px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: '#3b82f6',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-            data-testid="submit-student-search-btn"
-          >
-            Buscar
-          </button>
-        </form>
-
-        <button
-          type="button"
-          onClick={fetchStudents}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '9px 16px',
-            borderRadius: '8px',
-            border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.12)',
-            backgroundColor: 'transparent',
-            color: textColor,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '0.88rem',
-            opacity: loading ? 0.6 : 1,
-          }}
-          data-testid="refresh-students-btn"
-        >
-          <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          <span>Atualizar</span>
-        </button>
-      </div>
+        selectedCourseId={selectedCourseId}
+        setSelectedCourseId={(newCourseId) => {
+          setSelectedCourseId(newCourseId);
+          setPage(1);
+        }}
+        courses={courses}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={(newMonth) => {
+          setSelectedMonth(newMonth);
+          setPage(1);
+        }}
+        selectedDate={selectedDate}
+        setSelectedDate={(newDate) => {
+          setSelectedDate(newDate);
+          setPage(1);
+        }}
+        onResetFilters={handleResetFilters}
+        hasActiveFilters={hasActiveFilters}
+        isLightBg={isLightBg}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        loading={loading}
+        onRefresh={fetchStudents}
+      />
 
       {/* Listagem de Alunos */}
       {loading ? (

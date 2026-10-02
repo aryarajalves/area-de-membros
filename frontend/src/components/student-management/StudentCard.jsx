@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Mail, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock } from 'lucide-react';
+import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock } from 'lucide-react';
 import StudentCourseProgressItem from './StudentCourseProgressItem';
 import StudentAccessHistoryModal from './StudentAccessHistoryModal';
+import StudentTriggerWebhookModal from './StudentTriggerWebhookModal';
+import { formatBrasiliaDateTime } from './studentDateUtils';
 
 export default function StudentCard({ student, isLightBg }) {
   const [expanded, setExpanded] = useState(true);
   const [selectedCourseForHistory, setSelectedCourseForHistory] = useState(null);
+  const [selectedCourseForWebhook, setSelectedCourseForWebhook] = useState(null);
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.035)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -14,16 +17,13 @@ export default function StudentCard({ student, isLightBg }) {
 
   const initial = (student.name || 'A').charAt(0).toUpperCase();
 
-  const formatDateTime = (dateStr) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      const datePart = d.toLocaleDateString('pt-BR');
-      const timePart = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      return `${datePart} às ${timePart}`;
-    } catch {
-      return '—';
-    }
+  const formatDateTime = (dateStr) => formatBrasiliaDateTime(dateStr);
+
+  const getWhatsAppUrl = (rawPhone) => {
+    if (!rawPhone) return '#';
+    const digits = rawPhone.replace(/\D/g, '');
+    const fullDigits = digits.length <= 11 ? `55${digits}` : digits;
+    return `https://wa.me/${fullDigits}`;
   };
 
   return (
@@ -91,6 +91,25 @@ export default function StudentCard({ student, isLightBg }) {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <Mail size={13} /> {student.email}
               </span>
+              {student.phone && (
+                <a
+                  href={getWhatsAppUrl(student.phone)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    color: '#22c55e',
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                  title="Conversar no WhatsApp"
+                  data-testid={`student-phone-${student.id}`}
+                >
+                  <MessageCircle size={13} /> {student.phone}
+                </a>
+              )}
               <span
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 title="Data e horário em que virou aluno"
@@ -148,6 +167,7 @@ export default function StudentCard({ student, isLightBg }) {
                 course={course}
                 isLightBg={isLightBg}
                 onOpenHistory={(c) => setSelectedCourseForHistory(c)}
+                onOpenTriggerWebhook={(c) => setSelectedCourseForWebhook(c)}
               />
             ))
           ) : (
@@ -174,6 +194,15 @@ export default function StudentCard({ student, isLightBg }) {
         onClose={() => setSelectedCourseForHistory(null)}
         student={student}
         course={selectedCourseForHistory}
+        isLightBg={isLightBg}
+      />
+
+      {/* Modal de Disparo Manual de Integração/Webhook */}
+      <StudentTriggerWebhookModal
+        isOpen={Boolean(selectedCourseForWebhook)}
+        onClose={() => setSelectedCourseForWebhook(null)}
+        student={student}
+        course={selectedCourseForWebhook}
         isLightBg={isLightBg}
       />
     </div>

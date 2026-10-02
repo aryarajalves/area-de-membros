@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     B2_FOLDER: str = os.getenv("B2_FOLDER", "projetobase/backups/")
     B2_RETENTION_MAX: int = int(os.getenv("B2_RETENTION_MAX", "30"))
 
+    # Configurações do Worker de Verificações Periódicas
+    ENABLE_INTERNAL_SCHEDULER: bool = os.getenv("ENABLE_INTERNAL_SCHEDULER", "false").lower() in ("true", "1", "yes")
+    WORKER_RENEWAL_CHECK_INTERVAL_HOURS: int = int(os.getenv("WORKER_RENEWAL_CHECK_INTERVAL_HOURS", "24"))
+
     model_config = SettingsConfigDict(case_sensitive=True)
 
 settings = Settings()

@@ -170,3 +170,49 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
   - `ix_webhook_logs_id`, `ix_webhook_logs_webhook_id`.
 - **Script de Migração:** `backend/scripts/migrate_webhooks_tables.py`
 
+---
+
+### [30/09/2026] - Módulo de Suporte e Comunidade de Dúvidas de Cursos
+- **Tabelas Criadas:**
+  - `support_topics`: Armazena tópicos/dúvidas de alunos sobre os cursos (`id`, `user_id`, `course_id`, `title`, `content`, `image_url`, `status`, `likes_count`, `created_at`, `updated_at`).
+  - `support_replies`: Respostas enviadas por alunos e instrutores/admins (`id`, `topic_id`, `user_id`, `content`, `image_url`, `is_instructor_reply`, `created_at`).
+  - `support_topic_likes`: Curtidas em tópicos para ordenação por relevância/popularidade (`id`, `topic_id`, `user_id`, `created_at`, UNIQUE `(topic_id, user_id)`).
+- **Índices Criados:**
+  - `ix_support_topics_id`, `ix_support_topics_user_id`, `ix_support_topics_course_id`.
+  - `ix_support_replies_id`, `ix_support_replies_topic_id`, `ix_support_replies_user_id`.
+  - `ix_support_topic_likes_id`, `ix_support_topic_likes_topic_id`, `ix_support_topic_likes_user_id`.
+---
+
+### [01/10/2026] - Pontuação Personalizada por Pergunta e % Mínima de Aprovação no Quiz
+- **Tabelas Afetadas:**
+  - `lessons`: Adicionada coluna `passing_score_pct` (INTEGER, DEFAULT 70) para definir a porcentagem mínima de aprovação do quiz por aula.
+  - `quiz_questions`: Adicionada coluna `points` (INTEGER, DEFAULT 1) para atribuir pontuação/peso individual a cada pergunta.
+  - `quiz_submissions`: Adicionadas colunas `total_points` (INTEGER, DEFAULT 0) e `earned_points` (INTEGER, DEFAULT 0) para histórico detalhado do cálculo por pontos.
+- **Script de Migração:** `backend/scripts/migrate_quiz_scoring.py`
+
+---
+
+### [01/10/2026] - Convites com Expiração Indefinida e Campo de WhatsApp para Alunos
+- **Tabelas Afetadas:**
+  - `users`: Adicionada coluna `phone` (VARCHAR(50), NULL) para armazenar o número de WhatsApp informado pelo aluno no cadastro ou editado pelo administrador.
+  - `registration_verifications`: Adicionada coluna `phone` (VARCHAR(50), NULL) para preservar o número informado durante o fluxo de verificação OTP por e-mail.
+  - `invites`: Alterada coluna `expires_at` para permitir `NULL` (`DROP NOT NULL`), suportando links de convite que nunca expiram.
+- **Script de Migração:** `backend/scripts/migrate_invite_indefinite_and_user_phone.py`
+
+---
+
+### [01/10/2026] - Melhor Resposta / Solução Oficial em Dúvidas do Suporte
+- **Tabela Afetada:**
+  - `support_replies`: Adicionada coluna `is_solution` (BOOLEAN, DEFAULT FALSE) para marcar respostas como solução oficial aceita pelo autor ou instrutor.
+- **Script de Migração:** `backend/scripts/migrate_support_solution.py`
+
+---
+
+### [01/10/2026] - Criação da Tabela de Tokens de API (API Keys)
+- **Tabela Criada:**
+  - `api_tokens`: Armazena chaves de API permanentes para integrações externas com a plataforma (`id`, `user_id`, `name`, `token`, `masked_token`, `is_active`, `last_used_at`, `expires_at`, `created_at`).
+- **Índice Criado:** `ix_api_tokens_token`.
+- **Script de Migração:** `backend/scripts/migrate_api_tokens.py`
+
+
+

@@ -60,7 +60,12 @@ def _format_webhook_response(webhook: Webhook, db: Session) -> WebhookResponse:
     )
 
 
-@router.get("", response_model=List[WebhookResponse])
+@router.get(
+    "",
+    response_model=List[WebhookResponse],
+    summary="Listar Webhooks Cadastrados",
+    description="Retorna todas as integrações de webhook cadastradas com métricas de disparos (sucesso/falha) e cursos vinculados."
+)
 def list_integrations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
@@ -77,7 +82,13 @@ def list_integrations(
         )
 
 
-@router.post("", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=WebhookResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastrar Novo Webhook",
+    description="Cria uma integração de webhook para envio de eventos em tempo real (progresso do aluno, conclusão de aula, matrícula e avisos de renovação)."
+)
 def create_integration(
     data: WebhookCreate,
     db: Session = Depends(get_db),
@@ -118,7 +129,12 @@ def create_integration(
         )
 
 
-@router.get("/{id}", response_model=WebhookResponse)
+@router.get(
+    "/{id}",
+    response_model=WebhookResponse,
+    summary="Obter Detalhes do Webhook",
+    description="Retorna dados cadastrais da integração, curso vinculado, chave de assinatura e métricas de disparos."
+)
 def get_integration(
     id: int,
     db: Session = Depends(get_db),
@@ -131,7 +147,12 @@ def get_integration(
     return _format_webhook_response(webhook, db)
 
 
-@router.put("/{id}", response_model=WebhookResponse)
+@router.put(
+    "/{id}",
+    response_model=WebhookResponse,
+    summary="Atualizar Configurações do Webhook",
+    description="Atualiza a URL de destino, eventos assinados, curso alvo ou status de ativação da integração."
+)
 def update_integration(
     id: int,
     data: WebhookUpdate,
@@ -178,7 +199,11 @@ def update_integration(
         )
 
 
-@router.delete("/{id}")
+@router.delete(
+    "/{id}",
+    summary="Excluir Webhook",
+    description="Remove a integração e todos os registros históricos de logs de envio associados."
+)
 def delete_integration(
     id: int,
     db: Session = Depends(get_db),
@@ -203,7 +228,12 @@ def delete_integration(
         )
 
 
-@router.post("/{id}/test", response_model=WebhookTestResponse)
+@router.post(
+    "/{id}/test",
+    response_model=WebhookTestResponse,
+    summary="Testar Disparo do Webhook",
+    description="Envia uma requisição HTTP POST imediata com dados fictícios para validar a conectividade com a URL cadastrada."
+)
 def test_integration(
     id: int,
     db: Session = Depends(get_db),
@@ -270,7 +300,12 @@ def test_integration(
         )
 
 
-@router.get("/{id}/logs", response_model=List[WebhookLogResponse])
+@router.get(
+    "/{id}/logs",
+    response_model=List[WebhookLogResponse],
+    summary="Listar Histórico de Disparos",
+    description="Retorna os últimos logs de envio do webhook contendo status HTTP recebido, payload transmitido e data."
+)
 def get_integration_logs(
     id: int,
     limit: int = Query(50, le=200),
@@ -314,7 +349,12 @@ def get_integration_logs(
     return result
 
 
-@router.post("/check-renewals", status_code=status.HTTP_200_OK)
+@router.post(
+    "/check-renewals",
+    status_code=status.HTTP_200_OK,
+    summary="Verificação Manual de Renovações",
+    description="Dispara checagem manual imediata de renovação e expiração de cursos enviando eventos de webhook pendentes."
+)
 def trigger_check_renewals(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)

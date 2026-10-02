@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Edit2, KeyRound, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Edit2, KeyRound, Filter, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 
 export default function UserTableTab({
   currentUser,
@@ -22,6 +22,13 @@ export default function UserTableTab({
   totalUserPages,
   pageSize,
 }) {
+  const getWhatsAppUrl = (rawPhone) => {
+    if (!rawPhone) return '#';
+    const digits = rawPhone.replace(/\D/g, '');
+    const fullDigits = digits.length <= 11 ? `55${digits}` : digits;
+    return `https://wa.me/${fullDigits}`;
+  };
+
   return (
     <div className="table-card" data-testid="users-table-view">
       {/* Toolbar de Filtro e Ações em Massa */}
@@ -84,6 +91,7 @@ export default function UserTableTab({
             </th>
             <th>Nome</th>
             <th>E-mail</th>
+            <th>WhatsApp</th>
             <th>Perfil</th>
             <th>Status</th>
             <th>Cadastrado em</th>
@@ -93,7 +101,7 @@ export default function UserTableTab({
         <tbody>
           {paginatedUsers.length === 0 ? (
             <tr>
-              <td colSpan={7} className="empty-table-state">
+              <td colSpan={8} className="empty-table-state">
                 Nenhum usuário encontrado com os filtros selecionados.
               </td>
             </tr>
@@ -118,6 +126,33 @@ export default function UserTableTab({
                   </td>
                   <td className="font-semibold">{u.name}</td>
                   <td className="text-secondary">{u.email}</td>
+                  <td>
+                    {u.phone ? (
+                      <a
+                        href={getWhatsAppUrl(u.phone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          color: '#22c55e',
+                          textDecoration: 'none',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                        }}
+                        title="Abrir conversa no WhatsApp"
+                        data-testid={`user-whatsapp-link-${u.id}`}
+                      >
+                        <MessageCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>{u.phone}</span>
+                      </a>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: '13px' }} data-testid={`user-no-whatsapp-${u.id}`}>
+                        —
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <span className={`badge badge-${u.role}`} data-testid={`badge-role-${u.id}`}>
                       {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'aluno' ? 'Aluno' : 'Usuário'}

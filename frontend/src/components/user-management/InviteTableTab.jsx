@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, Copy, Clock, AlertTriangle, CheckCircle2, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatBrasiliaDateTime } from '../student-management/studentDateUtils';
 
 export default function InviteTableTab({
   filteredInvites,
@@ -135,9 +136,15 @@ export default function InviteTableTab({
                     )}
                   </td>
                   <td className="text-secondary">
-                    <span className={inv.is_expired ? 'text-danger' : ''}>
-                      {inv.time_remaining || '—'}
-                    </span>
+                    {inv.time_remaining === 'Indefinido' ? (
+                      <span className="badge badge-indefinite" style={{ fontSize: '0.78rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                        Não expira
+                      </span>
+                    ) : (
+                      <span className={inv.is_expired ? 'text-danger' : ''}>
+                        {inv.time_remaining || '—'}
+                      </span>
+                    )}
                   </td>
                   <td>
                     {inv.is_used ? (
@@ -146,8 +153,8 @@ export default function InviteTableTab({
                       <span className="text-muted">Ainda não utilizado</span>
                     )}
                   </td>
-                  <td className="text-secondary">
-                    {new Date(inv.created_at).toLocaleDateString('pt-BR')}
+                  <td className="text-secondary" data-testid={`invite-created-at-${inv.id}`}>
+                    {formatBrasiliaDateTime(inv.created_at)}
                   </td>
                   <td>
                     <div className="table-actions-group">

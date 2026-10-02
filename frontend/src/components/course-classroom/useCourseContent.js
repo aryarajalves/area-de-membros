@@ -131,6 +131,7 @@ export function useCourseContent(courseId) {
     setActionLoading(true);
     const token = localStorage.getItem('auth_token');
     try {
+      const { quiz_questions, ...lessonPayload } = payload;
       const url = editingLessonId
         ? `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${editingLessonId}`
         : `/api/v1/courses/${courseId}/modules/${moduleId}/lessons`;
@@ -142,11 +143,28 @@ export function useCourseContent(courseId) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(lessonPayload)
       });
 
       if (res.ok) {
         const saved = await res.json();
+
+        // Se for quiz e tiver perguntas fornecidas, salva o conjunto de perguntas
+        if (payload.content_type === 'quiz' && Array.isArray(quiz_questions)) {
+          const targetLessonId = saved.id || editingLessonId;
+          await fetch(`/api/v1/courses/${courseId}/lessons/${targetLessonId}/quiz`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              questions: quiz_questions,
+              passing_score_pct: payload.passing_score_pct !== undefined ? payload.passing_score_pct : 70
+            })
+          });
+        }
+
         addToast(editingLessonId ? 'Aula atualizada com sucesso!' : 'Aula criada com sucesso!', 'success');
         await fetchCourseData();
         setActiveLesson(saved);

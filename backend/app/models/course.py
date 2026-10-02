@@ -62,6 +62,9 @@ class Lesson(Base):
     duration = Column(String, nullable=True)
     order_index = Column(Integer, default=0, index=True)
     availability_status = Column(String, default="available", nullable=True)  # 'available', 'coming_soon'
+    content_type = Column(String, default="video", nullable=True)  # 'video', 'text', 'quiz'
+    text_content = Column(Text, nullable=True)
+    passing_score_pct = Column(Integer, default=70, nullable=True)  # Nota mínima de aprovação no quiz (ex: 70%)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -73,6 +76,8 @@ class Lesson(Base):
     ratings = relationship("LessonRating", back_populates="lesson", cascade="all, delete-orphan")
     reports = relationship("LessonReport", back_populates="lesson", cascade="all, delete-orphan")
     notes = relationship("LessonNote", back_populates="lesson", cascade="all, delete-orphan")
+    quiz_questions = relationship("QuizQuestion", back_populates="lesson", cascade="all, delete-orphan", order_by="QuizQuestion.order_index.asc()")
+    quiz_submissions = relationship("QuizSubmission", back_populates="lesson", cascade="all, delete-orphan")
 
 
 class LessonVideo(Base):
@@ -186,5 +191,52 @@ class LessonNote(Base):
 
     lesson = relationship("Lesson", back_populates="notes")
     user = relationship("User")
+
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    points = Column(Integer, default=1, nullable=False)  # Pontos/peso desta pergunta no quiz
+    order_index = Column(Integer, default=0, index=True)
+    explanation = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    lesson = relationship("Lesson", back_populates="quiz_questions")
+    options = relationship("QuizOption", back_populates="question", cascade="all, delete-orphan", order_by="QuizOption.order_index.asc()")
+
+
+class QuizOption(Base):
+    __tablename__ = "quiz_options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("quiz_questions.id", ondelete="CASCADE"), nullable=False, index=True)
+    option_text = Column(Text, nullable=False)
+    is_correct = Column(Boolean, default=False)
+    order_index = Column(Integer, default=0, index=True)
+
+    question = relationship("QuizQuestion", back_populates="options")
+
+
+class QuizSubmission(Base):
+    __tablename__ = "quiz_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    score = Column(Integer, default=0)
+    total_questions = Column(Integer, default=0)
+    correct_answers = Column(Integer, default=0)
+    total_points = Column(Integer, default=0, nullable=True)
+    earned_points = Column(Integer, default=0, nullable=True)
+    passed = Column(Boolean, default=True)
+    answers_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    lesson = relationship("Lesson", back_populates="quiz_submissions")
+    user = relationship("User")
+
 
 

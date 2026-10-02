@@ -186,15 +186,6 @@ export default function LessonNotes({ courseId, lessonId, currentUser, isLightBg
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSaveEdit(noteId); }
   };
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
-        <Loader2 size={24} className="spin-animation" style={{ margin: '0 auto 8px' }} />
-        <p style={{ margin: 0, fontSize: '13px' }}>Carregando suas anotações...</p>
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -288,7 +279,12 @@ export default function LessonNotes({ courseId, lessonId, currentUser, isLightBg
 
       {/* Lista de Badges / Cards de Anotações */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} data-testid="lesson-notes-list">
-        {notes.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '36px 16px', color: subTextColor }} data-testid="notes-loading-state">
+            <Loader2 size={24} className="spin-animation" style={{ margin: '0 auto 8px' }} />
+            <p style={{ margin: 0, fontSize: '13px' }}>Carregando suas anotações...</p>
+          </div>
+        ) : notes.length === 0 ? (
           <div
             style={{ padding: '24px 16px', textAlign: 'center', backgroundColor: boxBg, border: isLightBg ? '1px dashed #cbd5e1' : '1px dashed rgba(255, 255, 255, 0.12)', borderRadius: '8px', color: subTextColor }}
             data-testid="notes-empty-state"

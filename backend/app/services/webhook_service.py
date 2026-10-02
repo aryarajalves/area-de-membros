@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.core.logger import logger
+from app.models.user import User
 from app.models.webhook import Webhook, WebhookLog
 from app.models.course import Course, UserCourse
 

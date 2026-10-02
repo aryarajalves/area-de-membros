@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, ShieldCheck, Check, Copy, KeyRound, BookOpen, Layers, Clock } from 'lucide-react';
+import { formatBrasiliaDateTime } from '../student-management/studentDateUtils';
 
 export const COURSE_ACCESS_DURATION_OPTIONS = [
   { value: 'lifetime', label: 'Vitalício' },
@@ -202,6 +203,7 @@ export function CreateInviteModal({
                 onChange={(e) => setExpireHours(e.target.value)}
                 data-testid="expire-hours-select"
               >
+                <option value="0">Indefinido (não expira)</option>
                 <option value="1">1 hora</option>
                 <option value="6">6 horas</option>
                 <option value="12">12 horas</option>
@@ -227,8 +229,17 @@ export function CreateInviteModal({
               <h4>Link de convite criado com sucesso!</h4>
               <p>
                 Perfil: <strong>{generatedInvite.role === 'admin' ? 'Admin' : 'Aluno'}</strong> | 
-                Expira em <strong>{expireHours} hora(s)</strong>
+                {expireHours === '0' || expireHours === 0 ? (
+                  <span> Validade: <strong>Indefinido (não expira)</strong></span>
+                ) : (
+                  <span> Expira em <strong>{expireHours} hora(s)</strong></span>
+                )}
               </p>
+              {generatedInvite.created_at && (
+                <p style={{ marginTop: '4px', fontSize: '12px', color: '#64748b' }}>
+                  Criado em: <strong style={{ color: '#0284c7' }}>{formatBrasiliaDateTime(generatedInvite.created_at)}</strong> (Horário de Brasília)
+                </p>
+              )}
             </div>
 
             <div className="invite-link-box">
@@ -319,6 +330,9 @@ export function EditUserRoleModal({
           <div className="user-details-summary">
             <p><strong>Nome:</strong> {editingUser.name}</p>
             <p><strong>E-mail:</strong> {editingUser.email}</p>
+            {editingUser.phone && (
+              <p><strong>WhatsApp:</strong> <span style={{ color: '#22c55e', fontWeight: 600 }}>{editingUser.phone}</span></p>
+            )}
           </div>
 
           <div className="form-group">

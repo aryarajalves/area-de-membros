@@ -107,4 +107,48 @@ describe('StudentAccessHistoryModal Component', () => {
       expect(screen.getByText(/O aluno ainda não possui aulas concluídas/i)).toBeInTheDocument();
     });
   });
+
+  it('paginates history list showing 20 per page with navigation controls', async () => {
+    const manyHistoryItems = Array.from({ length: 25 }, (_, idx) => ({
+      lesson_id: 300 + idx,
+      lesson_title: `Aula Extra ${idx + 1}`,
+      module_title: 'Módulo Geral',
+      is_completed: true,
+      completed_at: '2026-10-01T12:00:00Z',
+    }));
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => manyHistoryItems,
+    });
+
+    render(
+      <ToastProvider>
+        <StudentAccessHistoryModal
+          isOpen={true}
+          onClose={() => {}}
+          student={mockStudent}
+          course={mockCourse}
+          isLightBg={false}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Aula Extra 1')).toBeInTheDocument();
+      expect(screen.getByText('Aula Extra 20')).toBeInTheDocument();
+      expect(screen.queryByText('Aula Extra 21')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('history-pagination-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('history-pagination-bar')).toHaveTextContent(/Exibindo 1–20 de 25 aulas concluídas/i);
+
+    const nextBtn = screen.getByTestId('next-history-page-btn');
+    fireEvent.click(nextBtn);
+
+    expect(screen.getByText('Aula Extra 21')).toBeInTheDocument();
+    expect(screen.getByText('Aula Extra 25')).toBeInTheDocument();
+    expect(screen.queryByText('Aula Extra 1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('history-pagination-bar')).toHaveTextContent(/Exibindo 21–25 de 25 aulas concluídas/i);
+  });
 });

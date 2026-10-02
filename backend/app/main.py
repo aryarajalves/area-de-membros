@@ -59,15 +59,41 @@ async def lifespan(app: FastAPI):
             pass
     # Seed initial superadmin from env
     init_superadmin()
-    # Inicializa agendador de backup automático em background
-    setup_scheduler()
+    # Inicializa agendador de backup automático em background apenas se configurado
+    if settings.ENABLE_INTERNAL_SCHEDULER:
+        setup_scheduler()
+    else:
+        from app.core.logger import logger
+        logger.info("[MAIN] Scheduler interno desativado no processo web. As rotinas periódicas são executadas pelo serviço Worker dedicado.")
     yield
     # Finaliza scheduler se estiver rodando
     if scheduler.running:
         scheduler.shutdown()
 
+tags_metadata = [
+    {"name": "Autenticação e Usuários", "description": "Endpoints para login, cadastro, convites, gestão de usuários e redefinição de senhas."},
+    {"name": "Cursos e Módulos", "description": "Gestão de cursos, criação e ordenação de módulos e customização de tema da plataforma."},
+    {"name": "Aulas e Conteúdos", "description": "Aulas multimídia (vídeos com legendas/áudios multilíngues, textos/artigos e materiais anexos)."},
+    {"name": "Quizzes e Avaliações", "description": "Avaliações interativas de múltipla escolha com cálculo automático de notas e feedback."},
+    {"name": "Interações e Progresso", "description": "Comentários da comunidade, progresso das aulas assistidas, notas pessoais e avaliações por estrelas."},
+    {"name": "Alunos e Matrículas", "description": "Gestão de alunos, importação em lote via CSV, prazos de expiração e histórico de aulas assistidas."},
+    {"name": "Suporte e Dúvidas", "description": "Fórum de suporte da comunidade com tópicos categorizados por curso, anexos de imagem e respostas."},
+    {"name": "Webhooks e Integrações", "description": "Disparo automático de webhooks para plataformas externas (Kiwify, Hotmart, n8n, Typebot)."},
+    {"name": "Sistema", "description": "Monitoramento e verificação de saúde da API."},
+]
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    description="""
+    ## 🚀 API Oficial da Área de Membros
+    Plataforma premium para hospedagem de cursos, gestão de alunos, quizzes interativos, suporte em comunidade e integrações automatizadas.
+    
+    ### 🛡️ Autenticação:
+    Para acessar as rotas protegidas, utilize o cabeçalho:
+    `Authorization: Bearer <seu_token_jwt>`
+    """,
+    version="2.0.0",
+    openapi_tags=tags_metadata,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
@@ -82,10 +108,10 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-@app.get("/health")
+@app.get("/health", tags=["Sistema"], summary="Status e Saúde da API", description="Verifica se o backend e a conexão geral estão operacionais.")
 def health_check():
     return {"status": "ok", "app": settings.PROJECT_NAME}
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
     return {"message": f"Bem-vindo ao {settings.PROJECT_NAME}"}

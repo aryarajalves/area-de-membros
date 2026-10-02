@@ -8,10 +8,14 @@ import {
   RegisterSuccessState,
 } from './register/RegisterStatusStates';
 
+import { DEFAULT_COUNTRY } from './register/countryData';
+
 export default function Register({ token: initialToken, onRegisterSuccess }) {
   const [token, setToken] = useState(initialToken || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -63,6 +67,10 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
 
   const isPasswordValid = rules.every((r) => r.valid);
   const passwordsMatch = password.length > 0 && password === passwordConfirm;
+  const digitsOnly = phone.replace(/\D/g, '');
+  const isPhoneValid = selectedCountry.code === 'BR'
+    ? digitsOnly.length >= 10 && digitsOnly.length <= 11
+    : digitsOnly.length >= 7;
 
   // Contador para reenvio de código OTP
   useEffect(() => {
@@ -111,6 +119,13 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
     e.preventDefault();
     setFormError('');
 
+    if (!isPhoneValid) {
+      const errMsg = 'Por favor, informe um número de WhatsApp válido.';
+      setFormError(errMsg);
+      addToast(errMsg, 'error');
+      return;
+    }
+
     if (!isPasswordValid) {
       const errMsg = 'Por favor, atenda a todos os requisitos de segurança da senha.';
       setFormError(errMsg);
@@ -127,6 +142,7 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
 
     setSubmitting(true);
     try {
+      const formattedPhoneWithDdi = `${selectedCountry.ddi} ${phone.trim()}`;
       const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -134,6 +150,7 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
           token,
           name,
           email,
+          phone: formattedPhoneWithDdi,
           password,
           password_confirm: passwordConfirm,
         }),
@@ -273,6 +290,11 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
       setName={setName}
       email={email}
       setEmail={setEmail}
+      phone={phone}
+      setPhone={setPhone}
+      selectedCountry={selectedCountry}
+      setSelectedCountry={setSelectedCountry}
+      isPhoneValid={isPhoneValid}
       password={password}
       setPassword={setPassword}
       passwordConfirm={passwordConfirm}

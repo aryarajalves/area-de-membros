@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { History, CheckCircle2, BookOpen, Clock, Loader2, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { formatBrasiliaDateTime } from './studentDateUtils';
 
 export default function StudentAccessHistoryModal({ isOpen, onClose, student, course, isLightBg }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
   const { addToast } = useToast();
 
   const modalBg = isLightBg ? '#ffffff' : '#0f172a';
@@ -17,6 +20,7 @@ export default function StudentAccessHistoryModal({ isOpen, onClose, student, co
   useEffect(() => {
     if (isOpen && student && course) {
       setLoading(true);
+      setCurrentPage(1);
       const token = localStorage.getItem('auth_token');
       fetch(`/api/v1/students/${student.id}/courses/${course.course_id}/history`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -36,17 +40,11 @@ export default function StudentAccessHistoryModal({ isOpen, onClose, student, co
 
   if (!isOpen || !student || !course) return null;
 
-  const formatDateTime = (dateStr) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      const datePart = d.toLocaleDateString('pt-BR');
-      const timePart = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      return `${datePart} às ${timePart}`;
-    } catch {
-      return '—';
-    }
-  };
+  const totalItems = history.length;
+  const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+  const paginatedHistory = history.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const formatDateTime = (dateStr) => formatBrasiliaDateTime(dateStr);
 
   return (
     <div
@@ -138,7 +136,7 @@ export default function StudentAccessHistoryModal({ isOpen, onClose, student, co
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {history.map((item, idx) => (
+              {paginatedHistory.map((item, idx) => (
                 <div
                   key={idx}
                   style={{
@@ -208,6 +206,71 @@ export default function StudentAccessHistoryModal({ isOpen, onClose, student, co
             </div>
           )}
         </div>
+
+        {/* Paginação do Histórico (se houver mais de 20 itens) */}
+        {totalItems > PAGE_SIZE && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 0',
+              marginBottom: '16px',
+              borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)',
+              fontSize: '0.82rem',
+              color: subTextColor,
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}
+            data-testid="history-pagination-bar"
+          >
+            <div>
+              Exibindo <strong>{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalItems)}</strong> de{' '}
+              <strong>{totalItems}</strong> aulas concluídas
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
+                  backgroundColor: 'transparent',
+                  color: textColor,
+                  cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage <= 1 ? 0.4 : 1,
+                  fontSize: '0.8rem',
+                }}
+                data-testid="prev-history-page-btn"
+              >
+                Anterior
+              </button>
+              <span>
+                Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
+                  backgroundColor: 'transparent',
+                  color: textColor,
+                  cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                  opacity: currentPage >= totalPages ? 0.4 : 1,
+                  fontSize: '0.8rem',
+                }}
+                data-testid="next-history-page-btn"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Rodapé com 1 botão para fechar */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

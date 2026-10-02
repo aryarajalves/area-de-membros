@@ -80,6 +80,9 @@ class LessonBase(BaseModel):
     duration: Optional[str] = None
     order_index: Optional[int] = 0
     availability_status: Optional[str] = "available"  # 'available', 'coming_soon'
+    content_type: Optional[str] = "video"  # 'video', 'text', 'quiz'
+    text_content: Optional[str] = None
+    passing_score_pct: Optional[int] = 70
 
 class LessonCreate(LessonBase):
     videos: Optional[List[LessonVideoCreate]] = None
@@ -94,6 +97,9 @@ class LessonUpdate(BaseModel):
     duration: Optional[str] = None
     order_index: Optional[int] = None
     availability_status: Optional[str] = None
+    content_type: Optional[str] = None
+    text_content: Optional[str] = None
+    passing_score_pct: Optional[int] = None
     videos: Optional[List[LessonVideoCreate]] = None
     attachments: Optional[List[LessonAttachmentCreate]] = None
 

@@ -51,7 +51,7 @@ export default function LessonComments({
       );
       if (res.ok) {
         const data = await res.json();
-        setComments(data);
+        setComments(Array.isArray(data) ? data : []);
       } else {
         const err = await res.json();
         throw new Error(err.detail || 'Erro ao carregar comentários.');
@@ -71,9 +71,10 @@ export default function LessonComments({
     setCurrentPage(1);
   }, [lessonId]);
 
-  const totalPages = Math.max(1, Math.ceil(comments.length / COMMENTS_PER_PAGE));
+  const commentsList = Array.isArray(comments) ? comments : [];
+  const totalPages = Math.max(1, Math.ceil(commentsList.length / COMMENTS_PER_PAGE));
   const startIndex = (currentPage - 1) * COMMENTS_PER_PAGE;
-  const paginatedComments = comments.slice(startIndex, startIndex + COMMENTS_PER_PAGE);
+  const paginatedComments = commentsList.slice(startIndex, startIndex + COMMENTS_PER_PAGE);
 
   useEffect(() => {
     if (currentPage > totalPages) {

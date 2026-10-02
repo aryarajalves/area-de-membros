@@ -44,7 +44,7 @@ describe('LogManagement Component', () => {
     });
   };
 
-  it('renders log management header and only backend/frontend service tabs (no postgres)', async () => {
+  it('renders log management header and backend/frontend/worker service tabs (no postgres)', async () => {
     setupFetchMock();
     render(
       <ToastProvider>
@@ -55,7 +55,8 @@ describe('LogManagement Component', () => {
     expect(screen.getByText('Gerenciamento de logs')).toBeInTheDocument();
     expect(screen.getByTestId('tab-service-backend')).toBeInTheDocument();
     expect(screen.getByTestId('tab-service-frontend')).toBeInTheDocument();
-    // Confirma explicitamente que a aba do PostgreSQL foi removida
+    expect(screen.getByTestId('tab-service-worker')).toBeInTheDocument();
+    // Confirma explicitamente que a aba do PostgreSQL não existe
     expect(screen.queryByTestId('tab-service-db')).not.toBeInTheDocument();
 
     // Aguarda carregar logs do backend
@@ -136,6 +137,25 @@ describe('LogManagement Component', () => {
       // Confirma que 17:59 UTC foi exibido como 14:59 (Horário de Brasília)
       expect(screen.getByText(/14:59:35/)).toBeInTheDocument();
       expect(screen.getByText(/HTTP 200/)).toBeInTheDocument();
+    });
+  });
+
+  it('switches container to worker and requests worker logs', async () => {
+    setupFetchMock();
+    render(
+      <ToastProvider>
+        <LogManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    const workerTab = screen.getByTestId('tab-service-worker');
+    fireEvent.click(workerTab);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/logs/worker'),
+        expect.anything()
+      );
     });
   });
 

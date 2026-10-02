@@ -97,8 +97,7 @@ describe('UserManagement Component Tabs', () => {
     );
 
     // Página 1 deve ter 20 itens exibidos
-    expect(await screen.findByTestId('users-pagination')).toBeInTheDocument();
-    expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    expect(await screen.findByText('Página 1 de 2')).toBeInTheDocument();
     expect(screen.getByText(/Mostrando 1 a 20 de 25 usuários/i)).toBeInTheDocument();
 
     // Verifica que o tipo "Usuário comum" não existe no filtro
@@ -388,6 +387,64 @@ describe('UserManagement Component Tabs', () => {
       expect(patchPayload.course_access).toEqual([
         { course_id: 10, access_duration: '2_years' },
       ]);
+    });
+  });
+
+  it('allows creating an invite with indefinite duration (never expires)', async () => {
+    let invitePayload = null;
+    global.fetch = vi.fn().mockImplementation((url, options) => {
+      if (url.includes('/invites') && options?.method === 'POST') {
+        invitePayload = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: 99,
+            token: 'indefinite_token_123',
+            role: 'aluno',
+            duration_hours: 0,
+            expires_at: null,
+            time_remaining: 'Indefinido',
+            is_used: false,
+            created_at: new Date().toISOString(),
+          }),
+        });
+      }
+      if (url.includes('/users')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 1, name: 'Super Admin', email: 'admin@test.com', role: 'superadmin', is_active: true, created_at: new Date().toISOString() },
+          ],
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <UserManagement currentUser={{ id: 1, role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    // Abre modal de convite
+    const createBtn = await screen.findByTestId('open-invite-modal-btn');
+    fireEvent.click(createBtn);
+
+    const expireSelect = screen.getByTestId('expire-hours-select');
+    expect(expireSelect).toBeInTheDocument();
+    expect(screen.getByText('Indefinido (não expira)')).toBeInTheDocument();
+
+    // Seleciona a opção indefinida
+    fireEvent.change(expireSelect, { target: { value: '0' } });
+    expect(expireSelect.value).toBe('0');
+
+    // Submete o convite
+    fireEvent.click(screen.getByTestId('generate-invite-submit-btn'));
+
+    await waitFor(() => {
+      expect(invitePayload).not.toBeNull();
+      expect(invitePayload.duration_hours).toBe(0);
+      expect(screen.getByText(/Indefinido \(não expira\)/i)).toBeInTheDocument();
     });
   });
 });

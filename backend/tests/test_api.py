@@ -15,43 +15,7 @@ from app.models.user import User, Invite, RegistrationVerification
 from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
 from app.models.webhook import Webhook, WebhookLog
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    Base.metadata.create_all(bind=engine)
-    # Seed superadmin
-    db = TestingSessionLocal()
-    superadmin = User(
-        email=settings.SUPERADMIN_EMAIL,
-        name=settings.SUPERADMIN_NAME,
-        hashed_password=get_password_hash(settings.SUPERADMIN_PASSWORD),
-        role="superadmin",
-        is_active=True
-    )
-    db.add(superadmin)
-    db.commit()
-    db.close()
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-client = TestClient(app)
+from tests.conftest import TestingSessionLocal, client
 
 def get_superadmin_headers():
     res = client.post("/api/v1/auth/login", json={
@@ -119,6 +83,7 @@ def test_create_invite_and_register_user():
         "token": invite_token,
         "name": "Novo Admin",
         "email": "admin@teste.com",
+        "phone": "+55 (11) 98888-7777",
         "password": "fraca"
     })
     assert weak_register.status_code == 422
@@ -128,6 +93,7 @@ def test_create_invite_and_register_user():
         "token": invite_token,
         "name": "Novo Admin",
         "email": "admin@teste.com",
+        "phone": "+55 (11) 98888-7777",
         "password": "Password123456!",
         "password_confirm": "OutraSenha123456!"
     })
@@ -139,6 +105,7 @@ def test_create_invite_and_register_user():
         "token": invite_token,
         "name": "Novo Admin",
         "email": "admin@teste.com",
+        "phone": "+55 (11) 98888-7777",
         "password": "Password123456!",
         "password_confirm": "Password123456!"
     })
@@ -174,6 +141,7 @@ def test_create_invite_and_register_user():
         "token": invite_token,
         "name": "Outro Admin",
         "email": "outro@teste.com",
+        "phone": "+55 (11) 99999-8888",
         "password": "Password123456!"
     })
     assert reuse_invite.status_code == 400
@@ -206,6 +174,7 @@ def test_duplicate_email_registration_forbidden():
         "token": invite_token,
         "name": "Tentativa Clone",
         "email": settings.SUPERADMIN_EMAIL,
+        "phone": "+55 (11) 99999-8888",
         "password": "SecurePassword123!"
     })
     assert dup_res.status_code == 400
@@ -231,6 +200,7 @@ def test_edit_user_role_and_superadmin_protection():
         "token": inv_tok,
         "name": "Membro Equipe",
         "email": "membro@equipe.com",
+        "phone": "+55 (11) 99999-8888",
         "password": "MinhaSenhaForte1@",
         "password_confirm": "MinhaSenhaForte1@"
     })
@@ -278,6 +248,7 @@ def test_password_reset_flow():
         "token": inv_tok,
         "name": "Usuario Teste",
         "email": "userteste@equipe.com",
+        "phone": "+55 (11) 99999-8888",
         "password": "SenhaAntiga12345!",
         "password_confirm": "SenhaAntiga12345!"
     })
@@ -372,6 +343,7 @@ def test_user_and_invite_deletion_and_bulk_delete():
         "token": inv3["token"],
         "name": "Deletar Usuario",
         "email": "deletar@teste.com",
+        "phone": "+55 (11) 99999-8888",
         "password": "SenhaForte123!@",
         "password_confirm": "SenhaForte123!@"
     })
@@ -410,6 +382,7 @@ def test_non_superadmin_forbidden_from_management_endpoints():
         "token": inv["token"],
         "name": "Comum Acesso",
         "email": "comum.acesso@teste.com",
+        "phone": "+55 (11) 99999-8888",
         "password": "SenhaForte123!@",
         "password_confirm": "SenhaForte123!@"
     })
@@ -527,14 +500,15 @@ def test_docker_logs_endpoints():
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # 1. Listar serviços disponíveis (apenas backend e frontend)
+    # 1. Listar serviços disponíveis (backend, frontend e worker)
     services_res = client.get("/api/v1/logs/services", headers=headers)
     assert services_res.status_code == 200
     services = services_res.json()
-    assert len(services) == 2
+    assert len(services) == 3
     service_ids = [s["id"] for s in services]
     assert "backend" in service_ids
     assert "frontend" in service_ids
+    assert "worker" in service_ids
     assert "db" not in service_ids
 
     # 1.1 Testar conversão de Horário de Brasília
@@ -551,6 +525,13 @@ def test_docker_logs_endpoints():
     assert "[29/09/2026 15:04:29]" in docker_converted
     assert "INFO: Servidor iniciado com sucesso." in docker_converted
 
+    # 1.3 Testar remoção de timestamp redundante interno do Nginx em UTC
+    nginx_dup = '2026-09-30T22:40:30.123456789Z 2026/09/30 22:40:30 [notice] 41#41: gracefully shutting down'
+    dup_converted = format_to_brasilia_time(nginx_dup)
+    assert "[30/09/2026 19:40:30]" in dup_converted
+    assert "22:40:30" not in dup_converted
+    assert "[notice] 41#41: gracefully shutting down" in dup_converted
+
     # 2. Consultar logs de backend com filtro de data e horário
     logs_res = client.get("/api/v1/logs/backend?tail=20&date=2026-09-29&start_time=14:00&end_time=16:00", headers=headers)
     assert logs_res.status_code == 200
@@ -558,6 +539,11 @@ def test_docker_logs_endpoints():
     assert data["service"] == "backend"
     assert "logs" in data
     assert isinstance(data["logs"], list)
+
+    # 2.1 Consultar logs do worker
+    worker_res = client.get("/api/v1/logs/worker?tail=10", headers=headers)
+    assert worker_res.status_code == 200
+    assert worker_res.json()["service"] == "worker"
 
     # 3. Acesso bloqueado sem token
     unauth_res = client.get("/api/v1/logs/backend")

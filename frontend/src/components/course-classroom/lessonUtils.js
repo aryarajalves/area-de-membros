@@ -117,6 +117,12 @@ export function formatSecondsToTimer(totalSeconds) {
 export function isLessonComingSoon(lesson) {
   if (!lesson) return false;
   if (lesson.availability_status === 'coming_soon') return true;
+  
+  // Aulas de texto ou quiz não dependem de vídeo para estarem disponíveis
+  if (lesson.content_type === 'text' || lesson.content_type === 'quiz') {
+    return false;
+  }
+
   const hasVideosArray = Array.isArray(lesson.videos) && lesson.videos.some((v) => v?.video_url && String(v.video_url).trim());
   const hasMainVideoUrl = Boolean(lesson.video_url && String(lesson.video_url).trim());
   return !hasVideosArray && !hasMainVideoUrl;

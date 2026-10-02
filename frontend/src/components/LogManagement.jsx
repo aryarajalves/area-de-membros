@@ -4,10 +4,11 @@ import { useToast } from '../context/ToastContext';
 import { LogTypeFilter, LogDateFilter, TerminalLogLine, classifyLogLine } from './log-management';
 
 export default function LogManagement({ currentUser }) {
-  // Apenas contêineres de backend e frontend (sem banco de dados postgres)
+  // Contêineres de backend, frontend e worker periódico
   const [services] = useState([
     { id: 'backend', name: 'Backend (FastAPI)', container: 'area_de_membros_backend' },
     { id: 'frontend', name: 'Frontend (Nginx / Vite)', container: 'area_de_membros_frontend' },
+    { id: 'worker', name: 'Worker (Background)', container: 'area_de_membros_worker' },
   ]);
   const [selectedService, setSelectedService] = useState('backend');
   const [tailLines, setTailLines] = useState(100);

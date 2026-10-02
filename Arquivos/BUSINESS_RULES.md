@@ -76,6 +76,18 @@ Este documento registra as decisões de regras de negócio da plataforma para co
           - Na Timeline lateral (`ModuleTimelineSidebar`) e listas de aulas, a aula recebe um badge de destaque âmbar `Em Breve` com ícone de relógio (`Clock`).
           - Ao abrir a aula no player, em vez de exibir tela preta ou mensagem genérica de erro, o player widescreen exibe uma tela cinematográfica "Aula em Breve / Aula em Produção" estilizada, com a thumbnail de capa (se houver), mensagem acolhedora informando que o conteúdo será liberado em breve, e bloqueio de conclusão prematura.
         - **Visão do Administrador / Instrutor:** O administrador visualiza o status e conta com botão direto "Editar Aula e Subir Vídeo" na tela de pré-visualização da aula para anexar o vídeo assim que estiver pronto.
+    - **Aulas de Leitura e Artigo (`content_type == 'text'`):**
+      - **Editor de Artigo (`LessonArticleEditor`):** No modal de criação e edição da aula, a aba "Texto do Artigo" conta com abas interativas ("Escrever Texto" vs "Pré-visualizar Artigo").
+      - **Upload de Imagens no Artigo:** Botão dedicado "Enviar Imagem do PC" para envio de imagens (JPG, PNG, WEBP até 5 MB hospedadas no Backblaze B2) inserindo automaticamente a tag markdown `![Legenda](url)` na posição do cursor, além de botão "Link URL" para imagens externas.
+      - **Atalhos Rápidos de Formatação:** Barra de ferramentas para inserção de Subtítulos (`## `), Negrito (`**texto**`), Itens de Lista (`- `) e divisores.
+      - **Visualização Editorial (`LessonTextViewer`):** Renderiza o artigo com diagramação cinematográfica, imagens ilustrativas centralizadas com bordas suaves e legendas explicativas, além da barra completa de ações (`LessonActionToolbar`) com avaliação por estrelas, botão "Relatar Problema" e marcação de conclusão sincronizada com a API do backend.
+    - **Aulas de Quiz Interativo (`content_type == 'quiz'`):**
+      - **Porcentagem Mínima de Aprovação Configurável:** O administrador/instrutor pode definir a porcentagem de acertos exigida para que o aluno seja aprovado no quiz (coluna `passing_score_pct` na tabela `lessons`, padrão 70%, ajustável de 1% a 100%).
+      - **Pontuação e Peso por Questão:** Cada pergunta possui seu próprio valor em pontos configurável (coluna `points` na tabela `quiz_questions`, inteiro >= 1, padrão 1 ponto). O editor exibe em tempo real a soma total de pontos do quiz.
+      - **Cálculo Ponderado de Nota:** A nota final obtida é calculada proporcionalmente aos pontos das perguntas: `(pontos_obtidos / total_pontos) * 100`.
+      - **Critério de Aprovação Automática:** Se o aluno atingir nota igual ou superior a `passing_score_pct`, a tentativa é aprovada (`passed = True`) e a aula é marcada automaticamente como concluída no progresso do curso. Caso contrário, a aula permanece não concluída e o aluno pode refazer o quiz.
+      - **Segurança Antifraude:** O endpoint de consulta do quiz pelo aluno oculta o campo `is_correct` das opções, impossibilitando descobrir o gabarito via DevTools do navegador.
+      - **Feedback Visual Claro:** O aluno visualiza os pontos de cada questão no card, a meta mínima no banner superior (`Aprovação com X%`) e, ao submeter, visualiza a pontuação obtida versus total de pontos (`X de Y pontos`), a nota percentual e o feedback de aprovação ou incentivo para refazer.
   - **Navegação:** O player permite avançar para a "Próxima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
 - **Aba de Comentários da Aula:**
   - Aba dedicada abaixo do player de cada aula.
@@ -207,15 +219,26 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 - **Localização na Barra Lateral:**
   - O botão **"Alunos"** fica localizado na categoria **Geral** da barra lateral, posicionado **logo abaixo de "Relatos de Aulas"** e acima de "Configurações".
   - Visível exclusivamente para perfis com permissão de gestão: **`superadmin`** e **`admin`**.
-- **Listagem e Métricas Rápidas:**
+- **Listagem, Métricas e Filtros Avançados:**
   - O painel exibe no topo os contadores gerais: **Total de Alunos**, **Alunos Ativos** e **Progresso Médio Geral**.
-  - Barra de busca com filtro dinâmico por nome ou e-mail do aluno.
+  - **Barra de Busca e Filtros Avançados (`StudentFilterBar`):**
+    - **Busca Textual:** Campo de pesquisa dinâmica por nome ou e-mail do aluno com botão de envio e botão de limpar busca.
+    - **Filtro de Ordenação (`order_by`):**
+      - `Mais recentes (Cadastro)` (padrão)
+      - `🎯 Mais perto de terminar o curso`: ordena alunos pelo maior percentual de conclusão (`overall_progress_percent` decrescente).
+      - `⏳ Quase precisando renovar`: prioriza alunos matriculados em cursos com menor número de dias restantes para expirar (`days_remaining`), seguidos por cursos expirados e, por último, acessos vitalícios.
+      - `🔤 Ordem alfabética (A-Z)` e `🔤 Ordem alfabética (Z-A)`: ordenação alfabética pelo nome completo.
+      - `Mais antigos (Cadastro)`
+    - **Filtro por Curso (`course_id`):** Dropdown dinâmico com "Todos os Cursos" e todos os cursos cadastrados na plataforma, exibindo apenas alunos com matrícula ativa no curso selecionado.
+    - **Filtro por Mês (`registration_month`):** Seletor de mês/ano (`YYYY-MM`) que filtra alunos cadastrados naquele mês específico segundo o fuso de Brasília.
+    - **Filtro por Data Específica (`registration_date`):** Seletor de dia exato (`YYYY-MM-DD`) que filtra alunos cadastrados no dia civil selecionado.
+    - **Ação Limpar Filtros:** Botão contextual que reseta todos os filtros e a ordenação com 1 clique.
   - **Paginação e Controle de Quantidade por Página:**
     - Exibe no máximo **20 alunos por vez** por padrão.
     - Conta com um dropdown seletor estilizado que permite alternar a exibição para **20, 50, 100 ou 200 alunos de uma única vez**.
     - Barra inferior permanente informando o intervalo exibido (ex: `Exibindo 1–20 de 45 alunos`), indicador de página (`Página 1 de 3`) e botões de navegação `Anterior` e `Próxima`.
 - **Detalhes Exibidos por Aluno:**
-  - **Identificação e Momento de Cadastro:** Nome completo, e-mail, badge de status (`Aluno Ativo` / `Inativo`), data e horário exatos em que ele virou aluno (`Aluno desde: DD/MM/AAAA às HH:MM`) e porcentagem geral de conclusão.
+  - **Identificação e Horário Oficial de Brasília:** Nome completo, e-mail, WhatsApp com link direto, badge de status (`Aluno Ativo` / `Inativo`), porcentagem geral de conclusão e a tag `Aluno desde: DD/MM/AAAA às HH:MM` **obrigatoriamente convertida e exibida no Horário Oficial de Brasília (`America/Sao_Paulo`)**.
   - **Cursos aos quais o Aluno tem Acesso:**
     - Miniatura e título de cada curso vinculado.
     - Prazo de acesso individual (`Vitalício` ou `Expira em DD/MM/AAAA` / alerta de `Acesso Expirado`).
@@ -227,10 +250,19 @@ Este documento registra as decisões de regras de negócio da plataforma para co
         - Marcadores temporais com data de início e término exato (`Término: DD/MM/AAAA às HH:MM`).
     - **Histórico de Acesso e Aulas Assistidas:**
       - Botão dedicado **"Histórico de Acesso"** em cada curso vinculado ao aluno.
-      - Abre modal centralizado escuro translúcido com a listagem cronológica de todas as aulas concluídas pelo aluno naquele curso:
+      - Abre modal centralizado escuro translúcido (`StudentAccessHistoryModal`) com a listagem cronológica de todas as aulas concluídas pelo aluno naquele curso:
         - Título da aula e nome do módulo correspondente.
         - Mensagem explícita com data e horário completo: `Assistiu a aula completa em DD/MM/AAAA às HH:MM:SS`.
+        - **Paginação de Aulas Concluídas:** Limite de **no máximo 20 aulas por página** (`PAGE_SIZE = 20`). Quando houver mais de 20 aulas, é exibida a barra de paginação com contador dinâmico (ex: `Exibindo 1–20 de 35 aulas concluídas`), indicador de página (`Página 1 de 2`) e botões `Anterior` e `Próxima`.
         - Endpoint da API: `GET /api/v1/students/{student_id}/courses/{course_id}/history`.
+    - **Disparo Manual de Eventos de Webhook/Integração:**
+      - Botão dedicado em tom âmbar **"Disparar Evento"** em cada curso do aluno, ao lado do botão de histórico.
+      - Abre o modal de disparo manual (`StudentTriggerWebhookModal`), permitindo que administradores forcem o envio de qualquer um dos 8 eventos suportados para as ferramentas de automação vinculadas (n8n, ActiveCampaign, Make, etc.):
+        - **Obrigatoriedade de Webhook Configurado:** Só é permitido disparar eventos se houver pelo menos uma integração de webhook ativa cadastrada para o curso (ou global). Se não houver nenhum webhook configurado, o modal exibe um alerta explicativo de bloqueio e desativa o botão de disparo.
+        - **Seleção da Integração Configurada:** O modal apresenta o seletor **"Selecione a Integração Configurada"**, permitindo que o administrador escolha exatamente qual webhook cadastrado irá receber o disparo (ex: `🔗 Webhook N8N`, `🔗 Webhook Make`) ou opte por `⚡ Todas as Integrações Ativas`.
+        - **Eventos Suportados:** `course.progress.25`, `course.progress.50`, `course.progress.75`, `course.progress.100`, `lesson.completed`, `student.enrolled`, `course.renewal.warning_7d`, `course.renewal.expired`.
+        - Endpoint da API: `POST /api/v1/students/{student_id}/courses/{course_id}/trigger-webhook` com payload contendo `event` e `webhook_id` opcional para direcionamento exato.
+        - Carrega métricas consolidadas em tempo real do aluno no curso e envia o payload assinado via HMAC SHA-256 para a integração selecionada, gravando o histórico completo na tabela `webhook_logs`.
     - **Progresso Detalhado do Curso:** Quantidade exata de aulas assistidas vs total de aulas cadastradas (ex: `8 de 10 aulas`), barra de progresso visual colorida e porcentagem de conclusão.
     - **Até onde o aluno foi:** Exibe o título da última aula concluída pelo aluno naquele curso (ex: `Última aula concluída: Aula 8 - Trânsitos Planetários`).
     - Badge de status do curso: `Concluído` (100%), `Em Andamento` (> 0%) ou `Não Iniciado` (0%).
@@ -294,11 +326,103 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 
 ---
 
-## 8. Perguntas em Aberto e Histórico de Decisões
+## 8. Convites de Acesso e Cadastro de Alunos
+- **Tempo de Validade do Convite:**
+  - O administrador pode escolher o tempo para o link do convite expirar: `1 hora`, `6 horas`, `12 horas`, `24 horas (1 dia)`, `48 horas (2 dias)`, `7 dias` ou **`Indefinido (não expira)`** (`duration_hours = 0` ou `None`, com `expires_at = NULL` no banco de dados).
+  - Links com prazo indefinido permanecem válidos permanentemente até serem utilizados pelo convidado ou excluídos pelo administrador.
+  - Na tabela de convites gerados, o tempo restante é exibido como badge amigável `Não expira` (`Indefinido`).
+- **Data e Horário de Criação (Horário Oficial de Brasília):**
+  - Tanto na tabela de **"Convites Gerados"** (coluna **"CRIADO EM"**) quanto no modal de sucesso após gerar um convite, a data e o horário de criação são exibidos explicitamente no **Horário Oficial de Brasília** (`America/Sao_Paulo`), no formato amigável `DD/MM/AAAA às HH:MM` (ex: `01/10/2026 às 13:01`).
+- **Número de WhatsApp / Telefone do Usuário:**
+  - Na tela de cadastro via convite (`/register`), o preenchimento do **WhatsApp / Telefone é obrigatório** (`phone` com validação de formato e comprimento mínimo no backend e frontend).
+  - **Seletor de Bandeira e DDI Internacional:**
+    - O campo já vem configurado com a bandeira do **Brasil 🇧🇷 (`+55`)** como padrão pré-selecionado.
+    - O usuário pode clicar no seletor para escolher qualquer outro país (Portugal 🇵🇹 `+351`, Estados Unidos 🇺🇸 `+1`, Angola 🇦🇴 `+244`, Moçambique 🇲🇿 `+258`, Espanha 🇪🇸 `+34`, Argentina 🇦🇷 `+54`, etc.), adaptando dinamicamente o DDI e a máscara de digitação.
+    - O número completo persistido armazena o DDI com o número (ex: `+55 (11) 98765-4321` ou `+351 912345678`).
+  - O número é persistido na coluna `phone` das tabelas `registration_verifications` e `users`.
+  - No painel de acompanhamento de alunos (`/students`) e na tabela de **"Usuários Criados"** (`/users`), é exibida a coluna dedicada **WhatsApp** com link direto verde (`https://wa.me/...`) considerando automaticamente o DDI internacional ou fallback nacional para números legados, e traço (`—`) discreto caso o usuário não possua número cadastrado.
+  - As exportações de alunos em CSV e Excel (XLSX) incluem a coluna dedicada **`WhatsApp/Telefone`**.
+
+---
+
+## 9. Perguntas em Aberto e Histórico de Decisões
 - [x] [RESOLVIDO] Como devem ser tratados os disparos do evento "Renovação do Curso (7 dias antes)" caso o aluno seja matriculado faltando menos de 7 dias para expirar? Deve disparar imediatamente no momento da matrícula ou apenas na verificação periódica do cron diário?
   - **Decisão do Dono do Projeto:** Deve ser uma verificação periódica diária e aplicada apenas para alunos que forem efetivamente matriculados (sem disparo forçado imediato no momento do cadastro do aluno, respeitando o ciclo da verificação diária).
+- [x] [RESOLVIDO] O tempo de expiração do convite pode ser indefinido? E o aluno pode informar o número de WhatsApp no cadastro?
+  - **Decisão do Dono do Projeto:** Sim, o tempo de expiração pode ser indefinido (não expira).
+- [x] [RESOLVIDO] O WhatsApp no cadastro deve ser obrigatório ou opcional? Como deve funcionar o DDI e bandeiras?
+  - **Decisão do Dono do Projeto:** O WhatsApp é estritamente obrigatório. A bandeira do Brasil 🇧🇷 (+55) é o padrão inicial, e o usuário pode selecionar outras bandeiras para aplicar o DDI de outros países.
 
+---
 
+## 10. Comunidade VIP, Suporte e Dúvidas dos Cursos
+- **Acesso e Participação:**
+  - Alunos e Instrutores/Admins podem publicar dúvidas técnicas vinculadas aos cursos aos quais têm acesso.
+  - Alunos só podem publicar e interagir em dúvidas de cursos aos quais possuem acesso liberado.
+- **Interações e Engajamento:**
+  - **Curtidas (Likes):** Alunos e administradores podem curtir dúvidas de forma idempotente (`POST /api/v1/support/topics/{id}/like`). O card de dúvida exibe o coração preenchido e contador atualizado.
+  - **Comentários e Respostas:** Clicar no botão de comentário ou no card abre o modal detalhado da discussão com histórico cronológico de respostas.
+  - **Exclusão de Dúvidas e Respostas:**
+    - O autor da publicação e os administradores (`superadmin`, `admin`) podem excluir dúvidas e respostas a qualquer momento.
+    - Toda ação de exclusão exige confirmação explícita em popup modal com fundo escuro translúcido.
+- **Status da Dúvida ("Aguardando Resposta" vs "Resolvida"):**
+  - Novas dúvidas entram com status `open` ("Aguardando Resposta").
+  - O autor da dúvida e administradores contam com botão dedicado no cabeçalho da dúvida para alternar o status entre `open` e `resolved` ("Marcar como Resolvida" / "Reabrir Dúvida").
+- **Solução Oficial / Melhor Resposta:**
+  - O autor da dúvida e administradores podem eleger uma resposta como **"Solução Oficial"** (`is_solution = true`).
+  - A resposta eleita recebe destaque cinematográfico dourado (`border-gold`, badge `Solução Oficial` com estrela e botão ativo `Solução`).
+  - Ao marcar uma resposta como solução oficial, a dúvida é automaticamente marcada como resolvida (`status = 'resolved'`).
+- **Cards de Métricas e Pílulas de Filtros Rápidos:**
+  - No topo da tela de suporte, são exibidas 4 métricas consolidadas em tempo real:
+    - `Total de Dúvidas`
+    - `Aguardando Resposta`
+    - `Taxa de Resolução %`
+    - `Membros Ativos`
+  - Filtros rápidos em formato de pílulas permitem alternar dinamicamente entre: `Todas as Dúvidas`, `Mais Populares`, `Aguardando Resposta`, `Resolvidas` e `Minhas Dúvidas`.
+- **Anexos e Visualização Lightbox:**
+  - Dúvidas e respostas suportam anexo de imagens (PNG, JPG, WEBP de até 10 MB).
+  - Clicar sobre qualquer imagem anexada abre o modal Lightbox de alta definição, centralizado e com fundo escuro de alto contraste.
 
+---
 
+## 11. Configurações da Plataforma (Aparência e Chaves de API)
+- **Acesso:** Exclusivo para administradores e super administradores através da opção **"Configurações"** na barra lateral.
+- **Estrutura em Abas:**
+  - **Aba 1: "Aparência" (Cor de Fundo da Plataforma):**
+    - Permite ao administrador personalizar a cor de fundo global da plataforma (Netflix Dark, Deep Navy, Obsidian, Slate, Emerald, ou qualquer cor hexadecimal customizada).
+    - Presets visuais pré-definidos com clique rápido e preview instantâneo na tela.
+    - Salvamento persistido nas preferências da plataforma.
+  - **Aba 2: "Chaves de API" (Tokens de Acesso):**
+    - **Finalidade:** Permite integrar a plataforma de membros com ferramentas externas (n8n, Make, Zapier, Webhooks de checkout, CRMs, etc.) sem expor credenciais de login.
+    - **Formato das Chaves:** Padrão industrial com prefixo `sk_live_` gerado criptograficamente com 32 bytes de entropia (`sk_live_<hex>`).
+    - **Tempo de Expiração Configurável:**
+      - `30 dias`
+      - `60 dias`
+      - `90 dias`
+      - `1 ano (365 dias)`
+      - `Não expira (Permanente)`
+    - **Exibição Única de Segurança:** A chave completa sem máscara (`raw_token`) é exibida **uma única vez** no momento de sua criação através de um popup modal de segurança com botão de cópia rápida. Após o fechamento do modal, a chave não pode ser recuperada, permanecendo no banco apenas seu hash/mascaramento.
+    - **Gestão de Chaves:**
+      - Listagem completa das chaves do usuário com nome descritivo, token mascarado (`sk_live_****...`), status de ativação, validade e data do último acesso (`last_used_at`).
+      - **Pausar / Reativar (Toggle):** Possibilidade de pausar temporariamente uma chave sem precisar excluí-la, bloqueando requisições que a utilizem até que seja reativada.
+      - **Revogação / Exclusão:** Possibilidade de revogar permanentemente uma chave de API com confirmação obrigatória em popup modal com fundo escuro translúcido.
+    - **Autenticação no Backend:**
+      - A autenticação de usuário nas rotas da API aceita tanto `Authorization: Bearer sk_live_...` quanto o header `X-API-Key: sk_live_...`, integrando-se de forma transparente com o `get_current_user`.
+      - Atualização automática em background do campo `last_used_at` a cada requisição válida realizada com a chave.
+      - Bloqueio imediato (`401 Unauthorized`) caso a chave esteja pausada ou expirada.
+
+---
+
+## 12. Estrutura de Navegação do Menu Lateral (Categorias)
+- **Organização por Foco Operacional (Proposta 2):**
+  - **Categoria "Gestão de Ensino" (ou "Meu Aprendizado" para alunos):**
+    - `Cursos`: Ambiente de aulas, módulos e quizes (visível para Alunos e Administradores).
+    - `Alunos`: Gestão de matrículas, acompanhamento de progresso e tempo de acesso (Admin/Super Admin).
+    - `Suporte`: Fórum de dúvidas, respostas oficiais e suporte dos cursos (Alunos e Administradores).
+    - `Relatos de Aulas`: Notificações e moderação de problemas relatados em aulas (Admin/Super Admin).
+  - **Categoria "Administração":**
+    - `Integrações`: Webhooks e disparos para ferramentas externas (Admin/Super Admin).
+    - `Configurações`: Aparência da plataforma e Chaves de API (Admin/Super Admin).
+  - **Categoria "Segurança":**
+    - `Backup Automático`, `Gerenciamento de logs` e `Gestão de Usuário` (restrito exclusivamente a Super Admin).
 

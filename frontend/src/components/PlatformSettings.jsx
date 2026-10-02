@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Palette, Check, Sparkles } from 'lucide-react';
+import { Settings, Palette, KeyRound } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
-
-const BG_COLOR_PRESETS = [
-  { label: 'Netflix Dark', color: '#090d16' },
-  { label: 'Preto OLED', color: '#000000' },
-  { label: 'Grafite Escuro', color: '#121620' },
-  { label: 'Azul Meia-Noite', color: '#0b1120' },
-  { label: 'Claro Clássico', color: '#f8fafc' }
-];
+import PlatformAppearanceTab from './platform-settings/PlatformAppearanceTab';
+import PlatformApiTokensTab from './platform-settings/PlatformApiTokensTab';
 
 export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChange }) {
+  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'api_tokens'
   const [selectedColor, setSelectedColor] = useState(bgColor || '#090d16');
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
@@ -27,8 +22,8 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)';
 
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
+  const handleSaveAppearance = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     const cleanColor = (selectedColor || '#090d16').trim();
     setSaving(true);
     const token = localStorage.getItem('auth_token');
@@ -38,9 +33,9 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ bg_color: cleanColor })
+        body: JSON.stringify({ bg_color: cleanColor }),
       });
 
       if (res.ok) {
@@ -74,11 +69,11 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
         margin: 0,
         padding: '28px 32px',
         boxSizing: 'border-box',
-        transition: 'background-color 0.3s ease'
+        transition: 'background-color 0.3s ease',
       }}
     >
       {/* Cabeçalho */}
-      <div className="backup-page-header courses-header-box">
+      <div className="backup-page-header courses-header-box" style={{ marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
             <div className="logo-icon" style={{ backgroundColor: '#2563eb' }}>
@@ -87,159 +82,95 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
             <h1 style={{ color: textColor, margin: 0 }}>Configurações da Área de Membros</h1>
           </div>
           <p style={{ color: subTextColor, margin: 0 }}>
-            Personalize a aparência e a cor de fundo global de toda a plataforma (Cursos, Relatos de Aulas e Segurança).
+            Personalize a aparência visual e gerencie chaves de API para integrações externas.
           </p>
         </div>
       </div>
 
-      {/* Card de Configuração de Cor Global */}
+      {/* Navegação entre Abas */}
       <div
-        className="table-card"
         style={{
-          backgroundColor: cardBg,
-          border: cardBorder,
-          padding: '28px',
-          maxWidth: '760px'
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '26px',
+          borderBottom: cardBorder,
+          paddingBottom: '12px',
         }}
+        data-testid="platform-settings-tabs"
       >
-        <form onSubmit={handleSaveSettings}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <Palette size={20} style={{ color: '#38bdf8' }} />
-            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: textColor }}>
-              Cor de Fundo da Área de Membros (Estilo Netflix)
-            </h3>
-          </div>
-          <p style={{ fontSize: '13.5px', color: subTextColor, margin: '0 0 22px 0', lineHeight: 1.5 }}>
-            Esta cor é aplicada globalmente em toda a Área de Membros (barra lateral, vitrine de cursos, relatos de aulas, abas de segurança, sala de aula e popups), garantindo uma identidade visual única em todo o sistema.
-          </p>
+        <button
+          type="button"
+          onClick={() => setActiveTab('appearance')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '9px 18px',
+            borderRadius: '10px',
+            fontSize: '13.5px',
+            fontWeight: activeTab === 'appearance' ? 700 : 500,
+            cursor: 'pointer',
+            backgroundColor: activeTab === 'appearance' ? '#0284c7' : 'transparent',
+            color: activeTab === 'appearance' ? '#ffffff' : subTextColor,
+            border: activeTab === 'appearance' ? 'none' : '1px solid transparent',
+            boxShadow: activeTab === 'appearance' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+          data-testid="tab-appearance-btn"
+        >
+          <Palette size={16} />
+          <span>Cor de Fundo da Plataforma</span>
+        </button>
 
-          {/* Seletor de Cor + Input Hexadecimal */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
-            <input
-              type="color"
-              value={selectedColor || '#090d16'}
-              onChange={(e) => setSelectedColor(e.target.value)}
-              style={{
-                width: '48px',
-                height: '42px',
-                padding: '3px',
-                border: cardBorder,
-                borderRadius: '8px',
-                backgroundColor: isLightBg ? '#ffffff' : 'rgba(15, 23, 42, 0.8)',
-                cursor: 'pointer'
-              }}
-              data-testid="platform-bgcolor-picker"
-            />
-            <input
-              type="text"
-              value={selectedColor || '#090d16'}
-              onChange={(e) => setSelectedColor(e.target.value)}
-              placeholder="#090d16"
-              className="form-control-modern"
-              style={{
-                width: '135px',
-                padding: '10px 14px',
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                fontWeight: 600,
-                backgroundColor: isLightBg ? '#ffffff' : 'rgba(15, 23, 42, 0.75)',
-                color: textColor,
-                border: cardBorder
-              }}
-              data-testid="platform-bgcolor-input"
-            />
-          </div>
-
-          {/* Presets Rápidos */}
-          <div style={{ marginBottom: '26px' }}>
-            <span style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: subTextColor, marginBottom: '10px' }}>
-              Temas Recomendados:
-            </span>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {BG_COLOR_PRESETS.map((preset) => {
-                const isSelected = (selectedColor || '').toLowerCase() === preset.color.toLowerCase();
-                return (
-                  <button
-                    key={preset.color}
-                    type="button"
-                    onClick={() => setSelectedColor(preset.color)}
-                    data-testid={`preset-bgcolor-${preset.color}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 14px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      borderRadius: '8px',
-                      border: isSelected ? '2px solid #38bdf8' : cardBorder,
-                      backgroundColor: isSelected
-                        ? (isLightBg ? '#e0f2fe' : 'rgba(56, 189, 248, 0.15)')
-                        : (isLightBg ? '#f8fafc' : 'rgba(15, 23, 42, 0.65)'),
-                      color: textColor,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '50%',
-                        backgroundColor: preset.color,
-                        border: '1px solid rgba(148, 163, 184, 0.6)'
-                      }}
-                    />
-                    <span>{preset.label}</span>
-                    {isSelected && <Check size={14} style={{ color: '#38bdf8' }} />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Pré-visualização ao Vivo */}
-          <div
-            style={{
-              padding: '18px 20px',
-              borderRadius: '10px',
-              backgroundColor: selectedColor,
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Sparkles size={18} style={{ color: '#f59e0b' }} />
-              <div>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: textColor }}>
-                  Pré-visualização do Tema Ativo ({selectedColor})
-                </div>
-                <div style={{ fontSize: '12px', color: subTextColor }}>
-                  Todos os cursos, módulos, aulas e popups seguirão exatamente esta paleta.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Botão Salvar */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="submit"
-              className="primary-btn"
-              disabled={saving}
-              data-testid="save-platform-settings-btn"
-              style={{ padding: '10px 22px', fontSize: '13.5px', fontWeight: 600 }}
-            >
-              {saving ? 'Salvando...' : 'Salvar Configurações'}
-            </button>
-          </div>
-        </form>
+        <button
+          type="button"
+          onClick={() => setActiveTab('api_tokens')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '9px 18px',
+            borderRadius: '10px',
+            fontSize: '13.5px',
+            fontWeight: activeTab === 'api_tokens' ? 700 : 500,
+            cursor: 'pointer',
+            backgroundColor: activeTab === 'api_tokens' ? '#0284c7' : 'transparent',
+            color: activeTab === 'api_tokens' ? '#ffffff' : subTextColor,
+            border: activeTab === 'api_tokens' ? 'none' : '1px solid transparent',
+            boxShadow: activeTab === 'api_tokens' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+          data-testid="tab-api-tokens-btn"
+        >
+          <KeyRound size={16} />
+          <span>Tokens de API</span>
+        </button>
       </div>
+
+      {/* Conteúdo da Aba Ativa */}
+      {activeTab === 'appearance' && (
+        <PlatformAppearanceTab
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+          saving={saving}
+          onSave={handleSaveAppearance}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
+
+      {activeTab === 'api_tokens' && (
+        <PlatformApiTokensTab
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
     </div>
   );
 }
