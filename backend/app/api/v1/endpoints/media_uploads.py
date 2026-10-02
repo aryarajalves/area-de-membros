@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from app.models.user import User
 from app.schemas.course import VideoUploadUrlRequest, VideoUploadUrlResponse
 from app.api.v1.endpoints.users import require_admin_or_superadmin
+from app.core.logger import logger
 from app.services.storage import (
     upload_media_file,
     delete_media_file,
@@ -81,6 +82,11 @@ def create_video_presigned_url(
         }
 
     # 2. Fallback para upload tradicional no backend local se Backblaze B2 não estiver ativo
+    logger.warning(
+        f"[Upload de Vídeo] Backblaze B2 não está totalmente configurado para presigned upload do arquivo '{filename}'. "
+        f"Realizando fallback para upload local em /upload-video. "
+        f"Para habilitar upload direto de grandes arquivos, verifique BACKBLAZE_CDN_URL / BACKBLAZE_ENDPOINT_URL e chaves B2."
+    )
     return {
         "direct_upload": False,
         "upload_url": "/api/v1/courses/upload-video",

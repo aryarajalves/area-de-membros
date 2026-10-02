@@ -38,3 +38,14 @@ def test_generate_video_upload_url_fallback_when_no_b2():
     assert "direct_upload" in data
     assert "upload_url" in data
     assert "method" in data
+
+def test_effective_b2_endpoint_url_derivation(monkeypatch):
+    # Caso 1: B2_ENDPOINT_URL vazia e BACKBLAZE_CDN_URL com path
+    monkeypatch.setattr(settings, "B2_ENDPOINT_URL", "")
+    monkeypatch.setattr(settings, "BACKBLAZE_CDN_URL", "https://s3.us-west-004.backblazeb2.com/zap-voice")
+    assert settings.EFFECTIVE_B2_ENDPOINT_URL == "https://s3.us-west-004.backblazeb2.com"
+
+    # Caso 2: B2_ENDPOINT_URL já configurada explicitamente
+    monkeypatch.setattr(settings, "B2_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com")
+    assert settings.EFFECTIVE_B2_ENDPOINT_URL == "https://s3.us-east-005.backblazeb2.com"
+

@@ -11,23 +11,29 @@ from app.core.logger import logger
 
 def get_s3_client():
     """Retorna o cliente S3 configurado para o Backblaze B2."""
-    if not settings.B2_ENDPOINT_URL or not settings.B2_KEY_ID or not settings.B2_APPLICATION_KEY:
+    endpoint = settings.EFFECTIVE_B2_ENDPOINT_URL
+    if not endpoint or not settings.B2_KEY_ID or not settings.B2_APPLICATION_KEY:
+        logger.warning(
+            f"[B2 Storage] Credenciais incompletas: endpoint={bool(endpoint)}, "
+            f"key_id={bool(settings.B2_KEY_ID)}, app_key={bool(settings.B2_APPLICATION_KEY)}"
+        )
         return None
     try:
         return boto3.client(
             "s3",
-            endpoint_url=settings.B2_ENDPOINT_URL,
+            endpoint_url=endpoint,
             aws_access_key_id=settings.B2_KEY_ID,
             aws_secret_access_key=settings.B2_APPLICATION_KEY,
             config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
         )
     except Exception as e:
-        logger.error(f"Erro ao inicializar cliente S3/B2: {e}")
+        logger.error(f"[B2 Storage] Erro ao inicializar cliente S3/B2: {e}")
         return None
 
 def check_b2_connection() -> dict:
     """Verifica se as credenciais do Backblaze B2 estão configuradas e se o bucket está acessível."""
-    if not settings.B2_ENDPOINT_URL or not settings.B2_KEY_ID or not settings.B2_APPLICATION_KEY or not settings.B2_BUCKET_NAME:
+    endpoint = settings.EFFECTIVE_B2_ENDPOINT_URL
+    if not endpoint or not settings.B2_KEY_ID or not settings.B2_APPLICATION_KEY or not settings.B2_BUCKET_NAME:
         return {
             "connected": False,
             "status": "Não Configurado",
@@ -193,7 +199,7 @@ def upload_media_file(file_bytes: bytes, filename: str, content_type: str, folde
                 else:
                     media_url = f"{base_url}/{s3_key}"
             else:
-                endpoint = settings.B2_ENDPOINT_URL.rstrip("/")
+                endpoint = (settings.EFFECTIVE_B2_ENDPOINT_URL or "").rstrip("/")
                 media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
 
             logger.info(f"Mídia {filename} enviada para Backblaze B2 com sucesso: {media_url}")
@@ -253,6 +259,11 @@ def generate_presigned_upload_url(filename: str, content_type: str, folder: str 
     """
     s3 = get_s3_client()
     if not s3 or not settings.B2_BUCKET_NAME:
+        logger.warning(
+            f"[B2 Storage] Não foi possível gerar Presigned URL. "
+            f"s3_client_ativo={bool(s3)}, bucket_name='{settings.B2_BUCKET_NAME or ''}'. "
+            f"Verifique se as credenciais do Backblaze B2 estão configuradas."
+        )
         return None
 
     target_folder = folder
@@ -284,10 +295,10 @@ def generate_presigned_upload_url(filename: str, content_type: str, folder: str 
             else:
                 media_url = f"{base_url}/{s3_key}"
         else:
-            endpoint = (settings.B2_ENDPOINT_URL or "").rstrip("/")
+            endpoint = (settings.EFFECTIVE_B2_ENDPOINT_URL or "").rstrip("/")
             media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
 
-        logger.info(f"Presigned URL gerada com sucesso para {s3_key}")
+        logger.info(f"[B2 Storage] Presigned URL gerada com sucesso para {s3_key}")
         return {
             "upload_url": presigned_url,
             "video_url": media_url,
@@ -295,5 +306,5 @@ def generate_presigned_upload_url(filename: str, content_type: str, folder: str 
             "method": "PUT"
         }
     except Exception as e:
-        logger.error(f"Erro ao gerar presigned URL do Backblaze B2 para {filename}: {e}")
+        logger.error(f"[B2 Storage] Erro ao gerar presigned URL do Backblaze B2 para {filename}: {e}")
         return None

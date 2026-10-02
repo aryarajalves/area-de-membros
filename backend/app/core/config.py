@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     B2_FOLDER: str = os.getenv("B2_FOLDER", "projetobase/backups/")
     B2_RETENTION_MAX: int = int(os.getenv("B2_RETENTION_MAX", "30"))
 
+    @property
+    def EFFECTIVE_B2_ENDPOINT_URL(self) -> str:
+        """Retorna o endpoint do Backblaze B2, derivando automaticamente do CDN URL se B2_ENDPOINT_URL estiver vazio."""
+        endpoint = (self.B2_ENDPOINT_URL or "").strip()
+        if not endpoint and self.BACKBLAZE_CDN_URL:
+            from urllib.parse import urlparse
+            parsed = urlparse(self.BACKBLAZE_CDN_URL)
+            if parsed.scheme and parsed.netloc:
+                endpoint = f"{parsed.scheme}://{parsed.netloc}"
+        return endpoint
+
     # Configurações do Worker de Verificações Periódicas
     ENABLE_INTERNAL_SCHEDULER: bool = os.getenv("ENABLE_INTERNAL_SCHEDULER", "false").lower() in ("true", "1", "yes")
     WORKER_RENEWAL_CHECK_INTERVAL_HOURS: int = int(os.getenv("WORKER_RENEWAL_CHECK_INTERVAL_HOURS", "24"))

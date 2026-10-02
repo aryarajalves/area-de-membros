@@ -155,9 +155,14 @@ export default function BackgroundUploadWidget() {
                       >
                         {item.lessonTitle || item.fileName}
                       </p>
-                      <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                      <span style={{ fontSize: '10.5px', color: '#64748b', display: 'block' }}>
                         {item.fileName}
                       </span>
+                      {isError && item.error && (
+                        <span style={{ fontSize: '10px', color: '#f87171', display: 'block', marginTop: '2px', fontWeight: 500 }}>
+                          {item.error}
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

@@ -18,8 +18,9 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Ajuste Fino de Áudio e Fullscreen:** Controle de volume deslizante, mute/unmute e alternância para tela cheia nativa.
 - **Armazenamento e Streaming em Nuvem (Backblaze B2 / S3 Presigned URLs):**
   - **Upload em Segundo Plano (Fila Concorrente):** O envio ocorre de forma totalmente assíncrona pelo `UploadQueueContext` sem modais bloqueantes. O usuário pode salvar a aula imediatamente, fechar o formulário, criar outras aulas e enviar múltiplos vídeos grandes simultaneamente sem travar a interface.
-  - **Widget Flutuante de Uploads (`BackgroundUploadWidget`):** Painel compacto no canto inferior direito que acompanha o progresso em tempo real (0% a 100%) de cada vídeo, permitindo minimizar, cancelar ou acompanhar múltiplos envios.
+  - **Widget Flutuante de Uploads (`BackgroundUploadWidget`):** Painel compacto no canto inferior direito que acompanha o progresso em tempo real (0% a 100%) de cada vídeo, permitindo minimizar, cancelar ou acompanhar múltiplos envios com mensagens descritivas de status e erro.
   - **Upload Direto com Presigned URLs:** Arquivos de vídeo de até **2 GB (2048 MB)** são transmitidos diretamente do navegador para o Backblaze B2 via URLs pré-assinadas seguras (`PUT`), eliminando sobrecarga no servidor proxy (Nginx/Traefik) e evitando erros de timeout.
+  - **Auto-Recuperação e Resiliência B2:** Se a variável `BACKBLAZE_ENDPOINT_URL` estiver omitida no ambiente de produção, o sistema deriva automaticamente o endpoint S3 a partir do domínio configurado em `BACKBLAZE_CDN_URL`, garantindo que o upload direto permaneça sempre ativo.
   - **Fallback Automático:** Caso as credenciais do Backblaze B2 não estejam configuradas, o sistema comuta com segurança para o endpoint de upload local/backend sem interrupção para o usuário.
   - Capas personalizadas para cada aula (Posters 1280×720, 16:9).
   - Suporte a links externos e embeds (YouTube, Vimeo, Panda Video).
@@ -204,7 +205,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **250 testes unitários passando (100% de aprovação em 57 arquivos de teste)** cobrindo fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **252 testes unitários passando (100% de aprovação em 57 arquivos de teste)** cobrindo fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -213,7 +214,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **44 testes unitários passando (100% de aprovação)** cobrindo geração de URLs pré-assinadas S3/Backblaze B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **45 testes unitários passando (100% de aprovação)** cobrindo geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 

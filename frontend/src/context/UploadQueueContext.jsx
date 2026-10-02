@@ -114,14 +114,19 @@ export function UploadQueueProvider({ children }) {
                 addToast(`Vídeo de "${newUpload.lessonTitle}" enviado com sucesso para o Backblaze B2!`, 'success');
                 resolve(targetVideoUrl);
               } else {
+                const b2ErrorMsg = xhr.status === 403 
+                  ? 'Acesso negado no bucket B2 (403)' 
+                  : xhr.status === 400 
+                  ? 'Parâmetros inválidos no B2 (400)' 
+                  : `Falha no Backblaze B2 (Status ${xhr.status})`;
                 setUploads((prev) =>
                   prev.map((item) =>
                     item.id === uploadId
-                      ? { ...item, status: 'error', error: `Erro no storage (Status ${xhr.status})` }
+                      ? { ...item, status: 'error', error: b2ErrorMsg }
                       : item
                   )
                 );
-                addToast(`Falha no upload do vídeo de "${newUpload.lessonTitle}".`, 'error');
+                addToast(`Falha no upload do vídeo de "${newUpload.lessonTitle}": ${b2ErrorMsg}`, 'error');
                 if (onError) onError();
                 resolve(null);
               }
@@ -129,12 +134,13 @@ export function UploadQueueProvider({ children }) {
 
             xhr.onerror = () => {
               activeXhrsRef.current.delete(uploadId);
+              const netError = 'Falha de rede ou CORS com Backblaze B2';
               setUploads((prev) =>
                 prev.map((item) =>
-                  item.id === uploadId ? { ...item, status: 'error', error: 'Erro de conexão' } : item
+                  item.id === uploadId ? { ...item, status: 'error', error: netError } : item
                 )
               );
-              addToast(`Erro de conexão ao enviar vídeo de "${newUpload.lessonTitle}".`, 'error');
+              addToast(`Erro de conexão com Backblaze B2 ao enviar vídeo de "${newUpload.lessonTitle}".`, 'error');
               if (onError) onError();
               resolve(null);
             };
@@ -190,11 +196,20 @@ export function UploadQueueProvider({ children }) {
             resolve(null);
           }
         } else {
+          let localErrorMsg = `Falha no envio (Status ${xhr.status || 'desconhecido'})`;
+          if (xhr.status === 400) {
+            localErrorMsg = 'Timeout ou rejeição pelo proxy (400)';
+          } else if (xhr.status === 413) {
+            localErrorMsg = 'Arquivo excede limite do proxy (413)';
+          } else if (xhr.status === 504) {
+            localErrorMsg = 'Timeout de gateway (504)';
+          }
           setUploads((prev) =>
             prev.map((item) =>
-              item.id === uploadId ? { ...item, status: 'error', error: 'Falha no envio' } : item
+              item.id === uploadId ? { ...item, status: 'error', error: localErrorMsg } : item
             )
           );
+          addToast(`Falha no envio do vídeo de "${newUpload.lessonTitle}": ${localErrorMsg}`, 'error');
           if (onError) onError();
           resolve(null);
         }
@@ -202,11 +217,13 @@ export function UploadQueueProvider({ children }) {
 
       xhr.onerror = () => {
         activeXhrsRef.current.delete(uploadId);
+        const commError = 'Falha de comunicação/timeout com o servidor';
         setUploads((prev) =>
           prev.map((item) =>
-            item.id === uploadId ? { ...item, status: 'error', error: 'Falha de comunicação' } : item
+            item.id === uploadId ? { ...item, status: 'error', error: commError } : item
           )
         );
+        addToast(`Erro ao enviar vídeo de "${newUpload.lessonTitle}": ${commError}`, 'error');
         if (onError) onError();
         resolve(null);
       };
@@ -237,7 +254,15 @@ export function UploadQueueProvider({ children }) {
 export function useUploadQueue() {
   const context = useContext(UploadQueueContext);
   if (!context) {
-    throw new Error('useUploadQueue must be used within an UploadQueueProvider');
+    return {
+      uploads: [],
+      startVideoUpload: async () => null,
+      cancelUpload: () => {},
+      clearCompleted: () => {},
+      activeUploadsCount: 0,
+      isWidgetExpanded: false,
+      setIsWidgetExpanded: () => {}
+    };
   }
   return context;
 }
