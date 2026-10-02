@@ -76,6 +76,7 @@ def create_video_presigned_url(
             "direct_upload": True,
             "upload_url": presigned["upload_url"],
             "video_url": presigned["video_url"],
+            "final_url": presigned["video_url"],
             "method": "PUT"
         }
 
@@ -84,6 +85,7 @@ def create_video_presigned_url(
         "direct_upload": False,
         "upload_url": "/api/v1/courses/upload-video",
         "video_url": None,
+        "final_url": None,
         "method": "POST"
     }
 

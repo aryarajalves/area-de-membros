@@ -234,7 +234,8 @@ export function useCourseContent(courseId) {
 
       if (presignedRes.ok) {
         const presignedData = await presignedRes.json();
-        if (presignedData.direct_upload && presignedData.upload_url) {
+        const targetVideoUrl = presignedData.video_url || presignedData.final_url;
+        if (presignedData.direct_upload && presignedData.upload_url && targetVideoUrl) {
           // Upload direto com XHR para acompanhar progresso real de 0% a 100%
           return await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
@@ -253,7 +254,7 @@ export function useCourseContent(courseId) {
             xhr.onload = () => {
               if (xhr.status >= 200 && xhr.status < 300) {
                 addToast('Upload de vídeo concluído com sucesso!', 'success');
-                resolve(presignedData.final_url);
+                resolve(targetVideoUrl);
               } else {
                 reject(new Error(`Falha no upload direto ao storage (Status ${xhr.status})`));
               }

@@ -267,6 +267,7 @@ class VideoUploadUrlResponse(BaseModel):
     direct_upload: bool
     upload_url: str
     video_url: Optional[str] = None
+    final_url: Optional[str] = None
     method: str = "PUT"
 
 

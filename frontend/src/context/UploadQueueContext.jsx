@@ -73,10 +73,11 @@ export function UploadQueueProvider({ children }) {
 
       if (presignedRes.ok) {
         const presignedData = await presignedRes.json();
-        if (presignedData.direct_upload && presignedData.upload_url) {
+        const targetVideoUrl = presignedData.video_url || presignedData.final_url;
+        if (presignedData.direct_upload && presignedData.upload_url && targetVideoUrl) {
           // Já fornece a URL final imediatamente para o formulário da aula poder ser salvo!
           if (onSuccessUrl) {
-            onSuccessUrl(presignedData.final_url, uploadId);
+            onSuccessUrl(targetVideoUrl, uploadId);
           }
 
           // Executa upload direto via PUT no S3/Backblaze em segundo plano
@@ -106,12 +107,12 @@ export function UploadQueueProvider({ children }) {
                 setUploads((prev) =>
                   prev.map((item) =>
                     item.id === uploadId
-                      ? { ...item, status: 'completed', progress: 100, finalUrl: presignedData.final_url }
+                      ? { ...item, status: 'completed', progress: 100, finalUrl: targetVideoUrl }
                       : item
                   )
                 );
                 addToast(`Vídeo de "${newUpload.lessonTitle}" enviado com sucesso para o Backblaze B2!`, 'success');
-                resolve(presignedData.final_url);
+                resolve(targetVideoUrl);
               } else {
                 setUploads((prev) =>
                   prev.map((item) =>
