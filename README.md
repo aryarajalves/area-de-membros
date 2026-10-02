@@ -16,8 +16,10 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Avançar e Voltar 10s:** Botões dedicados `-10s` e `+10s` para saltos rápidos no aprendizado.
   - **Tempo Restante Dinâmico:** Exibe o tempo decorrido, duração total e tempo que falta para o término do vídeo (ex: `00:09 / 10:00 (Faltam 09:51)`).
   - **Ajuste Fino de Áudio e Fullscreen:** Controle de volume deslizante, mute/unmute e alternância para tela cheia nativa.
-- **Armazenamento e Streaming em Nuvem (Backblaze B2):**
-  - Upload de arquivos de vídeo MP4, WebM, MOV ou MKV de até **2 GB (2048 MB)** diretamente para a nuvem.
+- **Armazenamento e Streaming em Nuvem (Backblaze B2 / S3 Presigned URLs):**
+  - **Upload Direto com Presigned URLs:** Arquivos de vídeo são transmitidos diretamente do navegador para o Backblaze B2 via URLs pré-assinadas seguras (`PUT`), eliminando sobrecarga no servidor proxy (Nginx/Traefik), evitando erros de timeout e suportando vídeos de até **2 GB (2048 MB)**.
+  - **Barra de Progresso em Tempo Real:** Indicador visual de progresso numérico e gráfico de 0% a 100% durante o envio.
+  - **Fallback Automático:** Caso as credenciais do Backblaze B2 não estejam configuradas, o sistema comuta com segurança para o endpoint de upload local/backend sem interrupção para o usuário.
   - Capas personalizadas para cada aula (Posters 1280×720, 16:9).
   - Suporte a links externos e embeds (YouTube, Vimeo, Panda Video).
 - **Aulas Multilíngues (Múltiplos Idiomas):**
@@ -201,7 +203,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **242 testes unitários passando (100% de aprovação em 54 arquivos de teste)** cobrindo sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **245 testes unitários passando (100% de aprovação em 55 arquivos de teste)** cobrindo upload direto e em nuvem com progresso real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -210,7 +212,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **41 testes unitários passando (100% de aprovação)** cobrindo autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **44 testes unitários passando (100% de aprovação)** cobrindo geração de URLs pré-assinadas S3/Backblaze B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 

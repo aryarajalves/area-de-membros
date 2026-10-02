@@ -258,4 +258,17 @@ class PlatformThemeResponse(BaseModel):
     bg_color: str = "#090d16"
 
 
+# --- Schemas de Upload Direto para Nuvem (Presigned URL Backblaze B2) ---
+class VideoUploadUrlRequest(BaseModel):
+    filename: str
+    content_type: Optional[str] = "video/mp4"
+
+class VideoUploadUrlResponse(BaseModel):
+    direct_upload: bool
+    upload_url: str
+    video_url: Optional[str] = None
+    method: str = "PUT"
+
+
+
 

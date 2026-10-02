@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import LessonVideoManager from './LessonVideoManager';
 
@@ -173,4 +173,33 @@ describe('LessonVideoManager Component', () => {
     expect(screen.getByTestId('lang-tab-pt')).toHaveTextContent('Português (Brasil)');
     expect(screen.getByText('Nome da Aula em Português (Brasil)')).toBeInTheDocument();
   });
+
+  it('handles video file upload and triggers onUploadVideo with progress callback', async () => {
+    const onChange = vi.fn();
+    const setUploading = vi.fn();
+    const onUploadVideo = vi.fn().mockImplementation(async (file, onProgress) => {
+      onProgress(50);
+      return 'https://s3.backblazeb2.com/video.mp4';
+    });
+
+    render(
+      <LessonVideoManager
+        videos={[{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]}
+        onChange={onChange}
+        onUploadVideo={onUploadVideo}
+        uploading={false}
+        setUploading={setUploading}
+      />
+    );
+
+    const file = new File(['dummy video content'], 'aula.mp4', { type: 'video/mp4' });
+    const input = document.getElementById('lesson-video-file-input-pt');
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+
+    expect(setUploading).toHaveBeenCalledWith(true);
+    expect(onUploadVideo).toHaveBeenCalled();
+  });
 });
+

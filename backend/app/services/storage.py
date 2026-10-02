@@ -223,3 +223,77 @@ def delete_media_file(media_url: str) -> bool:
         logger.error(f"Erro ao excluir mídia {media_url} do Backblaze B2: {e}")
 
     return False
+
+
+def configure_b2_cors():
+    """Configura regras de CORS no bucket Backblaze B2 para permitir uploads diretos do navegador."""
+    s3 = get_s3_client()
+    if not s3 or not settings.B2_BUCKET_NAME:
+        return
+    try:
+        cors_config = {
+            'CORSRules': [{
+                'AllowedHeaders': ['*'],
+                'AllowedMethods': ['GET', 'PUT', 'POST', 'HEAD'],
+                'AllowedOrigins': ['*'],
+                'ExposeHeaders': ['ETag'],
+                'MaxAgeSeconds': 3600
+            }]
+        }
+        s3.put_bucket_cors(Bucket=settings.B2_BUCKET_NAME, CORSConfiguration=cors_config)
+        logger.info(f"[B2] Regras de CORS configuradas com sucesso no bucket {settings.B2_BUCKET_NAME}.")
+    except Exception as e:
+        logger.warning(f"[B2] Não foi possível configurar CORS automaticamente no bucket: {e}")
+
+
+def generate_presigned_upload_url(filename: str, content_type: str, folder: str = "AreaDeMembros/videos/", expires_in: int = 7200) -> dict:
+    """
+    Gera uma URL pré-assinada temporária para upload direto do navegador ao Backblaze B2 (S3 API).
+    Evita que o vídeo passe pelo Nginx/FastAPI na VPS, eliminando timeouts e economizando recursos.
+    """
+    s3 = get_s3_client()
+    if not s3 or not settings.B2_BUCKET_NAME:
+        return None
+
+    target_folder = folder
+    if not target_folder.endswith("/"):
+        target_folder += "/"
+    s3_key = f"{target_folder}{filename}"
+
+    try:
+        # Garante configuração de CORS no bucket
+        try:
+            configure_b2_cors()
+        except Exception:
+            pass
+
+        presigned_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": settings.B2_BUCKET_NAME,
+                "Key": s3_key,
+                "ContentType": content_type
+            },
+            ExpiresIn=expires_in
+        )
+
+        if settings.BACKBLAZE_CDN_URL:
+            base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")
+            if settings.B2_BUCKET_NAME not in base_url:
+                media_url = f"{base_url}/{settings.B2_BUCKET_NAME}/{s3_key}"
+            else:
+                media_url = f"{base_url}/{s3_key}"
+        else:
+            endpoint = (settings.B2_ENDPOINT_URL or "").rstrip("/")
+            media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
+
+        logger.info(f"Presigned URL gerada com sucesso para {s3_key}")
+        return {
+            "upload_url": presigned_url,
+            "video_url": media_url,
+            "s3_key": s3_key,
+            "method": "PUT"
+        }
+    except Exception as e:
+        logger.error(f"Erro ao gerar presigned URL do Backblaze B2 para {filename}: {e}")
+        return None

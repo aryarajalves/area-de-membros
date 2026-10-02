@@ -24,6 +24,7 @@ export default function LessonVideoManager({
 }) {
   const [activeLang, setActiveLang] = useState('pt');
   const [showAddDropdown, setShowAddDropdown] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState({
     isOpen: false,
     title: '',
@@ -113,7 +114,10 @@ export default function LessonVideoManager({
     }
 
     setUploading(true);
-    const uploadedUrl = await onUploadVideo(file);
+    setUploadProgress(0);
+    const uploadedUrl = await onUploadVideo(file, (pct) => {
+      setUploadProgress(pct);
+    });
     if (uploadedUrl) {
       handleUpdateActiveVideo({
         video_url: uploadedUrl,
@@ -121,6 +125,7 @@ export default function LessonVideoManager({
       });
     }
     setUploading(false);
+    setUploadProgress(null);
     e.target.value = '';
   };
 
@@ -410,8 +415,9 @@ export default function LessonVideoManager({
       {/* Modal de Progresso de Upload de Vídeo */}
       <UploadProgressModal
         isOpen={uploading}
+        progress={uploadProgress}
         title="Enviando vídeo da aula..."
-        subtitle="Aguarde o envio seguro para o Backblaze B2 ser concluído. Isso pode levar alguns instantes dependendo do tamanho do vídeo."
+        subtitle="Aguarde o envio seguro para o Backblaze B2 ser concluído. O progresso é medido em tempo real."
       />
 
       {/* Modal de Confirmação de Exclusão (Idioma ou Vídeo) */}

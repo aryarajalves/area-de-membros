@@ -9,10 +9,12 @@ export function UploadProgressModal({
   isOpen,
   title = 'Enviando Arquivo...',
   message,
-  subtitle
+  subtitle,
+  progress = null
 }) {
   if (!isOpen) return null;
   const displayMessage = subtitle || message || 'Aguarde enquanto a mídia é transferida para a nuvem no Backblaze B2. Não feche nem recarregue a página.';
+  const hasPercent = typeof progress === 'number' && progress >= 0;
 
   return (
     <div
@@ -75,21 +77,33 @@ export function UploadProgressModal({
           {title}
         </h3>
 
-        <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+        <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5', margin: '0 0 14px 0' }}>
           {displayMessage}
         </p>
 
-        {/* Barra de Progresso Visual Animada */}
+        {hasPercent && (
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb', marginBottom: '8px' }} data-testid="upload-progress-percent">
+            {progress}% concluído
+          </div>
+        )}
+
+        {/* Barra de Progresso Visual Animada ou Porcentagem Real */}
         <div style={{
           width: '100%',
-          height: '6px',
+          height: '7px',
           backgroundColor: '#e2e8f0',
           borderRadius: '9999px',
           overflow: 'hidden',
           position: 'relative'
         }}>
           <div
-            style={{
+            style={hasPercent ? {
+              width: `${Math.min(Math.max(progress, 0), 100)}%`,
+              height: '100%',
+              backgroundColor: '#2563eb',
+              borderRadius: '9999px',
+              transition: 'width 0.25s ease'
+            } : {
               width: '45%',
               height: '100%',
               backgroundColor: '#2563eb',

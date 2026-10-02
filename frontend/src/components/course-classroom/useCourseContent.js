@@ -209,7 +209,7 @@ export function useCourseContent(courseId) {
     }
   };
 
-  const uploadLessonVideo = async (file) => {
+  const uploadLessonVideo = async (file, onProgress) => {
     if (!file) return null;
     if (file.size > 2048 * 1024 * 1024) {
       addToast('O vídeo excede o tamanho máximo de 2 GB.', 'error');
@@ -217,34 +217,104 @@ export function useCourseContent(courseId) {
     }
 
     const token = localStorage.getItem('auth_token');
+
+    // 1. Tentar obter Presigned URL para upload direto ao Backblaze S3
+    try {
+      const presignedRes = await fetch('/api/v1/courses/generate-video-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type || 'video/mp4'
+        })
+      });
+
+      if (presignedRes.ok) {
+        const presignedData = await presignedRes.json();
+        if (presignedData.direct_upload && presignedData.upload_url) {
+          // Upload direto com XHR para acompanhar progresso real de 0% a 100%
+          return await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', presignedData.upload_url);
+            xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+
+            if (xhr.upload && onProgress) {
+              xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                  const percent = Math.round((evt.loaded / evt.total) * 100);
+                  onProgress(percent);
+                }
+              };
+            }
+
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                addToast('Upload de vídeo concluído com sucesso!', 'success');
+                resolve(presignedData.final_url);
+              } else {
+                reject(new Error(`Falha no upload direto ao storage (Status ${xhr.status})`));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error('Erro de conexão durante o upload direto.'));
+            xhr.send(file);
+          });
+        }
+      }
+    } catch (directErr) {
+      console.warn('Upload direto não disponível ou falhou, usando upload padrão:', directErr);
+    }
+
+    // 2. Fallback: Upload tradicional através do Backend com monitoramento de progresso
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const res = await fetch('/api/v1/courses/upload-video', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
+    return await new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/v1/courses/upload-video');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
-      if (res.ok) {
-        const data = await res.json();
-        addToast('Upload de vídeo concluído!', 'success');
-        return data.video_url;
-      } else {
-        let errMessage = 'Erro ao enviar vídeo.';
-        try {
-          const err = await res.json();
-          errMessage = err.detail || errMessage;
-        } catch {
-          errMessage = `Erro no envio do vídeo (Status ${res.status}).`;
-        }
-        throw new Error(errMessage);
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            onProgress(percent);
+          }
+        };
       }
-    } catch (err) {
-      addToast(err.message || 'Falha no upload do vídeo.', 'error');
-      return null;
-    }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            addToast('Upload de vídeo concluído!', 'success');
+            resolve(data.video_url);
+          } catch (e) {
+            resolve(null);
+          }
+        } else {
+          let errMessage = 'Erro ao enviar vídeo.';
+          try {
+            const err = JSON.parse(xhr.responseText);
+            errMessage = err.detail || errMessage;
+          } catch {
+            errMessage = `Erro no envio do vídeo (Status ${xhr.status}).`;
+          }
+          addToast(errMessage, 'error');
+          resolve(null);
+        }
+      };
+
+      xhr.onerror = () => {
+        addToast('Falha na comunicação ao enviar vídeo.', 'error');
+        resolve(null);
+      };
+
+      xhr.send(formData);
+    });
   };
 
   const uploadLessonThumbnail = async (file) => {
