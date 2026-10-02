@@ -43,7 +43,19 @@ export default function LogManagement({ currentUser }) {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
+      const contentType = res.headers?.get ? (res.headers.get('content-type') || '') : 'application/json';
+      let data = {};
+      if (contentType.includes('application/json') || typeof res.json === 'function') {
+        try {
+          data = await res.json();
+        } catch (_) {
+          const text = await res.text?.() || '';
+          throw new Error(text || `Erro HTTP ${res.status}`);
+        }
+      } else {
+        const text = await res.text?.() || '';
+        throw new Error(text || `Erro HTTP ${res.status}`);
+      }
       if (res.ok) {
         setLogs(data.logs || []);
       } else {

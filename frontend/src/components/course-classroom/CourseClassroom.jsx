@@ -158,7 +158,7 @@ export default function CourseClassroom({ course: initialCourse, currentUser, on
 
   return (
     <div
-      className={!isLightBg ? 'classroom-dark-theme' : ''}
+      className={`classroom-container ${!isLightBg ? 'classroom-dark-theme' : ''}`}
       data-testid="course-classroom-container"
       style={{
         backgroundColor: bgColor,

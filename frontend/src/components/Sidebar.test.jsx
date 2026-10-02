@@ -154,4 +154,55 @@ describe('Sidebar Component', () => {
     fireEvent.click(alunoSupportBtn);
     expect(onSelectTab).toHaveBeenCalledWith('support');
   });
+
+  it('handles mobile drawer states, backdrop click, close button and auto-closing on selection', () => {
+    const onCloseMobileMock = vi.fn();
+    const onSelectTabMock = vi.fn();
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+
+    // Render fechado inicialmente
+    const { rerender, container } = render(
+      <Sidebar
+        user={superAdminUser}
+        isMobileOpen={false}
+        onCloseMobile={onCloseMobileMock}
+        onSelectTab={onSelectTabMock}
+      />
+    );
+
+    const aside = container.querySelector('aside.sidebar');
+    expect(aside).not.toHaveClass('mobile-open');
+    expect(screen.queryByTestId('sidebar-backdrop')).not.toBeInTheDocument();
+
+    // Rerender aberto no mobile
+    rerender(
+      <Sidebar
+        user={superAdminUser}
+        isMobileOpen={true}
+        onCloseMobile={onCloseMobileMock}
+        onSelectTab={onSelectTabMock}
+      />
+    );
+
+    expect(aside).toHaveClass('mobile-open');
+    const backdrop = screen.getByTestId('sidebar-backdrop');
+    expect(backdrop).toBeInTheDocument();
+
+    // Clicar no backdrop fecha
+    fireEvent.click(backdrop);
+    expect(onCloseMobileMock).toHaveBeenCalledTimes(1);
+
+    // Clicar no botão 'X' fecha
+    const closeBtn = screen.getByTestId('sidebar-close-btn');
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+    expect(onCloseMobileMock).toHaveBeenCalledTimes(2);
+
+    // Clicar em um item de navegação também fecha o drawer automaticamente
+    const coursesBtn = screen.getByTestId('nav-item-courses');
+    fireEvent.click(coursesBtn);
+    expect(onSelectTabMock).toHaveBeenCalledWith('courses');
+    expect(onCloseMobileMock).toHaveBeenCalledTimes(3);
+  });
 });
+

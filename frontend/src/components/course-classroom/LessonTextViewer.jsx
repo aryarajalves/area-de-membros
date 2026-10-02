@@ -269,6 +269,7 @@ export default function LessonTextViewer({
 
       {/* Conteúdo Principal com Sidebar Opcional */}
       <div
+        className="classroom-layout-grid"
         style={{
           display: 'grid',
           gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 320px' : '1fr',

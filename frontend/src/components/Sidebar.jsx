@@ -1,7 +1,16 @@
 import React from 'react';
-import { Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle, Settings, UserCheck, Webhook, HelpCircle } from 'lucide-react';
+import { Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle, Settings, UserCheck, Webhook, HelpCircle, X } from 'lucide-react';
 
-export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLogout, pendingReportsCount = 0, bgColor = '#090d16' }) {
+export default function Sidebar({
+  activeTab = 'courses',
+  onSelectTab,
+  user,
+  onLogout,
+  pendingReportsCount = 0,
+  bgColor = '#090d16',
+  isMobileOpen = false,
+  onCloseMobile
+}) {
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
@@ -64,6 +73,9 @@ export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLo
     if (onSelectTab) {
       onSelectTab(id);
     }
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
   };
 
   const userName = user?.name || 'Super Admin';
@@ -71,27 +83,48 @@ export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLo
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <aside
-      className="sidebar"
-      aria-label="Menu Lateral"
-      style={{
-        backgroundColor: bgColor,
-        borderRight: isLightBg ? '1px solid #eef0f3' : '1px solid rgba(255, 255, 255, 0.08)',
-        transition: 'background-color 0.3s ease'
-      }}
-    >
-      <div className="sidebar-top">
-        {/* Logo header */}
-        <div className="logo-container">
-          <div className="logo-icon" data-testid="logo-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+    <>
+      {isMobileOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onCloseMobile}
+          data-testid="sidebar-backdrop"
+          aria-label="Fechar navegação lateral"
+        />
+      )}
+      <aside
+        className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}
+        aria-label="Menu Lateral"
+        style={{
+          backgroundColor: bgColor,
+          borderRight: isLightBg ? '1px solid #eef0f3' : '1px solid rgba(255, 255, 255, 0.08)',
+          transition: 'background-color 0.3s ease, transform 0.3s ease'
+        }}
+      >
+        <div className="sidebar-top">
+          {/* Logo header com botão de fechar para mobile */}
+          <div className="logo-container">
+            <div className="logo-icon" data-testid="logo-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <span className="logo-text" style={{ color: isLightBg ? '#0b192c' : '#ffffff' }}>
+              Área de Membros
+            </span>
+            {onCloseMobile && (
+              <button
+                type="button"
+                className="sidebar-close-btn"
+                onClick={onCloseMobile}
+                title="Fechar menu"
+                aria-label="Fechar menu lateral"
+                data-testid="sidebar-close-btn"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
-          <span className="logo-text" style={{ color: isLightBg ? '#0b192c' : '#ffffff' }}>
-            Área de Membros
-          </span>
-        </div>
 
         {/* Navigation Categories */}
         <nav className="nav-menu">
@@ -182,5 +215,6 @@ export default function Sidebar({ activeTab = 'courses', onSelectTab, user, onLo
         </div>
       </div>
     </aside>
+  </>
   );
 }

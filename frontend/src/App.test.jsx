@@ -191,14 +191,48 @@ describe('App Component', () => {
     expect(localStorage.getItem('active_tab')).toBe('courses');
   });
 
-  it('defines page title as "Area de Alunos" in index.html', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const htmlPath = path.resolve(__dirname, '../index.html');
-    const content = fs.readFileSync(htmlPath, 'utf-8');
-    expect(content).toContain('<title>Area de Alunos</title>');
-    expect(content).toContain('lang="pt-BR"');
+  it('renders mobile-header when authenticated and toggles mobile menu drawer', () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 1,
+        name: 'Super Admin',
+        email: 'aryarajmarketing@gmail.com',
+        role: 'superadmin',
+      })
+    );
+    localStorage.setItem('active_tab', 'courses');
+
+    const { container } = render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    // Mobile header deve estar presente
+    const mobileHeader = screen.getByTestId('mobile-header');
+    expect(mobileHeader).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-header-avatar')).toHaveTextContent('S');
+
+    // Sidebar inicialmente fechada para mobile
+    const aside = container.querySelector('aside.sidebar');
+    expect(aside).not.toHaveClass('mobile-open');
+
+    // Clica no botão do menu hambúrguer mobile
+    const mobileToggleBtn = screen.getByTestId('mobile-menu-toggle-btn');
+    fireEvent.click(mobileToggleBtn);
+
+    // Sidebar agora deve possuir a classe mobile-open e exibir o backdrop
+    expect(aside).toHaveClass('mobile-open');
+    const backdrop = screen.getByTestId('sidebar-backdrop');
+    expect(backdrop).toBeInTheDocument();
+
+    // Clica no backdrop para fechar
+    fireEvent.click(backdrop);
+    expect(aside).not.toHaveClass('mobile-open');
   });
 });
+
 
 

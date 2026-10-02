@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Menu } from 'lucide-react';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
@@ -23,6 +24,7 @@ function App() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
   const [isInsideCourse, setIsInsideCourse] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
     return localStorage.getItem('member_area_bg_color') || '#090d16';
   });
@@ -52,6 +54,7 @@ function App() {
 
   const handleSelectTab = (tabId) => {
     setIsInsideCourse(false);
+    setIsMobileMenuOpen(false);
     setActiveTab(tabId);
     localStorage.setItem('active_tab', tabId);
   };
@@ -217,6 +220,8 @@ function App() {
           onLogout={handlePromptLogout}
           pendingReportsCount={pendingReportsCount}
           bgColor={memberAreaBgColor}
+          isMobileOpen={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
       )}
       <main
@@ -229,6 +234,30 @@ function App() {
             : {})
         }}
       >
+        {!isInsideCourse && (
+          <header className="mobile-header" data-testid="mobile-header">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Abrir menu lateral"
+              data-testid="mobile-menu-toggle-btn"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="mobile-header-brand">
+              <div className="logo-icon mobile-logo-icon">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <span className="mobile-header-title">Área de Membros</span>
+            </div>
+            <div className="mobile-header-avatar" data-testid="mobile-header-avatar">
+              {(user?.name || 'U').charAt(0).toUpperCase()}
+            </div>
+          </header>
+        )}
         {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <CourseManagement
             currentUser={user}

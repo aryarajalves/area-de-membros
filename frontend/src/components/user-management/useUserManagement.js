@@ -72,6 +72,9 @@ export function useUserManagement(currentUser) {
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
+      } else {
+        const text = await res.text();
+        console.warn('Erro ao carregar usuários:', text);
       }
     } catch (err) {
       console.error(err);

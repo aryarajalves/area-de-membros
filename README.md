@@ -201,7 +201,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **239 testes unitários passando (100% de aprovação em 53 arquivos de teste)** cobrindo sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília e WhatsApp.
+> **242 testes unitários passando (100% de aprovação em 54 arquivos de teste)** cobrindo sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -210,7 +210,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **41 testes unitários passando (100% de aprovação)** cobrindo autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte e eventos de renovação.
+> **41 testes unitários passando (100% de aprovação)** cobrindo autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 

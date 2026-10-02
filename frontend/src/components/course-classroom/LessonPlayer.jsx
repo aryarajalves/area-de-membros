@@ -77,7 +77,7 @@ export default function LessonPlayer({
 
   if (!lesson) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 310px' : '1fr', gap: '48px', alignItems: 'start' }}>
+      <div className="classroom-layout-grid" style={{ display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 310px' : '1fr', gap: '48px', alignItems: 'start' }}>
         <div style={{ textAlign: 'center', padding: '80px 20px', color: subTextColor, borderRadius: '14px', border: `1px dashed ${borderColor}`, backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.02)', minHeight: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <PlayCircle size={42} color="#eab308" style={{ marginBottom: '14px' }} />
           <h3 style={{ fontSize: '18px', fontWeight: 700, color: textColor, marginBottom: '8px' }}>
@@ -234,7 +234,7 @@ export default function LessonPlayer({
 
       {/* Área Inferior em 2 Colunas: Conteúdo Editorial à Esquerda + Timeline de Módulos/Aulas à Direita */}
       <div
-        className="classroom-grid"
+        className="classroom-grid classroom-layout-grid"
         style={{ maxWidth: '1080px', margin: '0 auto', display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 300px' : '1fr', gap: '52px', alignItems: 'start' }}
       >
         {/* Coluna Esquerda: Título, Breadcrumb, Texto da Aula, Ações, Card de Próxima Aula e Abas */}

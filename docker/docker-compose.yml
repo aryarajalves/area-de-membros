@@ -34,6 +34,11 @@ services:
       - ../backend/.env
     ports:
       - "8010:8000"
+    networks:
+      default:
+        aliases:
+          - area_aulas_backend
+          - area_de_membros_backend
     volumes:
       - ../backend:/app
       - /var/run/docker.sock:/var/run/docker.sock:ro

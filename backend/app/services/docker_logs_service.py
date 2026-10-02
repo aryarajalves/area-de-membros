@@ -5,9 +5,10 @@ Utiliza comunicação direta via socket Unix (/var/run/docker.sock) sem necessid
 import os
 import re
 import socket
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from app.core.logger import logger
 
 DOCKER_SOCKET_PATH = "/var/run/docker.sock"
@@ -137,6 +138,86 @@ def clean_docker_stream(body: bytes) -> List[str]:
                 lines.append(formatted)
     return lines
 
+def resolve_container_target(service_name: str) -> Tuple[str, str]:
+    """
+    Localiza dinamicamente o container no Docker daemon, retornando (target_id_ou_nome, nome_legivel).
+    Suporta tanto Docker Compose tradicional quanto Docker Swarm / Portainer stacks
+    onde o container ganha sufixos dinâmicos como .1.<hash>.
+    """
+    default_name = CONTAINER_SERVICES.get(service_name, f"area_de_membros_{service_name}")
+    if not os.path.exists(DOCKER_SOCKET_PATH):
+        return default_name, default_name
+
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(3.0)
+        sock.connect(DOCKER_SOCKET_PATH)
+        req = b"GET /containers/json?all=1 HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        sock.sendall(req)
+        res = b""
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            res += chunk
+        sock.close()
+
+        _, _, body = res.partition(b"\r\n\r\n")
+        all_containers = []
+        for line in body.splitlines():
+            line = line.strip()
+            if line.startswith(b"[{") and line.endswith(b"}]"):
+                try:
+                    all_containers = json.loads(line.decode("utf-8"))
+                    break
+                except Exception:
+                    pass
+
+        # 1. Match por labels do Swarm (com.docker.swarm.service.name) e status running
+        for c in all_containers:
+            labels = c.get("Labels") or {}
+            swarm_service = labels.get("com.docker.swarm.service.name", "")
+            state = c.get("State", "")
+            if state == "running" and (swarm_service.endswith(f"_{service_name}") or swarm_service == service_name):
+                c_names = c.get("Names", [])
+                clean_n = c_names[0].lstrip("/") if c_names else swarm_service
+                return c.get("Id", clean_n), clean_n
+
+        # 2. Match por imagem contendo 'area-de-membros' e service_name em containers rodando
+        for c in all_containers:
+            img = c.get("Image", "")
+            state = c.get("State", "")
+            if "area-de-membros" in img and service_name in img and state == "running":
+                c_names = c.get("Names", [])
+                clean_n = c_names[0].lstrip("/") if c_names else f"area_de_membros_{service_name}"
+                return c.get("Id", clean_n), clean_n
+
+        # 3. Match com nomes exatos ou prefixos conhecidos
+        for c in all_containers:
+            for n in c.get("Names", []):
+                clean_n = n.lstrip("/")
+                if clean_n in (f"area_de_membros_{service_name}", f"area_aulas_{service_name}"):
+                    return c.get("Id", clean_n), clean_n
+                if any(clean_n.startswith(p) for p in (
+                    f"area_aulas_{service_name}.",
+                    f"area_de_membros_{service_name}.",
+                    f"areademembros_{service_name}.",
+                    f"membros_{service_name}."
+                )):
+                    return c.get("Id", clean_n), clean_n
+
+        # 4. Match genérico onde o nome termine em _{service_name} ou contenha _{service_name}.
+        for c in all_containers:
+            for n in c.get("Names", []):
+                clean_n = n.lstrip("/")
+                if f"_{service_name}." in clean_n or clean_n.endswith(f"_{service_name}"):
+                    return c.get("Id", clean_n), clean_n
+
+    except Exception as err:
+        logger.warning(f"Erro ao resolver container dinâmico para '{service_name}': {err}")
+
+    return default_name, default_name
+
 def fetch_container_logs(
     service_name: str,
     tail: int = 100,
@@ -145,8 +226,8 @@ def fetch_container_logs(
     end_time: str = None
 ) -> Dict[str, Any]:
     """Obtém as linhas de log do contêiner Docker, com suporte opcional a filtro de data e horário de Brasília."""
-    container_name = CONTAINER_SERVICES.get(service_name)
-    if not container_name:
+    default_name = CONTAINER_SERVICES.get(service_name)
+    if not default_name:
         return {
             "service": service_name,
             "container": "unknown",
@@ -155,10 +236,12 @@ def fetch_container_logs(
             "error": f"Serviço '{service_name}' inválido. Disponíveis: backend, frontend, worker."
         }
 
+    target_id, display_name = resolve_container_target(service_name)
+
     if not os.path.exists(DOCKER_SOCKET_PATH):
         return {
             "service": service_name,
-            "container": container_name,
+            "container": display_name,
             "available": False,
             "logs": [f"[{service_name.upper()}] Socket do Docker ({DOCKER_SOCKET_PATH}) não está acessível no container."],
             "error": "Docker socket indisponível."
@@ -206,7 +289,7 @@ def fetch_container_logs(
         sock.connect(DOCKER_SOCKET_PATH)
 
         request = (
-            f"GET /containers/{container_name}/logs?{query_str} HTTP/1.1\r\n"
+            f"GET /containers/{target_id}/logs?{query_str} HTTP/1.1\r\n"
             f"Host: localhost\r\n"
             f"Connection: close\r\n\r\n"
         )
@@ -225,10 +308,10 @@ def fetch_container_logs(
         status_line = header_text.splitlines()[0] if header_text else ""
 
         if "200" not in status_line:
-            logger.error(f"Erro ao consultar logs do container {container_name}: {status_line}")
+            logger.error(f"Erro ao consultar logs do container {display_name} ({target_id}): {status_line}")
             return {
                 "service": service_name,
-                "container": container_name,
+                "container": display_name,
                 "available": False,
                 "logs": [f"Erro da API Docker: {status_line}"],
                 "error": status_line
@@ -237,7 +320,7 @@ def fetch_container_logs(
         parsed_logs = clean_docker_stream(body_bytes)
         return {
             "service": service_name,
-            "container": container_name,
+            "container": display_name,
             "available": True,
             "logs": parsed_logs,
             "total_lines": len(parsed_logs),
@@ -249,10 +332,10 @@ def fetch_container_logs(
             "error": None
         }
     except Exception as e:
-        logger.error(f"Falha de conexão com Docker socket para logs de {container_name}: {e}")
+        logger.error(f"Falha de conexão com Docker socket para logs de {display_name}: {e}")
         return {
             "service": service_name,
-            "container": container_name,
+            "container": display_name,
             "available": False,
             "logs": [f"Erro ao obter logs: {str(e)}"],
             "error": str(e)

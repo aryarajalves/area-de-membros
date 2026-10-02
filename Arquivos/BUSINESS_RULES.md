@@ -426,3 +426,23 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - **Categoria "Segurança":**
     - `Backup Automático`, `Gerenciamento de logs` e `Gestão de Usuário` (restrito exclusivamente a Super Admin).
 
+---
+
+## 13. Experiência Mobile e Adaptação para Celulares (Smartphones)
+- **Menu Lateral Retrátil (Drawer / Gaveta):**
+  - Em telas com largura inferior ou igual a `768px`, a barra lateral deixa de ocupar espaço fixo dividindo a tela e passa a se comportar como um **Drawer deslizante**.
+  - O drawer permanece recolhido fora da tela (`translateX(-100%)`) e desliza suavemente ao ser acionado.
+  - Ao abrir o menu no celular, uma camada de fundo escurecida translúcida com desfoque (`sidebar-backdrop`) cobre a área externa.
+  - O menu pode ser fechado tocando no botão `X` no topo do menu, tocando no backdrop escuro ou selecionando qualquer item da navegação (fechamento automático).
+- **Cabeçalho Superior Mobile (`MobileHeader`):**
+  - Em dispositivos móveis (`<= 768px`), uma barra superior exclusiva é exibida no topo contendo:
+    - Botão hambúrguer interativo para abrir o menu lateral.
+    - Logotipo e título oficial "Área de Membros".
+    - Avatar com a inicial do usuário autenticado.
+- **Sala de Aula e Player de Vídeo no Celular:**
+  - O player de vídeo mantém a proporção `16:9` widescreen fluida sem corte lateral em qualquer tamanho de tela móvel.
+  - Em telas menores que `900px`, a divisão em 2 colunas da sala de aula (conteúdo à esquerda e módulos/materiais à direita) se transforma em um layout empilhado de 1 coluna (`classroom-layout-grid`), garantindo que o vídeo e textos fiquem no topo em largura total e a lista de aulas/materiais logo abaixo.
+- **Tabelas e Listagens no Celular:**
+  - Tabelas com múltiplas colunas (Gestão de Alunos, Convites, Usuários, Backups, Relatos) contam com rolagem horizontal fluida por toque (`overflow-x: auto; -webkit-overflow-scrolling: touch;`), preservando a legibilidade dos dados sem espremer colunas nem estourar a largura da janela.
+
+
