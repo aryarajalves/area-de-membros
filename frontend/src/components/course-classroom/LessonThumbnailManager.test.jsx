@@ -68,4 +68,32 @@ describe('LessonThumbnailManager Component', () => {
       expect(onChange).toHaveBeenCalledWith('https://b2.com/new-poster.png');
     });
   });
+
+  it('allows changing existing thumbnail directly without having to remove first', async () => {
+    const onChange = vi.fn();
+    const onUploadThumbnail = vi.fn().mockResolvedValue('https://b2.com/replaced-poster.jpg');
+
+    render(
+      <LessonThumbnailManager
+        thumbnailUrl="https://b2.com/old-poster.jpg"
+        onChange={onChange}
+        onUploadThumbnail={onUploadThumbnail}
+      />
+    );
+
+    // Botão de trocar deve estar presente
+    const changeBtn = screen.getByTestId('change-lesson-thumbnail-btn');
+    expect(changeBtn).toBeInTheDocument();
+    expect(changeBtn).toHaveTextContent('Trocar Imagem de Capa');
+
+    // Input de arquivo continua acessível
+    const input = screen.getByTestId('lesson-thumbnail-file-input');
+    const newFile = new File(['new-bytes'], 'replaced-poster.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [newFile] } });
+
+    await waitFor(() => {
+      expect(onUploadThumbnail).toHaveBeenCalledWith(newFile);
+      expect(onChange).toHaveBeenCalledWith('https://b2.com/replaced-poster.jpg');
+    });
+  });
 });
