@@ -80,20 +80,19 @@ describe('LessonVideoManager Component', () => {
     ]);
   });
 
-  it('renders upload progress modal when uploading is true', () => {
+  it('renders inline background progress when an upload is in progress without blocking modal', () => {
     render(
       <LessonVideoManager
         videos={[{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]}
         onChange={vi.fn()}
         onUploadVideo={vi.fn()}
-        uploading={true}
+        uploading={false}
         setUploading={vi.fn()}
       />
     );
 
-    expect(screen.getByTestId('upload-progress-modal')).toBeInTheDocument();
-    expect(screen.getByText('Enviando vídeo da aula...')).toBeInTheDocument();
-    expect(screen.getByText(/Aguarde o envio seguro para o Backblaze B2/i)).toBeInTheDocument();
+    // O modal bloqueante antigo não deve existir na tela
+    expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument();
   });
 
   it('displays 2 GB upload limit and defaults to Upload tab', () => {

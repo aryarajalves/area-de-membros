@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Link2, Globe, Plus, Trash2, CheckCircle2 } from 'lucide-react';
-import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackModals';
+import { FileDeleteConfirmModal } from '../common/FeedbackModals';
+import { useUploadQueue } from '../../context/UploadQueueContext';
 
 export const LANGUAGE_OPTIONS = [
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
@@ -32,6 +33,13 @@ export default function LessonVideoManager({
     onConfirm: null
   });
 
+  let uploadQueue = null;
+  try {
+    uploadQueue = useUploadQueue();
+  } catch {
+    uploadQueue = null;
+  }
+
   const textColor = isLightBg ? '#1e293b' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
   const outerBg = isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)';
@@ -45,6 +53,9 @@ export default function LessonVideoManager({
     : [{ language: 'pt', language_label: 'Português', title: '', description: '', video_url: '', video_type: 'upload' }];
 
   const activeVideo = currentVideos.find((v) => v.language === activeLang) || currentVideos[0];
+  const currentUpload = uploadQueue?.uploads?.find(
+    (u) => u.status === 'uploading' && u.language === activeVideo.language
+  );
 
   const handleUpdateActiveVideo = (updates) => {
     const updated = currentVideos.map((v) =>
@@ -113,19 +124,33 @@ export default function LessonVideoManager({
       return;
     }
 
-    setUploading(true);
-    setUploadProgress(0);
-    const uploadedUrl = await onUploadVideo(file, (pct) => {
-      setUploadProgress(pct);
-    });
-    if (uploadedUrl) {
-      handleUpdateActiveVideo({
-        video_url: uploadedUrl,
-        video_type: 'upload'
+    if (uploadQueue?.startVideoUpload) {
+      // Inicia upload 100% em segundo plano! Sem travar a tela com nenhum modal
+      uploadQueue.startVideoUpload({
+        file,
+        lessonTitle: activeVideo.title || lessonTitle || file.name,
+        language: activeVideo.language,
+        onSuccessUrl: (url) => {
+          handleUpdateActiveVideo({
+            video_url: url,
+            video_type: 'upload'
+          });
+        }
       });
+    } else if (onUploadVideo) {
+      // Fallback compatível para testes ou chamadas isoladas
+      if (setUploading) setUploading(true);
+      setUploadProgress(0);
+      const uploadedUrl = await onUploadVideo(file, (pct) => setUploadProgress(pct));
+      if (uploadedUrl) {
+        handleUpdateActiveVideo({
+          video_url: uploadedUrl,
+          video_type: 'upload'
+        });
+      }
+      if (setUploading) setUploading(false);
+      setUploadProgress(null);
     }
-    setUploading(false);
-    setUploadProgress(null);
     e.target.value = '';
   };
 
@@ -364,6 +389,31 @@ export default function LessonVideoManager({
               </p>
             </div>
 
+            {currentUpload && (
+              <div
+                data-testid="inline-upload-progress"
+                style={{
+                  marginTop: '10px',
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  borderRadius: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 600 }}>
+                    🚀 Enviando em segundo plano: {currentUpload.progress}%
+                  </span>
+                  <span style={{ fontSize: '11px', color: subTextColor }}>
+                    Você já pode salvar esta aula sem esperar!
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${currentUpload.progress}%`, height: '100%', backgroundColor: '#3b82f6', transition: 'width 0.2s ease-out' }} />
+                </div>
+              </div>
+            )}
+
             {activeVideo.video_url && (
               <div style={{
                 marginTop: '10px',
@@ -411,14 +461,6 @@ export default function LessonVideoManager({
           </div>
         )}
       </div>
-
-      {/* Modal de Progresso de Upload de Vídeo */}
-      <UploadProgressModal
-        isOpen={uploading}
-        progress={uploadProgress}
-        title="Enviando vídeo da aula..."
-        subtitle="Aguarde o envio seguro para o Backblaze B2 ser concluído. O progresso é medido em tempo real."
-      />
 
       {/* Modal de Confirmação de Exclusão (Idioma ou Vídeo) */}
       <FileDeleteConfirmModal

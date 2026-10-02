@@ -15,6 +15,7 @@ import SupportManagement from './components/support-management/SupportManagement
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
+import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 
@@ -339,6 +340,8 @@ function App() {
         onConfirm={handleConfirmLogout}
         onClose={() => setShowLogoutModal(false)}
       />
+
+      <BackgroundUploadWidget />
     </div>
   );
 }
