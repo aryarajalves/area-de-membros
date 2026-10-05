@@ -11,11 +11,14 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Banner Hero cinematográfico com suporte a capa personalizada ou gradiente dark glassmorphism.
   - Carrossel horizontal de módulos com miniaturas (posters), contadores de aulas e barra de progresso individual.
   - Vitrine de cursos com paginação inteligente (20 cursos por página) e controle de acesso individual.
-- **Player de Vídeo Customizado HTML5 (`CustomVideoPlayer`):**
+- **Player de Vídeo Customizado HTML5 (`CustomVideoPlayer` & `VideoControls`):**
   - **Barra de Progresso Interativa (Scrubbing / Seek):** Avanço e retrocesso livre clicando ou arrastando na timeline do vídeo.
+  - **Barra de Buffer Visual (`video-buffered-bar`):** Faixa translúcida no trilho de progresso que exibe exatamente quanto do vídeo foi baixado na memória à frente da reprodução.
+  - **Overlay Neon de Carregamento e Buffering:** Painel central translúcido com spinner azul animado e mensagens descritivas (*"Carregando aula..."* / *"Carregando vídeo... Baixando dados de transmissão, aguarde..."*), eliminando sensações de travamento.
   - **Avançar e Voltar 10s:** Botões dedicados `-10s` e `+10s` para saltos rápidos no aprendizado.
   - **Tempo Restante Dinâmico:** Exibe o tempo decorrido, duração total e tempo que falta para o término do vídeo (ex: `00:09 / 10:00 (Faltam 09:51)`).
   - **Ajuste Fino de Áudio e Fullscreen:** Controle de volume deslizante, mute/unmute e alternância para tela cheia nativa.
+  - **Campos de Descrição Expansíveis (`ExpandableTextarea`):** Botão de maximizar/restaurar para preenchimento confortável de textos longos na descrição de módulos e aulas.
 - **Armazenamento e Streaming em Nuvem (Backblaze B2 / S3 Presigned URLs):**
   - **Upload em Segundo Plano (Fila Concorrente):** O envio ocorre de forma totalmente assíncrona pelo `UploadQueueContext` sem modais bloqueantes. O usuário pode salvar a aula imediatamente, fechar o formulário, criar outras aulas e enviar múltiplos vídeos grandes simultaneamente sem travar a interface.
   - **Widget Flutuante de Uploads (`BackgroundUploadWidget`):** Painel compacto no canto inferior direito que acompanha o progresso em tempo real (0% a 100%) de cada vídeo, permitindo minimizar, cancelar ou acompanhar múltiplos envios com mensagens descritivas de status e erro.
@@ -31,8 +34,21 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Identificação visual com badge âmbar na timeline e tela acolhedora de espera caso a aula ainda não possua vídeo gravado.
 - **Comentários e Respostas:**
   - Aba de comentários da aula com respostas aninhadas em 1 nível, paginação (20 por página) e moderação por administradores.
-- **Materiais Complementares:**
-  - Upload de anexos de até 100 MB (PDF, Word, Excel, PowerPoint, ZIP) com títulos e descrições personalizadas.
+- **Vitrine de Cursos e Bloqueio Visual com Cadeado e Correntes (`ChainedLockOverlay`):**
+  - Cursos não adquiridos/bloqueados exibem selo *"Disponível para Compra"*, botão *"Ver Mais Informações"* (redirecionando para a landing page configurada) e botão dedicado **"Entrar em Contato"** (`HelpCircle`) que leva o aluno diretamente para o canal interno de Suporte.
+  - **Cadeado com Correntes Cruzadas:** Overlay estilizado sobre a thumbnail com correntes metálicas em 'X', escudo central em Glassmorphism neon cyan e etiqueta *"Produto Fechado / Acesso Restrito"*.
+- **Transcrição e Resumo Inteligente com IA (OpenAI Whisper & GPT-4o-mini):**
+  - **Extração com FFmpeg Otimizado:** Converte o vídeo em áudio MP3 otimizado mono 16kHz a 48kbps (respeitando o limite de 25 MB do Whisper para aulas de até 1h), com análise acelerada de streams remotos no Backblaze B2.
+  - **Polling Silencioso em Segundo Plano:** Atualização de status em background sem piscar ou desmontar a interface.
+  - **Transcrição Integral Whisper:** Transcrição completa em texto na íntegra.
+  - **Resumo Executivo e Principais Pontos (Key Takeaways):** Síntese pedagógica gerada por IA com plano de ação prático.
+  - **Documento HTML Inteligente:** Documento HTML5 autônomo com estilos modernos e suporte nativo a impressão/PDF (`@media print`), acessível diretamente pelo botão "Abrir Documento HTML" em nova aba.
+  - **Tratamento Amigável de Quotas:** Detecção e mensagem explicativa em português caso a chave OpenAI esteja sem créditos.
+  - **Interface Interativa:** Aba "Transcrição & Resumo IA" no player da aula com busca instantânea de termos, botão de cópia com feedback e re-geração para administradores.
+- **Navegação Moderna em 3 Categorias (Sidebar):**
+  - 🎓 **Área Pedagógica** (ou *Meu Aprendizado*): Cursos, Alunos, Suporte, Relatos de Aulas (com visualização permitida para Alunos em modo leitura).
+  - 🚀 **Comunidade & Social**: Chat da Comunidade, Ranking & Conquistas, Depoimentos.
+  - ⚙️ **Sistema & Configurações**: Configurações (com acesso para Alunos restrito à Cor de Fundo e Meu Perfil), Integrações, Gestão de Usuários, Backup Automático, Logs do Sistema.
 
 ---
 
@@ -205,7 +221,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **252 testes unitários passando (100% de aprovação em 57 arquivos de teste)** cobrindo fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **260 testes unitários passando (100% de aprovação em 59 arquivos de teste)** cobrindo feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash

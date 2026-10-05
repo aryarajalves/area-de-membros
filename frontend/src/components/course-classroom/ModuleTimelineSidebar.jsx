@@ -250,7 +250,10 @@ export default function ModuleTimelineSidebar({
                             justifyContent: 'space-between',
                             gap: '8px',
                             cursor: 'pointer',
-                            padding: '2px 0'
+                            padding: '3px 6px',
+                            borderRadius: '6px',
+                            backgroundColor: isActive ? (isLightBg ? 'rgba(234, 179, 8, 0.12)' : 'rgba(234, 179, 8, 0.14)') : 'transparent',
+                            transition: 'all 0.15s ease'
                           }}
                         >
                           {/* Ponto na Linha da Timeline */}

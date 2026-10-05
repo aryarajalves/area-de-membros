@@ -383,6 +383,8 @@ export default function CourseClassroom({ course: initialCourse, currentUser, on
               ) : (
                 <LessonPlayer
                   lesson={activeLesson}
+                  hasLessons={Boolean(selectedModule?.lessons && selectedModule.lessons.length > 0)}
+                  onOpenCreateLesson={() => handleOpenCreateLesson(selectedModule)}
                   courseTitle={course?.title || initialCourse.title}
                   moduleTitle={selectedModule.title}
                   courseId={course?.id || initialCourse.id}

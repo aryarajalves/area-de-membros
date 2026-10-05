@@ -217,5 +217,32 @@ describe('LessonReportsManagement Component', () => {
     expect(container).toHaveStyle({ backgroundColor: '#121620' });
     expect(container).toHaveClass('classroom-dark-theme');
   });
+
+  it('renders reports list in read-only mode for aluno without resolve or delete buttons', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockReports
+    });
+
+    const alunoUser = { id: 2, name: 'Aluno Teste', role: 'aluno' };
+
+    render(
+      <ToastProvider>
+        <LessonReportsManagement
+          onUpdateSummary={vi.fn()}
+          currentUser={alunoUser}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Carlos Aluno')).toBeInTheDocument();
+      expect(screen.getByText('Mariana Admin')).toBeInTheDocument();
+    });
+
+    // Aluno NÃO deve ver botões de resolver ou excluir relatos
+    expect(screen.queryByTestId('toggle-status-btn-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('delete-report-btn-1')).not.toBeInTheDocument();
+  });
 });
 

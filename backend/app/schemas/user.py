@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     phone: Optional[str] = None
+    avatar_url: Optional[str] = None
     created_at: datetime
     course_ids: Optional[List[int]] = []
     course_access: Optional[List[CourseAccessItem]] = []
@@ -102,6 +103,20 @@ def validate_password_strength_func(v: str) -> str:
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\/`~]", v):
         raise ValueError("A senha deve conter ao menos 1 caractere especial.")
     return v
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    password: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def validate_opt_password(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return validate_password_strength_func(v)
+        return v
 
 class RegisterWithInvite(BaseModel):
     token: str

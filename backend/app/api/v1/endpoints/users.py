@@ -1,8 +1,11 @@
+import os
+import uuid
 import secrets
 import json
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
@@ -21,6 +24,7 @@ from app.schemas.user import (
     CourseAccessItem,
     UserResponse,
     UserUpdate,
+    UserProfileUpdate,
     BulkDeleteRequest,
     InviteCreate,
     InviteResponse,

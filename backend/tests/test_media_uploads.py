@@ -27,17 +27,21 @@ def test_generate_video_upload_url_invalid_extension():
     assert "Formato de vídeo inválido" in response.json()["detail"]
 
 def test_generate_video_upload_url_fallback_when_no_b2():
+    from unittest.mock import patch
     headers = get_superadmin_headers()
-    response = client.post(
-        "/api/v1/courses/generate-video-upload-url",
-        headers=headers,
-        json={"filename": "aula_segura.mp4", "content_type": "video/mp4"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "direct_upload" in data
-    assert "upload_url" in data
-    assert "method" in data
+    with patch("app.api.v1.endpoints.media_uploads.generate_presigned_upload_url", return_value=None):
+        response = client.post(
+            "/api/v1/courses/generate-video-upload-url",
+            headers=headers,
+            json={"filename": "aula_segura.mp4", "content_type": "video/mp4"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "direct_upload" in data
+        assert "upload_url" in data
+        assert "method" in data
+
+
 
 def test_effective_b2_endpoint_url_derivation(monkeypatch):
     # Caso 1: B2_ENDPOINT_URL vazia e BACKBLAZE_CDN_URL com path

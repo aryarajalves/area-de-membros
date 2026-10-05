@@ -2,9 +2,12 @@
 .app-container {
   display: flex;
   height: 100vh;
+  max-height: 100vh;
   width: 100vw;
-  background-color: #ffffff;
+  background-color: #090d16;
+  overflow: hidden;
 }
+
 
 /* Toast Container & Notification Item Styles */
 .toast-container {
@@ -117,18 +120,24 @@
   width: 260px;
   min-width: 260px;
   height: 100vh;
+  max-height: 100vh;
   background-color: #ffffff;
   border-right: 1px solid #eef0f3;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 24px 16px;
+  padding: 20px 14px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .sidebar-top {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 16px;
 }
 
 /* Logo header */
@@ -138,6 +147,7 @@
   gap: 12px;
   padding-left: 8px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .logo-icon {
@@ -150,6 +160,7 @@
   justify-content: center;
   color: #ffffff;
   box-shadow: 0 2px 6px rgba(234, 56, 76, 0.25);
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -159,12 +170,40 @@
   letter-spacing: -0.4px;
 }
 
-/* Navigation */
+/* Navigation com rolagem interna e máscara de fade suave */
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  padding-bottom: 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+  mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
 }
+
+.nav-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
 
 .nav-category-group {
   display: flex;
@@ -224,7 +263,9 @@
 /* Sidebar Footer / User section */
 .sidebar-footer {
   border-top: 1px solid #f1f5f9;
-  padding-top: 16px;
+  padding-top: 14px;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .user-profile {
@@ -293,8 +334,10 @@
 .main-content {
   flex: 1;
   height: 100vh;
+  max-height: 100vh;
   background-color: #ffffff;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .empty-white-screen {

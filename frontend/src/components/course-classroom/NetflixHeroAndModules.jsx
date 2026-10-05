@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Play, Plus, Edit2, Trash2, CheckCircle2, Layers, Sparkles } from 'lucide-react';
 
 export default function NetflixHeroAndModules({
@@ -17,6 +17,42 @@ export default function NetflixHeroAndModules({
   onOpenCreateLesson
 }) {
   const heroBgImage = course?.cover_image_url || course?.thumbnail_url || null;
+
+  // Referência e controle de drag-to-scroll horizontal
+  const carouselRef = useRef(null);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+
+  const handleMouseDown = (e) => {
+    if (!carouselRef.current) return;
+    isDraggingRef.current = true;
+    setIsMouseDown(true);
+    hasDraggedRef.current = false;
+    const pageX = e.pageX !== undefined ? e.pageX : (e.clientX || 0);
+    const offsetLeft = carouselRef.current.offsetLeft || 0;
+    startXRef.current = pageX - offsetLeft;
+    scrollLeftRef.current = carouselRef.current.scrollLeft || 0;
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDraggingRef.current || !carouselRef.current) return;
+    const pageX = e.pageX !== undefined ? e.pageX : (e.clientX || 0);
+    const offsetLeft = carouselRef.current.offsetLeft || 0;
+    const x = pageX - offsetLeft;
+    const distance = x - startXRef.current;
+    if (Math.abs(distance) > 5) {
+      hasDraggedRef.current = true;
+    }
+    carouselRef.current.scrollLeft = scrollLeftRef.current - distance;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+    setIsMouseDown(false);
+  };
 
   // Total de aulas e aulas concluídas
   const totalLessons = modules.reduce((acc, m) => acc + (m.lessons ? m.lessons.length : 0), 0);
@@ -140,12 +176,20 @@ export default function NetflixHeroAndModules({
           </div>
         ) : (
           <div
+            ref={carouselRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
             style={{
               display: 'flex',
               gap: '16px',
               overflowX: 'auto',
               paddingBottom: '12px',
-              scrollbarWidth: 'thin'
+              scrollbarWidth: 'thin',
+              cursor: isMouseDown ? 'grabbing' : 'grab',
+              userSelect: isMouseDown ? 'none' : 'auto',
+              scrollBehavior: isMouseDown ? 'auto' : 'smooth'
             }}
             data-testid="netflix-modules-carousel"
           >
@@ -159,7 +203,11 @@ export default function NetflixHeroAndModules({
               return (
                 <div
                   key={mod.id}
-                  onClick={() => onSelectModule(mod)}
+                  onClick={() => {
+                    if (!hasDraggedRef.current) {
+                      onSelectModule(mod);
+                    }
+                  }}
                   style={{
                     position: 'relative',
                     minWidth: '195px',
@@ -202,7 +250,7 @@ export default function NetflixHeroAndModules({
                     </span>
 
                     {isManager && (
-                      <div style={{ display: 'flex', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: '4px' }} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           title="Adicionar Aula"

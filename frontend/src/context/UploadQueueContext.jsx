@@ -253,16 +253,5 @@ export function UploadQueueProvider({ children }) {
 
 export function useUploadQueue() {
   const context = useContext(UploadQueueContext);
-  if (!context) {
-    return {
-      uploads: [],
-      startVideoUpload: async () => null,
-      cancelUpload: () => {},
-      clearCompleted: () => {},
-      activeUploadsCount: 0,
-      isWidgetExpanded: false,
-      setIsWidgetExpanded: () => {}
-    };
-  }
-  return context;
+  return context || null;
 }

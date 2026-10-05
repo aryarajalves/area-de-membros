@@ -66,4 +66,89 @@ describe('NetflixHeroAndModules Component', () => {
     fireEvent.click(screen.getByTestId('netflix-module-card-20'));
     expect(onSelectModule).toHaveBeenCalledWith(mockModules[1]);
   });
+
+  it('permite arrastar horizontalmente com o mouse (drag-to-scroll) e não dispara seleção ao arrastar', () => {
+    const onSelectModule = vi.fn();
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={onSelectModule}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    const carousel = screen.getByTestId('netflix-modules-carousel');
+    expect(carousel).toBeInTheDocument();
+
+    // Em JSDOM, scrollLeft precisa de getter/setter mockado
+    let currentScroll = 0;
+    Object.defineProperty(carousel, 'scrollLeft', {
+      get: () => currentScroll,
+      set: (val) => { currentScroll = val; },
+      configurable: true
+    });
+    Object.defineProperty(carousel, 'offsetLeft', { value: 10, writable: true, configurable: true });
+
+    // Simula MouseDown
+    fireEvent.mouseDown(carousel, { clientX: 100, pageX: 100 });
+    expect(carousel.style.cursor).toBe('grabbing');
+
+    // Simula arrastar para a esquerda (mouse move para menor pageX)
+    fireEvent.mouseMove(carousel, { clientX: 50, pageX: 50 });
+    // Distância = (50 - 10) - (100 - 10) = 40 - 90 = -50
+    // carousel.scrollLeft = 0 - (-50) = 50
+    expect(carousel.scrollLeft).toBe(50);
+
+    // Tentar clicar no card enquanto/depois de arrastar não deve disparar seleção
+    const card = screen.getByTestId('netflix-module-card-20');
+    fireEvent.click(card);
+    expect(onSelectModule).not.toHaveBeenCalled();
+
+    // Simula soltar o mouse (mouseUp)
+    fireEvent.mouseUp(carousel);
+    expect(carousel.style.cursor).toBe('grab');
+  });
+
+  it('permite arrastar para a direita no carrossel', () => {
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    const carousel = screen.getByTestId('netflix-modules-carousel');
+    let currentScroll = 100;
+    Object.defineProperty(carousel, 'scrollLeft', {
+      get: () => currentScroll,
+      set: (val) => { currentScroll = val; },
+      configurable: true
+    });
+    Object.defineProperty(carousel, 'offsetLeft', { value: 0, writable: true, configurable: true });
+
+    // Pressiona o mouse em x=100
+    fireEvent.mouseDown(carousel, { clientX: 100, pageX: 100 });
+    // Arrasta para a direita (x=160)
+    fireEvent.mouseMove(carousel, { clientX: 160, pageX: 160 });
+    // Distância = 160 - 100 = 60 => scrollLeft = 100 - 60 = 40
+    expect(carousel.scrollLeft).toBe(40);
+
+    // Mouse leave finaliza o estado de drag
+    fireEvent.mouseLeave(carousel);
+    expect(carousel.style.cursor).toBe('grab');
+  });
 });
+

@@ -6,7 +6,8 @@ export default function LessonThumbnailManager({
   thumbnailUrl,
   onChange,
   onUploadThumbnail,
-  isLightBg = false
+  isLightBg = false,
+  title = 'Capa do Vídeo da Aula (Thumbnail / Poster)'
 }) {
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -78,7 +79,7 @@ export default function LessonThumbnailManager({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <ImageIcon size={16} color="#38bdf8" />
           <span style={{ fontSize: '13px', fontWeight: 600, color: textColor }}>
-            Capa do Vídeo da Aula (Thumbnail / Poster)
+            {title}
           </span>
         </div>
       </div>

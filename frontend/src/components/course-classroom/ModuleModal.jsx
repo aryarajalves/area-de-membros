@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import LessonThumbnailManager from './LessonThumbnailManager';
+import ExpandableTextarea from '../common/ExpandableTextarea';
 
 export default function ModuleModal({
   isOpen,
@@ -80,43 +81,28 @@ export default function ModuleModal({
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-              Descrição (Opcional)
-            </label>
-            <textarea
-              rows={2}
-              placeholder="O que o aluno aprenderá neste módulo..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="form-control-modern"
-              style={{ resize: 'vertical' }}
-              data-testid="module-description-input"
-            />
-          </div>
+          <ExpandableTextarea
+            label="Descrição (Opcional)"
+            placeholder="O que o aluno aprenderá neste módulo..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            textColor={textColor}
+            subTextColor={isLightBg ? '#64748b' : '#94a3b8'}
+            testId="module-description-input"
+            toggleTestId="toggle-expand-module-description-btn"
+          />
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-              Imagem de Capa / Pôster do Módulo (Estilo Netflix - Opcional)
-            </label>
-            <input
-              type="text"
-              placeholder="Cole a URL da imagem de capa ou envie do computador abaixo..."
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="form-control-modern"
-              style={{ marginBottom: '8px' }}
-              data-testid="module-image-url-input"
-            />
-            {onUploadThumbnail && (
+          {onUploadThumbnail && (
+            <div>
               <LessonThumbnailManager
+                title="Imagem de Capa / Pôster do Módulo (Estilo Netflix - Opcional)"
                 thumbnailUrl={imageUrl}
                 onChange={setImageUrl}
                 onUploadThumbnail={onUploadThumbnail}
                 isLightBg={isLightBg}
               />
-            )}
-          </div>
+            </div>
+          )}
 
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>

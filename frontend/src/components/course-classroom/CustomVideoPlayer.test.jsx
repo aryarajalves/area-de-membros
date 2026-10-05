@@ -160,4 +160,56 @@ describe('CustomVideoPlayer Component', () => {
     fireEvent.click(fullscreenBtn);
     expect(requestFullscreenMock).toHaveBeenCalled();
   });
+
+  it('renders loading spinner and poster transition initially and hides on canPlay', () => {
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        poster="https://b2.com/thumb.jpg"
+        title="Aula 01"
+        lessonDuration="10 min"
+      />
+    );
+
+    // Inicialmente deve mostrar o spinner de carregamento inicial e poster de transição
+    expect(screen.getByTestId('video-loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText(/Carregando aula/i)).toBeInTheDocument();
+    expect(screen.getByTestId('video-poster-transition')).toBeInTheDocument();
+    expect(screen.getByTestId('video-buffered-bar')).toBeInTheDocument();
+
+    const video = screen.getByTestId('lesson-html5-video');
+
+    // Ao disparar canPlay, o spinner some e surge o botão grande de play
+    fireEvent.canPlay(video);
+    expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('video-big-play-btn')).toBeInTheDocument();
+
+    // Clica no botão grande de play
+    fireEvent.click(screen.getByTestId('video-big-play-btn'));
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
+
+  it('displays buffering overlay when video stalls or waits for network data', () => {
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula 01"
+        lessonDuration="10 min"
+      />
+    );
+
+    const video = screen.getByTestId('lesson-html5-video');
+    fireEvent.canPlay(video);
+    expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
+
+    // Simula evento de espera por dados da rede (waiting / buffer)
+    fireEvent.waiting(video);
+    expect(screen.getByTestId('video-loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText(/Carregando vídeo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Baixando dados de transmissão/i)).toBeInTheDocument();
+
+    // Simula retomada da reprodução após bufferizar
+    fireEvent.playing(video);
+    expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
+  });
 });

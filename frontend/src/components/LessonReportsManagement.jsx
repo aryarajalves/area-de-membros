@@ -39,7 +39,8 @@ const ISSUE_TYPE_CONFIG = {
   other: { label: 'Outro Problema', icon: AlertTriangle, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
 };
 
-export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#090d16' }) {
+export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#090d16', currentUser }) {
+  const isManager = currentUser ? ['superadmin', 'admin'].includes(currentUser.role) : true;
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -393,39 +394,41 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => (isOpen ? setResolveModalState({ isOpen: true, report }) : handleToggleStatus(report))}
-                      disabled={actionLoadingId === report.id}
-                      className={isOpen ? 'primary-btn' : 'secondary-btn'}
-                      style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: isOpen ? '#16a34a' : 'transparent', borderColor: isOpen ? '#16a34a' : '#cbd5e1' }}
-                      data-testid={`toggle-status-btn-${report.id}`}
-                    >
-                      {isOpen ? (
-                        <>
-                          <Check size={14} />
-                          <span>Marcar como Resolvido</span>
-                        </>
-                      ) : (
-                        <>
-                          <RotateCcw size={14} />
-                          <span>Reabrir Chamado</span>
-                        </>
-                      )}
-                    </button>
+                  {isManager && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => (isOpen ? setResolveModalState({ isOpen: true, report }) : handleToggleStatus(report))}
+                        disabled={actionLoadingId === report.id}
+                        className={isOpen ? 'primary-btn' : 'secondary-btn'}
+                        style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: isOpen ? '#16a34a' : 'transparent', borderColor: isOpen ? '#16a34a' : '#cbd5e1' }}
+                        data-testid={`toggle-status-btn-${report.id}`}
+                      >
+                        {isOpen ? (
+                          <>
+                            <Check size={14} />
+                            <span>Marcar como Resolvido</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw size={14} />
+                            <span>Reabrir Chamado</span>
+                          </>
+                        )}
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setDeleteModalState({ isOpen: true, id: report.id, title: `Relato #${report.id}` })}
-                      className="table-action-btn btn-danger"
-                      title="Excluir relato"
-                      style={{ padding: '6px' }}
-                      data-testid={`delete-report-btn-${report.id}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalState({ isOpen: true, id: report.id, title: `Relato #${report.id}` })}
+                        className="table-action-btn btn-danger"
+                        title="Excluir relato"
+                        style={{ padding: '6px' }}
+                        data-testid={`delete-report-btn-${report.id}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

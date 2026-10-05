@@ -214,5 +214,83 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
 - **Índice Criado:** `ix_api_tokens_token`.
 - **Script de Migração:** `backend/scripts/migrate_api_tokens.py`
 
+---
+
+### [05/10/2026] - Criação da Tabela de Mensagens do Chat da Comunidade (Chat Messages)
+- **Tabela Criada:**
+  - `chat_messages`: Armazena as mensagens trocadas no chat da comunidade geral e nos canais dedicados por curso (`id`, `channel_type`, `course_id`, `user_id`, `message`, `created_at`, `updated_at`).
+- **Índices Criados:**
+  - `ix_chat_messages_id`, `ix_chat_messages_channel_type`, `ix_chat_messages_course_id`, `ix_chat_messages_user_id`, `ix_chat_messages_created_at`.
+- **Script de Migração:** `backend/scripts/migrate_chat_tables.py`
+
+---
+
+### [05/10/2026] - Adição da Foto/Logo de Perfil do Usuário
+- **Tabela Afetada:**
+  - `users`: Adicionada coluna `avatar_url` (VARCHAR, NULL) para armazenar a foto de perfil/logo do usuário.
+- **Script de Migração:** `backend/scripts/migrate_user_avatar.py`
+
+---
+
+### [05/10/2026] - Link da Página de Vendas do Curso (sales_page_url) e Vitrine de Não Adquiridos
+- **Tabela Afetada:**
+  - `courses`: Adicionada coluna `sales_page_url` (VARCHAR, NULL) para armazenar o link externo da página de vendas/mais informações exibido para alunos que ainda não possuem acesso ao curso.
+- **Script de Migração:** `backend/scripts/migrate_course_sales_page_url.py`
+
+---
+
+---
+
+### [05/10/2026] - Tabela de Depoimentos e Avaliações de Cursos (Testimonials)
+- **Tabela Criada:**
+  - `testimonials`: Armazena os depoimentos e avaliações dos alunos sobre os cursos (`id`, `user_id`, `course_id`, `rating`, `title`, `content`, `status`, `is_featured`, `created_at`, `updated_at`).
+- **Índices Criados:**
+  - `ix_testimonials_id`, `ix_testimonials_user_id`, `ix_testimonials_course_id`, `ix_testimonials_status`, `ix_testimonials_is_featured`, `ix_testimonials_created_at`.
+- **Script de Migração:** `backend/scripts/migrate_testimonials.py`
+
+---
+
+### [05/10/2026] - Tabela de Pontuação de Gamificação e Ranking de Alunos (Gamification Points)
+- **Tabela Criada:**
+  - `gamification_points`: Armazena o extrato de pontuações atribuídas exclusivamente a alunos por ações meritórias (`id`, `user_id`, `action`, `points`, `description`, `reference_id`, `created_at`).
+- **Índices Criados:**
+  - `ix_gamification_points_id`, `ix_gamification_points_user_id`, `ix_gamification_points_action`, `ix_gamification_points_reference_id`, `ix_gamification_points_created_at`.
+- **Script de Migração:** `backend/scripts/migrate_gamification.py`
+
+---
+
+### [05/10/2026] - Restrição de 1 Depoimento por Curso por Usuário (Unicidade de Testimonials)
+- **Tabela Afetada:**
+  - `testimonials`: Adicionada constraint / índice único `uq_testimonials_user_course` em `(user_id, course_id)`, impedindo cadastros duplicados de avaliações para o mesmo curso pelo mesmo aluno.
+- **Script de Migração:** `backend/scripts/migrate_testimonial_unique_user_course.py`
+
+---
+
+### [05/10/2026] - Recursos do Chat da Comunidade (Mídia, Fixação, Curtidas, Favoritos) e Curtidas em Comentários de Aulas
+- **Tabela Afetada:**
+  - `chat_messages`: Adicionadas colunas `media_url` (VARCHAR(500)), `media_type` (VARCHAR(50)), `is_pinned` (BOOLEAN, default FALSE), `pinned_at` (TIMESTAMP), `pinned_by_user_id` (INTEGER, FK users). Índice `ix_chat_messages_is_pinned`.
+- **Tabelas Criadas:**
+  - `chat_message_likes`: Registro de curtidas por mensagem de chat (`id`, `message_id`, `user_id`, `created_at`, UNIQUE `uq_chat_message_like_user`).
+  - `chat_message_favorites`: Registro de mensagens favoritadas por usuário (`id`, `message_id`, `user_id`, `created_at`, UNIQUE `uq_chat_message_favorite_user`).
+  - `lesson_comment_likes`: Registro de curtidas em comentários e respostas de aulas (`id`, `comment_id`, `user_id`, `created_at`, UNIQUE `uq_lesson_comment_like_user`).
+- **Script de Migração:** `backend/scripts/migrate_chat_features_and_comment_likes.py`
+
+---
+
+### [05/10/2026] - Transcrição Automática e Resumo Inteligente com IA (OpenAI Whisper & GPT)
+- **Tabela Criada:**
+  - `lesson_transcriptions`: Armazena a transcrição textual completa do vídeo da aula via OpenAI Whisper e o resumo executivo/documento HTML gerado pelo modelo GPT (`id`, `lesson_id` UNIQUE FK, `full_transcript`, `summary_html`, `summary_markdown`, `key_takeaways`, `status`, `error_message`, `generated_by_user_id` FK, `created_at`, `updated_at`).
+- **Índices Criados:**
+  - `ix_lesson_transcriptions_id`, `ix_lesson_transcriptions_lesson_id`.
+- **Script de Migração:** `backend/scripts/migrate_lesson_transcriptions.py`
+
+
+
+
+
+
+
+
+
 
 

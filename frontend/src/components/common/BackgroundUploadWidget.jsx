@@ -2,6 +2,9 @@ import { CloudUpload, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp, Load
 import { useUploadQueue } from '../../context/UploadQueueContext';
 
 export default function BackgroundUploadWidget() {
+  const queue = useUploadQueue();
+  if (!queue || !queue.uploads || queue.uploads.length === 0) return null;
+
   const {
     uploads,
     cancelUpload,
@@ -9,9 +12,7 @@ export default function BackgroundUploadWidget() {
     activeUploadsCount,
     isWidgetExpanded,
     setIsWidgetExpanded
-  } = useUploadQueue();
-
-  if (!uploads || uploads.length === 0) return null;
+  } = queue;
 
   return (
     <div

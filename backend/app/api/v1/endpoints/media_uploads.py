@@ -229,7 +229,16 @@ def get_video(filename: str):
     filepath = os.path.join(VIDEOS_DIR, safe_filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Vídeo não encontrado.")
-    return FileResponse(filepath, media_type="video/mp4")
+
+    ext = os.path.splitext(safe_filename)[1].lower()
+    content_type_map = {
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".mov": "video/quicktime",
+        ".mkv": "video/x-matroska"
+    }
+    media_type = content_type_map.get(ext, "video/mp4")
+    return FileResponse(filepath, media_type=media_type)
 
 
 @router.post(

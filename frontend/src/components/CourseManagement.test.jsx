@@ -226,4 +226,49 @@ describe('CourseManagement Component', () => {
       expect(onThemeColorChange).toHaveBeenCalledWith('#121620');
     });
   });
+
+  it('renders "Ver Mais Informações" and redirects to sales_page_url for unpurchased course', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
+    const coursesWithAccessFlag = [
+      {
+        id: 1,
+        title: 'Curso Comprado',
+        description: 'Tenho acesso',
+        thumbnail_url: null,
+        has_access: true
+      },
+      {
+        id: 2,
+        title: 'Curso Vitrine Não Comprado',
+        description: 'Não tenho acesso',
+        thumbnail_url: null,
+        sales_page_url: 'https://vendas.com/curso-vitrine',
+        has_access: false
+      }
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => coursesWithAccessFlag,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Curso Comprado')).toBeInTheDocument();
+      expect(screen.getByTestId('access-course-btn-1')).toBeInTheDocument();
+
+      expect(screen.getByText('Curso Vitrine Não Comprado')).toBeInTheDocument();
+      expect(screen.getByTestId('course-unpurchased-badge-2')).toBeInTheDocument();
+      expect(screen.getByTestId('more-info-course-btn-2')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('more-info-course-btn-2'));
+    expect(windowOpenSpy).toHaveBeenCalledWith('https://vendas.com/curso-vitrine', '_blank', 'noopener,noreferrer');
+  });
 });
+

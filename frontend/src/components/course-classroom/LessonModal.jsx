@@ -8,6 +8,7 @@ import LessonAttachmentsManager from './LessonAttachmentsManager';
 import LessonThumbnailManager from './LessonThumbnailManager';
 import LessonQuizEditor from './LessonQuizEditor';
 import LessonArticleEditor from './LessonArticleEditor';
+import ExpandableTextarea from '../common/ExpandableTextarea';
 import { normalizeLessonDuration } from './lessonUtils';
 
 export default function LessonModal({
@@ -319,20 +320,16 @@ export default function LessonModal({
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-                Breve Resumo ou Descrição da Aula
-              </label>
-              <textarea
-                rows={2}
-                placeholder="Explicação do objetivo ou resumo do conteúdo..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="form-control-modern"
-                style={{ resize: 'vertical' }}
-                data-testid="lesson-description-input"
-              />
-            </div>
+            <ExpandableTextarea
+              label="Breve Resumo ou Descrição da Aula"
+              placeholder="Explicação do objetivo ou resumo do conteúdo..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              textColor={textColor}
+              subTextColor={subTextColor}
+              testId="lesson-description-input"
+              toggleTestId="toggle-expand-lesson-description-btn"
+            />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>

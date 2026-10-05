@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Palette, KeyRound } from 'lucide-react';
+import { Settings, Palette, KeyRound, User } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import PlatformAppearanceTab from './platform-settings/PlatformAppearanceTab';
 import PlatformApiTokensTab from './platform-settings/PlatformApiTokensTab';
+import PlatformProfileTab from './platform-settings/PlatformProfileTab';
 
-export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChange }) {
-  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'api_tokens'
+export default function PlatformSettings({
+  bgColor = '#090d16',
+  onThemeColorChange,
+  currentUser,
+  onUserUpdated
+}) {
+  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'profile' | 'api_tokens'
   const [selectedColor, setSelectedColor] = useState(bgColor || '#090d16');
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
@@ -15,6 +21,12 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
       setSelectedColor(bgColor);
     }
   }, [bgColor]);
+
+  useEffect(() => {
+    if (currentUser?.role === 'aluno' && activeTab === 'api_tokens') {
+      setActiveTab('appearance');
+    }
+  }, [currentUser?.role, activeTab]);
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((selectedColor || '').toLowerCase());
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
@@ -124,7 +136,7 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
 
         <button
           type="button"
-          onClick={() => setActiveTab('api_tokens')}
+          onClick={() => setActiveTab('profile')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -132,19 +144,45 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
             padding: '9px 18px',
             borderRadius: '10px',
             fontSize: '13.5px',
-            fontWeight: activeTab === 'api_tokens' ? 700 : 500,
+            fontWeight: activeTab === 'profile' ? 700 : 500,
             cursor: 'pointer',
-            backgroundColor: activeTab === 'api_tokens' ? '#0284c7' : 'transparent',
-            color: activeTab === 'api_tokens' ? '#ffffff' : subTextColor,
-            border: activeTab === 'api_tokens' ? 'none' : '1px solid transparent',
-            boxShadow: activeTab === 'api_tokens' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
+            backgroundColor: activeTab === 'profile' ? '#0284c7' : 'transparent',
+            color: activeTab === 'profile' ? '#ffffff' : subTextColor,
+            border: activeTab === 'profile' ? 'none' : '1px solid transparent',
+            boxShadow: activeTab === 'profile' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
             transition: 'all 0.2s ease',
           }}
-          data-testid="tab-api-tokens-btn"
+          data-testid="tab-profile-btn"
         >
-          <KeyRound size={16} />
-          <span>Tokens de API</span>
+          <User size={16} />
+          <span>Meu Perfil</span>
         </button>
+
+        {currentUser?.role !== 'aluno' && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('api_tokens')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'api_tokens' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'api_tokens' ? '#0284c7' : 'transparent',
+              color: activeTab === 'api_tokens' ? '#ffffff' : subTextColor,
+              border: activeTab === 'api_tokens' ? 'none' : '1px solid transparent',
+              boxShadow: activeTab === 'api_tokens' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+            data-testid="tab-api-tokens-btn"
+          >
+            <KeyRound size={16} />
+            <span>Tokens de API</span>
+          </button>
+        )}
       </div>
 
       {/* Conteúdo da Aba Ativa */}
@@ -162,7 +200,19 @@ export default function PlatformSettings({ bgColor = '#090d16', onThemeColorChan
         />
       )}
 
-      {activeTab === 'api_tokens' && (
+      {activeTab === 'profile' && (
+        <PlatformProfileTab
+          currentUser={currentUser || (() => { try { return JSON.parse(localStorage.getItem('auth_user')); } catch { return null; } })()}
+          onUserUpdated={onUserUpdated}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
+
+      {activeTab === 'api_tokens' && currentUser?.role !== 'aluno' && (
         <PlatformApiTokensTab
           cardBg={cardBg}
           cardBorder={cardBorder}

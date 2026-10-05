@@ -198,6 +198,45 @@ export default function LessonComments({
     }
   };
 
+  const handleToggleLike = async (commentId) => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(
+        `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/comments/${commentId}/like`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id === commentId) {
+              return { ...c, likes_count: data.likes_count, liked_by_me: data.liked };
+            }
+            if (c.replies && c.replies.some((r) => r.id === commentId)) {
+              return {
+                ...c,
+                replies: c.replies.map((r) =>
+                  r.id === commentId
+                    ? { ...r, likes_count: data.likes_count, liked_by_me: data.liked }
+                    : r
+                )
+              };
+            }
+            return c;
+          })
+        );
+      } else {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erro ao curtir comentário.');
+      }
+    } catch (err) {
+      addToast(err.message || 'Falha ao curtir comentário.', 'error');
+    }
+  };
+
   const canDeleteComment = (comment) => {
     if (!currentUser) return false;
     const isAuthor = comment.user_id === currentUser.id;
@@ -286,6 +325,7 @@ export default function LessonComments({
               currentUser={currentUser}
               onReply={handleSendReply}
               onDeleteRequest={setCommentToDelete}
+              onToggleLike={handleToggleLike}
               getRoleBadge={getRoleBadge}
               canDeleteComment={canDeleteComment}
               isLightBg={isLightBg}

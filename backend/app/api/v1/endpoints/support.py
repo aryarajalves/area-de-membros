@@ -435,6 +435,14 @@ def toggle_reply_solution(
         reply.is_solution = True
         topic.status = "resolved"
 
+        # Gamificação: +50 pontos para o autor da Melhor Solução
+        try:
+            from app.services.gamification_service import award_points
+            if reply.user:
+                award_points(db, reply.user, "support_solution", reference_id=reply.id)
+        except Exception as g_exc:
+            logger.error(f"Erro ao atribuir pontos por melhor solução: {g_exc}")
+
     db.commit()
     return {
         "reply_id": reply.id,
@@ -476,6 +484,13 @@ def add_support_reply(
     db.add(reply)
     db.commit()
     db.refresh(reply)
+
+    # Gamificação: +10 pontos para o aluno que respondeu à dúvida
+    try:
+        from app.services.gamification_service import award_points
+        award_points(db, current_user, "support_reply", reference_id=reply.id)
+    except Exception as g_exc:
+        logger.error(f"Erro ao atribuir pontos por resposta no suporte: {g_exc}")
 
     logger.info(f"Resposta adicionada por {current_user.email} no tópico ID {topic.id} (Instrutor: {is_instructor})")
 
@@ -530,6 +545,14 @@ def toggle_support_topic_like(
         db.add(new_like)
         topic.likes_count = (topic.likes_count or 0) + 1
         liked = True
+
+        # Gamificação: +5 pontos para o autor do tópico curtido (se não for auto-curtida)
+        if topic.user_id != current_user.id and topic.user:
+            try:
+                from app.services.gamification_service import award_points
+                award_points(db, topic.user, "support_like", reference_id=topic.id)
+            except Exception as g_exc:
+                logger.error(f"Erro ao atribuir pontos por curtida recebida no suporte: {g_exc}")
 
     db.commit()
     return {"liked": liked, "likes_count": topic.likes_count}

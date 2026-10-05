@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Play,
-  Pause,
-  RotateCcw,
-  RotateCw,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
-import { formatSecondsToTimer, parseDurationToSeconds } from './lessonUtils';
+import { parseDurationToSeconds } from './lessonUtils';
+import VideoControls from './VideoControls';
 
 export default function CustomVideoPlayer({
   src,
@@ -29,11 +26,33 @@ export default function CustomVideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [bufferedPercentage, setBufferedPercentage] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   const hideControlsTimeoutRef = useRef(null);
 
   // Duração de fallback a partir da aula cadastrada (caso video.duration seja Infinity/NaN em streams parciais)
   const fallbackDuration = parseDurationToSeconds(lessonDuration);
+
+  // Feedback e reset imediato ao alternar de vídeo (0ms de latência percebida)
+  useEffect(() => {
+    setIsLoading(true);
+    setIsBuffering(false);
+    setBufferedPercentage(0);
+    setHasError(false);
+    setCurrentTime(0);
+    setDuration(fallbackDuration || 0);
+  }, [src, fallbackDuration]);
+
+  const handleRetry = () => {
+    setHasError(false);
+    setIsLoading(true);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  };
 
   // Inicializa e atualiza duração ao carregar metadados do vídeo
   const handleLoadedMetadata = () => {
@@ -54,25 +73,64 @@ export default function CustomVideoPlayer({
     }
   }, [fallbackDuration, duration]);
 
+  // Cálculo contínuo do buffer baixado à frente na rede
+  const updateBuffered = useCallback(() => {
+    if (!videoRef.current) return;
+    const b = videoRef.current.buffered;
+    const curTime = videoRef.current.currentTime;
+    const effectiveDur = duration > 0 ? duration : fallbackDuration;
+
+    if (b && b.length > 0 && effectiveDur > 0) {
+      let currentBufferedEnd = 0;
+      for (let i = 0; i < b.length; i++) {
+        if (b.start(i) <= curTime && curTime <= b.end(i)) {
+          currentBufferedEnd = b.end(i);
+          break;
+        } else if (b.end(i) > currentBufferedEnd) {
+          currentBufferedEnd = b.end(i);
+        }
+      }
+      const pct = Math.min(100, Math.max(0, (currentBufferedEnd / effectiveDur) * 100));
+      setBufferedPercentage(pct);
+    }
+  }, [duration, fallbackDuration]);
+
   // Atualização contínua do tempo durante a reprodução
   const handleTimeUpdate = () => {
     if (!isScrubbing && videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const cur = videoRef.current.currentTime;
+      setCurrentTime(cur);
       const vidDuration = videoRef.current.duration;
       if (vidDuration && !isNaN(vidDuration) && vidDuration !== Infinity && vidDuration !== duration) {
         setDuration(vidDuration);
       }
+      // Se estava em buffering e o reprodutor já tem dados prontos (HAVE_FUTURE_DATA)
+      if (isBuffering && videoRef.current.readyState >= 3) {
+        setIsBuffering(false);
+      }
+      updateBuffered();
     }
   };
 
-  // Play / Pause
+  // Play / Pause com feedback visual imediato se houver necessidade de buffer
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
     if (videoRef.current.paused || videoRef.current.ended) {
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      if (videoRef.current.readyState < 3) {
+        setIsBuffering(true);
+      }
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+        if (videoRef.current && videoRef.current.readyState >= 3) {
+          setIsBuffering(false);
+        }
+      }).catch(() => {
+        setIsBuffering(false);
+      });
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
+      setIsBuffering(false);
     }
   }, []);
 
@@ -209,12 +267,56 @@ export default function CustomVideoPlayer({
         ref={videoRef}
         key={src}
         src={src}
+        preload="auto"
         poster={poster || undefined}
         onLoadedMetadata={handleLoadedMetadata}
+        onLoadedData={() => {
+          setIsLoading(false);
+          updateBuffered();
+        }}
         onTimeUpdate={handleTimeUpdate}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onLoadStart={() => {
+          setIsLoading(true);
+          setIsBuffering(false);
+        }}
+        onWaiting={() => setIsBuffering(true)}
+        onSeeking={() => setIsBuffering(true)}
+        onSeeked={() => {
+          setIsBuffering(false);
+          updateBuffered();
+        }}
+        onStalled={() => {
+          if (isPlaying) setIsBuffering(true);
+        }}
+        onProgress={updateBuffered}
+        onCanPlay={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          updateBuffered();
+        }}
+        onCanPlayThrough={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          updateBuffered();
+        }}
+        onPlaying={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          setIsPlaying(true);
+        }}
+        onPause={() => {
+          setIsPlaying(false);
+          setIsBuffering(false);
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setIsBuffering(false);
+        }}
+        onError={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          setHasError(true);
+        }}
         onClick={togglePlay}
         style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
         data-testid="lesson-html5-video"
@@ -222,224 +324,146 @@ export default function CustomVideoPlayer({
         Seu navegador não suporta a reprodução deste vídeo.
       </video>
 
-      {/* Overlay de Controles */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
-          padding: '12px 16px 8px',
-          opacity: showControls || !isPlaying ? 1 : 0,
-          transition: 'opacity 0.25s ease',
-          pointerEvents: showControls || !isPlaying ? 'auto' : 'none'
-        }}
-        data-testid="custom-video-controls"
-      >
-        {/* Barra de Progresso Interativa (Scrubbing / Seeking) */}
+      {/* Capa de Transição Suave (evita tela preta enquanto os metadados baixam) */}
+      {isLoading && poster && (
         <div
-          ref={progressBarRef}
-          onMouseDown={handleProgressBarMouseDown}
-          title="Clique ou arraste para avançar ou voltar no vídeo"
           style={{
-            position: 'relative',
-            width: '100%',
-            height: '14px',
-            cursor: 'pointer',
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${poster})`,
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundColor: '#000000',
+            opacity: 0.55,
+            pointerEvents: 'none'
+          }}
+          data-testid="video-poster-transition"
+        />
+      )}
+
+      {/* Overlay de Carregamento / Buffering com Spinner Neon (Feedback imediato e transparente) */}
+      {(isLoading || isBuffering) && !hasError && (
+        <div
+          style={{
+            position: 'absolute',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            backgroundColor: 'rgba(5, 8, 15, 0.78)',
+            backdropFilter: 'blur(6px)',
+            padding: '16px 26px',
+            borderRadius: '14px',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
+            pointerEvents: 'none',
+            zIndex: 10
+          }}
+          data-testid="video-loading-spinner"
+        >
+          <Loader2 size={36} color="#3b82f6" style={{ animation: 'spin 1s linear infinite' }} />
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 600, color: '#f8fafc', letterSpacing: '0.2px' }}>
+              {isLoading ? 'Carregando aula...' : 'Carregando vídeo...'}
+            </p>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+              {isLoading ? 'Preparando reprodutor' : 'Baixando dados de transmissão, aguarde...'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Botão Central de Play Grande (quando pronto e pausado) */}
+      {!isPlaying && !isLoading && !isBuffering && !hasError && (
+        <button
+          type="button"
+          onClick={togglePlay}
+          style={{
+            position: 'absolute',
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            border: '2px solid rgba(234, 179, 8, 0.85)',
             display: 'flex',
             alignItems: 'center',
-            marginBottom: '8px'
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 0 24px rgba(234, 179, 8, 0.35)',
+            transition: 'transform 0.15s ease',
+            zIndex: 9
           }}
-          data-testid="video-progress-bar-container"
+          title="Reproduzir Vídeo"
+          data-testid="video-big-play-btn"
         >
-          {/* Trilho Fundo */}
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: '5px',
-              backgroundColor: 'rgba(255, 255, 255, 0.25)',
-              borderRadius: '999px',
-              overflow: 'hidden'
-            }}
+          <Play size={26} color="#eab308" style={{ marginLeft: '3px' }} />
+        </button>
+      )}
+
+      {/* Mensagem em Caso de Erro no Stream */}
+      {hasError && (
+        <div
+          style={{
+            position: 'absolute',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            padding: '20px 24px',
+            borderRadius: '12px',
+            border: '1px solid rgba(248, 113, 113, 0.3)',
+            textAlign: 'center',
+            zIndex: 10
+          }}
+          data-testid="video-error-screen"
+        >
+          <AlertCircle size={32} color="#f87171" />
+          <div>
+            <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>
+              Falha ao carregar o vídeo
+            </p>
+            <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+              Verifique sua conexão ou tente novamente.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="secondary-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', padding: '5px 12px' }}
           >
-            {/* Barra Preenchida */}
-            <div
-              style={{
-                width: `${progressPercentage}%`,
-                height: '100%',
-                backgroundColor: '#3b82f6',
-                borderRadius: '999px',
-                transition: isScrubbing ? 'none' : 'width 0.1s linear'
-              }}
-              data-testid="video-progress-filled"
-            />
-          </div>
-
-          {/* Marcador Circular (Thumb) */}
-          <div
-            style={{
-              position: 'absolute',
-              left: `calc(${progressPercentage}% - 6px)`,
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#ffffff',
-              borderRadius: '50%',
-              boxShadow: '0 0 6px rgba(0,0,0,0.5)',
-              pointerEvents: 'none',
-              transform: isScrubbing ? 'scale(1.25)' : 'scale(1)',
-              transition: 'transform 0.1s ease'
-            }}
-            data-testid="video-progress-thumb"
-          />
+            <RefreshCw size={12} />
+            <span>Tentar Novamente</span>
+          </button>
         </div>
+      )}
 
-        {/* Linha de Botões e Informações de Tempo */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff' }}>
-          {/* Lado Esquerdo: Play/Pause, -10s, +10s e Mostrador de Tempo e Tempo Restante */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {/* Play/Pause */}
-            <button
-              type="button"
-              onClick={togglePlay}
-              title={isPlaying ? 'Pausar' : 'Reproduzir'}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                padding: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              data-testid="video-play-pause-btn"
-            >
-              {isPlaying ? <Pause size={20} fill="#ffffff" /> : <Play size={20} fill="#ffffff" />}
-            </button>
-
-            {/* Retroceder 10 segundos */}
-            <button
-              type="button"
-              onClick={handleSkipBackward10}
-              title="Retroceder 10 segundos"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                padding: '4px 6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '4px'
-              }}
-              data-testid="skip-backward-10-btn"
-            >
-              <RotateCcw size={16} />
-              <span>-10s</span>
-            </button>
-
-            {/* Avançar 10 segundos */}
-            <button
-              type="button"
-              onClick={handleSkipForward10}
-              title="Avançar 10 segundos"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                padding: '4px 6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '4px'
-              }}
-              data-testid="skip-forward-10-btn"
-            >
-              <span>+10s</span>
-              <RotateCw size={16} />
-            </button>
-
-            {/* Tempo Atual / Duração Total e Tempo Restante ("quanto está faltando") */}
-            <div
-              style={{
-                fontSize: '12px',
-                color: '#e2e8f0',
-                marginLeft: '6px',
-                fontVariantNumeric: 'tabular-nums',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              data-testid="video-time-display"
-            >
-              <span>{formatSecondsToTimer(currentTime)}</span>
-              <span style={{ color: '#94a3b8' }}>/</span>
-              <span>{formatSecondsToTimer(effectiveDuration)}</span>
-              <span
-                style={{
-                  backgroundColor: 'rgba(59, 130, 246, 0.25)',
-                  color: '#93c5fd',
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  marginLeft: '4px'
-                }}
-                title="Tempo restante para o término do vídeo"
-                data-testid="video-remaining-time"
-              >
-                Faltam {formatSecondsToTimer(remainingSeconds)}
-              </span>
-            </div>
-          </div>
-
-          {/* Lado Direito: Volume e Tela Cheia */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Controle de Volume */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                type="button"
-                onClick={toggleMute}
-                title={isMuted ? 'Desmutar' : 'Mutar'}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px' }}
-                data-testid="video-mute-btn"
-              >
-                {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                style={{ width: '55px', height: '4px', accentColor: '#3b82f6', cursor: 'pointer' }}
-                title="Ajustar Volume"
-                data-testid="video-volume-slider"
-              />
-            </div>
-
-            {/* Botão Tela Cheia */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}
-              style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-              data-testid="video-fullscreen-btn"
-            >
-              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Controles do Player Modularizados */}
+      <VideoControls
+        showControls={showControls}
+        isPlaying={isPlaying}
+        isScrubbing={isScrubbing}
+        currentTime={currentTime}
+        effectiveDuration={effectiveDuration}
+        progressPercentage={progressPercentage}
+        bufferedPercentage={bufferedPercentage}
+        remainingSeconds={remainingSeconds}
+        volume={volume}
+        isMuted={isMuted}
+        isFullscreen={isFullscreen}
+        progressBarRef={progressBarRef}
+        togglePlay={togglePlay}
+        handleSkipBackward10={handleSkipBackward10}
+        handleSkipForward10={handleSkipForward10}
+        handleProgressBarMouseDown={handleProgressBarMouseDown}
+        toggleMute={toggleMute}
+        handleVolumeChange={handleVolumeChange}
+        toggleFullscreen={toggleFullscreen}
+      />
     </div>
   );
 }

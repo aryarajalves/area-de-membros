@@ -44,4 +44,74 @@ describe('PlatformSettings Component', () => {
       expect(onThemeColorChange).toHaveBeenCalledWith('#121620');
     });
   });
+
+  it('permite alternar para a aba Meu Perfil e exibe o formulário de perfil', () => {
+    const mockUser = {
+      id: 1,
+      name: 'Aryaraj Super',
+      email: 'aryaraj@test.com',
+      role: 'superadmin',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={mockUser}
+        />
+      </ToastProvider>
+    );
+
+    const profileTabBtn = screen.getByTestId('tab-profile-btn');
+    expect(profileTabBtn).toBeInTheDocument();
+
+    // Clica na aba Meu Perfil
+    fireEvent.click(profileTabBtn);
+
+    expect(screen.getByTestId('platform-profile-tab')).toBeInTheDocument();
+    expect(screen.getByText('Meu Perfil e Identidade')).toBeInTheDocument();
+  });
+
+  it('exibe apenas as abas Cor de Fundo e Meu Perfil para aluno, ocultando Tokens de API', () => {
+    const alunoUser = {
+      id: 2,
+      name: 'Aluno Teste',
+      email: 'aluno@test.com',
+      role: 'aluno',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={alunoUser}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('tab-appearance-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-profile-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-api-tokens-btn')).not.toBeInTheDocument();
+  });
+
+  it('exibe a aba Tokens de API para administradores', () => {
+    const adminUser = {
+      id: 1,
+      name: 'Admin Teste',
+      email: 'admin@test.com',
+      role: 'admin',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={adminUser}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('tab-api-tokens-btn')).toBeInTheDocument();
+  });
 });
+

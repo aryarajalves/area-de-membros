@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
+import ModuleModal from './ModuleModal';
 
 // Mock dos subgerenciadores para isolar o teste do modal
 vi.mock('./LessonThumbnailManager', () => ({
@@ -95,6 +96,42 @@ describe('LessonModal & ConfirmDeleteModal Components', () => {
     const card = heading.closest('.table-card');
     expect(card).toHaveStyle({ backgroundColor: '#090d16' });
     expect(screen.getByTestId('cancel-delete-btn')).toHaveStyle({ color: '#f8fafc' });
+  });
+
+  it('renders maximize button on LessonModal description and toggles expansion', () => {
+    render(<LessonModal {...defaultProps} />);
+
+    const toggleBtn = screen.getByTestId('toggle-expand-lesson-description-btn');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveTextContent('Maximizar');
+
+    const descInput = screen.getByTestId('lesson-description-input');
+    expect(descInput).toHaveAttribute('rows', '2');
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveTextContent('Restaurar');
+    expect(descInput).toHaveAttribute('rows', '8');
+  });
+
+  it('renders maximize button on ModuleModal description and toggles expansion', () => {
+    render(
+      <ModuleModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    const toggleBtn = screen.getByTestId('toggle-expand-module-description-btn');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveTextContent('Maximizar');
+
+    const descInput = screen.getByTestId('module-description-input');
+    expect(descInput).toHaveAttribute('rows', '2');
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveTextContent('Restaurar');
+    expect(descInput).toHaveAttribute('rows', '8');
   });
 });
 

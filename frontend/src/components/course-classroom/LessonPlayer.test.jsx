@@ -128,4 +128,62 @@ describe('LessonPlayer Component', () => {
     const durationBadge = screen.getByTestId('lesson-duration-badge');
     expect(durationBadge).toHaveTextContent('20 min');
   });
+
+  it('renders "Não possuímos aulas cadastradas nesse módulo" when module has no lessons', () => {
+    const handleOpenCreateLesson = vi.fn();
+
+    render(
+      <LessonPlayer
+        lesson={null}
+        hasLessons={false}
+        onOpenCreateLesson={handleOpenCreateLesson}
+        moduleTitle="Módulo Vazio"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'admin' }}
+      />
+    );
+
+    expect(screen.getByText('Não possuímos aulas cadastradas nesse módulo')).toBeInTheDocument();
+    expect(screen.getByText(/Ainda não há aulas disponíveis neste módulo/i)).toBeInTheDocument();
+    
+    // Como é admin, o botão de criar primeira aula deve existir
+    const createBtn = screen.getByTestId('btn-create-first-lesson');
+    expect(createBtn).toBeInTheDocument();
+    fireEvent.click(createBtn);
+    expect(handleOpenCreateLesson).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render "Criar primeira aula" button when user is a student', () => {
+    render(
+      <LessonPlayer
+        lesson={null}
+        hasLessons={false}
+        moduleTitle="Módulo Vazio"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    expect(screen.getByText('Não possuímos aulas cadastradas nesse módulo')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-create-first-lesson')).not.toBeInTheDocument();
+  });
+
+  it('renders "Selecione uma aula para assistir" when module has lessons but none is selected', () => {
+    render(
+      <LessonPlayer
+        lesson={null}
+        hasLessons={true}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    expect(screen.getByText('Selecione uma aula para assistir')).toBeInTheDocument();
+    expect(screen.queryByText('Não possuímos aulas cadastradas nesse módulo')).not.toBeInTheDocument();
+  });
 });
+

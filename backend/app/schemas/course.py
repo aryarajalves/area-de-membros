@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict
+import json
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -12,6 +13,7 @@ class CommentUserResponse(BaseModel):
     name: str
     email: str
     role: str
+    avatar_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +23,8 @@ class CommentResponse(BaseModel):
     user_id: int
     parent_id: Optional[int] = None
     content: str
+    likes_count: int = 0
+    liked_by_me: bool = False
     created_at: datetime
     updated_at: datetime
     user: Optional[CommentUserResponse] = None
@@ -29,6 +33,13 @@ class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 CommentResponse.model_rebuild()
+
+class CommentLikeToggleResponse(BaseModel):
+    comment_id: int
+    likes_count: int
+    liked_by_me: bool
+    liked: bool = False
+
 
 
 # --- Schemas de Vídeos Multilíngues (Lesson Videos) ---
@@ -152,6 +163,8 @@ class CourseBase(BaseModel):
     cover_image_url: Optional[str] = None
     bg_color: Optional[str] = "#090d16"
     is_published: bool = True
+    sales_page_url: Optional[str] = None
+    order_index: Optional[int] = 0
 
 class CourseCreate(CourseBase):
     pass
@@ -163,9 +176,12 @@ class CourseUpdate(BaseModel):
     cover_image_url: Optional[str] = None
     bg_color: Optional[str] = None
     is_published: Optional[bool] = None
+    sales_page_url: Optional[str] = None
+    order_index: Optional[int] = None
 
 class CourseResponse(CourseBase):
     id: int
+    has_access: Optional[bool] = True
     created_at: datetime
     updated_at: datetime
 
@@ -268,7 +284,42 @@ class VideoUploadUrlResponse(BaseModel):
     upload_url: str
     video_url: Optional[str] = None
     final_url: Optional[str] = None
-    method: str = "PUT"
+    method: Optional[str] = None
+
+# --- Schemas de Transcrição e Resumo IA da Aula (OpenAI Whisper & GPT) ---
+class LessonTranscriptionResponse(BaseModel):
+    id: int
+    lesson_id: int
+    full_transcript: str
+    summary_html: Optional[str] = None
+    summary_markdown: Optional[str] = None
+    key_takeaways: Optional[List[str]] = None
+    status: str = "ready"
+    error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @field_validator('key_takeaways', mode='before')
+    @classmethod
+    def parse_key_takeaways(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+                return [str(parsed)]
+            except Exception:
+                return [v]
+        return v or []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LessonTranscriptionTriggerRequest(BaseModel):
+    language: Optional[str] = "pt"
+    video_url: Optional[str] = None  # Se informado, usa essa URL específica; caso contrário usa o vídeo padrão da aula
 
 
 

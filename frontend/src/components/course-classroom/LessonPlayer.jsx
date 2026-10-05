@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   PlayCircle, Clock, ChevronLeft, ChevronRight, Video, AlertCircle,
-  ExternalLink, FileText, MessageSquare, Globe, Paperclip, BookOpen, Sparkles
+  ExternalLink, FileText, MessageSquare, Globe, Paperclip, BookOpen, Sparkles,
+  Layers, Plus
 } from 'lucide-react';
 import LessonComments from './LessonComments';
 import LessonAttachmentsList from './LessonAttachmentsList';
 import LessonActionToolbar from './LessonActionToolbar';
 import LessonNotes from './LessonNotes';
+import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
@@ -38,6 +40,8 @@ function getEmbedUrl(videoUrl) {
 
 export default function LessonPlayer({
   lesson,
+  hasLessons = true,
+  onOpenCreateLesson,
   courseTitle,
   moduleTitle,
   courseId,
@@ -76,6 +80,76 @@ export default function LessonPlayer({
   const borderColor = isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)';
 
   if (!lesson) {
+    if (!hasLessons) {
+      return (
+        <div className="classroom-layout-grid" style={{ display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 310px' : '1fr', gap: '48px', alignItems: 'start' }}>
+          <div
+            data-testid="empty-module-container"
+            style={{
+              textAlign: 'center',
+              padding: '80px 20px',
+              color: subTextColor,
+              borderRadius: '14px',
+              border: `1px dashed ${borderColor}`,
+              backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
+              minHeight: '340px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: isLightBg ? '#fef9c3' : 'rgba(234, 179, 8, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '18px'
+              }}
+            >
+              <Layers size={32} color="#eab308" />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: textColor, marginBottom: '8px' }}>
+              Não possuímos aulas cadastradas nesse módulo
+            </h3>
+            <p style={{ fontSize: '14px', maxWidth: '440px', margin: '0 auto', color: subTextColor, lineHeight: 1.5 }}>
+              Ainda não há aulas disponíveis neste módulo. O conteúdo será disponibilizado em breve.
+            </p>
+            {isManager && onOpenCreateLesson && (
+              <button
+                type="button"
+                data-testid="btn-create-first-lesson"
+                onClick={onOpenCreateLesson}
+                style={{
+                  marginTop: '20px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  backgroundColor: '#eab308',
+                  color: '#0f172a',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
+                <Plus size={16} />
+                Criar primeira aula
+              </button>
+            )}
+          </div>
+          {rightSidebar && <div>{rightSidebar}</div>}
+        </div>
+      );
+    }
+
     return (
       <div className="classroom-layout-grid" style={{ display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 310px' : '1fr', gap: '48px', alignItems: 'start' }}>
         <div style={{ textAlign: 'center', padding: '80px 20px', color: subTextColor, borderRadius: '14px', border: `1px dashed ${borderColor}`, backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.02)', minHeight: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -308,10 +382,23 @@ export default function LessonPlayer({
             </div>
           )}
 
-          {/* Abas da Aula: Visão Geral vs Materiais Complementares vs Minhas Anotações vs Comentários */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '24px', borderBottom: `1px solid ${borderColor}`, paddingBottom: '0', overflowX: 'auto' }}>
+          {/* Abas da Aula: Visão Geral vs Transcrição & Resumo IA vs Materiais Complementares vs Minhas Anotações vs Comentários */}
+          <div
+            className="no-scrollbar"
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginTop: '24px',
+              borderBottom: `1px solid ${borderColor}`,
+              paddingBottom: '0',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          >
             {[
               { id: 'overview', label: 'Visão Geral', icon: FileText, testId: 'tab-lesson-overview' },
+              { id: 'transcription', label: 'Transcrição & Resumo IA', icon: Sparkles, testId: 'tab-lesson-transcription' },
               { id: 'attachments', label: 'Materiais Complementares', icon: Paperclip, testId: 'tab-lesson-attachments', count: lesson.attachments?.length || 0 },
               { id: 'notes', label: 'Minhas Anotações', icon: BookOpen, testId: 'tab-lesson-notes' },
               { id: 'comments', label: 'Comentários', icon: MessageSquare, testId: 'tab-lesson-comments' }
@@ -351,6 +438,16 @@ export default function LessonPlayer({
                 </p>
               )}
             </div>
+          )}
+
+          {activeTab === 'transcription' && (
+            <LessonAiTranscriptionTab
+              courseId={courseId}
+              moduleId={moduleId || lesson.module_id}
+              lesson={lesson}
+              currentUser={currentUser}
+              isLightBg={isLightBg}
+            />
           )}
 
           {activeTab === 'attachments' && (

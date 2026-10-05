@@ -16,6 +16,8 @@ class Course(Base):
     cover_image_url = Column(String, nullable=True)
     bg_color = Column(String, default="#090d16", nullable=True)
     is_published = Column(Boolean, default=True)
+    sales_page_url = Column(String, nullable=True)
+    order_index = Column(Integer, default=0, index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -78,6 +80,7 @@ class Lesson(Base):
     notes = relationship("LessonNote", back_populates="lesson", cascade="all, delete-orphan")
     quiz_questions = relationship("QuizQuestion", back_populates="lesson", cascade="all, delete-orphan", order_by="QuizQuestion.order_index.asc()")
     quiz_submissions = relationship("QuizSubmission", back_populates="lesson", cascade="all, delete-orphan")
+    transcription = relationship("LessonTranscription", back_populates="lesson", uselist=False, cascade="all, delete-orphan")
 
 
 class LessonVideo(Base):
@@ -115,6 +118,28 @@ class LessonComment(Base):
         cascade="all, delete-orphan",
         order_by="LessonComment.created_at.asc()"
     )
+    likes = relationship("LessonCommentLike", back_populates="comment", cascade="all, delete-orphan")
+
+
+class LessonCommentLike(Base):
+    """
+    Curtidas em comentários e respostas de aulas.
+    Cada usuário pode curtir apenas 1 vez cada comentário.
+    """
+    __tablename__ = "lesson_comment_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("lesson_comments.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="uq_lesson_comment_like_user"),
+    )
+
+    user = relationship("User", foreign_keys=[user_id])
+    comment = relationship("LessonComment", back_populates="likes")
+
 
 
 class LessonAttachment(Base):
@@ -237,6 +262,25 @@ class QuizSubmission(Base):
 
     lesson = relationship("Lesson", back_populates="quiz_submissions")
     user = relationship("User")
+
+
+class LessonTranscription(Base):
+    __tablename__ = "lesson_transcriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    full_transcript = Column(Text, nullable=True, default="")
+    summary_html = Column(Text, nullable=True)
+    summary_markdown = Column(Text, nullable=True)
+    key_takeaways = Column(Text, nullable=True)  # JSON ou lista em texto dos principais destaques
+    status = Column(String, default="ready")  # 'processing', 'ready', 'error'
+    error_message = Column(Text, nullable=True)
+    generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    lesson = relationship("Lesson", back_populates="transcription")
+    generated_by = relationship("User")
 
 
 

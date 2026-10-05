@@ -140,6 +140,14 @@ def toggle_lesson_progress(
     db.refresh(record)
     logger.info(f"Usuário {current_user.id} alterou progresso da aula {lesson_id} para {target_status}")
 
+    # Gamificação: +15 pontos ao concluir aula
+    if target_status:
+        try:
+            from app.services.gamification_service import award_points
+            award_points(db, current_user, "lesson_completed", reference_id=lesson_id)
+        except Exception as g_exc:
+            logger.error(f"Erro ao atribuir pontos por aula concluída: {g_exc}")
+
     # Se a aula foi marcada como assistida, verifica marcos (25%, 50%, 75%, 100%) e dispara webhooks
     if target_status and total_course_lessons > 0:
         completed_after_count = db.query(LessonProgress).filter(
@@ -341,11 +349,11 @@ def report_lesson_issue(
     "/reports/summary",
     response_model=LessonReportsCountResponse,
     summary="Resumo de Relatórios de Problemas",
-    description="Retorna o consolidado de contadores de problemas reportados nas aulas (pendentes, resolvidos e total). Exige perfil de Admin ou Superadmin."
+    description="Retorna o consolidado de contadores de problemas reportados nas aulas (pendentes, resolvidos e total)."
 )
 def get_reports_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin_or_superadmin)
+    current_user: User = Depends(get_current_user)
 ):
     """Retorna contadores de relatórios de aulas (pendentes, resolvidos e total)."""
     pending = db.query(func.count(LessonReport.id)).filter(LessonReport.status == "open").scalar() or 0
@@ -358,11 +366,11 @@ def get_reports_summary(
     "/reports",
     response_model=List[LessonReportResponse],
     summary="Listar Problemas Reportados",
-    description="Lista todos os relatórios de problemas técnicos ou de conteúdo enviados pelos alunos nas aulas. Exige perfil de Admin ou Superadmin."
+    description="Lista todos os relatórios de problemas técnicos ou de conteúdo enviados pelos alunos nas aulas."
 )
 def list_reported_issues(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin_or_superadmin)
+    current_user: User = Depends(get_current_user)
 ):
     """Lista todos os problemas reportados nas aulas com dados completos de curso, aula e aluno."""
     reports = db.query(LessonReport).order_by(LessonReport.created_at.desc()).all()

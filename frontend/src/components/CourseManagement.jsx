@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, BookOpen, Layers, Edit2, Trash2, Search, GraduationCap, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, BookOpen, Search, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import CourseClassroom from './course-classroom/CourseClassroom';
+import CourseCard from './course-management/CourseCard';
 import { CourseFormModal, CourseDeleteModal } from './course-management/CourseModals';
 
 const ITEMS_PER_PAGE = 20;
 
-export default function CourseManagement({ currentUser, onCourseViewChange, bgColor: propBgColor = '#090d16', onThemeColorChange }) {
+export default function CourseManagement({ currentUser, onCourseViewChange, bgColor: propBgColor = '#090d16', onThemeColorChange, onNavigateTab }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -32,6 +33,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [description, setDescription] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [salesPageUrl, setSalesPageUrl] = useState('');
+  const [orderIndex, setOrderIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -78,6 +81,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setDescription('');
     setThumbnailUrl('');
     setCoverImageUrl('');
+    setSalesPageUrl('');
+    setOrderIndex(0);
     setModalOpen(true);
   };
 
@@ -87,6 +92,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setDescription(course.description || '');
     setThumbnailUrl(course.thumbnail_url || '');
     setCoverImageUrl(course.cover_image_url || '');
+    setSalesPageUrl(course.sales_page_url || '');
+    setOrderIndex(course.order_index ?? 0);
     setModalOpen(true);
   };
 
@@ -143,6 +150,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       description: description.trim() || null,
       thumbnail_url: thumbnailUrl.trim() || null,
       cover_image_url: coverImageUrl.trim() || null,
+      sales_page_url: salesPageUrl.trim() || null,
+      order_index: parseInt(orderIndex, 10) || 0,
       bg_color: activeBgColor
     };
 
@@ -302,82 +311,25 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         <>
           <div className="courses-grid" data-testid="courses-grid">
             {paginatedCourses.map((course) => (
-              <div
+              <CourseCard
                 key={course.id}
-                className="table-card"
-                style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', borderRadius: '12px', backgroundColor: cardBg, border: cardBorder }}
-                data-testid={`course-card-${course.id}`}
-              >
-                {/* Thumbnail do Curso */}
-                <div
-                  className="course-card-thumb"
-                  onClick={() => setSelectedCourse(course)}
-                  style={{ cursor: 'pointer' }}
-                  title="Clique para acessar o curso"
-                >
-                  {course.thumbnail_url ? (
-                    <img src={course.thumbnail_url} alt={course.title} />
-                  ) : (
-                    <div className="course-card-placeholder">
-                      <Layers size={40} style={{ margin: '0 auto 8px', opacity: 0.7 }} />
-                      <span style={{ fontSize: '12px', fontWeight: 600 }}>Área de Membros</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Informações do Curso */}
-                <div className="course-card-body">
-                  <h3
-                    onClick={() => setSelectedCourse(course)}
-                    style={{ fontSize: '16px', fontWeight: 700, color: textColor, margin: 0, cursor: 'pointer' }}
-                  >
-                    {course.title}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: subTextColor, lineHeight: '1.5', margin: 0, flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {course.description || 'Nenhuma descrição fornecida.'}
-                  </p>
-
-                  {/* Ações do Card */}
-                  <div className="course-card-footer" style={{ borderTop: cardBorder }}>
-                    <button
-                      type="button"
-                      className="primary-btn"
-                      onClick={() => setSelectedCourse(course)}
-                      data-testid={`access-course-btn-${course.id}`}
-                      style={{ padding: '6px 12px', fontSize: '12.5px', gap: '6px' }}
-                    >
-                      <PlayCircle size={14} />
-                      <span>Acessar Curso</span>
-                    </button>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {isManager && (
-                        <>
-                          <button
-                            type="button"
-                            className="table-action-btn"
-                            title="Editar curso"
-                            onClick={() => handleOpenEditModal(course)}
-                            data-testid={`edit-course-btn-${course.id}`}
-                            style={{ color: isLightBg ? undefined : '#cbd5e1', borderColor: isLightBg ? undefined : 'rgba(255,255,255,0.15)', backgroundColor: isLightBg ? undefined : 'rgba(255,255,255,0.06)' }}
-                          >
-                            <Edit2 size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="table-action-btn btn-danger"
-                            title="Excluir curso"
-                            onClick={() => handlePromptDelete(course)}
-                            data-testid={`delete-course-btn-${course.id}`}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                course={course}
+                isManager={isManager}
+                isLightBg={isLightBg}
+                textColor={textColor}
+                subTextColor={subTextColor}
+                cardBg={cardBg}
+                cardBorder={cardBorder}
+                onSelectCourse={setSelectedCourse}
+                onOpenEditModal={handleOpenEditModal}
+                onPromptDelete={handlePromptDelete}
+                onShowInfoToast={(msg) => addToast(msg, 'info')}
+                onContactSupport={() => {
+                  if (onNavigateTab) {
+                    onNavigateTab('support');
+                  }
+                }}
+              />
             ))}
           </div>
 
@@ -433,6 +385,10 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         setThumbnailUrl={setThumbnailUrl}
         coverImageUrl={coverImageUrl}
         setCoverImageUrl={setCoverImageUrl}
+        salesPageUrl={salesPageUrl}
+        setSalesPageUrl={setSalesPageUrl}
+        orderIndex={orderIndex}
+        setOrderIndex={setOrderIndex}
         bgColor={activeBgColor}
         uploading={uploading}
         saving={saving}

@@ -38,7 +38,7 @@ describe('App Component', () => {
       </ToastProvider>
     );
     expect(screen.getByRole('complementary', { name: /menu lateral/i })).toBeInTheDocument();
-    expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Gestão de Usuários' })).toBeInTheDocument();
   });
 
   it('restores last active tab from localStorage upon page reload', () => {
@@ -61,7 +61,7 @@ describe('App Component', () => {
     );
 
     expect(screen.getByTestId('automated-backup-page')).toBeInTheDocument();
-    expect(screen.queryByText('Gestão de Usuários')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Gestão de Usuários' })).not.toBeInTheDocument();
   });
 
   it('renders welcome screen for non-superadmin users without mentioning restricted areas', () => {
@@ -231,6 +231,30 @@ describe('App Component', () => {
     // Clica no backdrop para fechar
     fireEvent.click(backdrop);
     expect(aside).not.toHaveClass('mobile-open');
+  });
+
+  it('allows aluno user to access lesson-reports and settings tabs', () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 7,
+        name: 'Fernandes Aluno',
+        email: 'fernandes@exemplo.com',
+        role: 'aluno',
+      })
+    );
+    localStorage.setItem('active_tab', 'settings');
+
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('platform-settings-page')).toBeInTheDocument();
+    expect(screen.getByText('Configurações da Área de Membros')).toBeInTheDocument();
+    expect(localStorage.getItem('active_tab')).toBe('settings');
   });
 });
 

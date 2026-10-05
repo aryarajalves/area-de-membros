@@ -20,6 +20,9 @@ from app.models.course import (
     QuizSubmission,
 )
 from app.models.support import SupportTopic, SupportReply, SupportTopicLike
+from app.models.chat import ChatMessage
+from app.models.testimonial import Testimonial
+from app.models.gamification import GamificationPoint
 from app.models.webhook import Webhook, WebhookLog
 from app.models.backup import BackupSchedule, BackupHistory
 from app.models.api_token import ApiToken
@@ -44,6 +47,9 @@ __all__ = [
     "SupportTopic",
     "SupportReply",
     "SupportTopicLike",
+    "ChatMessage",
+    "Testimonial",
+    "GamificationPoint",
     "Webhook",
     "WebhookLog",
     "BackupSchedule",

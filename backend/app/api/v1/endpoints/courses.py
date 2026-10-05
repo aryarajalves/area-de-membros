@@ -6,16 +6,18 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.core.database import get_db
+from app.core.logger import logger
 from app.models.user import User
-from app.models.course import Course, UserCourse, Module, Lesson, LessonVideo, LessonComment, LessonAttachment
+from app.models.course import Course, UserCourse, Module, Lesson, LessonVideo, LessonComment, LessonCommentLike, LessonAttachment
 from app.schemas.course import (
     CourseCreate, CourseUpdate, CourseResponse, CourseDetailResponse,
     ModuleCreate, ModuleUpdate, ModuleResponse, ModuleDetailResponse,
     LessonCreate, LessonUpdate, LessonResponse,
     LessonVideoCreate, LessonVideoResponse,
     LessonAttachmentCreate, LessonAttachmentResponse,
-    CommentCreate, CommentResponse,
+    CommentCreate, CommentResponse, CommentLikeToggleResponse,
     PlatformThemeUpdate, PlatformThemeResponse
 )
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
@@ -98,7 +100,7 @@ def get_platform_theme(db: Session = Depends(get_db)):
 def update_platform_theme(
     theme_in: PlatformThemeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin_or_superadmin)
+    current_user: User = Depends(get_current_user)
 ):
     """Atualiza a cor de fundo global da Área de Membros e sincroniza com todos os cursos."""
     new_color = (theme_in.bg_color or "#090d16").strip()
@@ -136,14 +138,19 @@ def list_courses(
     - Demais usuários não visualizam nenhum curso.
     """
     if current_user.role in ["superadmin", "admin"]:
-        return db.query(Course).order_by(Course.id.desc()).offset(skip).limit(limit).all()
+        courses = db.query(Course).order_by(Course.order_index.asc(), Course.id.desc()).offset(skip).limit(limit).all()
+        for c in courses:
+            setattr(c, "has_access", True)
+        return courses
 
     if current_user.role == "aluno":
         user_courses = db.query(UserCourse).filter(UserCourse.user_id == current_user.id).all()
-        user_course_ids = [uc.course_id for uc in user_courses if _is_user_course_active(uc)]
-        if not user_course_ids:
-            return []
-        return db.query(Course).filter(Course.id.in_(user_course_ids)).order_by(Course.id.desc()).offset(skip).limit(limit).all()
+        user_course_ids = {uc.course_id for uc in user_courses if _is_user_course_active(uc)}
+        # Alunos visualizam todos os cursos da plataforma ordenados pela ordem definida
+        all_courses = db.query(Course).filter(Course.is_published == True).order_by(Course.order_index.asc(), Course.id.desc()).offset(skip).limit(limit).all()
+        for c in all_courses:
+            setattr(c, "has_access", c.id in user_course_ids)
+        return all_courses
 
     return []
 
@@ -153,7 +160,7 @@ def list_courses(
     status_code=status.HTTP_201_CREATED,
     tags=["Cursos e Módulos"],
     summary="Criar Novo Curso",
-    description="Cadastra um novo curso na Área de Membros com título, descrição, capa e tema visual."
+    description="Cadastra um novo curso na Área de Membros com título, descrição, capa, tema visual, link de vendas e ordem de exibição."
 )
 def create_course(
     course_in: CourseCreate,
@@ -168,11 +175,14 @@ def create_course(
         thumbnail_url=course_in.thumbnail_url,
         cover_image_url=course_in.cover_image_url,
         bg_color=course_in.bg_color or global_bg,
-        is_published=course_in.is_published
+        is_published=course_in.is_published,
+        sales_page_url=course_in.sales_page_url.strip() if course_in.sales_page_url else None,
+        order_index=course_in.order_index if course_in.order_index is not None else 0
     )
     db.add(new_course)
     db.commit()
     db.refresh(new_course)
+    setattr(new_course, "has_access", True)
     return new_course
 
 
@@ -237,9 +247,14 @@ def update_course(
         course.bg_color = course_update.bg_color or "#090d16"
     if course_update.is_published is not None:
         course.is_published = course_update.is_published
+    if course_update.sales_page_url is not None:
+        course.sales_page_url = course_update.sales_page_url.strip() if course_update.sales_page_url else None
+    if course_update.order_index is not None:
+        course.order_index = course_update.order_index
 
     db.commit()
     db.refresh(course)
+    setattr(course, "has_access", True)
     return course
 
 @router.delete(
@@ -695,7 +710,99 @@ def list_lesson_comments(
         LessonComment.lesson_id == lesson_id,
         LessonComment.parent_id.is_(None)
     ).order_by(LessonComment.created_at.asc()).all()
+
+    # Mapeamento de curtidas para comentários e respostas
+    all_comment_ids = []
+    for c in comments:
+        all_comment_ids.append(c.id)
+        for r in (c.replies or []):
+            all_comment_ids.append(r.id)
+
+    user_liked_set = set()
+    likes_count_map = {}
+    if all_comment_ids:
+        user_likes = db.query(LessonCommentLike.comment_id).filter(
+            LessonCommentLike.comment_id.in_(all_comment_ids),
+            LessonCommentLike.user_id == current_user.id
+        ).all()
+        user_liked_set = {row[0] for row in user_likes}
+
+        counts = db.query(
+            LessonCommentLike.comment_id,
+            func.count(LessonCommentLike.id)
+        ).filter(
+            LessonCommentLike.comment_id.in_(all_comment_ids)
+        ).group_by(LessonCommentLike.comment_id).all()
+        likes_count_map = {row[0]: row[1] for row in counts}
+
+    for c in comments:
+        c.likes_count = likes_count_map.get(c.id, 0)
+        c.liked_by_me = c.id in user_liked_set
+        for r in (c.replies or []):
+            r.likes_count = likes_count_map.get(r.id, 0)
+            r.liked_by_me = r.id in user_liked_set
+
     return comments
+
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments/{comment_id}/like",
+    response_model=CommentLikeToggleResponse,
+    tags=["Comentários da Aula"],
+    summary="Curtir / Descurtir Comentário da Aula"
+)
+def toggle_lesson_comment_like(
+    course_id: int,
+    module_id: int,
+    lesson_id: int,
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Alterna a curtida em um comentário ou resposta de aula pelo usuário autenticado."""
+    if current_user.role == "aluno":
+        _verify_student_course_access(db, current_user.id, course_id)
+
+    comment = db.query(LessonComment).filter(
+        LessonComment.id == comment_id,
+        LessonComment.lesson_id == lesson_id
+    ).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comentário não encontrado.")
+
+    existing_like = db.query(LessonCommentLike).filter(
+        LessonCommentLike.comment_id == comment_id,
+        LessonCommentLike.user_id == current_user.id
+    ).first()
+
+    if existing_like:
+        db.delete(existing_like)
+        db.commit()
+        liked_by_me = False
+    else:
+        new_like = LessonCommentLike(
+            comment_id=comment_id,
+            user_id=current_user.id
+        )
+        db.add(new_like)
+        db.commit()
+        liked_by_me = True
+
+        try:
+            from app.services.gamification_service import award_points
+            comment_author = db.query(User).filter(User.id == comment.user_id).first()
+            if comment_author and comment_author.id != current_user.id and comment_author.role == "aluno":
+                award_points(db, comment_author, "comment_like_received", reference_id=comment.id)
+        except Exception as g_exc:
+            logger.error(f"Erro ao atribuir pontos de gamificação por curtida em comentário: {g_exc}")
+
+    count = db.query(func.count(LessonCommentLike.id)).filter(LessonCommentLike.comment_id == comment_id).scalar() or 0
+    return CommentLikeToggleResponse(
+        comment_id=comment_id,
+        likes_count=count,
+        liked_by_me=liked_by_me,
+        liked=liked_by_me
+    )
+
 
 @router.post(
     "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments",

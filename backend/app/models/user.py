@@ -15,6 +15,7 @@ class User(Base):
     role = Column(String, nullable=False, default="user") # 'superadmin', 'admin', 'user'
     is_active = Column(Boolean, default=True)
     phone = Column(String, nullable=True) # WhatsApp / Telefone do usuário
+    avatar_url = Column(String, nullable=True) # Foto/logo de perfil do usuário
     created_at = Column(DateTime, default=utc_now)
 
 

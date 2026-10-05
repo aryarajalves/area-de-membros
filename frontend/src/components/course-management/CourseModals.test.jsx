@@ -100,6 +100,66 @@ describe('CourseModals Components', () => {
       expect(screen.getByTestId('upload-progress-modal')).toBeInTheDocument();
       expect(screen.getByText('Enviando imagem do curso...')).toBeInTheDocument();
     });
+
+    it('renders sales_page_url input and updates value on change', () => {
+      const setSalesPageUrl = vi.fn();
+
+      render(
+        <CourseFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          editingCourse={null}
+          title="Curso Vendas"
+          setTitle={vi.fn()}
+          description=""
+          setDescription={vi.fn()}
+          thumbnailUrl=""
+          setThumbnailUrl={vi.fn()}
+          salesPageUrl="https://vendas.com/meucurso"
+          setSalesPageUrl={setSalesPageUrl}
+          uploading={false}
+          saving={false}
+          onSaveCourse={vi.fn()}
+        />
+      );
+
+      const urlInput = screen.getByTestId('course-sales-page-url-input');
+      expect(urlInput).toBeInTheDocument();
+      expect(urlInput).toHaveValue('https://vendas.com/meucurso');
+
+      fireEvent.change(urlInput, { target: { value: 'https://novalink.com' } });
+      expect(setSalesPageUrl).toHaveBeenCalledWith('https://novalink.com');
+    });
+
+    it('renders order_index input and updates value on change', () => {
+      const setOrderIndex = vi.fn();
+
+      render(
+        <CourseFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          editingCourse={null}
+          title="Curso Ordenado"
+          setTitle={vi.fn()}
+          description=""
+          setDescription={vi.fn()}
+          thumbnailUrl=""
+          setThumbnailUrl={vi.fn()}
+          orderIndex={3}
+          setOrderIndex={setOrderIndex}
+          uploading={false}
+          saving={false}
+          onSaveCourse={vi.fn()}
+        />
+      );
+
+      const orderInput = screen.getByTestId('course-order-index-input');
+      expect(orderInput).toBeInTheDocument();
+      expect(orderInput).toHaveValue(3);
+
+      fireEvent.change(orderInput, { target: { value: '5' } });
+      expect(setOrderIndex).toHaveBeenCalledWith('5');
+    });
   });
 
   describe('CourseDeleteModal', () => {

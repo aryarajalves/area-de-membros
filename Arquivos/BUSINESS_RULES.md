@@ -19,16 +19,25 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - `3 anos` (`3_years` — 1095 dias)
     Quando o aluno conclui o cadastro, o sistema vincula os cursos e calcula a data de expiração (`expires_at`) de cada curso a partir da ativação da conta.
   - **Na edição do aluno (`/users/{id}`):** O Super Admin pode marcar/desmarcar quais cursos estão liberados para o aluno e definir/alterar o tempo de acesso (`Vitalício`, `6 meses`, `1 ano`, `2 anos`, etc.) de cada produto especificamente.
-- **Permissão de Visualização e Expiração:**
-  - `superadmin` e `admin`: Têm visão completa de todos os cursos cadastrados na plataforma.
-  - `aluno`: Visualiza **apenas** os cursos que foram expressamente liberados para a sua conta e cujo prazo de acesso esteja vigente (`expires_at IS NULL` ou `expires_at > agora`). Cursos com prazo expirado deixam de aparecer na vitrine do aluno e têm o acesso bloqueado (`403`).
+- **Permissão de Visualização e Vitrine de Cursos:**
+  - `superadmin` e `admin`: Têm visão completa e acesso irrestrito a todos os cursos cadastrados na plataforma.
+  - `aluno`: Visualiza **todos** os cursos cadastrados e publicados na vitrine da Área de Membros (`/courses`), permitindo que conheça novos treinamentos disponíveis para compra.
+    - **Cursos com Acesso Liberado:** O aluno visualiza o botão destacado **"Acessar Curso"** (`PlayCircle`) e pode navegar livremente por módulos e aulas.
+    - **Cursos Não Adquiridos / Sem Acesso:** O card do curso exibe o selo **"Disponível para Compra"** com ícone de cadeado (`Lock`), overlay sobre a thumbnail da capa com correntes cruzadas estilizadas e cadeado central indicando **"Produto Fechado"**, além do botão **"Ver Mais Informações"** (`ExternalLink`) e da opção de **"Entrar em Contato"** (`HelpCircle`) na parte inferior do card.
+    - **Redirecionamento:** Ao clicar em "Ver Mais Informações", o aluno é redirecionado em nova aba para a URL configurada no campo `sales_page_url` do curso. Se o curso não possuir URL cadastrada, o sistema exibe feedback amigável informando que a página estará disponível em breve. Ao clicar em "Entrar em Contato", o aluno é direcionado imediatamente para a aba interna de Suporte da Área de Membros para falar com a equipe.
+    - **Segurança de Acesso:** O acesso direto ao conteúdo interno (`/courses/{id}`) de cursos não adquiridos permanece estritamente bloqueado (`HTTP 403`).
 - **Criação e Edição de Cursos:**
+  - O formulário conta com o campo **Link da Página de Vendas / Mais Informações (`sales_page_url`)** (opcional), permitindo que o administrador insira o endereço externo da landing page ou checkout do treinamento.
   - O modal de criar/editar curso **não** possui checkbox de "Curso publicado (visível para alunos)".
+  - O campo **Descrição do Curso** conta com o componente [`ExpandableTextarea`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/frontend/src/components/common/ExpandableTextarea.jsx) com o botão destacado **"Tela Cheia"** (`Maximize2`), abrindo um **popup gigante no meio da tela** (`94vw × 86vh`) para digitação ampla, com contador dinâmico de palavras e caracteres, preservação de quebras de linha e fechamento via botão "Concluir Edição" ou tecla `Esc`.
   - A imagem de capa (Thumbnail) pode ser enviada diretamente do computador do usuário (upload) ou mantida via URL.
   - **Especificações recomendadas para a Thumbnail:**
     - Dimensões recomendadas: **1280 × 720 pixels** (Proporção widescreen 16:9).
     - Formatos aceitos: **JPG, PNG, WEBP**.
     - Tamanho máximo: **até 5 MB**.
+- **Ordem de Posição e Exibição dos Cursos:**
+  - Cada curso possui o campo numérico **Ordem de Posição / Exibição (`order_index`)** configurável no modal de criação e edição do curso.
+  - A ordenação na plataforma (tanto para administradores quanto para alunos na vitrine) é crescente por ordem (`order_index ASC`), com desempate pelos mais recentes (`id DESC`). Cursos com números menores (ex: `1`, `2`, `3`) aparecem primeiro na lista e na vitrine. O valor padrão é `0`.
 - **Paginação de Cursos:**
   - A listagem exibe no máximo **20 cursos por página**.
   - Abaixo da grade de cursos, há controles de navegação ("Anterior", "Próxima", contador de páginas e cursos exibidos).
@@ -40,11 +49,12 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - Em cada card de curso, há a ação **"Acessar Curso"** (além do clique direto na capa/título), abrindo o ambiente de sala de aula (`CourseClassroom`).
 - **Gestão de Módulos:**
   - Módulos organizam os tópicos do curso (Título, Descrição, Ordem).
+  - O campo de Descrição possui botões de **"Tela Cheia"** (popup gigante) e **"Maximizar / Restaurar"** (`ExpandableTextarea`), permitindo expandir a área de digitação para textos extensos com facilidade.
   - A exclusão de um módulo apaga em cascata todas as aulas associadas após confirmação em popup modal preto.
 - **Gestão de Aulas (Lessons):**
   - Cada aula pertence a um módulo e contém:
     - **Nome/Título da Aula** (obrigatório).
-    - **Descrição da Aula** (opcional, renderizada abaixo do player com quebras de linha preservadas).
+    - **Descrição da Aula** (opcional, com botões de **"Tela Cheia"** com popup gigante e **"Maximizar / Restaurar"** para escrita confortável, renderizada abaixo do player com quebras de linha preservadas).
     - **Duração Estimada:** Especificada em **minutos** (ex: `20 min` ou formato cronômetro `15:30`). No formulário de cadastro/edição, o campo deixa explícito no rótulo `(em minutos)` e instrução de ajuda. Se o administrador preencher apenas números (ex: `20`), o sistema normaliza e exibe automaticamente como `20 min` tanto no player da aula quanto na listagem de aulas do curso.
       - **Upload em Segundo Plano no Backblaze B2 (Múltiplos Vídeos):** arquivos de vídeo MP4, WebM, MOV ou MKV de até **2 GB (2048 MB)** são enviados diretamente para a nuvem no bucket Backblaze B2 (`AreaDeMembros/videos/`) através de URLs pré-assinadas (S3 Presigned URLs). O envio ocorre em **segundo plano** gerenciado pelo `UploadQueueContext`, **sem nenhum modal bloqueante**. O usuário pode preencher e salvar a aula imediatamente, fechar o formulário, criar novas aulas e enviar múltiplos vídeos concorrentemente. Um painel flutuante discreto no canto inferior direito (`BackgroundUploadWidget`) exibe o progresso individual e permite cancelamento ou acompanhamento em tempo real.
       - **Aba Padrão:** Por padrão, o modal de criação e edição da aula já se inicia diretamente na aba **"Upload do PC (Backblaze B2)"**.
@@ -88,6 +98,11 @@ Este documento registra as decisões de regras de negócio da plataforma para co
       - **Critério de Aprovação Automática:** Se o aluno atingir nota igual ou superior a `passing_score_pct`, a tentativa é aprovada (`passed = True`) e a aula é marcada automaticamente como concluída no progresso do curso. Caso contrário, a aula permanece não concluída e o aluno pode refazer o quiz.
       - **Segurança Antifraude:** O endpoint de consulta do quiz pelo aluno oculta o campo `is_correct` das opções, impossibilitando descobrir o gabarito via DevTools do navegador.
       - **Feedback Visual Claro:** O aluno visualiza os pontos de cada questão no card, a meta mínima no banner superior (`Aprovação com X%`) e, ao submeter, visualiza a pontuação obtida versus total de pontos (`X de Y pontos`), a nota percentual e o feedback de aprovação ou incentivo para refazer.
+  - **Reprodutor de Vídeo Customizado (`CustomVideoPlayer` e `VideoControls`):**
+    - **Feedback Imediato de Carregamento e Buffering:** O player oferece feedback visual instantâneo ao alternar entre aulas ou quando a rede oscila.
+    - **Overlay Central Neon de Buffering:** Sempre que a transmissão precisa carregar dados na rede (`waiting`, `stalled`, `seeking`), o centro da tela exibe um painel elegante translúcido com spinner animado e mensagens claras ("Carregando vídeo... Baixando dados de transmissão, aguarde..."), eliminando a sensação de tela congelada.
+    - **Barra de Buffer Visual na Timeline:** O trilho de progresso exibe uma barra de buffer translúcida (`video-buffered-bar`) à frente do tempo atual, permitindo acompanhar o carregamento contínuo dos pacotes de mídia.
+    - **Streaming e Compatibilidade de Formatos:** O backend serve requisições de corte de intervalo (HTTP 206 Partial Content / Range requests) com `media_type` ajustado conforme a extensão (`.mp4`, `.mov`, `.webm`, `.mkv`), otimizando o fluxo de dados.
   - **Navegação:** O player permite avançar para a "Próxima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
 - **Aba de Comentários da Aula:**
   - Aba dedicada abaixo do player de cada aula.
@@ -106,6 +121,11 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - Clicar em "Responder" em uma resposta pré-existente insere automaticamente a menção `@Nome` no campo de texto e ancora a resposta na thread principal.
     - Se houver respostas, o comentário exibe o botão de alternância "Ver X respostas" / "Ocultar respostas".
     - O autor da resposta ou administradores podem excluir uma resposta individual; ao excluir o comentário raiz original, toda a thread com suas respostas é excluída em cascata.
+  - **Curtidas em Comentários e Respostas:**
+    - Alunos e gestores podem curtir ou descurtir comentários raízes e respostas de aulas clicando no botão de coração (`Heart`).
+    - Cada usuário pode registrar no máximo 1 curtida por comentário/resposta (chave única `uq_lesson_comment_like_user` na tabela `lesson_comment_likes`).
+    - O botão exibe o contador total de curtidas e adquire destaque visual vermelho (`#ef4444`) quando curtido pelo próprio usuário logado (`liked_by_me`).
+    - Quando um aluno curte o comentário de outro aluno, o sistema de gamificação bonifica o autor do comentário com pontos de engajamento comunitário.
 - **Aba de Materiais Complementares e Anexos da Aula:**
   - Aba dedicada **"Materiais Complementares"** abaixo do player da aula, exibindo contador em badge de quantos arquivos estão disponíveis.
   - **Upload e Gestão:** No modal de criar ou editar aula, o instrutor pode anexar arquivos do seu computador de até 100 MB (PDF, Word, Excel, PowerPoint, ZIP, RAR, TXT, CSV), armazenados no Backblaze B2 (`AreaDeMembros/attachments/`).
@@ -420,6 +440,7 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - `Alunos`: Gestão de matrículas, acompanhamento de progresso e tempo de acesso (Admin/Super Admin).
     - `Suporte`: Fórum de dúvidas, respostas oficiais e suporte dos cursos (Alunos e Administradores).
     - `Relatos de Aulas`: Notificações e moderação de problemas relatados em aulas (Admin/Super Admin).
+    - `Chat da Comunidade`: Ambiente de bate-papo em tempo real entre alunos, professores e administradores, posicionado logo abaixo de Relatos de Aulas (Alunos e Administradores).
   - **Categoria "Administração":**
     - `Integrações`: Webhooks e disparos para ferramentas externas (Admin/Super Admin).
     - `Configurações`: Aparência da plataforma e Chaves de API (Admin/Super Admin).
@@ -445,4 +466,165 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 - **Tabelas e Listagens no Celular:**
   - Tabelas com múltiplas colunas (Gestão de Alunos, Convites, Usuários, Backups, Relatos) contam com rolagem horizontal fluida por toque (`overflow-x: auto; -webkit-overflow-scrolling: touch;`), preservando a legibilidade dos dados sem espremer colunas nem estourar a largura da janela.
 
+---
+
+## 14. Chat da Comunidade e Bate-papo dos Alunos
+- **Objetivo:** Proporcionar um espaço de interação, networking e troca de ideias diretamente dentro da plataforma, conectando alunos e instrutores.
+- **Estrutura de Canais de Conversa:**
+  - **Comunidade Geral (`channel_type == 'general'`):**
+    - Canal global único aberto para todos os usuários com conta ativa (Alunos, Instrutores e Administradores).
+    - Canal fixado em destaque na barra lateral do chat.
+  - **Canais por Curso (`channel_type == 'course'`):**
+    - Cada curso cadastrado possui seu canal dedicado exclusivo para os alunos matriculados.
+    - **Regra de Visibilidade e Acesso:**
+      - Alunos visualizam e enviam mensagens **apenas** nos canais dos cursos aos quais possuem acesso ativo (`UserCourse` não expirado). Tentativas de leitura ou envio para cursos não matriculados retornam `403 Forbidden`.
+      - Instrutores e Administradores (`superadmin`, `admin`) têm acesso irrestrito a todos os canais para suporte e moderação.
+- **Recursos da Interface e Experiência do Usuário:**
+  - **Balões de Mensagem Estilizados:**
+    - Identificação clara do remetente com avatar circular colorido contendo a inicial do usuário.
+    - Badge do perfil do usuário: `Super Admin` (roxo neon), `Instrutor` (azul neon) e `Aluno` (esmeralda).
+    - Horário formatado da mensagem (hora e minuto).
+    - Diferenciação visual suave para mensagens enviadas pelo próprio usuário autenticado versus mensagens recebidas.
+  - **Scroll Automático Inteligente:**
+    - Rolagem suave até a última mensagem recebida ao carregar ou enviar novidades.
+  - **Envio Rápido e Atalhos:**
+    - Suporte a tecla `Enter` para envio imediato e `Shift + Enter` para pular linha.
+    - Validação de mensagens vazias e limite de até 3.000 caracteres.
+    - Estado de carregamento com spinner no botão de envio enquanto a mensagem é persistida.
+  - **Sincronização em Tempo Real (Polling Incremental):**
+    - Polling leve em segundo plano a cada 3,5 segundos utilizando o parâmetro `after_id` para trazer apenas mensagens novas sem recarregar o feed inteiro nem travar a rolagem.
+  - **Curtir Mensagens do Chat:**
+    - Alunos e gestores podem curtir e descurtir mensagens de texto ou mídia clicando no botão de coração (`Heart`).
+    - Contador em tempo real do número de curtidas por mensagem com destaque vermelho para o usuário que curtiu (`liked_by_me`).
+    - Cada usuário pode curtir apenas uma única vez por mensagem (tabela `chat_message_likes`).
+    - Curtir mensagens de outros alunos gera bonificação de engajamento no sistema de gamificação.
+  - **Favoritar Mensagens e Filtro de Favoritas:**
+    - Botão de estrela (`Star`) em cada balão de mensagem para favoritar/desfavoritar (tabela `chat_message_favorites`).
+    - Botão de alternância **"⭐ Favoritas"** no cabeçalho do chat (`ChatHeader`), permitindo filtrar instantaneamente o canal para exibir apenas as mensagens salvas pelo usuário autenticado.
+  - **Fixar Mensagens no Topo do Chat (Pin):**
+    - Privilégio restrito a Administradores e Instrutores (`admin` e `superadmin`).
+    - O gestor pode fixar ou desafixar mensagens importantes no canal (`is_pinned`, `pinned_at`, `pinned_by_user_id`).
+    - Quando há uma mensagem fixada no canal, um banner superior estilizado em azul neon no cabeçalho (`chat-pinned-message-banner`) exibe o autor e o conteúdo da mensagem fixada, acompanhado de botão de desafixação rápida para gestores.
+    - A mensagem também recebe o selo `📌 Fixada` nos seus metadados.
+  - **Envio de Mídias no Chat (Imagens e Documentos):**
+    - Botão de anexo (`Paperclip`) na barra de entrada (`ChatInputBar`) permitindo selecionar imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF) de até 15 MB.
+    - Suporte a upload em nuvem no Backblaze B2 (`AreaDeMembros/chat_media/`) com fallback em servidor local.
+    - Miniatura de pré-visualização antes do envio com botão de remoção rápida.
+    - Permite envio de mensagem de texto com mídia vinculada, ou somente a mídia isolada.
+    - Imagens são renderizadas no chat com zoom ao clicar, e documentos em card seguro com link de abertura.
+- **Moderação e Exclusão de Mensagens:**
+  - O autor da mensagem pode excluir suas próprias mensagens a qualquer momento.
+  - Instrutores e Administradores possuem privilégio de moderação, podendo excluir mensagens inadequadas de qualquer participante.
+  - A exclusão exige confirmação explícita em popup modal escuro (`DeleteChatMessageModal`) que não fecha por clique fora e exibe feedback imediato via toast de sucesso.
+
+---
+
+## 15. Gestão de Perfil do Usuário e Identidade Visual (Configurações)
+- **Localização:** Aba **"Meu Perfil"** dentro da tela de **Configurações da Área de Membros** (`PlatformSettings`).
+- **Campos Disponíveis:**
+  - **Foto / Logo de Perfil (`avatar_url`):**
+    - Envio direto do computador com suporte a JPG, PNG e WEBP (até 5 MB) com upload para o Backblaze B2 (`AreaDeMembros/avatars/`) ou armazenamento local.
+    - Pré-visualização instantânea em avatar arredondado com borda suave.
+    - Botão de remoção rápida da foto.
+    - Quando cadastrada, a foto substitui a inicial do usuário no rodapé da barra lateral (`Sidebar`) e em outros pontos da plataforma.
+  - **Nome do Contato / Usuário (`name`).**
+  - **E-mail de Acesso (`email`).**
+  - **WhatsApp / Telefone de Contato (`phone`).**
+  - **Segurança e Troca de Senha (`password`):**
+    - Campos "Nova Senha" e "Confirmar Nova Senha" com alternância de visibilidade (`Eye/EyeOff`) e validação de requisitos (mínimo 12 caracteres, maiúscula, minúscula, número e símbolo especial).
+- **Regra de Proteção do Super Admin:**
+  - Por diretrizes de segurança da conta mestre do sistema, o **Super Administrador NÃO pode alterar seu nome, e-mail e senha por esta tela**.
+  - Na interface, os campos de nome e e-mail aparecem desabilitados com ícone de cadeado (`Lock`) e um banner explicativo destacado. O bloco de senha exibe aviso de proteção da conta mestre.
+  - No backend (`PATCH /api/v1/auth/me`), qualquer tentativa de submeter alterações de nome, e-mail ou senha para o `superadmin` é sumariamente rejeitada com `400 Bad Request`.
+  - O Super Admin tem permissão total e irrestrita para **alterar a sua foto de perfil / logo** a qualquer momento.
+- **Outros Perfis (Administradores / Instrutores):**
+  - Possuem liberdade para editar nome, e-mail (com validação de unicidade), telefone, senha e foto de perfil normalmente.
+
+---
+
+## 16. Depoimentos e Avaliações dos Cursos (Testimonials & Reviews)
+- **Localização:** Aba **"Depoimentos"** na barra lateral (`Sidebar`) sob a categoria **Gestão de Ensino** (para gestores) e **Meu Aprendizado** (para alunos).
+- **Submissão de Depoimentos pelo Aluno:**
+  - O aluno pode enviar depoimento exclusivamente para cursos aos quais possui **acesso ativo e liberado**. Cursos sem acesso ou expirados não permitem envio de avaliação (`HTTP 403`).
+  - Cada aluno pode cadastrar **1 depoimento por curso**. Caso queira mudar sua opinião, pode editar seu depoimento existente a qualquer momento.
+  - **Campos do Depoimento:**
+    - **Seleção do Curso:** lista suspensa contendo apenas os cursos liberados para o aluno.
+    - **Nota em Estrelas (1 a 5 ⭐):** seleção interativa de estrelas com destaque dourado.
+    - **Título do Depoimento:** resumo ou manchete da avaliação (opcional, até 200 caracteres).
+    - **Texto do Relato / Opinião:** descrição da experiência, aprendizado e resultados obtidos (mínimo 3 caracteres, até 5.000 caracteres com contador dinâmico).
+- **Fluxo de Moderação pelo Administrador:**
+  - Todo novo depoimento submetido ou editado por aluno entra automaticamente com status **"Aguardando Moderação" (`pending`)**.
+  - Apenas depoimentos com status **"Aprovado" (`approved`)** são exibidos na vitrine pública para outros alunos e visitantes. O autor sempre consegue visualizar seu próprio depoimento para acompanhar o status.
+  - Administradores e Super Admins contam com botões rápidos de ação:
+    - **Aprovar (`approved`):** torna o depoimento visível para a comunidade.
+    - **Rejeitar (`rejected`):** reprova o depoimento mantendo arquivado internamente.
+    - **Destacar (`is_featured`):** fixa o depoimento com selo de destaque dourado e posiciona no topo da listagem.
+- **Exclusão de Depoimentos:**
+  - O próprio aluno autor pode excluir seu depoimento a qualquer momento.
+  - Administradores podem excluir qualquer depoimento inapropriado.
+  - Exclusão exige confirmação em modal escuro centralizado com aviso e feedback por toast.
+
+---
+
+## 17. Gamificação e Ranking dos Alunos (Leaderboard & Points)
+- **Localização:** Aba **"Ranking & Conquistas"** (`Trophy`) na barra lateral (`Sidebar`) em página inteira dedicada.
+- **Participação Exclusiva de Alunos:**
+  - Apenas usuários com o perfil **`Aluno` (`aluno`)** acumulam pontos e disputam as posições do pódio e da tabela de classificação.
+  - Administradores e instrutores não entram na disputa do ranking para garantir competição justa entre os alunos.
+- **Tabela de Pontuação por Ações Meritórias:**
+  - **Melhor Solução no Suporte (`support_solution`):** **+50 pontos**. Atribuído quando a resposta do aluno a uma dúvida de colega for marcada como Solução Oficial pelo autor da dúvida ou instrutor.
+  - **Conclusão de Aula (`lesson_completed`):** **+15 pontos**. Atribuído ao assistir e concluir uma aula de qualquer curso (pontuação única por aula).
+  - **Resposta a Dúvida no Suporte (`support_reply`):** **+10 pontos**. Atribuído ao responder e ajudar colegas de curso no fórum de suporte.
+  - **Curtida Recebida no Suporte (`support_like`):** **+5 pontos**. Atribuído ao receber curtidas da comunidade em tópicos e dúvidas.
+  - **Comentário Construtivo em Aula (`lesson_comment`):** **+5 pontos**. Atribuído ao comentar e debater nas aulas.
+  - **Mensagem no Chat da Comunidade (`chat_message`):** **+2 pontos** por mensagem, com **limite diário de até 10 mensagens pontuadas por dia (máximo de 20 pontos/dia)** para estimular conversas saudáveis e evitar flood/spam.
+- **Períodos de Classificação:**
+  - **Ranking Mensal (Padrão):** reinicia a pontuação a cada mês (ex: Outubro/2026), premiando os alunos mais ativos e engajados do período.
+  - **Histórico Geral (All-Time):** histórico acumulado de todos os tempos.
+- **Pódio e Insígnias:**
+  - **🥇 1º Lugar:** Pódio Ouro com a insígnia *"Mestre da Comunidade"*.
+  - **🥈 2º Lugar:** Pódio Prata com a insígnia *"Mentor Destaque"*.
+  - **🥉 3º Lugar:** Pódio Bronze com a insígnia *"Aluno Notável"*.
+  - **Top 4 ao 10:** Insígnia *"Top Estudante"*.
+  - **Demais Alunos:** Insígnia *"Aluno Ativo"*.
+---
+
+## 18. Transcrição de Vídeos e Resumo Inteligente com IA (OpenAI Whisper & GPT)
+- **Localização:** Aba **"Transcrição & Resumo IA"** (`Sparkles`) no player da aula (`LessonPlayer`).
+- **Mecânica de Processamento:**
+  - Extração de áudio otimizada via FFmpeg compacto em MP3 mono 16kHz a 48kbps, garantindo que mesmo aulas de até 1 hora fiquem abaixo do limite de 25 MB da API OpenAI Whisper.
+  - Transcrição textual completa através do modelo `whisper-1`.
+  - Análise pedagógica e geração de Resumo Executivo, Principais Pontos (Key Takeaways) e Documento HTML5 autônomo via `gpt-4o-mini`.
+- **Documento HTML Inteligente:**
+  - Documento HTML5 completo com tipografia moderna, seções pedagógicas bem definidas e estilos de impressão `@media print` para quem desejar imprimir ou salvar como PDF.
+  - Acessível diretamente pelo botão **"Abrir Documento HTML"** via endpoint com streaming nativo (`GET /api/v1/courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/html`).
+- **Controle de Acesso e Custos de API:**
+  - O acionamento da transcrição/re-geração é **restrito a Administradores e Super Admins** (`require_admin_or_superadmin`), evitando gastos desnecessários de API por alunos.
+  - Uma vez processado, o material gerado é persistido na tabela `lesson_transcriptions` e fica permanentemente disponível para todos os alunos matriculados no curso.
+- **Recursos da Interface:**
+  - Busca em tempo real na transcrição com destaque de trechos filtrados.
+  - Botão de cópia rápida com feedback visual e toast.
+  - Botão de re-gerar para instrutores.
+
+---
+
+## 19. Organização da Navegação e Menu Lateral (Proposta 2: 3 Categorias Modernas)
+- A barra lateral (`Sidebar`) agrupa as funcionalidades da plataforma em **3 categorias elegantes e compactas**:
+  1. 🎓 **Área Pedagógica** (exibida como **Meu Aprendizado** para o Aluno):
+     - **Cursos** (`courses`): Catálogo e sala de aula (Todos).
+     - **Alunos** (`students`): Gestão de alunos e matrículas (Admin/Super Admin).
+     - **Suporte** (`support`): Central de suporte e tira-dúvidas (Todos).
+     - **Relatos de Aulas** (`lesson-reports`): Problemas técnicos reportados com contadores e badge numérico (Todos). Alunos visualizam a listagem geral em modo somente leitura (sem botões de resolução ou exclusão), enquanto gestores (Admin e Super Admin) realizam a moderação completa.
+  2. 🚀 **Comunidade & Social**:
+     - **Chat da Comunidade** (`chat`): Canais de bate-papo em tempo real com suporte a mídias, curtidas e mensagens fixadas (Todos).
+     - **Ranking & Conquistas** (`ranking`): Gamificação, pódio e pontuação dos alunos (Todos).
+     - **Depoimentos** (`testimonials`): Avaliações em estrelas e relatos aprovados sobre os cursos (Todos).
+  3. ⚙️ **Sistema & Configurações**:
+     - **Configurações** (`settings`):
+       - **Alunos:** Visualizam exclusivamente as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual e dados de cadastro/avatar. A aba "Tokens de API" fica oculta.
+       - **Admin e Super Admin:** Visualizam as 3 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"** e **"Tokens de API"**).
+     - **Integrações** (`integrations`): Webhooks de checkout Kiwify/Hotmart (Admin/Super Admin).
+     - **Gestão de Usuários** (`users`): Gestão de administradores e convites (Super Admin).
+     - **Backup Automático** (`backup`): Snapshots de banco e uploads em nuvem Backblaze B2 (Super Admin).
+     - **Logs do Sistema** (`logs`): Auditoria de eventos do servidor (Super Admin).
 

@@ -12,12 +12,17 @@ import PlatformSettings from './components/PlatformSettings';
 import StudentManagement from './components/student-management';
 import IntegrationManagement from './components/integration-management';
 import SupportManagement from './components/support-management/SupportManagement';
+import { ChatManagement } from './components/chat';
+import { TestimonialsManagement } from './components/testimonials';
+import { GamificationRanking } from './components/gamification';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
+
+const ALUNO_ALLOWED_TABS = ['courses', 'support', 'chat', 'testimonials', 'ranking', 'lesson-reports', 'settings'];
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,7 +41,7 @@ function App() {
         const parsed = JSON.parse(savedUserStr);
         if (parsed?.role === 'aluno') {
           const savedTab = localStorage.getItem('active_tab') || 'courses';
-          return ['courses', 'support'].includes(savedTab) ? savedTab : 'courses';
+          return ALUNO_ALLOWED_TABS.includes(savedTab) ? savedTab : 'courses';
         }
       }
     } catch {
@@ -71,7 +76,7 @@ function App() {
         setUser(parsed);
         if (parsed?.role === 'aluno') {
           const currentTab = localStorage.getItem('active_tab') || 'courses';
-          if (!['courses', 'support'].includes(currentTab)) {
+          if (!ALUNO_ALLOWED_TABS.includes(currentTab)) {
             setActiveTab('courses');
             localStorage.setItem('active_tab', 'courses');
           }
@@ -141,7 +146,7 @@ function App() {
   }, [fetchPlatformTheme, fetchReportsSummary]);
 
   useEffect(() => {
-    if (user?.role === 'aluno' && !['courses', 'support'].includes(activeTab)) {
+    if (user?.role === 'aluno' && !ALUNO_ALLOWED_TABS.includes(activeTab)) {
       setActiveTab('courses');
       localStorage.setItem('active_tab', 'courses');
       setIsInsideCourse(false);
@@ -153,7 +158,7 @@ function App() {
     setToken(userToken);
     if (loggedInUser?.role === 'aluno') {
       const currentTab = localStorage.getItem('active_tab') || 'courses';
-      const initialTab = ['courses', 'support'].includes(currentTab) ? currentTab : 'courses';
+      const initialTab = ALUNO_ALLOWED_TABS.includes(currentTab) ? currentTab : 'courses';
       setActiveTab(initialTab);
       localStorage.setItem('active_tab', initialTab);
       setIsInsideCourse(false);
@@ -265,6 +270,7 @@ function App() {
             onCourseViewChange={setIsInsideCourse}
             bgColor={memberAreaBgColor}
             onThemeColorChange={handleThemeColorChange}
+            onNavigateTab={handleSelectTab}
           />
         )}
         {activeTab === 'support' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
@@ -273,8 +279,27 @@ function App() {
             bgColor={memberAreaBgColor}
           />
         )}
-        {activeTab === 'lesson-reports' && ['superadmin', 'admin'].includes(user?.role) && (
+        {activeTab === 'chat' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <ChatManagement
+            currentUser={user}
+            bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'testimonials' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <TestimonialsManagement
+            user={user}
+            bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'ranking' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <GamificationRanking
+            user={user}
+            bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'lesson-reports' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <LessonReportsManagement
+            currentUser={user}
             onUpdateSummary={fetchReportsSummary}
             bgColor={memberAreaBgColor}
           />
@@ -285,10 +310,15 @@ function App() {
         {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && (
           <IntegrationManagement bgColor={memberAreaBgColor} />
         )}
-        {activeTab === 'settings' && ['superadmin', 'admin'].includes(user?.role) && (
+        {activeTab === 'settings' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <PlatformSettings
+            currentUser={user}
             bgColor={memberAreaBgColor}
             onThemeColorChange={handleThemeColorChange}
+            onUserUpdated={(updatedUser) => {
+              setUser(updatedUser);
+              localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+            }}
           />
         )}
         {isSuperAdmin && (
@@ -301,10 +331,13 @@ function App() {
         {!isSuperAdmin && !(
           (activeTab === 'courses' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'support' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'lesson-reports' && user?.role === 'admin') ||
+          (activeTab === 'chat' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'testimonials' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'ranking' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'lesson-reports' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'students' && user?.role === 'admin') ||
           (activeTab === 'integrations' && user?.role === 'admin') ||
-          (activeTab === 'settings' && user?.role === 'admin')
+          (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
         ) && (
           <div className="restricted-access-container user-welcome-container" data-testid="restricted-access-screen">
             <div className="restricted-card user-welcome-card">

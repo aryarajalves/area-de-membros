@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, CornerDownRight, Trash2, ChevronDown, ChevronUp, Reply } from 'lucide-react';
+import { Send, CornerDownRight, Trash2, ChevronDown, ChevronUp, Reply, Heart } from 'lucide-react';
 import { formatToBrasilia } from './LessonComments';
 
 export default function CommentItem({
@@ -7,6 +7,7 @@ export default function CommentItem({
   currentUser,
   onReply,
   onDeleteRequest,
+  onToggleLike,
   getRoleBadge,
   canDeleteComment,
   isLightBg = false
@@ -141,6 +142,34 @@ export default function CommentItem({
 
           {/* Barra de Ações do Comentário */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '10px' }}>
+            <button
+              type="button"
+              onClick={() => onToggleLike && onToggleLike(comment.id)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'none',
+                border: 'none',
+                padding: '4px 8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: comment.liked_by_me ? '#ef4444' : subColor,
+                cursor: 'pointer',
+                borderRadius: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              title={comment.liked_by_me ? 'Descurtir comentário' : 'Curtir comentário'}
+              data-testid={`like-comment-btn-${comment.id}`}
+            >
+              <Heart
+                size={13}
+                color={comment.liked_by_me ? '#ef4444' : subColor}
+                fill={comment.liked_by_me ? '#ef4444' : 'none'}
+              />
+              <span>{comment.likes_count || 0}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => handleStartReply()}
@@ -360,8 +389,36 @@ export default function CommentItem({
                     {reply.content}
                   </p>
 
-                  {/* Botão de Responder na Resposta (marca o autor no input de resposta) */}
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: '6px' }}>
+                  {/* Ações da Resposta: Curtir e Responder */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => onToggleLike && onToggleLike(reply.id)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'none',
+                        border: 'none',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: reply.liked_by_me ? '#ef4444' : subColor,
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={reply.liked_by_me ? 'Descurtir resposta' : 'Curtir resposta'}
+                      data-testid={`like-reply-btn-${reply.id}`}
+                    >
+                      <Heart
+                        size={11}
+                        color={reply.liked_by_me ? '#ef4444' : subColor}
+                        fill={reply.liked_by_me ? '#ef4444' : 'none'}
+                      />
+                      <span>{reply.likes_count || 0}</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleStartReply(replyAuthor?.name)}

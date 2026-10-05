@@ -14,18 +14,22 @@ describe('Sidebar Component', () => {
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
     expect(screen.getByText('Cursos')).toBeInTheDocument();
+    expect(screen.getByText('Depoimentos')).toBeInTheDocument();
+    expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
     expect(screen.getByText('Backup Automático')).toBeInTheDocument();
-    expect(screen.getByText('Gerenciamento de logs')).toBeInTheDocument();
-    expect(screen.getByText('Gestão de Usuário')).toBeInTheDocument();
+    expect(screen.getByText('Logs do Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê Cursos, mas NÃO vê Backup, Logs e Gestão de Usuários
+    // Aluno vê Cursos, Depoimentos e Ranking, mas NÃO vê Backup, Logs e Gestão de Usuários
     const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
     expect(screen.getByText('Cursos')).toBeInTheDocument();
+    expect(screen.getByText('Depoimentos')).toBeInTheDocument();
+    expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
     expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gerenciamento de logs')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gestão de Usuário')).not.toBeInTheDocument();
+    expect(screen.queryByText('Logs do Sistema')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gestão de Usuários')).not.toBeInTheDocument();
     unmountAluno();
 
     // Usuário comum NÃO vê Cursos, Backup, Logs ou Gestão
@@ -33,8 +37,8 @@ describe('Sidebar Component', () => {
     render(<Sidebar user={regularUser} />);
     expect(screen.queryByText('Cursos')).not.toBeInTheDocument();
     expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gerenciamento de logs')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gestão de Usuário')).not.toBeInTheDocument();
+    expect(screen.queryByText('Logs do Sistema')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gestão de Usuários')).not.toBeInTheDocument();
   });
 
   it('renders user profile details and logout button', () => {
@@ -61,25 +65,29 @@ describe('Sidebar Component', () => {
     expect(onSelectTabMock).toHaveBeenCalledWith('backup');
   });
 
-  it('renders categories "Gestão de Ensino", "Administração" and "Segurança" for superadmin, and only "Meu Aprendizado" for aluno', () => {
-    // Superadmin vê as categorias de Ensino, Administração e Segurança
+  it('renders categories "Área Pedagógica", "Comunidade & Social" and "Sistema & Configurações" for superadmin and aluno', () => {
+    // Superadmin vê as 3 categorias modernas da Proposta 2
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
-    expect(screen.getByTestId('nav-category-ensino')).toBeInTheDocument();
-    expect(screen.getByText('Gestão de Ensino')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-category-administracao')).toBeInTheDocument();
-    expect(screen.getByText('Administração')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-category-seguranca')).toBeInTheDocument();
-    expect(screen.getByText('Segurança')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-pedagogica')).toBeInTheDocument();
+    expect(screen.getByText('Área Pedagógica')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-comunidade')).toBeInTheDocument();
+    expect(screen.getByText('Comunidade & Social')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-sistema')).toBeInTheDocument();
+    expect(screen.getByText('Sistema & Configurações')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê apenas a categoria de Ensino (com Cursos e Suporte), sem Administração e sem Segurança
+    // Aluno vê Meu Aprendizado, Comunidade & Social e Sistema & Configurações (com Configurações)
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
-    expect(screen.getByTestId('nav-category-ensino')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-pedagogica')).toBeInTheDocument();
     expect(screen.getByText('Meu Aprendizado')).toBeInTheDocument();
-    expect(screen.queryByTestId('nav-category-administracao')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('nav-category-seguranca')).not.toBeInTheDocument();
+    expect(screen.getByText('Relatos de Aulas')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-comunidade')).toBeInTheDocument();
+    expect(screen.getByText('Comunidade & Social')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-sistema')).toBeInTheDocument();
+    expect(screen.getByText('Sistema & Configurações')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-item-settings')).toBeInTheDocument();
     unmountAluno();
   });
 
@@ -93,7 +101,7 @@ describe('Sidebar Component', () => {
     expect(badge).toHaveTextContent('3');
   });
 
-  it('applies member area background color to Sidebar and renders Configurações button for managers only', () => {
+  it('applies member area background color to Sidebar and renders Configurações button for managers and alunos', () => {
     const onSelectTab = vi.fn();
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { container, unmount } = render(<Sidebar user={superAdminUser} bgColor="#090d16" onSelectTab={onSelectTab} />);
@@ -106,9 +114,13 @@ describe('Sidebar Component', () => {
     expect(onSelectTab).toHaveBeenCalledWith('settings');
     unmount();
 
+    const onSelectTabAluno = vi.fn();
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
-    render(<Sidebar user={alunoUser} bgColor="#090d16" />);
-    expect(screen.queryByTestId('nav-item-settings')).not.toBeInTheDocument();
+    render(<Sidebar user={alunoUser} bgColor="#090d16" onSelectTab={onSelectTabAluno} />);
+    const alunoSettingsBtn = screen.getByTestId('nav-item-settings');
+    expect(alunoSettingsBtn).toBeInTheDocument();
+    fireEvent.click(alunoSettingsBtn);
+    expect(onSelectTabAluno).toHaveBeenCalledWith('settings');
   });
 
   it('renders "Integrações" button for superadmin and admin, and handles tab selection', () => {
@@ -204,5 +216,42 @@ describe('Sidebar Component', () => {
     expect(onSelectTabMock).toHaveBeenCalledWith('courses');
     expect(onCloseMobileMock).toHaveBeenCalledTimes(3);
   });
+
+  it('renders "Chat da Comunidade" button for superadmin and aluno and handles selection', () => {
+    const onSelectTabMock = vi.fn();
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    const { unmount } = render(
+      <Sidebar user={superAdminUser} onSelectTab={onSelectTabMock} />
+    );
+
+    const chatBtn = screen.getByTestId('nav-item-chat');
+    expect(chatBtn).toBeInTheDocument();
+    expect(screen.getByText('Chat da Comunidade')).toBeInTheDocument();
+
+    fireEvent.click(chatBtn);
+    expect(onSelectTabMock).toHaveBeenCalledWith('chat');
+    unmount();
+
+    // Aluno também tem acesso ao Chat
+    const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
+    render(<Sidebar user={alunoUser} onSelectTab={onSelectTabMock} />);
+    expect(screen.getByText('Chat da Comunidade')).toBeInTheDocument();
+  });
+
+  it('renders user-avatar-img when avatar_url is present on user object', () => {
+    const userWithAvatar = {
+      name: 'Aryaraj Alves',
+      email: 'aryaraj@test.com',
+      role: 'superadmin',
+      avatar_url: 'https://cdn.test.com/my-avatar.jpg'
+    };
+    render(<Sidebar user={userWithAvatar} />);
+
+    const avatarImg = screen.getByTestId('user-avatar-img');
+    expect(avatarImg).toBeInTheDocument();
+    expect(avatarImg).toHaveAttribute('src', 'https://cdn.test.com/my-avatar.jpg');
+    expect(screen.queryByTestId('user-avatar')).not.toBeInTheDocument();
+  });
 });
+
 
