@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy, CheckCircle2, BookOpen, Star, User } from 'lucide-react';
+import StudentRpgLevelBadge from '../student-management/StudentRpgLevelBadge';
 
 export default function RankingTable({ students = [] }) {
   if (students.length === 0) {
@@ -106,11 +107,18 @@ export default function RankingTable({ students = [] }) {
                     </div>
                   </td>
 
-                  {/* Badge */}
+                  {/* Badge & Nível RPG */}
                   <td style={{ padding: '14px 18px', color: '#cbd5e1', fontSize: '0.85rem' }}>
-                    <span style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                      {student.badge}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        {student.badge}
+                      </span>
+                      <StudentRpgLevelBadge
+                        totalPoints={student.points}
+                        studentId={student.user_id}
+                        compact={true}
+                      />
+                    </div>
                   </td>
 
                   {/* Soluções */}

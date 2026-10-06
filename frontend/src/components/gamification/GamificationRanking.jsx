@@ -5,6 +5,7 @@ import PodiumCard from './PodiumCard';
 import RankingTable from './RankingTable';
 import GamificationRulesModal from './GamificationRulesModal';
 import ClosedPeriodSelector from './ClosedPeriodSelector';
+import StudentRpgLevelBadge from '../student-management/StudentRpgLevelBadge';
 
 export default function GamificationRanking({ user }) {
   const { addToast } = useToast();
@@ -356,11 +357,17 @@ export default function GamificationRanking({ user }) {
               <div style={{ fontSize: '0.8rem', color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                 {isClosedPeriod ? 'Seu Resultado Final no Período' : 'Sua Posição no Ranking'}
               </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span>{myPosition.name}</span>
                 <span style={{ fontSize: '0.8rem', color: '#facc15', fontWeight: 600 }}>
                   ({myPosition.badge})
                 </span>
+                <StudentRpgLevelBadge
+                  totalPoints={myPosition.points}
+                  studentId="my-position"
+                  compact={false}
+                  showProgressBar={true}
+                />
               </div>
             </div>
           </div>

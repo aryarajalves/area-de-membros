@@ -51,7 +51,7 @@ describe('PlatformApiTokensTab and PlatformSettings Tabs Integration', () => {
     // Agora exibe a aba de Tokens de API
     expect(await screen.findByTestId('platform-api-tokens-tab')).toBeInTheDocument();
     expect(screen.getByText('Chaves de Acesso à API (API Keys)')).toBeInTheDocument();
-    expect(screen.getByText('Automação n8n')).toBeInTheDocument();
+    expect(await screen.findByText('Automação n8n')).toBeInTheDocument();
     expect(screen.getByText('sk_live_••••••••1a2b')).toBeInTheDocument();
   });
 

@@ -4,6 +4,9 @@ import StudentCard from './StudentCard';
 import StudentImportModal from './StudentImportModal';
 import StudentHeaderActions from './StudentHeaderActions';
 import StudentFilterBar from './StudentFilterBar';
+import StudentTagsModal from './StudentTagsModal';
+import ChatBroadcastModal from './ChatBroadcastModal';
+import ChatBroadcastHistoryModal from './ChatBroadcastHistoryModal';
 import { useToast } from '../../context/ToastContext';
 
 export default function StudentManagement({ bgColor = '#090d16' }) {
@@ -23,6 +26,10 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [tags, setTags] = useState([]);
+  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [isBroadcastHistoryOpen, setIsBroadcastHistoryOpen] = useState(false);
   const { addToast } = useToast();
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
@@ -31,7 +38,22 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)';
 
-  // Carregar lista de cursos para o filtro
+  // Carregar lista de cursos e etiquetas
+  const fetchTagsList = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/v1/students/tags', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTags(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silencioso
+    }
+  }, []);
+
   useEffect(() => {
     const fetchCoursesList = async () => {
       try {
@@ -48,7 +70,8 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       }
     };
     fetchCoursesList();
-  }, []);
+    fetchTagsList();
+  }, [fetchTagsList]);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -203,6 +226,8 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
           setIsExportDropdownOpen={setIsExportDropdownOpen}
           onExport={handleExport}
           onOpenImport={() => setIsImportModalOpen(true)}
+          onOpenBroadcast={() => setIsBroadcastModalOpen(true)}
+          onOpenTags={() => setIsTagsModalOpen(true)}
         />
       </div>
 
@@ -292,7 +317,12 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} data-testid="students-list">
           {students.map((student) => (
-            <StudentCard key={student.id} student={student} isLightBg={isLightBg} />
+            <StudentCard
+              key={student.id}
+              student={student}
+              isLightBg={isLightBg}
+              onRefreshStudents={fetchStudents}
+            />
           ))}
         </div>
       )}
@@ -403,6 +433,31 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={fetchStudents}
+      />
+
+      {/* Modal de Gerenciamento de Etiquetas */}
+      <StudentTagsModal
+        isOpen={isTagsModalOpen}
+        onClose={() => setIsTagsModalOpen(false)}
+        onTagsUpdated={() => {
+          fetchTagsList();
+          fetchStudents();
+        }}
+      />
+
+      {/* Modal de Disparo em Massa */}
+      <ChatBroadcastModal
+        isOpen={isBroadcastModalOpen}
+        onClose={() => setIsBroadcastModalOpen(false)}
+        courses={courses}
+        tags={tags}
+        onOpenHistory={() => setIsBroadcastHistoryOpen(true)}
+      />
+
+      {/* Modal de Histórico de Disparos */}
+      <ChatBroadcastHistoryModal
+        isOpen={isBroadcastHistoryOpen}
+        onClose={() => setIsBroadcastHistoryOpen(false)}
       />
     </div>
   );

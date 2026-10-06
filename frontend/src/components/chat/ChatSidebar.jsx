@@ -252,7 +252,25 @@ export default function ChatSidebar({
                   >
                     {generalChannel.name}
                   </span>
-                  <Sparkles size={12} color="#fbbf24" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {generalChannel.unread_count > 0 && (
+                      <span
+                        data-testid="unread-badge-general"
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '10px',
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {generalChannel.unread_count}
+                      </span>
+                    )}
+                    <Sparkles size={12} color="#fbbf24" />
+                  </div>
                 </div>
                 <p
                   style={{
@@ -353,19 +371,38 @@ export default function ChatSidebar({
                   <BookOpen size={16} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: '0.84rem',
-                      fontWeight: isSelected ? 700 : 500,
-                      color: isSelected ? '#ffffff' : '#cbd5e1',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {channel.name}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span
+                      style={{
+                        fontSize: '0.84rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        color: isSelected ? '#ffffff' : '#cbd5e1',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {channel.name}
+                    </span>
+                    {channel.unread_count > 0 && (
+                      <span
+                        data-testid={`unread-badge-${channel.id}`}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '10px',
+                          lineHeight: 1.2,
+                          marginLeft: '6px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {channel.unread_count}
+                      </span>
+                    )}
+                  </div>
                   <p
                     style={{
                       margin: '2px 0 0',

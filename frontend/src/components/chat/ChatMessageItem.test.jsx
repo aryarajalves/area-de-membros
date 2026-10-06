@@ -278,4 +278,93 @@ describe('ChatMessageItem Component', () => {
     const videoElement = videoWrapper.querySelector('video');
     expect(videoElement).toHaveAttribute('src', 'https://cdn.test.com/videos/demo.mp4');
   });
+
+  it('renders thread button and reply count badge, and triggers onOpenThread', () => {
+    const handleOpenThread = vi.fn();
+    const msgWithReplies = {
+      ...mockMessageWithAvatar,
+      reply_count: 3,
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithReplies}
+        currentUser={{ id: 2, role: 'aluno' }}
+        onOpenThread={handleOpenThread}
+      />
+    );
+
+    const threadBtn = screen.getByTestId('reply-thread-btn-1');
+    expect(threadBtn).toBeInTheDocument();
+    fireEvent.click(threadBtn);
+    expect(handleOpenThread).toHaveBeenCalledWith(msgWithReplies);
+
+    const replyBadge = screen.getByTestId('thread-replies-badge-1');
+    expect(replyBadge).toHaveTextContent('3 respostas');
+  });
+
+  it('renders highlighted contact mention in message text', () => {
+    const msgWithMention = {
+      ...mockMessageWithAvatar,
+      message: 'Olá @Maria Santos tudo bem?',
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithMention}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    const mentionSpan = screen.getByText('@Maria Santos');
+    expect(mentionSpan).toBeInTheDocument();
+    expect(mentionSpan).toHaveClass('chat-mention-tag');
+  });
+
+  it('renders interactive CTA button when message contains button_text and button_url', () => {
+    const msgWithCta = {
+      ...mockMessageWithAvatar,
+      message: 'Confira nosso novo módulo especial!',
+      button_text: 'Acessar Módulo',
+      button_url: 'https://plataforma.com/modulo',
+      button_action_type: 'url',
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithCta}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    const ctaBtn = screen.getByTestId('chat-cta-button-1');
+    expect(ctaBtn).toBeInTheDocument();
+    expect(ctaBtn).toHaveTextContent('Acessar Módulo');
+    expect(ctaBtn).toHaveAttribute('href', 'https://plataforma.com/modulo');
+    expect(ctaBtn).toHaveAttribute('target', '_blank');
+  });
+
+  it('normalizes external URLs without protocol like www.google.com.br to https://www.google.com.br', () => {
+    const msgWithRawUrl = {
+      ...mockMessageWithAvatar,
+      id: 99,
+      message: 'Acesse o buscador!',
+      button_text: 'Abrir Google',
+      button_url: 'www.google.com.br',
+      button_action_type: 'url',
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithRawUrl}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    const ctaBtn = screen.getByTestId('chat-cta-button-99');
+    expect(ctaBtn).toBeInTheDocument();
+    expect(ctaBtn).toHaveAttribute('href', 'https://www.google.com.br');
+    expect(ctaBtn).toHaveAttribute('target', '_blank');
+  });
 });
+

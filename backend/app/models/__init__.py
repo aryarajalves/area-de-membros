@@ -29,6 +29,9 @@ from app.models.webhook import Webhook, WebhookLog
 from app.models.backup import BackupSchedule, BackupHistory
 from app.models.api_token import ApiToken
 from app.models.platform_link import PlatformLink
+from app.models.student_tag import StudentTag, StudentTagAssignment
+from app.models.chat_broadcast import ChatBroadcastCampaign, ChatBroadcastRecipient
+from app.models.funnel import Funnel, FunnelExecution
 
 __all__ = [
     "User",
@@ -63,4 +66,10 @@ __all__ = [
     "BackupHistory",
     "ApiToken",
     "PlatformLink",
+    "StudentTag",
+    "StudentTagAssignment",
+    "ChatBroadcastCampaign",
+    "ChatBroadcastRecipient",
+    "Funnel",
+    "FunnelExecution",
 ]

@@ -4,18 +4,28 @@ import {
   ThumbsUp, MessageSquare, Sparkles, Clock, AlertCircle, Loader2
 } from 'lucide-react';
 import { formatBrasiliaDateTime } from './studentDateUtils';
+import StudentRpgLevelOverviewCard from './StudentRpgLevelOverviewCard';
+import GamificationRpgLadderModal from '../gamification/GamificationRpgLadderModal';
+import HistoryPaginationBar from '../common/HistoryPaginationBar';
+
+const PAGE_SIZE = 20;
 
 export default function StudentGamificationHistoryModal({ isOpen, onClose, student, isLightBg }) {
   const [data, setData] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showLadderModal, setShowLadderModal] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !student?.id) {
       setData(null);
       setError(null);
+      setCurrentPage(1);
       return;
     }
+
+    setCurrentPage(1);
 
     const fetchHistory = async () => {
       setLoading(true);
@@ -161,7 +171,7 @@ export default function StudentGamificationHistoryModal({ isOpen, onClose, stude
         </div>
 
         {/* Corpo do Modal */}
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '10px', color: subTextColor }}>
               <Loader2 size={22} className="animate-spin" />
@@ -186,8 +196,15 @@ export default function StudentGamificationHistoryModal({ isOpen, onClose, stude
             </div>
           ) : data ? (
             <>
+              {/* Card de Visão Geral do Nível RPG */}
+              <StudentRpgLevelOverviewCard
+                totalPoints={data.total_points}
+                onOpenLadder={() => setShowLadderModal(true)}
+                isLightBg={isLightBg}
+              />
+
               {/* Cards de Métricas: Total de Pontos, Posição e Insígnia */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', flexShrink: 0 }}>
                 <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: itemBg, border: itemBorder, textAlign: 'center' }}>
                   <div style={{ fontSize: '0.72rem', color: subTextColor, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Total de Pontos</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#eab308', marginTop: '4px' }} data-testid="modal-total-points">
@@ -211,69 +228,83 @@ export default function StudentGamificationHistoryModal({ isOpen, onClose, stude
               </div>
 
               {/* Lista Cronológica de Conquistas */}
-              <div>
+              <div style={{ flexShrink: 0 }}>
                 <h4 style={{ margin: '0 0 10px', fontSize: '0.88rem', fontWeight: 600, color: textColor }}>
                   Linha do Tempo de Pontuações
                 </h4>
 
                 {data.history && data.history.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} data-testid="gamification-history-list">
-                    {data.history.map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          padding: '12px 14px',
-                          borderRadius: '10px',
-                          backgroundColor: itemBg,
-                          border: itemBorder,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '12px'
-                        }}
-                        data-testid={`history-item-${item.id}`}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} data-testid="gamification-history-list">
+                      {data.history
+                        .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                        .map((item) => (
                           <div
+                            key={item.id}
                             style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '8px',
-                              backgroundColor: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+                              padding: '12px 14px',
+                              borderRadius: '10px',
+                              backgroundColor: itemBg,
+                              border: itemBorder,
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center'
+                              justifyContent: 'space-between',
+                              gap: '12px'
                             }}
+                            data-testid={`history-item-${item.id}`}
                           >
-                            {getActionIcon(item.action)}
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '0.86rem', fontWeight: 600, color: textColor }}>
-                              {item.description || item.action}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  backgroundColor: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                {getActionIcon(item.action)}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.86rem', fontWeight: 600, color: textColor }}>
+                                  {item.description || item.action}
+                                </div>
+                                <div style={{ fontSize: '0.74rem', color: subTextColor, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                  <Clock size={11} /> {formatBrasiliaDateTime(item.created_at)}
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ fontSize: '0.74rem', color: subTextColor, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                              <Clock size={11} /> {formatBrasiliaDateTime(item.created_at)}
-                            </div>
-                          </div>
-                        </div>
 
-                        <div
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '20px',
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            color: '#10b981',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          +{item.points} pts
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                            <div
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '20px',
+                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                color: '#10b981',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              +{item.points} pts
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                    <HistoryPaginationBar
+                      currentPage={currentPage}
+                      totalItems={data.history.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setCurrentPage}
+                      itemName="pontuações"
+                      isLightBg={isLightBg}
+                      testIdPrefix="gamification-history"
+                    />
+                  </>
                 ) : (
                   <div
                     style={{
@@ -316,6 +347,13 @@ export default function StudentGamificationHistoryModal({ isOpen, onClose, stude
           </button>
         </div>
       </div>
+
+      <GamificationRpgLadderModal
+        isOpen={showLadderModal}
+        onClose={() => setShowLadderModal(false)}
+        currentPoints={data?.total_points || 0}
+        isLightBg={isLightBg}
+      />
     </div>
   );
 }

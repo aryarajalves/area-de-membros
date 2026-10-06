@@ -11,6 +11,7 @@ export default function ChatMessagesList({
   onToggleLike,
   onToggleFavorite,
   onTogglePin,
+  onOpenThread,
   highlightedMessageId = null,
 }) {
   const bottomRef = useRef(null);
@@ -119,6 +120,7 @@ export default function ChatMessagesList({
           onToggleLike={onToggleLike}
           onToggleFavorite={onToggleFavorite}
           onTogglePin={onTogglePin}
+          onOpenThread={onOpenThread}
           isHighlighted={msg.id === highlightedMessageId}
         />
       ))}

@@ -67,4 +67,14 @@ describe('TopNavbar Component', () => {
     fireEvent.click(mobileBtn);
     expect(handleOpenMobile).toHaveBeenCalledTimes(1);
   });
+
+  it('renders notifications button and opens notifications modal', async () => {
+    render(<TopNavbar user={mockUser} />);
+
+    const notifBtn = screen.getByTestId('global-notifications-btn');
+    expect(notifBtn).toBeInTheDocument();
+
+    fireEvent.click(notifBtn);
+    expect(screen.getByTestId('notifications-modal')).toBeInTheDocument();
+  });
 });

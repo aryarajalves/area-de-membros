@@ -71,6 +71,52 @@ class ChatConnectionManager:
                 for ws in dead_sockets:
                     self.active_connections.pop(ws, None)
 
+    async def send_to_user(self, user_id: int, event_type: str, data: Dict[str, Any]):
+        """
+        Envia uma notificação em tempo real exclusivamente para as conexões ativas do usuário especificado.
+        """
+        message_payload = json.dumps({
+            "type": event_type,
+            "data": data,
+        }, default=str)
+
+        lock = self._get_lock()
+        async with lock:
+            sockets = [ws for ws, meta in self.active_connections.items() if meta.get("user_id") == user_id]
+
+        dead_sockets = []
+        for ws in sockets:
+            try:
+                await ws.send_text(message_payload)
+            except Exception as exc:
+                logger.warning(f"Erro ao transmitir via WebSocket para usuário {user_id}: {exc}")
+                dead_sockets.append(ws)
+
+        if dead_sockets:
+            async with lock:
+                for ws in dead_sockets:
+                    self.active_connections.pop(ws, None)
+
+    def send_to_user_sync(self, user_id: int, event_type: str, data: Dict[str, Any]):
+        """
+        Helper síncrono para enviar evento para um usuário específico a partir de rotas FastAPI.
+        """
+        try:
+            loop = self.main_loop
+            if loop and loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    self.send_to_user(user_id, event_type, data),
+                    loop
+                )
+            else:
+                try:
+                    cur_loop = asyncio.get_running_loop()
+                    cur_loop.create_task(self.send_to_user(user_id, event_type, data))
+                except RuntimeError:
+                    pass
+        except Exception as exc:
+            logger.error(f"Falha ao acionar envio síncrono para usuário {user_id}: {exc}")
+
     def broadcast_sync(self, event_type: str, data: Dict[str, Any], channel_type: Optional[str] = None, course_id: Optional[int] = None):
         """
         Helper síncrono para chamar broadcast a partir de rotas FastAPI (threads síncronas do threadpool).
@@ -93,3 +139,4 @@ class ChatConnectionManager:
 
 
 chat_manager = ChatConnectionManager()
+

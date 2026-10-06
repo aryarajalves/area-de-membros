@@ -18,8 +18,10 @@ from app.schemas.gamification import (
     CompletedPeriodOption,
     CompletedPeriodsResponse,
     ClosedPeriodRankingResponse,
+    RpgLevelItem,
 )
 from app.services.gamification_service import POINTS_MAP, sync_student_historical_points
+from app.services.gamification_level_service import calculate_student_level, get_all_rpg_levels
 
 router = APIRouter()
 
@@ -133,6 +135,7 @@ def get_ranking(
             badge = "✨ Aluno Ativo"
 
         is_me = (entry["user_id"] == current_user.id)
+        lvl = calculate_student_level(entry["points"])
         item = GamificationStudentItem(
             rank=idx,
             user_id=entry["user_id"],
@@ -143,6 +146,14 @@ def get_ranking(
             solutions_count=entry["solutions_count"],
             lessons_completed_count=entry["lessons_completed_count"],
             badge=badge,
+            level=lvl["level"],
+            level_title=lvl["level_title"],
+            level_badge=lvl["level_badge"],
+            level_tier=lvl["level_tier"],
+            level_color=lvl["level_color"],
+            level_progress_percent=lvl["level_progress_percent"],
+            points_to_next_level=lvl["points_to_next_level"],
+            is_max_level=lvl["is_max_level"],
             is_current_user=is_me,
         )
         ranking_list.append(item)
@@ -465,6 +476,7 @@ def get_closed_ranking(
             badge = f"⭐ Top {idx} {period_suffix}"
 
         is_me = (entry["user_id"] == current_user.id)
+        lvl = calculate_student_level(entry["points"])
         item = GamificationStudentItem(
             rank=idx,
             user_id=entry["user_id"],
@@ -475,6 +487,14 @@ def get_closed_ranking(
             solutions_count=entry["solutions_count"],
             lessons_completed_count=entry["lessons_completed_count"],
             badge=badge,
+            level=lvl["level"],
+            level_title=lvl["level_title"],
+            level_badge=lvl["level_badge"],
+            level_tier=lvl["level_tier"],
+            level_color=lvl["level_color"],
+            level_progress_percent=lvl["level_progress_percent"],
+            points_to_next_level=lvl["points_to_next_level"],
+            is_max_level=lvl["is_max_level"],
             is_current_user=is_me,
         )
         ranking_list.append(item)
@@ -490,4 +510,15 @@ def get_closed_ranking(
         my_position=my_position_item,
         total_participants=len(student_entries),
     )
+
+
+@router.get("/levels", response_model=List[RpgLevelItem])
+def get_rpg_levels(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retorna os 20 níveis progressivos do sistema de RPG com faixas de pontuação e elos.
+    """
+    return get_all_rpg_levels()
+
 

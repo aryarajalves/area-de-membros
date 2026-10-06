@@ -21,15 +21,12 @@ export function useChat(currentUser) {
   const pollingRef = useRef(null);
   const selectedChannelRef = useRef(null);
   selectedChannelRef.current = selectedChannel;
-
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
-
   const favoritesOnlyRef = useRef(favoritesOnly);
   favoritesOnlyRef.current = favoritesOnly;
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
-
   const authHeaders = useCallback(() => {
     const token = getAuthToken();
     return {
@@ -38,7 +35,6 @@ export function useChat(currentUser) {
     };
   }, []);
 
-  // Carrega a lista de canais disponíveis
   const fetchChannels = useCallback(async () => {
     const token = getAuthToken();
     if (!token) {
@@ -170,10 +166,22 @@ export function useChat(currentUser) {
 
   // Handlers para eventos recebidos em tempo real via WebSocket
   const handleSocketNewMessage = useCallback((newMsg) => {
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === newMsg.id)) return prev;
-      return [...prev, newMsg];
-    });
+    if (newMsg.parent_id) {
+      // Se for resposta de thread, incrementa o reply_count da mensagem pai correspondente
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === newMsg.parent_id
+            ? { ...m, reply_count: (m.reply_count || 0) + 1 }
+            : m
+        )
+      );
+    } else {
+      // Se for mensagem principal
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+    }
   }, []);
 
   const handleSocketMessageDeleted = useCallback((delId) => {
@@ -240,13 +248,30 @@ export function useChat(currentUser) {
     fetchChannels();
   }, [fetchChannels]);
 
-  // Sempre que mudar de canal selecionado, recarrega o histórico e mensagem fixada
+  // Sempre que mudar de canal selecionado, recarrega o histórico, mensagem fixada e marca como lido
   useEffect(() => {
     if (selectedChannel) {
       fetchMessages(selectedChannel, favoritesOnly);
       fetchPinnedMessage(selectedChannel);
+
+      // Marca canal como lido no backend
+      const token = getAuthToken();
+      if (token) {
+        fetch(`/api/v1/chat/channels/${selectedChannel.id}/read`, {
+          method: 'POST',
+          headers: authHeaders(),
+        })
+          .then(() => {
+            // Zera o unread_count local do canal selecionado
+            setChannels((prev) =>
+              prev.map((c) => (c.id === selectedChannel.id ? { ...c, unread_count: 0 } : c))
+            );
+            window.dispatchEvent(new CustomEvent('chat_unread_updated'));
+          })
+          .catch(() => {});
+      }
     }
-  }, [selectedChannel, favoritesOnly, fetchMessages, fetchPinnedMessage]);
+  }, [selectedChannel, favoritesOnly, fetchMessages, fetchPinnedMessage, authHeaders]);
 
   // Polling como fallback de contingência somente se o WebSocket estiver desconectado
   useEffect(() => {

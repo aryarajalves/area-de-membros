@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen } from 'lucide-react';
+import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen, AtSign, Mail } from 'lucide-react';
 
 export default function ChatHeader({
   selectedChannel,
@@ -8,6 +8,8 @@ export default function ChatHeader({
   favoritesOnly = false,
   onToggleFavoritesOnly,
   onOpenMediaGallery,
+  onOpenMentions,
+  onOpenDm,
   onUnpinMessage,
   onBack,
   onJumpToMessage,
@@ -118,7 +120,7 @@ export default function ChatHeader({
             }}
           >
             <Star size={13} fill={favoritesOnly ? '#fbbf24' : 'none'} />
-            <span>{favoritesOnly ? '⭐ Favoritas' : 'Favoritas'}</span>
+            <span>Favoritas</span>
           </button>
 
           {/* Botão para Abrir Galeria de Mídias e Documentos */}
@@ -145,6 +147,60 @@ export default function ChatHeader({
             <FolderOpen size={13} />
             <span>Mídias & Arquivos</span>
           </button>
+
+          {/* Botão para Abrir Notificações de Menções */}
+          {onOpenMentions && (
+            <button
+              type="button"
+              onClick={onOpenMentions}
+              data-testid="chat-open-mentions-btn"
+              title="Ver mensagens onde fui marcado"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.25)',
+                color: '#c084fc',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <AtSign size={13} />
+              <span>Menções</span>
+            </button>
+          )}
+
+          {/* Botão para Abrir DMs Privadas */}
+          {onOpenDm && (
+            <button
+              type="button"
+              onClick={onOpenDm}
+              data-testid="chat-open-dm-btn"
+              title="Ver Mensagens Diretas (DMs / Inbox)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                color: '#38bdf8',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Mail size={13} />
+              <span>DMs</span>
+            </button>
+          )}
 
           {/* Indicador Ao Vivo */}
           <div

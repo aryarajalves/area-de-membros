@@ -13,12 +13,15 @@ from app.models.user import User
 from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
 from app.models.webhook import Webhook
 from app.models.gamification import GamificationPoint
+from app.models.student_tag import StudentTag, StudentTagAssignment
 from app.schemas.student import (
     StudentListResponse, StudentListItem, StudentCourseProgressItem, StudentImportResponse,
     StudentLessonActivityItem, StudentTriggerWebhookRequest, StudentTriggerWebhookResponse,
     StudentGamificationHistoryResponse
 )
+from app.schemas.student_tag import StudentTagAssignmentItem
 from app.schemas.gamification import GamificationHistoryItem
+from app.services.gamification_level_service import calculate_student_level
 from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
 from app.api.v1.endpoints.users import require_admin_or_superadmin, get_current_user, calculate_course_expiration
 from app.services.student_import_export import (
@@ -45,6 +48,32 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
         .all()
     ) if student_ids else []
     points_map = {uid: int(pts) for uid, pts in points_agg}
+
+    # Carregar etiquetas dos alunos em lote
+    tags_agg = (
+        db.query(
+            StudentTagAssignment.student_id,
+            StudentTag.id,
+            StudentTag.name,
+            StudentTag.color,
+            StudentTag.description,
+        )
+        .join(StudentTag, StudentTagAssignment.tag_id == StudentTag.id)
+        .filter(StudentTagAssignment.student_id.in_(student_ids))
+        .all()
+    ) if student_ids else []
+    tags_map = {}
+    for sid, tid, tname, tcolor, tdesc in tags_agg:
+        if sid not in tags_map:
+            tags_map[sid] = []
+        tags_map[sid].append(
+            StudentTagAssignmentItem(
+                id=tid,
+                name=tname,
+                color=tcolor or "#3b82f6",
+                description=tdesc,
+            )
+        )
 
     for student in students:
         user_courses = db.query(UserCourse).filter(UserCourse.user_id == student.id).all()
@@ -132,6 +161,7 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
         overall_progress_percent = int(round(total_progress_sum / total_courses)) if total_courses > 0 else 0
 
         total_pts = points_map.get(student.id, 0)
+        level_info = calculate_student_level(total_pts)
 
         items.append(
             StudentListItem(
@@ -142,9 +172,18 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 is_active=student.is_active,
                 created_at=student.created_at,
                 courses=courses_data,
+                tags=tags_map.get(student.id, []),
                 total_courses=total_courses,
                 overall_progress_percent=overall_progress_percent,
-                total_points=total_pts
+                total_points=total_pts,
+                level=level_info["level"],
+                level_title=level_info["level_title"],
+                level_badge=level_info["level_badge"],
+                level_tier=level_info["level_tier"],
+                level_color=level_info["level_color"],
+                points_to_next_level=level_info["points_to_next_level"],
+                level_progress_percent=level_info["level_progress_percent"],
+                is_max_level=level_info["is_max_level"]
             )
         )
 
@@ -636,12 +675,24 @@ def get_student_gamification_history(
     else:
         badge = "✨ Aluno Ativo"
 
+    level_info = calculate_student_level(int(total_pts))
+
     return StudentGamificationHistoryResponse(
         student_id=student.id,
         student_name=student.name,
         total_points=int(total_pts),
         current_rank=current_rank,
         badge=badge,
+        level=level_info["level"],
+        level_title=level_info["level_title"],
+        level_badge=level_info["level_badge"],
+        level_tier=level_info["level_tier"],
+        level_color=level_info["level_color"],
+        current_level_min_points=level_info["current_level_min_points"],
+        next_level_min_points=level_info["next_level_min_points"],
+        points_to_next_level=level_info["points_to_next_level"],
+        level_progress_percent=level_info["level_progress_percent"],
+        is_max_level=level_info["is_max_level"],
         history=[
             GamificationHistoryItem(
                 id=r.id,

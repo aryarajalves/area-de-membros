@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, FolderPlus, X } from 'lucide-react';
 import { useCourseContent } from './useCourseContent';
 import LessonPlayer from './LessonPlayer';
@@ -8,7 +8,13 @@ import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
 
-export default function CourseClassroom({ course: initialCourse, currentUser, onBack }) {
+export default function CourseClassroom({
+  course: initialCourse,
+  currentUser,
+  initialModuleId = null,
+  initialLessonId = null,
+  onBack,
+}) {
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
   const {
     course,
@@ -31,7 +37,29 @@ export default function CourseClassroom({ course: initialCourse, currentUser, on
   } = useCourseContent(initialCourse.id);
 
   // Módulo escolhido pelo usuário (inicia fechado/null até clicar em um módulo)
-  const [selectedModuleId, setSelectedModuleId] = useState(null);
+  const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
+
+  // Sincroniza módulo e aula alvo inicial (ex: quando vem de favoritos ou deep link)
+  useEffect(() => {
+    if (!modules || modules.length === 0) return;
+    if (initialLessonId) {
+      for (const mod of modules) {
+        const found = mod.lessons?.find((l) => l.id === Number(initialLessonId));
+        if (found) {
+          setSelectedModuleId(mod.id);
+          setActiveLesson(found);
+          return;
+        }
+      }
+    }
+    if (initialModuleId && !initialLessonId) {
+      const targetMod = modules.find((m) => m.id === Number(initialModuleId));
+      if (targetMod) {
+        setSelectedModuleId(targetMod.id);
+        if (targetMod.lessons?.length > 0) setActiveLesson(targetMod.lessons[0]);
+      }
+    }
+  }, [modules, initialModuleId, initialLessonId, setActiveLesson]);
 
   // Modais
   const [moduleModalOpen, setModuleModalOpen] = useState(false);

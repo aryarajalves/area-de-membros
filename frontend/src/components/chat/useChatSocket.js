@@ -93,6 +93,10 @@ export function useChatSocket({
             if (callbacksRef.current.onChannelActivity) {
               callbacksRef.current.onChannelActivity(channel_type, course_id, data);
             }
+            // Notifica TopNavbar e Sidebar globalmente em tempo real
+            window.dispatchEvent(new CustomEvent('chat_unread_updated'));
+            window.dispatchEvent(new CustomEvent('notifications_updated'));
+            window.dispatchEvent(new CustomEvent('dm_updated'));
           } else if (type === 'message_deleted' && data?.message_id) {
             if (isCurrentChan && callbacksRef.current.onMessageDeleted) {
               callbacksRef.current.onMessageDeleted(data.message_id);
@@ -105,8 +109,15 @@ export function useChatSocket({
             if (isCurrentChan && callbacksRef.current.onMessagePinned) {
               callbacksRef.current.onMessagePinned(data);
             }
+          } else if (type === 'new_dm' || type === 'dm_read') {
+            window.dispatchEvent(new CustomEvent('dm_updated'));
+          } else if (type === 'new_notification' || type === 'notifications_updated') {
+            window.dispatchEvent(new CustomEvent('notifications_updated'));
+          } else if (type === 'favorites_updated') {
+            window.dispatchEvent(new CustomEvent('favorites_updated'));
           }
         } catch {
+
           // ignore non-json messages
         }
       };

@@ -151,6 +151,34 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 - Terminal em tempo real dos contêineres Docker da aplicação (`backend` e `frontend`).
 - Timestamps sincronizados no **Horário de Brasília (America/Sao_Paulo - UTC-3)** com filtros de data e severidade.
 
+### ⚡ 10. Editor Visual de Funis de Automação (`/funnels`)
+- **Canvas Interativo e Fluido:**
+  - Navegação infinita (*pan*) com arrasto do mouse e controles de zoom centralizados (in, out, reset com indicador de porcentagem).
+  - Adição rápida de nós via menu inferior ou clique com botão direito no canvas.
+- **Nós de Conteúdo e Fluxo:**
+  - **Mensagem:** Texto dinâmico com suporte a Spintax (`{Oi|Olá}`), variáveis (`{aluno}`) e até 3 botões interativos com links/ações.
+  - **Mídia:** Suporte a imagens, vídeos e documentos anexos com legenda.
+  - **Áudio:** Envio de arquivos de áudio com toggle para simular gravação na hora (*voice note*).
+  - **Delay:** Intervalo de tempo configurável em segundos/minutos entre mensagens.
+- **Conexões Bézier Precisas e Bidirecionais:**
+  - Linhas curvas Bézier SVG suaves conectadas com precisão milimétrica no centro das bolinhas (*handles*) de entrada e saída.
+  - Conexão bidirecional por arrasto (*drag-and-drop*) com detecção inteligente ao soltar tanto na bolinha quanto no card de destino.
+  - Remoção de conexões pelo botão centralizado `×` e persistência do fluxo no PostgreSQL.
+
+### 🏆 11. Gamificação RPG com 20 Níveis e Elos
+- **Progressão RPG Desafiadora:**
+  - 20 níveis distribuídos em 7 Elos: **Ferro (I-III)**, **Bronze (I-III)**, **Prata (I-III)**, **Ouro (I-III)**, **Platina (I-III)**, **Diamante (I-III)** e **Lenda (I-II)**.
+  - Progressão balanceada por fórmula exponencial de XP.
+- **Escada de Níveis RPG (`GamificationRpgLadderModal`):**
+  - Modal interativo com visualização da trilha completa de elos, ícones neon temáticos, requisitos de pontuação e indicador de nível atual do aluno.
+  - Badges dinâmicos integrados nos cards de alunos e rankings.
+
+### 📢 12. Disparos em Massa no Chat (Chat Broadcast) & Tags de Alunos
+- **Campanhas de Mensagens:**
+  - Disparos em massa para canais ou DMs com segmentação por tags personalizadas de alunos.
+  - Botões de chamada para ação (CTA) configuráveis com links interativos.
+  - Histórico de campanhas com estatísticas de entrega e status.
+
 ---
 
 ## 📁 Estrutura de Pastas
@@ -159,11 +187,11 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 Area de Membros - Alunos/
 ├── backend/                       # API Python com FastAPI
 │   ├── app/
-│   │   ├── api/v1/endpoints/      # Rotas (courses, students, integrations, users, api_tokens, support, quiz, backups, logs)
+│   │   ├── api/v1/endpoints/      # Rotas (courses, students, funnels, chat_broadcast, student_tags, integrations, users, api_tokens, support, quiz, backups, logs)
 │   │   ├── core/                  # Configurações, segurança, database e logger
-│   │   ├── models/                # Modelos SQLAlchemy (user, course, webhook, api_token, support)
+│   │   ├── models/                # Modelos SQLAlchemy (user, course, funnel, chat_broadcast, student_tag, webhook, api_token, support)
 │   │   ├── schemas/               # Schemas Pydantic v2
-│   │   ├── services/              # Serviços de negócio (storage, webhooks, import/export, backup)
+│   │   ├── services/              # Serviços de negócio (funnel, chat_broadcast, gamification, storage, webhooks, import/export, backup)
 │   │   └── main.py                # Entrypoint da aplicação FastAPI
 │   ├── scripts/                   # Scripts de migração SQL rastreados
 │   ├── tests/                     # Testes unitários com pytest
@@ -173,9 +201,11 @@ Area de Membros - Alunos/
 ├── frontend/                      # Interface React + Vite (Design Glassmorphism)
 │   ├── src/
 │   │   ├── components/            # Componentes modulares (< 500 linhas)
+│   │   │   ├── funnels/           # Editor visual de funis, canvas, nós e conexões
 │   │   │   ├── course-classroom/  # Sala de aula, player, artigos, quiz, comentários, anexos
 │   │   │   ├── course-management/ # Vitrine de cursos e modais
-│   │   │   ├── student-management/# Painel de alunos, linha do tempo, histórico, import/export
+│   │   │   ├── student-management/# Painel de alunos, tags, broadcast, linha do tempo, histórico, import/export
+│   │   │   ├── gamification/      # Ranking, escada de níveis RPG, regras e pódios
 │   │   │   ├── support-management/# Fórum de dúvidas, solução oficial, lightbox
 │   │   │   ├── platform-settings/ # Aparência, cores e gestão de Chaves de API
 │   │   │   ├── integration-management/ # Webhooks, eventos de marcos, logs de disparo
@@ -194,6 +224,7 @@ Area de Membros - Alunos/
 │   ├── docker-compose.yml
 │   └── docker-compose-producao.yml
 └── scripts/
+    ├── check_limits.py            # Validação rigorosa de limites de linhas de código
     └── audit_security.py          # Auditoria unificada de dependências (pip-audit + npm audit)
 ```
 
@@ -221,7 +252,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **387 testes unitários passando (100% de aprovação em 83 arquivos de teste)** cobrindo sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **473 testes unitários passando (100% de aprovação em 101 arquivos de teste)** cobrindo editor visual de funis (FunnelCanvasPage, nós de conteúdo, cálculo geométrico de conexões Bézier e drag-and-drop bidirecional), sistema de gamificação RPG com 20 níveis e modal de escada, campanhas de chat broadcast com botões interativos e segmentação por tags de alunos, sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -230,7 +261,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **102 testes unitários passando (100% de aprovação)** cobrindo endpoints de Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **121 testes unitários passando (100% de aprovação)** cobrindo endpoints de funis (`/api/v1/funnels`), campanhas de chat broadcast, tags de alunos, níveis de gamificação RPG, Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 
@@ -248,4 +279,5 @@ python scripts/audit_security.py
 ## 📄 Regras de Negócio e Documentação
 
 Para consultar a documentação completa de requisitos e comportamentos de domínio da plataforma, consulte o arquivo [BUSINESS_RULES.md](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/Arquivos/BUSINESS_RULES.md) e o histórico de migrações de banco em [DATABASE_SCHEMA_LOG.md](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/Arquivos/DATABASE_SCHEMA_LOG.md).
+
 

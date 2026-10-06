@@ -279,6 +279,22 @@ describe('Sidebar Component', () => {
 
     global.fetch = originalFetch;
   });
+
+  it('renders "Chat da Comunidade" with notification badge when chatUnreadCount > 0', () => {
+    const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
+    const { unmount } = render(<Sidebar user={alunoUser} chatUnreadCount={5} />);
+
+    expect(screen.getByText('Chat da Comunidade')).toBeInTheDocument();
+    const chatBtn = screen.getByTestId('nav-item-chat');
+    expect(chatBtn).toBeInTheDocument();
+    expect(chatBtn).toHaveTextContent('5');
+    unmount();
+
+    // Quando chatUnreadCount for 0, não exibe badge numérico
+    render(<Sidebar user={alunoUser} chatUnreadCount={0} />);
+    const chatBtnZero = screen.getByTestId('nav-item-chat');
+    expect(chatBtnZero).not.toHaveTextContent('0');
+  });
 });
 
 

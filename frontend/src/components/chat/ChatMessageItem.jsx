@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2, Shield, Award, User, Heart, Star, Pin, FileText, ExternalLink, Video, Mic } from 'lucide-react';
+import { Trash2, Shield, Award, User, Heart, Star, Pin, MessageSquare, ExternalLink } from 'lucide-react';
+import { formatMessageWithMentions, resolveButtonUrl } from './chatMentionUtils';
+import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
 
 function formatMessageTime(dateString) {
   if (!dateString) return '';
@@ -49,7 +51,9 @@ export default function ChatMessageItem({
   onToggleLike,
   onToggleFavorite,
   onTogglePin,
+  onOpenThread,
   isHighlighted = false,
+  isInsideThread = false,
 }) {
   const [imgError, setImgError] = useState(false);
   const isOwn = message.user?.id === currentUser?.id;
@@ -62,7 +66,7 @@ export default function ChatMessageItem({
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`chat-message-row ${isOwn ? 'own-message' : ''} ${isHighlighted ? 'chat-message-highlighted' : ''}`}
+      className={`chat-message-row ${isHighlighted ? 'chat-message-highlighted' : ''}`}
       data-testid={`chat-message-item-${message.id}`}
       data-highlighted={isHighlighted ? 'true' : 'false'}
       style={{
@@ -70,7 +74,7 @@ export default function ChatMessageItem({
         gap: '12px',
         alignItems: 'flex-start',
         marginBottom: '16px',
-        flexDirection: isOwn ? 'row-reverse' : 'row',
+        flexDirection: 'row',
         padding: '6px 8px',
         borderRadius: '12px',
         backgroundColor: isHighlighted ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
@@ -121,10 +125,10 @@ export default function ChatMessageItem({
       {/* Conteúdo e Balão */}
       <div
         style={{
-          maxWidth: '75%',
+          maxWidth: '85%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isOwn ? 'flex-end' : 'flex-start',
+          alignItems: 'flex-start',
         }}
       >
         {/* Metadados: Nome, Cargo e Horário */}
@@ -144,7 +148,7 @@ export default function ChatMessageItem({
               color: isOwn ? '#93c5fd' : '#f1f5f9',
             }}
           >
-            {isOwn ? 'Você' : message.user?.name || 'Usuário'}
+            {isOwn ? `${message.user?.name || 'Você'} (Você)` : message.user?.name || 'Usuário'}
           </span>
 
           <span
@@ -193,116 +197,15 @@ export default function ChatMessageItem({
         </div>
 
         {/* Mídia Anexada (Imagem, Vídeo, Áudio ou Documento) */}
-        {message.media_url && (
-          <div
-            style={{
-              marginBottom: message.message ? '6px' : '0',
-              borderRadius: '10px',
-              overflow: 'hidden',
-              maxWidth: '320px',
-            }}
-            data-testid={`chat-media-attachment-${message.id}`}
-          >
-            {message.media_type === 'audio' ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: '#1e293b',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-                data-testid={`chat-media-audio-${message.id}`}
-              >
-                <Mic size={18} color="#10b981" />
-                <audio
-                  controls
-                  src={message.media_url}
-                  style={{ maxHeight: '36px', maxWidth: '240px' }}
-                />
-              </div>
-            ) : message.media_type === 'video' ? (
-              <div
-                style={{
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  backgroundColor: '#000',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-                data-testid={`chat-media-video-${message.id}`}
-              >
-                <video
-                  controls
-                  src={message.media_url}
-                  style={{
-                    width: '100%',
-                    maxHeight: '220px',
-                    display: 'block',
-                    objectFit: 'contain',
-                  }}
-                />
-              </div>
-            ) : message.media_type === 'file' ? (
-              <a
-                href={message.media_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 14px',
-                  backgroundColor: '#1e293b',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#f8fafc',
-                  textDecoration: 'none',
-                  fontSize: '0.8125rem',
-                }}
-              >
-                <FileText size={18} color="#ef4444" />
-                <span style={{ fontWeight: 600 }}>Visualizar Documento</span>
-                <ExternalLink size={14} color="#94a3b8" />
-              </a>
-            ) : (
-              <a
-                href={message.media_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Clique para abrir imagem original"
-                style={{ display: 'inline-block' }}
-              >
-                <img
-                  src={message.media_url}
-                  alt="Mídia da mensagem"
-                  style={{
-                    maxWidth: '280px',
-                    maxHeight: '240px',
-                    objectFit: 'cover',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    display: 'block',
-                    cursor: 'zoom-in',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                  }}
-                  data-testid={`chat-media-img-${message.id}`}
-                />
-              </a>
-            )}
-          </div>
-        )}
+        <ChatMessageMediaAttachment message={message} />
 
         {/* Balão de Texto da Mensagem */}
-        {message.message && (
+        {(message.message || (message.button_text && message.button_url)) && (
           <div
             style={{
               padding: '10px 14px',
-              borderRadius: isOwn
-                ? '14px 4px 14px 14px'
-                : '4px 14px 14px 14px',
-              backgroundColor: isOwn ? '#1d4ed8' : '#1e293b',
+              borderRadius: '4px 14px 14px 14px',
+              backgroundColor: '#1e293b',
               color: '#ffffff',
               fontSize: '0.875rem',
               lineHeight: 1.5,
@@ -310,15 +213,107 @@ export default function ChatMessageItem({
               whiteSpace: 'pre-wrap',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)',
               border: isOwn
-                ? '1px solid rgba(59, 130, 246, 0.4)'
+                ? '1px solid rgba(59, 130, 246, 0.3)'
                 : '1px solid rgba(255, 255, 255, 0.07)',
             }}
           >
-            {message.message}
+            {message.message && formatMessageWithMentions(message.message)}
+
+            {/* Botão de Ação Interativo (CTA) */}
+            {message.button_text && message.button_url && (() => {
+              const resolvedHref = resolveButtonUrl(message.button_url, message.button_action_type);
+              return (
+                <div style={{ marginTop: message.message ? '10px' : '0', paddingTop: message.message ? '8px' : '0', borderTop: message.message ? '1px solid rgba(255, 255, 255, 0.08)' : 'none' }}>
+                  <a
+                    href={resolvedHref}
+                    target={message.button_action_type === 'url' || resolvedHref.startsWith('http') ? '_blank' : '_self'}
+                    rel="noopener noreferrer"
+                    onClick={async (e) => {
+                      if (message.button_action_type === 'funnel') {
+                        e.preventDefault();
+                        try {
+                          const token = localStorage.getItem('auth_token');
+                          await fetch(`/api/v1/funnels/${message.button_url}/trigger`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                            },
+                            body: JSON.stringify({}),
+                          });
+                        } catch {
+                          // silencioso
+                        }
+                        return;
+                      }
+                      if (message.button_action_type === 'course' || message.button_action_type === 'lesson' || resolvedHref.startsWith('/')) {
+                        e.preventDefault();
+                        window.location.href = resolvedHref;
+                      }
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                      color: '#ffffff',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      boxShadow: '0 3px 10px rgba(139, 92, 246, 0.35)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    data-testid={`chat-cta-button-${message.id}`}
+                  >
+                    <span>{message.button_text}</span>
+                    <ExternalLink size={13} />
+                  </a>
+                </div>
+              );
+            })()}
           </div>
         )}
 
-        {/* Barra de Ações: Curtir, Favoritar, Fixar (gestor), Excluir */}
+        {/* Indicador de Respostas em Thread (se houver respostas na mensagem raiz) */}
+        {!isInsideThread && message.reply_count > 0 && (
+          <button
+            type="button"
+            onClick={() => onOpenThread && onOpenThread(message)}
+            data-testid={`thread-replies-badge-${message.id}`}
+            title="Ver respostas da thread"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginTop: '5px',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              color: '#38bdf8',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)';
+            }}
+          >
+            <MessageSquare size={12} />
+            <span>
+              {message.reply_count === 1 ? '1 resposta' : `${message.reply_count} respostas`}
+            </span>
+          </button>
+        )}
+
+        {/* Barra de Ações: Responder em Thread, Curtir, Favoritar, Fixar, Excluir */}
         <div
           style={{
             display: 'flex',
@@ -329,6 +324,34 @@ export default function ChatMessageItem({
           }}
           data-testid={`chat-message-actions-${message.id}`}
         >
+          {/* Botão de Responder em Thread */}
+          {!isInsideThread && onOpenThread && (
+            <button
+              type="button"
+              onClick={() => onOpenThread(message)}
+              title="Responder em thread"
+              data-testid={`reply-thread-btn-${message.id}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748b',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 4px',
+                fontSize: '0.75rem',
+                borderRadius: '4px',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#38bdf8')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+            >
+              <MessageSquare size={13} />
+              <span>Responder</span>
+            </button>
+          )}
+
           {/* Botão de Curtir */}
           <button
             type="button"

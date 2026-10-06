@@ -20,6 +20,7 @@ import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import TopNavbar from './components/navigation/TopNavbar';
+import FunnelManagement from './components/funnels/FunnelManagement';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 
@@ -30,6 +31,7 @@ function App() {
   const [token, setToken] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [isInsideCourse, setIsInsideCourse] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
@@ -141,10 +143,42 @@ function App() {
     }
   }, [token, user?.role]);
 
+  const fetchChatUnreadSummary = useCallback(async () => {
+    const currentToken = token || localStorage.getItem('auth_token');
+    if (!currentToken) return;
+    try {
+      const res = await fetch('/api/v1/chat/unread-summary', {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatUnreadCount(data.total_unread || 0);
+      }
+    } catch {
+      // Ignora erro silenciosamente
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchPlatformTheme();
     fetchReportsSummary();
-  }, [fetchPlatformTheme, fetchReportsSummary]);
+    fetchChatUnreadSummary();
+
+    const handleChatUnreadUpdate = () => {
+      fetchChatUnreadSummary();
+    };
+    window.addEventListener('chat_unread_updated', handleChatUnreadUpdate);
+
+    // Polling contínuo de background (a cada 5s) para refletir notificações em tempo real
+    const intervalId = setInterval(() => {
+      fetchChatUnreadSummary();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('chat_unread_updated', handleChatUnreadUpdate);
+      clearInterval(intervalId);
+    };
+  }, [fetchPlatformTheme, fetchReportsSummary, fetchChatUnreadSummary]);
 
   useEffect(() => {
     if (user?.role === 'aluno' && !ALUNO_ALLOWED_TABS.includes(activeTab)) {
@@ -228,6 +262,7 @@ function App() {
           user={user}
           onLogout={handlePromptLogout}
           pendingReportsCount={pendingReportsCount}
+          chatUnreadCount={chatUnreadCount}
           bgColor={memberAreaBgColor}
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
@@ -295,6 +330,9 @@ function App() {
         {activeTab === 'students' && ['superadmin', 'admin'].includes(user?.role) && (
           <StudentManagement bgColor={memberAreaBgColor} />
         )}
+        {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && (
+          <FunnelManagement />
+        )}
         {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && (
           <IntegrationManagement bgColor={memberAreaBgColor} />
         )}
@@ -324,6 +362,7 @@ function App() {
           (activeTab === 'ranking' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'lesson-reports' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'students' && user?.role === 'admin') ||
+          (activeTab === 'funnels' && user?.role === 'admin') ||
           (activeTab === 'integrations' && user?.role === 'admin') ||
           (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
         ) && (

@@ -425,8 +425,18 @@ export default function FavoritesDropdown({
                     lineHeight: 1.35,
                   }}
                 >
-                  {item.course_title ? `${item.course_title} • ` : ''}
-                  {item.content || item.description || item.message || ''}
+                  {activeTab === 'aulas' ? (
+                    <>
+                      {item.course_title ? <strong style={{ color: '#cbd5e1' }}>{item.course_title}</strong> : ''}
+                      {item.module_title ? ` • Módulo: ${item.module_title}` : ''}
+                      {item.description ? ` • ${item.description}` : ''}
+                    </>
+                  ) : (
+                    <>
+                      {item.course_title ? `${item.course_title} • ` : ''}
+                      {item.content || item.description || item.message || ''}
+                    </>
+                  )}
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.625rem', color: '#64748b' }}>

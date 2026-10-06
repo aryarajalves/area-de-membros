@@ -89,4 +89,19 @@ describe('StudentCard Component', () => {
 
     expect(screen.getByText('Histórico de Pontos e Conquistas')).toBeInTheDocument();
   });
+
+  it('renders student tags and opens assign tags modal', () => {
+    const studentWithTags = {
+      ...mockStudent,
+      tags: [{ id: 99, name: 'VIP Mentoria', color: '#f59e0b' }],
+    };
+
+    renderWithToast(<StudentCard student={studentWithTags} isLightBg={false} />);
+
+    expect(screen.getByText('VIP Mentoria')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-student-tags-btn-42')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('edit-student-tags-btn-42'));
+    expect(screen.getByText('Etiquetas do Aluno')).toBeInTheDocument();
+  });
 });

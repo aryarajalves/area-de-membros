@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy, Award, Medal, CheckCircle2, BookOpen, Star, Crown } from 'lucide-react';
+import StudentRpgLevelBadge from '../student-management/StudentRpgLevelBadge';
 
 export default function PodiumCard({ student, position }) {
   if (!student) return null;
@@ -13,7 +14,7 @@ export default function PodiumCard({ student, position }) {
       icon: Crown,
       medalText: '1º Lugar',
       badgeColor: '#facc15',
-      height: '340px',
+      minHeight: '350px',
       order: 2, // Centro no desktop
       scale: '1.05',
     },
@@ -25,7 +26,7 @@ export default function PodiumCard({ student, position }) {
       icon: Medal,
       medalText: '2º Lugar',
       badgeColor: '#cbd5e1',
-      height: '310px',
+      minHeight: '320px',
       order: 1, // Esquerda
       scale: '1.0',
     },
@@ -37,7 +38,7 @@ export default function PodiumCard({ student, position }) {
       icon: Award,
       medalText: '3º Lugar',
       badgeColor: '#fbbf24',
-      height: '290px',
+      minHeight: '300px',
       order: 3, // Direita
       scale: '0.98',
     }
@@ -137,8 +138,18 @@ export default function PodiumCard({ student, position }) {
           </span>
         )}
       </h3>
-      <div style={{ fontSize: '0.78rem', color: current.badgeColor, fontWeight: 600, marginBottom: '16px' }}>
+      <div style={{ fontSize: '0.78rem', color: current.badgeColor, fontWeight: 600, marginBottom: '8px' }}>
         {student.badge}
+      </div>
+
+      {/* Badge de Nível RPG */}
+      <div style={{ marginBottom: '16px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <StudentRpgLevelBadge
+          totalPoints={student.points}
+          studentId={student.user_id}
+          compact={false}
+          showProgressBar={true}
+        />
       </div>
 
       {/* Pontuação Gigante */}

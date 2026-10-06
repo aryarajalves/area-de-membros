@@ -26,6 +26,13 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Redirecionar SessionLocal de serviços em segundo plano para o banco de teste SQLite
+import app.core.database as _core_db
+import app.services.chat_broadcast_service as _chat_bc_service
+
+_core_db.SessionLocal = TestingSessionLocal
+_chat_bc_service.SessionLocal = TestingSessionLocal
+
 def override_get_db():
     db = TestingSessionLocal()
     try:

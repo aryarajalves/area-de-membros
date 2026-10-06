@@ -19,6 +19,7 @@ class StudentCourseProgressItem(BaseModel):
     last_activity_at: Optional[datetime] = None
 
 from app.schemas.gamification import GamificationHistoryItem
+from app.schemas.student_tag import StudentTagAssignmentItem
 
 class StudentListItem(BaseModel):
     id: int
@@ -28,10 +29,19 @@ class StudentListItem(BaseModel):
     phone: Optional[str] = None
     created_at: Optional[datetime] = None
     courses: List[StudentCourseProgressItem] = []
+    tags: List[StudentTagAssignmentItem] = []
     total_courses: int = 0
     overall_progress_percent: int = 0
     total_points: int = 0
     gamification_badge: Optional[str] = None
+    level: int = 1
+    level_title: str = "Bronze I"
+    level_badge: str = "🛡️ Bronze I"
+    level_tier: str = "Bronze"
+    level_color: str = "#cd7f32"
+    points_to_next_level: int = 25
+    level_progress_percent: int = 0
+    is_max_level: bool = False
 
 class StudentGamificationHistoryResponse(BaseModel):
     student_id: int
@@ -39,6 +49,16 @@ class StudentGamificationHistoryResponse(BaseModel):
     total_points: int
     current_rank: int
     badge: str
+    level: int = 1
+    level_title: str = "Bronze I"
+    level_badge: str = "🛡️ Bronze I"
+    level_tier: str = "Bronze"
+    level_color: str = "#cd7f32"
+    current_level_min_points: int = 0
+    next_level_min_points: Optional[int] = 25
+    points_to_next_level: int = 25
+    level_progress_percent: int = 0
+    is_max_level: bool = False
     history: List[GamificationHistoryItem]
 
 class StudentListResponse(BaseModel):

@@ -14,7 +14,7 @@ from app.core.security import decode_access_token
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.models.user import User
 from app.models.course import Course, UserCourse
-from app.models.chat import ChatMessage, ChatMessageLike, ChatMessageFavorite
+from app.models.chat import ChatMessage, ChatMessageLike, ChatMessageFavorite, ChatMessageMention
 from app.schemas.chat import (
     ChatChannelItem,
     ChatMessageResponse,
@@ -22,18 +22,34 @@ from app.schemas.chat import (
     ChatUser,
     ChatMessageLikeToggleResponse,
     ChatMessageFavoriteToggleResponse,
+    ChatMentionNotificationItem,
+    ChatNotificationItem,
+    ChatNotificationCountsResponse,
+    ChatMentionContactItem,
+    ChatDmConversationItem,
+    ChatUnreadSummaryResponse,
 )
-from app.services.storage import upload_media_file
 from app.services.chat_ws_manager import chat_manager
+from app.services.chat_media_service import process_chat_media_upload, CHAT_MEDIA_DIR
+from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history
+from app.services.chat_unread_service import (
+    get_channel_last_read_map,
+    get_channel_unread_count,
+    get_user_chat_unread_summary,
+    mark_channel_as_read,
+    get_channel_items_list,
+)
+from app.services.chat_query_service import (
+    get_chat_media_gallery_items,
+    get_mentionable_contacts,
+    get_user_chat_notifications,
+    get_chat_notification_counts,
+    mark_user_mention_read,
+    mark_user_all_notifications_read,
+)
+
 
 router = APIRouter(tags=["Chat da Comunidade"])
-
-BASE_UPLOAD_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-    "uploads"
-)
-CHAT_MEDIA_DIR = os.path.join(BASE_UPLOAD_DIR, "chat_media")
-os.makedirs(CHAT_MEDIA_DIR, exist_ok=True)
 
 
 
@@ -44,6 +60,9 @@ def check_channel_access(user: User, channel_type: str, course_id: Optional[int]
     - 'course': Se admin/superadmin, liberado. Se aluno, requer vínculo ativo ao curso.
     """
     if channel_type == "general":
+        return True
+
+    if channel_type == "dm":
         return True
 
     if channel_type == "course":
@@ -77,66 +96,37 @@ def list_chat_channels(
     - Comunidade Geral (sempre presente)
     - Canais dos cursos (todos para admins, vinculados ativos para alunos)
     """
-    channels: List[ChatChannelItem] = []
+    return get_channel_items_list(db, current_user)
 
-    # 1. Canal Geral da Comunidade
-    last_gen_msg = (
-        db.query(ChatMessage)
-        .filter(ChatMessage.channel_type == "general")
-        .order_by(desc(ChatMessage.created_at))
-        .first()
-    )
-    channels.append(
-        ChatChannelItem(
-            id="general",
-            name="Comunidade Geral",
-            type="general",
-            course_id=None,
-            description="Bate-papo aberto para todos os alunos e instrutores",
-            last_message=last_gen_msg.message if last_gen_msg else None,
-            last_message_at=last_gen_msg.created_at if last_gen_msg else None,
-        )
-    )
 
-    # 2. Canais por Curso
-    if current_user.role in ("superadmin", "admin"):
-        courses = db.query(Course).order_by(Course.title.asc()).all()
-    else:
-        now = datetime.now(timezone.utc)
-        courses = (
-            db.query(Course)
-            .join(UserCourse, UserCourse.course_id == Course.id)
-            .filter(
-                UserCourse.user_id == current_user.id,
-                or_(UserCourse.expires_at.is_(None), UserCourse.expires_at > now),
-            )
-            .order_by(Course.title.asc())
-            .all()
-        )
+@router.get(
+    "/unread-summary",
+    response_model=ChatUnreadSummaryResponse,
+    summary="Resumo de Mensagens Não Lidas",
+    description="Retorna a contagem total de mensagens não lidas no Chat (canais públicos e DMs) para o badge de notificação.",
+)
+def get_unread_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retorna contagem consolidada de mensagens não lidas para o usuário."""
+    return get_user_chat_unread_summary(db, current_user)
 
-    for c in courses:
-        last_course_msg = (
-            db.query(ChatMessage)
-            .filter(
-                ChatMessage.channel_type == "course",
-                ChatMessage.course_id == c.id,
-            )
-            .order_by(desc(ChatMessage.created_at))
-            .first()
-        )
-        channels.append(
-            ChatChannelItem(
-                id=f"course_{c.id}",
-                name=c.title,
-                type="course",
-                course_id=c.id,
-                description=f"Canal exclusivo dos alunos de {c.title}",
-                last_message=last_course_msg.message if last_course_msg else None,
-                last_message_at=last_course_msg.created_at if last_course_msg else None,
-            )
-        )
 
-    return channels
+@router.post(
+    "/channels/{channel_id}/read",
+    summary="Marcar Canal como Lido",
+    description="Atualiza o ponteiro de última mensagem lida no canal pelo usuário.",
+)
+def mark_channel_read(
+    channel_id: str,
+    last_message_id: Optional[int] = Query(default=None, description="ID da última mensagem lida"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Marca o canal como lido e zera a contagem de mensagens pendentes naquele canal."""
+    saved_id = mark_channel_as_read(db, current_user.id, channel_id, last_message_id)
+    return {"status": "ok", "channel_id": channel_id, "last_read_message_id": saved_id}
 
 
 @router.get(
@@ -148,6 +138,7 @@ def list_chat_channels(
 def get_channel_messages(
     channel_type: str = Query(default="general", description="'general' ou 'course'"),
     course_id: Optional[int] = Query(default=None, description="ID do curso se canal for 'course'"),
+    parent_id: Optional[int] = Query(default=None, description="Filtrar respostas da thread da mensagem com este ID"),
     limit: int = Query(default=50, ge=1, le=100, description="Quantidade de mensagens a retornar"),
     before_id: Optional[int] = Query(default=None, description="Buscar mensagens anteriores a esse ID (scroll infinito)"),
     after_id: Optional[int] = Query(default=None, description="Buscar novas mensagens posteriores a esse ID (polling)"),
@@ -157,7 +148,8 @@ def get_channel_messages(
 ):
     """
     Retorna as mensagens do canal especificado.
-    Valida se o usuário tem permissão para acessar o canal.
+    Se parent_id for informado, retorna as mensagens da thread.
+    Caso contrário, retorna apenas as mensagens principais (parent_id IS NULL) do canal.
     """
     if not check_channel_access(current_user, channel_type, course_id, db):
         raise HTTPException(
@@ -169,6 +161,12 @@ def get_channel_messages(
     if channel_type == "course":
         query = query.filter(ChatMessage.course_id == course_id)
 
+    if parent_id is not None:
+        query = query.filter(ChatMessage.parent_id == parent_id)
+    elif not favorites_only:
+        # No feed principal do canal, listar mensagens raízes (parent_id is None)
+        query = query.filter(ChatMessage.parent_id.is_(None))
+
     if favorites_only:
         fav_ids_query = db.query(ChatMessageFavorite.message_id).filter(
             ChatMessageFavorite.user_id == current_user.id
@@ -176,19 +174,16 @@ def get_channel_messages(
         query = query.filter(ChatMessage.id.in_(fav_ids_query))
 
     if after_id:
-        # Polling: buscar mensagens novas que chegaram após o after_id
         query = query.filter(ChatMessage.id > after_id).order_by(asc(ChatMessage.id))
         messages = query.limit(limit).all()
     elif before_id:
-        # Histórico anterior: mensagens com id menor que before_id
         query = query.filter(ChatMessage.id < before_id).order_by(desc(ChatMessage.id))
         messages = query.limit(limit).all()
-        messages.reverse()  # Reverter para ordem cronológica
+        messages.reverse()
     else:
-        # Últimas N mensagens
         query = query.order_by(desc(ChatMessage.id))
         messages = query.limit(limit).all()
-        messages.reverse()  # Reverter para ordem cronológica crescente
+        messages.reverse()
 
     is_privileged = current_user.role in ("superadmin", "admin")
     all_msg_ids = [msg.id for msg in messages]
@@ -196,6 +191,7 @@ def get_channel_messages(
     user_liked_set = set()
     user_favorited_set = set()
     likes_count_map = {}
+    reply_count_map = {}
 
     if all_msg_ids:
         user_likes = db.query(ChatMessageLike.message_id).filter(
@@ -218,6 +214,15 @@ def get_channel_messages(
         ).group_by(ChatMessageLike.message_id).all()
         likes_count_map = {row[0]: row[1] for row in counts}
 
+        # Contagem de respostas de thread por mensagem
+        replies_counts = db.query(
+            ChatMessage.parent_id,
+            func.count(ChatMessage.id)
+        ).filter(
+            ChatMessage.parent_id.in_(all_msg_ids)
+        ).group_by(ChatMessage.parent_id).all()
+        reply_count_map = {row[0]: row[1] for row in replies_counts}
+
     result = []
     for msg in messages:
         user_info = ChatUser(
@@ -233,15 +238,20 @@ def get_channel_messages(
                 id=msg.id,
                 channel_type=msg.channel_type,
                 course_id=msg.course_id,
+                parent_id=msg.parent_id,
                 message=msg.message or "",
                 media_url=msg.media_url,
                 media_type=msg.media_type,
+                button_text=msg.button_text,
+                button_url=msg.button_url,
+                button_action_type=msg.button_action_type,
                 is_pinned=bool(msg.is_pinned),
                 pinned_at=msg.pinned_at,
                 pinned_by_user_id=msg.pinned_by_user_id,
                 likes_count=likes_count_map.get(msg.id, 0),
                 liked_by_me=msg.id in user_liked_set,
                 is_favorited=msg.id in user_favorited_set,
+                reply_count=reply_count_map.get(msg.id, 0),
                 created_at=msg.created_at,
                 user=user_info,
                 can_delete=can_del,
@@ -339,19 +349,77 @@ def send_chat_message(
             detail="Você não tem permissão para enviar mensagens neste canal.",
         )
 
+    # Validar se parent_id pertence ao mesmo canal/curso
+    parent_id = payload.parent_id
+    if parent_id is not None:
+        parent_msg = db.query(ChatMessage).filter(ChatMessage.id == parent_id).first()
+        if not parent_msg or parent_msg.channel_type != payload.channel_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Mensagem pai da thread não encontrada neste canal.",
+            )
+
     try:
         new_msg = ChatMessage(
             channel_type=payload.channel_type,
             course_id=payload.course_id if payload.channel_type == "course" else None,
+            parent_id=parent_id,
             user_id=current_user.id,
+            recipient_id=payload.recipient_id if payload.channel_type == "dm" else None,
             message=clean_text,
             media_url=media_url,
             media_type=media_type,
+            button_text=payload.button_text,
+            button_url=payload.button_url,
+            button_action_type=payload.button_action_type,
             is_pinned=False,
+            is_read=False,
         )
         db.add(new_msg)
         db.commit()
         db.refresh(new_msg)
+
+        # Detectar menções do tipo @Nome ou @Nome Sobrenome
+        # Varre usuários ativos e cria registros em chat_mentions
+        if "@" in clean_text:
+            try:
+                active_users = db.query(User).filter(User.is_active == True, User.id != current_user.id).all()
+                mentioned_set = set()
+                text_lower = clean_text.lower()
+                for u in active_users:
+                    if not u.name:
+                        continue
+                    # Checar menção por nome completo ou primeiro nome
+                    mention_tag = f"@{u.name.lower()}"
+                    first_name_tag = f"@{u.name.lower().split()[0]}" if len(u.name.split()) > 1 else None
+                    if mention_tag in text_lower or (first_name_tag and first_name_tag in text_lower):
+                        mentioned_set.add(u.id)
+
+                for m_uid in mentioned_set:
+                    mention_rec = ChatMessageMention(
+                        message_id=new_msg.id,
+                        mentioned_user_id=m_uid,
+                        is_read=False,
+                    )
+                    db.add(mention_rec)
+                if mentioned_set:
+                    db.commit()
+                    for m_uid in mentioned_set:
+                        chat_manager.send_to_user_sync(
+                            m_uid,
+                            "new_notification",
+                            {"user_id": m_uid, "type": "mention", "message_id": new_msg.id}
+                        )
+            except Exception as m_exc:
+                logger.error(f"Erro ao processar menções no chat: {m_exc}")
+
+        # Se for resposta em thread, notifica o autor da mensagem pai
+        if parent_id is not None and parent_msg.user_id != current_user.id:
+            chat_manager.send_to_user_sync(
+                parent_msg.user_id,
+                "new_notification",
+                {"user_id": parent_msg.user_id, "type": "thread_reply", "message_id": new_msg.id}
+            )
 
         # Gamificação: pontua aluno respeitando o limite diário de mensagens
         try:
@@ -376,15 +444,22 @@ def send_chat_message(
             id=new_msg.id,
             channel_type=new_msg.channel_type,
             course_id=new_msg.course_id,
+            parent_id=new_msg.parent_id,
+            recipient_id=new_msg.recipient_id,
             message=new_msg.message,
             media_url=new_msg.media_url,
             media_type=new_msg.media_type,
+            button_text=new_msg.button_text,
+            button_url=new_msg.button_url,
+            button_action_type=new_msg.button_action_type,
             is_pinned=False,
             pinned_at=None,
             pinned_by_user_id=None,
+            is_read=new_msg.is_read,
             likes_count=0,
             liked_by_me=False,
             is_favorited=False,
+            reply_count=0,
             created_at=new_msg.created_at,
             user=user_info,
             can_delete=True,
@@ -396,6 +471,19 @@ def send_chat_message(
             channel_type=new_msg.channel_type,
             course_id=new_msg.course_id,
         )
+
+        if payload.channel_type == "dm" and payload.recipient_id:
+            chat_manager.send_to_user_sync(
+                payload.recipient_id,
+                "new_dm",
+                {
+                    "recipient_id": payload.recipient_id,
+                    "sender_id": current_user.id,
+                    "message_id": new_msg.id,
+                    "message": resp.model_dump(mode="json"),
+                }
+            )
+
 
         return resp
     except Exception as exc:
@@ -498,6 +586,7 @@ def toggle_chat_message_favorite(
     if existing_fav:
         db.delete(existing_fav)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id, "message_id": message_id})
         is_favorited = False
     else:
         new_fav = ChatMessageFavorite(
@@ -506,6 +595,7 @@ def toggle_chat_message_favorite(
         )
         db.add(new_fav)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id, "message_id": message_id})
         is_favorited = True
 
     return ChatMessageFavoriteToggleResponse(
@@ -513,6 +603,7 @@ def toggle_chat_message_favorite(
         is_favorited=is_favorited,
         favorited=is_favorited,
     )
+
 
 
 @router.patch(
@@ -646,71 +737,7 @@ async def upload_chat_media(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    """Faz upload de mídia para o chat pelo aluno ou gestor."""
-    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-    audio_exts = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac"}
-    video_exts = {".mp4", ".mov", ".mkv"}
-    doc_exts = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".zip", ".rar", ".csv"}
-
-    allowed_extensions = image_exts | audio_exts | video_exts | doc_exts
-    filename = file.filename or "arquivo"
-    ext = os.path.splitext(filename)[1].lower()
-
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Formato de arquivo inválido. Suportados: imagens, vídeos, áudios e documentos."
-        )
-
-    content = await file.read()
-    if len(content) > 25 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O arquivo excede o limite máximo permitido de 25 MB."
-        )
-
-    content_type = file.content_type or ""
-    # Determinar tipo de mídia de acordo com extensão e mime-type
-    if (content_type.startswith("audio/") or ext in audio_exts) and not content_type.startswith("video/"):
-        media_type = "audio"
-        default_mime = "audio/webm" if ext == ".webm" else "audio/mpeg"
-    elif content_type.startswith("video/") or ext in video_exts:
-        media_type = "video"
-        default_mime = "video/mp4"
-    elif content_type.startswith("image/") or ext in image_exts:
-        media_type = "image"
-        default_mime = "image/jpeg"
-    else:
-        media_type = "file"
-        default_mime = "application/pdf" if ext == ".pdf" else "application/octet-stream"
-
-    final_content_type = content_type or default_mime
-    unique_name = f"chat_{uuid.uuid4().hex[:14]}{ext}"
-
-    # 1. Tentar salvar no Backblaze B2
-    b2_url = upload_media_file(
-        file_bytes=content,
-        filename=unique_name,
-        content_type=final_content_type,
-        folder="AreaDeMembros/chat_media/"
-    )
-    if b2_url:
-        return {
-            "media_url": b2_url,
-            "media_type": media_type,
-            "filename": filename
-        }
-
-    # 2. Fallback local
-    target_path = os.path.join(CHAT_MEDIA_DIR, unique_name)
-    with open(target_path, "wb") as f:
-        f.write(content)
-
-    return {
-        "media_url": f"/api/v1/chat/media/{unique_name}",
-        "media_type": media_type,
-        "filename": filename
-    }
+    return await process_chat_media_upload(file)
 
 
 @router.get(
@@ -733,47 +760,161 @@ def list_chat_media_gallery(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não tem permissão para acessar este canal de bate-papo.",
         )
-
-    query = db.query(ChatMessage).filter(
-        ChatMessage.channel_type == channel_type,
-        ChatMessage.media_url.isnot(None),
-        ChatMessage.media_url != "",
+    return get_chat_media_gallery_items(
+        db, channel_type=channel_type, course_id=course_id, media_type=media_type, limit=limit, offset=offset
     )
-    if channel_type == "course":
-        query = query.filter(ChatMessage.course_id == course_id)
 
-    if media_type and media_type != "all":
-        if media_type == "file":
-            query = query.filter(ChatMessage.media_type.in_(["file", "document"]))
-        else:
-            query = query.filter(ChatMessage.media_type == media_type)
 
-    total = query.count()
-    messages = query.order_by(desc(ChatMessage.id)).offset(offset).limit(limit).all()
+@router.get(
+    "/mention-contacts",
+    response_model=List[ChatMentionContactItem],
+    summary="Listar Contatos para Menção no Chat",
+    description="Retorna usuários ativos para sugestão ao digitar @ na caixa de mensagens."
+)
+def list_mentionable_contacts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista usuários da plataforma para autocomplete ao digitar @."""
+    return get_mentionable_contacts(db, limit=100)
 
-    items = []
-    for msg in messages:
-        items.append({
-            "id": msg.id,
-            "message": msg.message or "",
-            "media_url": msg.media_url,
-            "media_type": msg.media_type or "file",
-            "created_at": msg.created_at.isoformat() if msg.created_at else None,
-            "user": {
-                "id": msg.user.id if msg.user else 0,
-                "name": msg.user.name if msg.user else "Usuário Desconhecido",
-                "email": msg.user.email if msg.user else "",
-                "role": msg.user.role if msg.user else "aluno",
-                "avatar_url": msg.user.avatar_url if msg.user else None,
-            }
-        })
 
-    return {
-        "items": items,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+@router.get(
+    "/mentions",
+    response_model=List[ChatMentionNotificationItem],
+    summary="Listar Mensagens em que o Usuário Foi Mencionado",
+    description="Retorna as menções recebidas pelo usuário logado no chat."
+)
+def list_my_mentions(
+    limit: int = Query(default=30, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retorna a lista de mensagens em que o usuário foi citado com @."""
+    mentions = (
+        db.query(ChatMessageMention)
+        .join(ChatMessage, ChatMessage.id == ChatMessageMention.message_id)
+        .filter(ChatMessageMention.mentioned_user_id == current_user.id)
+        .order_by(desc(ChatMessageMention.created_at))
+        .limit(limit)
+        .all()
+    )
+
+    result = []
+    for m in mentions:
+        msg = m.message
+        sender_user = msg.user if msg else None
+        sender_info = ChatUser(
+            id=sender_user.id if sender_user else 0,
+            name=sender_user.name if sender_user else "Usuário Desconhecido",
+            email=sender_user.email if sender_user else "",
+            role=sender_user.role if sender_user else "aluno",
+            avatar_url=sender_user.avatar_url if sender_user else None,
+        )
+        result.append(
+            ChatMentionNotificationItem(
+                id=m.id,
+                message_id=m.message_id,
+                channel_type=msg.channel_type if msg else "general",
+                course_id=msg.course_id if msg else None,
+                message_text=msg.message if msg else "",
+                sender=sender_info,
+                created_at=m.created_at,
+                is_read=m.is_read,
+            )
+        )
+    return result
+
+
+@router.patch(
+    "/mentions/{mention_id}/read",
+    summary="Marcar Menção como Lida"
+)
+def mark_mention_as_read(
+    mention_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Marca uma notificação de menção como lida."""
+    return mark_user_mention_read(db, current_user, mention_id)
+
+
+@router.get(
+    "/notifications",
+    response_model=List[ChatNotificationItem],
+    summary="Listar Notificações Unificadas do Chat",
+    description="Retorna notificações agrupadas por abas: inbox (não lidas), mentions (menções @), threads (respostas) e all."
+)
+def list_chat_notifications(
+    tab: str = Query(default="inbox", description="Aba: inbox | mentions | threads | all"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retorna a lista de notificações para a Central de Notificações."""
+    return get_user_chat_notifications(db, current_user, tab=tab, limit=limit)
+
+
+@router.get(
+    "/notifications/counts",
+    response_model=ChatNotificationCountsResponse,
+    summary="Contadores de Notificações Não Lidas",
+    description="Retorna o total não lido na inbox, em menções e em threads."
+)
+def get_notification_counts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retorna os contadores numéricos para as abas de notificações."""
+    return get_chat_notification_counts(db, current_user)
+
+
+@router.post(
+    "/notifications/mark-all-read",
+    summary="Marcar Todas as Notificações como Lidas",
+    description="Marca todas as menções e respostas em threads do usuário como lidas."
+)
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Marca menções e respostas de threads pendentes do usuário como lidas."""
+    return mark_user_all_notifications_read(db, current_user)
+
+
+
+@router.get(
+    "/dm/conversations",
+    response_model=List[ChatDmConversationItem],
+    summary="Listar Conversas de Mensagens Diretas (Inbox)",
+    description="Retorna os contatos com histórico de DM e contagem de mensagens não lidas."
+)
+def list_dm_conversations(
+    unread_only: bool = Query(default=False, description="Filtrar apenas conversas com mensagens não lidas"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retorna as conversas da inbox privada de DMs."""
+    return get_user_dm_conversations(db, current_user, unread_only=unread_only, limit=limit)
+
+
+@router.get(
+    "/dm/messages/{contact_id}",
+    response_model=List[ChatMessageResponse],
+    summary="Listar Mensagens Diretas com um Contato",
+    description="Retorna o histórico de mensagens 1-a-1 com o contato e marca as mensagens como lidas."
+)
+def list_dm_messages(
+    contact_id: int,
+    limit: int = Query(default=50, ge=1, le=100),
+    before_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Busca as mensagens privadas trocadas com o contato especificado."""
+    return get_dm_messages_history(db, current_user, contact_id=contact_id, limit=limit, before_id=before_id)
+
 
 
 @router.get("/media/{filename}", include_in_schema=False)

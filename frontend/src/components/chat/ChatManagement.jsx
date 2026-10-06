@@ -6,10 +6,16 @@ import ChatMessagesList from './ChatMessagesList';
 import ChatInputBar from './ChatInputBar';
 import DeleteChatMessageModal from './DeleteChatMessageModal';
 import ChatMediaGalleryModal from './ChatMediaGalleryModal';
+import ChatThreadPanel from './ChatThreadPanel';
+import ChatMentionsModal from './ChatMentionsModal';
+import ChatDmModal from './ChatDmModal';
 
 export default function ChatManagement({ currentUser, bgColor, onBack }) {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
+  const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
+  const [isDmModalOpen, setIsDmModalOpen] = useState(false);
+  const [activeThreadMessage, setActiveThreadMessage] = useState(null);
 
   const {
     channels,
@@ -88,6 +94,8 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           favoritesOnly={favoritesOnly}
           onToggleFavoritesOnly={() => setFavoritesOnly((prev) => !prev)}
           onOpenMediaGallery={() => setIsMediaGalleryOpen(true)}
+          onOpenMentions={() => setIsMentionsModalOpen(true)}
+          onOpenDm={() => setIsDmModalOpen(true)}
           onUnpinMessage={togglePin}
           onBack={onBack}
           onJumpToMessage={handleJumpToMessage}
@@ -102,6 +110,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onToggleLike={toggleLike}
           onToggleFavorite={toggleFavorite}
           onTogglePin={togglePin}
+          onOpenThread={(msg) => setActiveThreadMessage(msg)}
           highlightedMessageId={highlightedMessageId}
         />
 
@@ -111,6 +120,19 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           channelName={selectedChannel?.name}
         />
       </section>
+
+      {/* Painel Lateral de Threads de Discussão */}
+      {activeThreadMessage && (
+        <ChatThreadPanel
+          parentMessage={activeThreadMessage}
+          currentUser={currentUser}
+          onClose={() => setActiveThreadMessage(null)}
+          onDeleteMessage={promptDeleteMessage}
+          onToggleLike={toggleLike}
+          onToggleFavorite={toggleFavorite}
+          onTogglePin={togglePin}
+        />
+      )}
 
       {/* Modal de Confirmação de Exclusão */}
       <DeleteChatMessageModal
@@ -126,6 +148,20 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
         onClose={() => setIsMediaGalleryOpen(false)}
         channel={selectedChannel}
         onJumpToMessage={handleJumpToMessage}
+      />
+
+      {/* Modal de Minhas Menções */}
+      <ChatMentionsModal
+        isOpen={isMentionsModalOpen}
+        onClose={() => setIsMentionsModalOpen(false)}
+        onJumpToMessage={handleJumpToMessage}
+      />
+
+      {/* Modal de Mensagens Diretas (DMs / Inbox) */}
+      <ChatDmModal
+        isOpen={isDmModalOpen}
+        onClose={() => setIsDmModalOpen(false)}
+        currentUser={currentUser}
       />
     </div>
   );

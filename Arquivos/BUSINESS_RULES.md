@@ -372,6 +372,11 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - **Decisão do Dono do Projeto:** Sim, o tempo de expiração pode ser indefinido (não expira).
 - [x] [RESOLVIDO] O WhatsApp no cadastro deve ser obrigatório ou opcional? Como deve funcionar o DDI e bandeiras?
   - **Decisão do Dono do Projeto:** O WhatsApp é estritamente obrigatório. A bandeira do Brasil 🇧🇷 (+55) é o padrão inicial, e o usuário pode selecionar outras bandeiras para aplicar o DDI de outros países.
+- [ ] [NOVO] No nó de Mensagem do Funil, quando o aluno receber botões interativos, o clique em cada botão deve ramificar para um nó específico do fluxo visual ou registrar uma tag/ação?
+- [ ] [NOVO] Na execução de nós de Delay longos (ex: mais de 10 minutos), o funil deve persistir o agendamento no banco de dados para retomar após eventuais reinícios de servidor?
+- [ ] [NOVO] Quando o aluno subir de nível de RPG (Level Up), o sistema deve disparar uma animação/modal comemorativo na tela com efeitos visuais ou apenas atualizar o badge silenciosamente?
+- [ ] [NOVO] Os níveis mais altos do sistema de RPG (como Elo Diamante e Elo Lenda) devem conceder privilégios automáticos adicionais na plataforma (ex: selos diferenciados no chat da comunidade ou acesso a cursos/aulas especiais)?
+
 
 ---
 
@@ -610,8 +615,45 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - **Top 4 ao 10:** Insígnia *"Top Estudante"*.
   - **Demais Alunos:** Insígnia *"Aluno Ativo"*.
 - **Histórico de Conquistas no Card do Aluno (`/students`):**
-  - No card de cada aluno na Gestão de Alunos, é exibido o badge destacado com o total de pontos (`🏆 X pts`) e o botão **"Pontos & Conquistas"**.
-  - O modal (`StudentGamificationHistoryModal`) exibe a pontuação total, o rank do aluno, a insígnia conquistada e a linha do tempo detalhada com cada pontuação obtida, ação executada e data/hora no horário de Brasília.
+  - No card de cada aluno na Gestão de Alunos, é exibido o badge destacado com o total de pontos (`🏆 X pts`), o badge de Nível RPG (`🛡️ Nv. X • Patente`) com barra de XP integrada e o botão **"Pontos & Conquistas"**.
+  - O modal (`StudentGamificationHistoryModal`) exibe a pontuação total, o rank do aluno, a insígnia conquistada, o card consolidado do Nível RPG com barra de progresso detalhada e botão para visualização da Escada Completa de 20 Níveis.
+
+### 17.1. Sistema de Níveis RPG (20 Níveis Progressivos com Elos e Patentes)
+- **Estrutura dos 20 Níveis:**
+  - Divididos em **5 Elos temáticos** com 4 divisões cada (exceto o nível máximo que é coroado como Lenda Suprema):
+    1. **Elo Bronze (Níveis 1 ao 4):**
+       - **Nível 1 (Bronze I):** 0 pts (ponto de partida de todo aluno).
+       - **Nível 2 (Bronze II):** 25 pts (primeiras aulas concluídas).
+       - **Nível 3 (Bronze III):** 60 pts.
+       - **Nível 4 (Bronze IV):** 110 pts.
+    2. **Elo Prata (Níveis 5 ao 8):**
+       - **Nível 5 (Prata I):** 180 pts.
+       - **Nível 6 (Prata II):** 270 pts.
+       - **Nível 7 (Prata III):** 380 pts.
+       - **Nível 8 (Prata IV):** 510 pts.
+    3. **Elo Ouro (Níveis 9 ao 12):**
+       - **Nível 9 (Ouro I):** 660 pts.
+       - **Nível 10 (Ouro II):** 840 pts.
+       - **Nível 11 (Ouro III):** 1.050 pts.
+       - **Nível 12 (Ouro IV):** 1.300 pts.
+    4. **Elo Diamante (Níveis 13 ao 16):**
+       - **Nível 13 (Diamante I):** 1.600 pts.
+       - **Nível 14 (Diamante II):** 1.950 pts.
+       - **Nível 15 (Diamante III):** 2.350 pts.
+       - **Nível 16 (Diamante IV):** 2.800 pts.
+    5. **Elo Lenda (Níveis 17 ao 20):**
+       - **Nível 17 (Lenda I):** 3.300 pts.
+       - **Nível 18 (Lenda II):** 3.850 pts.
+       - **Nível 19 (Lenda III):** 4.450 pts.
+       - **Nível 20 (Lenda Suprema):** 5.000 pts (**Nível Máximo** com indicador MAX e 100% de maestria).
+- **Curva Progressiva de Desafio (RPG):**
+  - Cada nível exige um montante adicional de pontos maior que o nível anterior (ex: +25, +35, +50, +70 ... até +600 nos elos mais altos), tornando a ascensão mais desafiadora e prestigiosa.
+- **Visualização e Componentes da Interface:**
+  - **Card do Aluno (`StudentCard`):** Exibe o badge de nível estilizado com a cor oficial do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), mini barra de XP e tooltip explicativo.
+  - **Visão Geral no Modal (`StudentRpgLevelOverviewCard`):** Card em destaque com escudo do elo, nome da patente, barra animada de progresso no nível atual, pontos faltantes para o próximo nível e atalho "Ver 20 Níveis".
+  - **Escada Completa de 20 Níveis (`GamificationRpgLadderModal`):** Popup modal escuro (`rgba(0,0,0,0.85)`) agrupado por elos, destacando visualmente o nível atual do aluno e marcando com check verde os níveis já conquistados.
+  - **Tabela de Classificação do Ranking (`RankingTable`):** Exibe o badge de nível RPG de cada aluno na listagem do ranking.
+  - **Modal de Histórico de Pontos do Aluno (`StudentGamificationHistoryModal`):** Apresenta métricas consolidadas e a linha do tempo cronológica com paginação de **20 pontuações por página** (`HistoryPaginationBar`), permitindo navegar com facilidade entre as conquistas sem sobrecarregar a interface.
 ---
 
 ## 18. Transcrição de Vídeos e Resumo Inteligente com IA (OpenAI Whisper & GPT)
@@ -743,6 +785,121 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - **Mensagens do Chat:** Ação de favoritar mensagem no menu de ações da mensagem.
   - **Estrutura de Banco de Dados:**
     - Tabelas dedicadas `lesson_favorites` (chave primária composta `lesson_id + user_id`) e `lesson_comment_favorites` (chave primária composta `comment_id + user_id`), com exclusão em cascata ao remover a aula/comentário ou usuário.
+
+---
+
+## 24. Central de Notificações no TopNavbar (Menções e Threads)
+- **Localização:**
+  - Botão de sino (`Bell`) posicionado na barra superior fixa global da plataforma (`TopNavbar`), ao lado dos botões de Favoritos e DMs.
+  - **Badge Numérico de Alerta:** Exibe contador em formato pílula na cor de destaque laranja (`#f97316`) com o total de notificações não lidas (`unreadNotifCount`). Suporta indicação `99+` se exceder 99.
+  - **Sincronização em Tempo Real:** Atualizado via polling e evento customizado global `window.dispatchEvent(new CustomEvent('notifications_updated'))`.
+- **Modal de Notificações (`NotificationsModal`):**
+  - **Padrão de Popups:** Centralizado na tela com backdrop preto translúcido (`rgba(0, 0, 0, 0.75)`), efeito glassmorphism, bloqueio total de scroll no fundo (`overflow: hidden` no `document.body`) e portal renderizado via `createPortal(..., document.body)` para escapar de qualquer `backdrop-filter` ou hierarquia do layout.
+  - **Abas Organizadoras:**
+    1. **Caixa de entrada (`inbox`):** Reúne todas as notificações não lidas (menções `@` e novas respostas dentro das threads do usuário).
+    2. **Menções (`mentions`):** Filtra todas as menções diretas com `@` recebidas pelo usuário logado no chat.
+    3. **Seguindo / Threads (`threads`):** Filtra as respostas enviadas por outros usuários dentro das threads iniciadas pelo usuário ativo.
+    4. **Todas (`all`):** Histórico completo de notificações (lidas e não lidas).
+  - **Ações Rápidas:**
+    - **Marcar lidas:** Botão no cabeçalho para marcar todas as menções e threads como lidas de uma só vez (`/api/v1/chat/notifications/mark-all-read`).
+    - **Marcar individual:** Ação direta em cada card para marcar aquela notificação específica como lida.
+    - **Navegação Direta:** Ao clicar no card da notificação, a notificação é marcada como lida e o usuário é redirecionado para a aba do Chat da Comunidade.
+
+---
+
+## 25. Sistema de Etiquetas (Tags) de Alunos e Disparo em Massa de Mensagens Diretas (DMs)
+- **Permissões de Acesso:**
+  - Exclusivo para perfis com nível administrativo (**Super Admin** e **Admin**).
+  - Alunos regulares não possuem permissão para criar, editar ou excluir tags, nem para disparar mensagens em massa.
+- **Localização na Interface:**
+  - Botões destacados **"Etiquetas"** (`Tag`) e **"Disparo em Massa"** (`Send`) posicionados na barra de ações superior da tela de **Gestão de Alunos** (`StudentManagement`).
+  - Cada card de aluno (`StudentCard`) exibe as badges das etiquetas atribuídas e um botão rápido `+ Tag` para atribuir ou remover tags individualmente.
+- **Sistema de Gestão de Etiquetas (`StudentTagsModal` & `StudentAssignTagsModal`):**
+  - Permite criar novas etiquetas informando nome e selecionando cor com paleta rápida ou seletor hexadecimal.
+  - Exibe a contagem em tempo real de quantos alunos estão associados a cada etiqueta.
+  - Permite editar nome e cor das etiquetas existentes.
+  - **Popup Obrigatório de Confirmação de Exclusão (`StudentTagDeleteConfirmModal`):**
+    - Ao clicar no botão de lixeira de qualquer etiqueta, o sistema obrigatoriamente abre um popup centralizado de confirmação com backdrop preto translúcido protetor (`rgba(0, 0, 0, 0.85)`).
+    - O popup não fecha ao clicar fora e possui apenas 1 botão de cancelar além do botão de confirmação ("Sim, Excluir").
+    - Exibe com clareza o nome da etiqueta em sua cor oficial e alerta ao administrador que a exclusão removerá a tag de todos os alunos associados, preservando integralmente o cadastro e o acesso dos alunos à plataforma.
+  - Modal de atribuição individual com busca rápida e seleção de múltiplas etiquetas simultâneas.
+- **Segmentação de Público para Disparo em Massa (`ChatBroadcastModal`):**
+  - **Público-alvo:**
+    1. **Todos os Alunos:** Disparo global para todos os alunos ativos da plataforma.
+    2. **Por Curso Específico:** Filtra apenas os alunos matriculados no curso selecionado.
+    3. **Sem Cursos:** Filtra exclusivamente alunos/leads cadastrados que ainda não possuem matrícula em nenhum curso ativo.
+    4. **Por Etiqueta:** Dispara exclusivamente para os alunos vinculados à etiqueta escolhida.
+    5. **Por Recência de Entrada:** Filtra alunos com base na data de criação da conta (`created_at`) nos **últimos 7 dias**, **últimos 14 dias** ou **últimos 30 dias**, ideal para onboardings, boas-vindas e ofertas para novos alunos.
+    6. **Seleção Manual:** Permite selecionar alunos específicos diretamente na interface.
+  - **Botão de Ação Interativo (CTA) na Mensagem:**
+    - O administrador pode configurar opcionalmente um botão de ação destacado junto ao comunicado (`button_text`, `button_url`, `button_action_type`).
+    - **Ações Suportadas:**
+      - **Link Externo (URL):** Checkouts de venda Kiwify/Hotmart, links de convite para grupos de WhatsApp/Telegram, páginas externas, etc. (abertura em nova aba com `target="_blank"`).
+      - **Navegação Interna:** Abrir curso ou aula específica da plataforma (`action_type: 'course'` ou `'lesson'`).
+    - **Renderização Visual:** O botão é renderizado diretamente dentro do balão da conversa privada do aluno (`ChatMessageItem` e `ChatDmConversationView`) com estilo neon/gradiente destacado e pré-visualização ao vivo no modal de envio.
+  - **Filtro de Perfil:**
+    - Opção de enviar **"Apenas Alunos"** ou incluir administradores (**"Alunos + Administradores"**).
+  - **Estimativa Prévia em Tempo Real:**
+    - Antes do disparo, o sistema consulta a API (`/api/v1/chat/broadcast/estimate`) e apresenta um card com a quantidade exata de destinatários únicos elegíveis e o tempo estimado de duração do envio com delay de 1s por aluno.
+  - **Diálogo de Confirmação:**
+    - Apresenta resumo completo (público, total de alunos, prévia da mensagem e tempo estimado) antes do envio definitivo.
+- **Taxa de Vazão e Processamento em Segundo Plano:**
+  - **Delay Estrito:** O processamento aplica um intervalo obrigatório de **1 segundo** (`await asyncio.sleep(1)`) entre cada mensagem enviada, garantindo estabilidade e evitando sobrecarga no servidor e nos sockets.
+  - **Execução Assíncrona:** O disparo é delegado para `BackgroundTasks` da FastAPI, retornando resposta imediata para a interface do administrador enquanto as mensagens são entregues em segundo plano.
+  - **Integração Nativa com o Chat:** Cada mensagem é registrada individualmente na tabela `chat_messages` com `is_dm=True`, remetente do administrador e destinatário do aluno, emitindo o evento WebSocket `new_dm` para atualizar instantaneamente o chat e o badge do aluno.
+- **Histórico de Disparos e Rastreamento de Leitura (`ChatBroadcastHistoryModal`):**
+  - Acesso através do botão **"Histórico"** no modal de disparo em massa.
+  - **Métricas Consolidadas por Campanha:**
+    - Título/assunto da campanha e autor do disparo.
+    - Total de destinatários, enviados com sucesso e eventuais falhas.
+    - Taxa percentual de visualização/leitura (`% lidos`).
+    - Duração total da execução (em segundos ou minutos).
+    - Data e hora do disparo formatadas no Horário Oficial de Brasília.
+  - **Detalhamento de Destinatários (`ChatBroadcastCampaignDetailView`):**
+    - Listagem individual de todos os alunos que receberam a mensagem.
+    - Barra de busca por nome ou e-mail e filtros rápidos (Todos, Apenas Lidos, Não Lidos).
+    - Status de entrega individual (`sent` ou `failed`).
+    - **Rastreamento de Visualização Preciso:**
+      - Exibe badge verde com o momento exato da leitura: `Visualizado em DD/MM/AAAA às HH:MM` (gravado na abertura da conversa pelo aluno via `read_at`).
+      - Exibe badge cinza `Não lido ainda` para alunos que ainda não abriram a DM.
+  - **Paginação Padrão de 20 Itens por Página (`HistoryPaginationBar`):**
+    - Tanto a lista principal de campanhas de disparos (`ChatBroadcastHistoryModal`) quanto a listagem de destinatários da campanha (`ChatBroadcastCampaignDetailView`) exibem exatamente **20 itens por página**.
+    - Barra de paginação responsiva com contador dinâmico (`Exibindo X–Y de Z itens`), botões de navegação "Anterior" / "Próxima" e botões numéricos com destaque na página ativa.
+
+---
+
+## 26. Sincronização em Tempo Real via WebSocket dos Badges do TopNavbar (Favoritos, DMs e Notificações)
+- **Conexão Global Contínua:** Mantida ativamente em segundo plano pelo hook `useTopNavbarSocket` conectado a `/api/v1/chat/ws?token=...` em qualquer aba da plataforma (Cursos, Sala de Aula, Suporte, Chat, Ranking, Configurações, Gestão de Alunos, etc.), com reconexão automática e heartbeat ping (`ping`/`pong`).
+- **Eventos em Tempo Real:**
+  1. **Favoritos (`favorites_updated`):** Disparado instantaneamente pelo backend via `chat_manager.send_to_user_sync` ao alternar favoritos em aulas, comentários de aulas, tópicos de suporte ou mensagens do chat. O badge de Favoritos recalcula imediatamente seu total sem precisar atualizar a página.
+  2. **Mensagens Diretas / DMs (`new_dm`, `dm_read`, `dm_sent`):** Disparado ao receber novas DMs (incluindo disparos em massa) ou ao marcar conversas como lidas. O badge vermelho de DMs é atualizado na hora em tempo real para os destinatários online.
+  3. **Notificações / Sininho (`new_notification`, `notifications_updated`):** Disparado em tempo real ao ser mencionado (`@nome`) em qualquer mensagem de canal ou ao receber novas respostas nas threads iniciadas pelo usuário ativo. O badge laranja do sino é atualizado instantaneamente.
+- **Isolamento e Segurança de Usuário:** Os eventos direcionados são enviados estritamente para as conexões ativas do usuário destinatário via `chat_manager.send_to_user_sync(user_id, ...)`, impedindo vazamento de dados entre clientes conectados.
+
+---
+
+## 27. Sistema de Funis de Mensagens e Fluxos Visuais (Funnels)
+- **Localização:** Item de navegação **"Funis de Mensagens"** (`GitBranch`) na barra lateral (`Sidebar`) sob a categoria **Comunidade & Social**, acessível por Administradores e Super Admins.
+- **Estrutura e Conceito:**
+  - Permite aos administradores criar e gerenciar fluxos automatizados de mensagens com nós encadeados em um canvas interativo.
+  - **4 Nós Básicos Oficiais:**
+    1. **Nó de Texto (`message`):** Envia mensagem privada (DM) para o aluno com suporte a tags dinâmicas `{aluno}`, variações Spintax (ex: `{Olá|Oi|E aí}`) sorteadas a cada execução, e até 3 botões de ação interativos.
+    2. **Nó de Mídia (`media`):** Envia imagens, vídeos ou documentos via URL direta com legenda opcional e suporte a Spintax.
+    3. **Nó de Áudio (`audio`):** Envia mensagens de áudio (MP3/WebM) com opção de simular gravação de voz na hora.
+    4. **Nó de Delay / Espera (`delay`):** Aplica uma pausa temporizada em segundos (`seconds`) antes de avançar para o próximo nó do fluxo.
+  - **Canvas Visual Interativo (`FunnelCanvasPage`):**
+    - Grid pontilhado Dark/Neon, suporte a movimentação/arrasto (pan), controles de zoom (+, -, reset), arrasto fluido de nós e desenho de conexões em curvas Bezier estéticas entre os nós.
+    - Barra de ferramentas com edição de título do funil, salvamento instantâneo, exportação em JSON e exclusão com modal de confirmação.
+    - **Menu Flutuante "+ Adicionar Nó" (`FunnelNodeMenu`):**
+      - Ao ser acionado pelo botão inferior central da tela, posiciona-se automaticamente **acima do botão** (`bottom: 80px`), garantindo que todas as opções fiquem visíveis sem cortar na borda da tela.
+      - Ao ser acionado com clique do mouse no canvas, inverte sua abertura para cima (`translateY(-100%)`) caso a posição do cursor esteja próxima do limite inferior da tela.
+- **Disparo e Execução (`FunnelService`):**
+  - **Gatilho via Botão de Disparo em Massa:** No modal de envio de mensagens em massa (`ChatBroadcastModal`), o administrador pode configurar um botão de ação com o tipo `"Disparar Funil" (`funnel`)` selecionando o funil desejado.
+  - **Acionamento na DM do Aluno:** Quando o aluno recebe o comunicado na conversa privada (DM) e clica no botão, o frontend dispara a execução imediata através do endpoint `POST /api/v1/funnels/{funnel_id}/trigger`, iniciando a sequência de nós configurada no funil para aquele aluno em segundo plano com entrega instantânea via WebSocket e registro no histórico de execuções (`FunnelExecution`).
+
+
+
+
 
 
 

@@ -1,22 +1,51 @@
-import React, { useState, useRef } from 'react';
-import { Send, Loader2, Image, Paperclip, X, FileText, Video, Mic } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Loader2, Paperclip, Smile, AtSign } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ChatAudioRecorder from './ChatAudioRecorder';
+import ChatAttachedMediaPreview from './ChatAttachedMediaPreview';
+import ChatEmojiPickerPopup from './ChatEmojiPickerPopup';
+import ChatMentionContactsList from './ChatMentionContactsList';
 
 export default function ChatInputBar({
   onSendMessage,
   sending = false,
   channelName = '',
+  parentMessage = null,
 }) {
   const { addToast } = useToast();
   const [text, setText] = useState('');
   const [attachedMedia, setAttachedMedia] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const textareaRef = useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMentionPopup, setShowMentionPopup] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [contacts, setContacts] = useState([]);
+
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+  // Buscar contatos para autocomplete de @
+  useEffect(() => {
+    const fetchContacts = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/v1/chat/mention-contacts', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContacts(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar contatos:', err);
+      }
+    };
+    fetchContacts();
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -68,7 +97,7 @@ export default function ChatInputBar({
     }
   };
 
-  const handleSendRecordedAudio = async (audioBlob, durationSec) => {
+  const handleSendRecordedAudio = async (audioBlob) => {
     setUploading(true);
     const token = getAuthToken();
     try {
@@ -110,6 +139,28 @@ export default function ChatInputBar({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleSelectEmoji = (emoji) => {
+    setText((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  const handleSelectContact = (contact) => {
+    const atIndex = text.lastIndexOf('@');
+    if (atIndex !== -1) {
+      const beforeAt = text.slice(0, atIndex);
+      setText(`${beforeAt}@${contact.name} `);
+    } else {
+      setText((prev) => `${prev}@${contact.name} `);
+    }
+    setShowMentionPopup(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const handleSend = async () => {
     const trimmed = text.trim();
     if ((!trimmed && !attachedMedia) || sending || uploading) return;
@@ -121,6 +172,8 @@ export default function ChatInputBar({
     if (success) {
       setText('');
       setAttachedMedia(null);
+      setShowEmojiPicker(false);
+      setShowMentionPopup(false);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.focus();
@@ -129,8 +182,23 @@ export default function ChatInputBar({
   };
 
   const handleChange = (e) => {
-    setText(e.target.value);
-    // Ajuste dinâmico de altura até 120px
+    const val = e.target.value;
+    setText(val);
+
+    // Detectar digitação de @ para abrir popup de contatos
+    const lastAt = val.lastIndexOf('@');
+    if (lastAt !== -1 && lastAt >= val.length - 15) {
+      const afterAt = val.slice(lastAt + 1);
+      if (!afterAt.includes(' ')) {
+        setMentionFilter(afterAt);
+        setShowMentionPopup(true);
+      } else {
+        setShowMentionPopup(false);
+      }
+    } else {
+      setShowMentionPopup(false);
+    }
+
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -138,16 +206,19 @@ export default function ChatInputBar({
   };
 
   const isButtonDisabled = (!text.trim() && !attachedMedia) || sending || uploading;
+  const isCompact = Boolean(parentMessage);
 
   return (
     <footer
       className="chat-input-bar"
       data-testid="chat-input-bar"
       style={{
-        padding: '16px 24px',
+        padding: isCompact ? '12px 14px' : '16px 24px',
         backgroundColor: '#0f172a',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         flexShrink: 0,
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
       {/* Input de Arquivo Oculto */}
@@ -161,140 +232,42 @@ export default function ChatInputBar({
       />
 
       {/* Preview de Mídia Anexada */}
-      {attachedMedia && (
-        <div
-          data-testid="chat-attached-media-preview"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '8px 12px',
-            marginBottom: '8px',
-            backgroundColor: '#1e293b',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '8px',
-            width: 'fit-content',
-            maxWidth: '100%',
-          }}
-        >
-          {attachedMedia.type === 'image' ? (
-            <img
-              src={attachedMedia.url}
-              alt="Anexo"
-              style={{
-                width: '42px',
-                height: '42px',
-                objectFit: 'cover',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
-            />
-          ) : attachedMedia.type === 'video' ? (
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#3b82f6',
-              }}
-            >
-              <Video size={20} />
-            </div>
-          ) : attachedMedia.type === 'audio' ? (
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#10b981',
-              }}
-            >
-              <Mic size={20} />
-            </div>
-          ) : (
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ef4444',
-              }}
-            >
-              <FileText size={20} />
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, marginRight: '8px' }}>
-            <span
-              style={{
-                fontSize: '0.8125rem',
-                color: '#f8fafc',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '220px',
-              }}
-            >
-              {attachedMedia.name}
-            </span>
-            <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>
-              {attachedMedia.type === 'image'
-                ? 'Imagem anexada'
-                : attachedMedia.type === 'video'
-                ? 'Vídeo anexado'
-                : attachedMedia.type === 'audio'
-                ? 'Áudio anexado'
-                : 'Documento anexado'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleRemoveMedia}
-            title="Remover anexo"
-            data-testid="chat-remove-media-btn"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '4px',
-              transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-          >
-            <X size={16} />
-          </button>
-        </div>
+      <ChatAttachedMediaPreview
+        attachedMedia={attachedMedia}
+        onRemove={handleRemoveMedia}
+      />
+
+      {/* Popups de Emoji e Menção de Contatos */}
+      {showEmojiPicker && (
+        <ChatEmojiPickerPopup
+          onSelectEmoji={handleSelectEmoji}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+      )}
+
+      {showMentionPopup && (
+        <ChatMentionContactsList
+          contacts={contacts}
+          filterText={mentionFilter}
+          onSelectContact={handleSelectContact}
+          onClose={() => setShowMentionPopup(false)}
+        />
       )}
 
       <div
         style={{
+          position: 'relative',
           display: 'flex',
           alignItems: 'flex-end',
-          gap: '10px',
+          gap: isCompact ? '6px' : '10px',
           backgroundColor: '#1e293b',
           borderRadius: '12px',
-          padding: '8px 12px 8px 14px',
+          padding: isCompact ? '6px 8px' : '8px 12px 8px 14px',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
           transition: 'border-color 0.2s',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {/* Botão de Anexo / Mídia */}
@@ -331,6 +304,76 @@ export default function ChatInputBar({
           )}
         </button>
 
+        {/* Botão de Emojis */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowEmojiPicker((prev) => !prev);
+            setShowMentionPopup(false);
+          }}
+          disabled={uploading || sending || isRecording}
+          title="Inserir emoji"
+          data-testid="chat-emoji-button"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: showEmojiPicker ? '#fbbf24' : '#94a3b8',
+            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
+            padding: '6px',
+            marginBottom: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#fbbf24';
+          }}
+          onMouseLeave={(e) => {
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = showEmojiPicker ? '#fbbf24' : '#94a3b8';
+          }}
+        >
+          <Smile size={18} />
+        </button>
+
+        {/* Botão de Marcar Contato (@) */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowMentionPopup((prev) => !prev);
+            setShowEmojiPicker(false);
+            if (!text.includes('@')) {
+              setText((prev) => prev ? `${prev} @` : '@');
+            }
+            if (textareaRef.current) textareaRef.current.focus();
+          }}
+          disabled={uploading || sending || isRecording}
+          title="Mencionar alguém (@)"
+          data-testid="chat-mention-button"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: showMentionPopup ? '#38bdf8' : '#94a3b8',
+            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
+            padding: '6px',
+            marginBottom: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#38bdf8';
+          }}
+          onMouseLeave={(e) => {
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = showMentionPopup ? '#38bdf8' : '#94a3b8';
+          }}
+        >
+          <AtSign size={18} />
+        </button>
+
         {/* Componente de Gravação de Áudio */}
         <ChatAudioRecorder
           isRecording={isRecording}
@@ -351,6 +394,7 @@ export default function ChatInputBar({
           data-testid="chat-message-textarea"
           style={{
             flex: 1,
+            minWidth: '100px',
             backgroundColor: 'transparent',
             border: 'none',
             outline: 'none',

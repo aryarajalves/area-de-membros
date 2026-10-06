@@ -4,6 +4,36 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
 
 ---
 
+### [06/10/2026] - Sistema de Funis de Mensagens e Fluxos Visuais (Funnels)
+- **Tabelas Criadas:**
+  - `funnels`: Armazena os funis criados com nome, descrição, gatilhos e JSON completo do fluxo/canvas (`id`, `name`, `description`, `trigger_type`, `trigger_keywords`, `flow_data`, `is_active`, `created_by_user_id`, `created_at`, `updated_at`).
+  - `funnel_executions`: Rastreamento da execução de cada funil disparado para um aluno específico (`id`, `funnel_id`, `user_id`, `triggered_by`, `current_node_id`, `status`, `started_at`, `completed_at`, `logs`).
+- **Índices Criados:** `ix_funnels_name`, `ix_funnels_created_by`, `ix_funnel_executions_funnel_id`, `ix_funnel_executions_user_id`.
+- **Script de Migração:** `backend/scripts/migrate_funnels.py`
+
+---
+
+### [06/10/2026] - Sistema de Etiquetas de Alunos e Disparo em Massa de DMs com Histórico e Métricas
+- **Tabelas Criadas:**
+  - `student_tags`: Cadastro de etiquetas/tags (`id`, `name`, `color`, `description`, `created_at`).
+  - `student_tag_assignments`: Associação N:N entre alunos e etiquetas (`id`, `student_id`, `tag_id`, `created_at`) com restrição única `(student_id, tag_id)`.
+  - `chat_broadcast_campaigns`: Registro de campanhas de disparo em massa (`id`, `created_by_user_id`, `title`, `message`, `filter_type`, `filter_course_id`, `filter_tag_id`, `filter_role`, `total_recipients`, `sent_count`, `failed_count`, `delay_seconds`, `status`, `started_at`, `completed_at`, `duration_seconds`, `created_at`).
+  - `chat_broadcast_recipients`: Destinatários individuais com rastreamento de entrega e visualização (`id`, `campaign_id`, `recipient_id`, `message_id`, `status`, `error_message`, `sent_at`, `read_at`, `created_at`).
+- **Colunas Adicionadas:**
+  - `chat_messages.read_at`: Timestamp com fuso horário da leitura da mensagem pelo destinatário.
+- **Índices Criados:** `ix_student_tags_name`, `ix_student_tag_assignments_student_id`, `ix_student_tag_assignments_tag_id`, `ix_chat_broadcast_campaigns_status`, `ix_chat_broadcast_campaigns_created_at`, `ix_chat_broadcast_recipients_campaign_id`, `ix_chat_broadcast_recipients_recipient_id`, `ix_chat_broadcast_recipients_status`, `ix_chat_messages_read_at`.
+- **Script de Migração:** `backend/scripts/migrate_chat_broadcasts.py`
+
+---
+
+### [06/10/2026] - Criação da Tabela de Leitura de Mensagens por Canal (Chat Channel Read Status)
+- **Tabelas Criadas:**
+  - `chat_channel_read_status`: Rastreamento de leitura das mensagens de chat (`user_id`, `channel_id`, `last_read_message_id`, `updated_at`). Permite contabilizar com precisão o número de mensagens não lidas por canal e alimentar a notificação/badge na barra lateral do Chat da Comunidade.
+- **Índices Criados:** `ix_chat_channel_read_status_user_id`, `ix_chat_channel_read_status_channel_id`, `uq_chat_channel_read_user`.
+- **Script de Migração:** `backend/scripts/migrate_chat_channel_read_status.py`
+
+---
+
 ### [24/09/2026] - Criação Inicial do Esquema de Usuários e Autenticação
 - **Tabelas Criadas:**
   - `users`: Armazena os usuários do sistema com criptografia Argon2id + Pepper.
@@ -351,6 +381,53 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
 - **Índices Criados:**
   - `ix_support_topic_favorites_id`, `ix_support_topic_favorites_topic_id`, `ix_support_topic_favorites_user_id`.
 - **Script de Migração:** `backend/scripts/migrate_support_topic_favorites.py`
+
+---
+
+### [06/10/2026] - Sistema de Threads e Menções no Chat da Comunidade
+- **Tabela e Colunas Afetadas:**
+  - `chat_messages`: Adicionada a coluna `parent_id` (INTEGER, chave estrangeira autorreferencial para `chat_messages.id` com `ON DELETE CASCADE`) para estruturação de threads/respostas alinhadas.
+  - `chat_mentions`: Nova tabela criada para rastreamento de menções (`@nome`) em mensagens (`id`, `message_id`, `mentioned_user_id`, `is_read`, `created_at`).
+- **Índices Criados:**
+  - `ix_chat_messages_parent_id`.
+  - `ix_chat_mentions_message_id`, `ix_chat_mentions_mentioned_user_id`, `ix_chat_mentions_is_read`.
+- **Script de Migração:** `backend/scripts/migrate_chat_threads_and_mentions.py`
+
+---
+
+### [06/10/2026] - Correção e Vinculação de Sequences de ID no PostgreSQL
+- **Problema Corrigido:** Diversas tabelas no PostgreSQL tinham sequences criadas (`<tabela>_id_seq`), mas a coluna `id` estava sem o `DEFAULT nextval('...')` configurado, provocando erro de `NotNullViolation: null value in column "id"` ao inserir novos registros (como progresso de aula `lesson_progress`, tokens de reset, etc.).
+- **Tabelas Corrigidas:** `lesson_progress`, `password_reset_tokens`, `chat_messages`, `courses`, `modules`, `lessons`, `api_tokens`, `invites`, `lesson_attachments`, `lesson_comments`, `lesson_notes`, `lesson_ratings`, `lesson_reports`, `lesson_transcriptions`, `lesson_videos`, `platform_links`, `quiz_options`, `gamification_points`.
+- **Script de Migração/Correção:** `backend/scripts/fix_id_sequences.py`
+
+---
+
+### [06/10/2026] - Sistema de DMs (Mensagens Diretas) e Inbox Privada
+- **Tabela e Colunas Afetadas:**
+  - `chat_messages`: Adicionadas as colunas `recipient_id` (INTEGER, chave estrangeira para `users.id` com `ON DELETE CASCADE`) e `is_read` (BOOLEAN NOT NULL DEFAULT FALSE) para suportar conversas 1-a-1 e rastreamento de leitura.
+- **Índices Criados:**
+  - `ix_chat_messages_recipient_id` e `ix_chat_messages_is_read`.
+- **Script de Migração:** `backend/scripts/migrate_chat_dms.py`
+
+---
+
+### [06/10/2026] - Etiquetas de Alunos e Disparo em Massa de Mensagens Diretas (DMs)
+- **Tabelas Criadas:**
+  - `student_tags`: Armazena etiquetas de categorização de alunos (`id`, `name`, `color`, `description`, `created_at`).
+  - `student_tag_assignments`: Relacionamento N:N entre alunos e etiquetas (`id`, `student_id`, `tag_id`, `created_at`).
+  - `chat_broadcast_campaigns`: Registro de campanhas de disparo em massa (`id`, `created_by_user_id`, `title`, `message`, `filter_type`, `filter_course_id`, `filter_tag_id`, `filter_role`, `total_recipients`, `sent_count`, `failed_count`, `delay_seconds`, `status`, `started_at`, `completed_at`, `duration_seconds`, `created_at`).
+  - `chat_broadcast_recipients`: Histórico e auditoria de cada aluno destinatário da campanha (`id`, `campaign_id`, `recipient_id`, `message_id`, `status`, `error_message`, `sent_at`, `read_at`, `created_at`).
+- **Colunas Adicionadas:**
+  - `chat_messages`: Adicionada coluna `read_at` (TIMESTAMP WITH TIME ZONE NULL).
+- **Script de Migração:** `backend/scripts/migrate_chat_broadcasts.py`
+
+---
+
+### [06/10/2026] - Botões de Ação Interativos (CTA) e Filtro de Recência em Disparos e Chat
+- **Tabelas Afetadas:**
+  - `chat_messages`: Adicionadas colunas `button_text` (VARCHAR(100) NULL), `button_url` (VARCHAR(500) NULL) e `button_action_type` (VARCHAR(30) NULL) para suportar botões de ação interativos (Link externo ou navegação interna) nas mensagens.
+  - `chat_broadcast_campaigns`: Adicionadas colunas `filter_days` (INTEGER NULL) para segmentação por tempo de cadastro (7, 14, 30 dias), `button_text` (VARCHAR(100) NULL), `button_url` (VARCHAR(500) NULL) e `button_action_type` (VARCHAR(30) NULL) para configuração de botões de ação no disparo em massa.
+- **Script de Migração:** `backend/scripts/migrate_chat_broadcast_buttons_and_recency.py`
 
 
 

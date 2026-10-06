@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy } from 'lucide-react';
+import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy, Tag } from 'lucide-react';
 import StudentCourseProgressItem from './StudentCourseProgressItem';
 import StudentAccessHistoryModal from './StudentAccessHistoryModal';
 import StudentTriggerWebhookModal from './StudentTriggerWebhookModal';
 import StudentGamificationHistoryModal from './StudentGamificationHistoryModal';
+import StudentAssignTagsModal from './StudentAssignTagsModal';
+import StudentRpgLevelBadge from './StudentRpgLevelBadge';
 import { formatBrasiliaDateTime } from './studentDateUtils';
 
-export default function StudentCard({ student, isLightBg }) {
+export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
   const [expanded, setExpanded] = useState(true);
   const [selectedCourseForHistory, setSelectedCourseForHistory] = useState(null);
   const [selectedCourseForWebhook, setSelectedCourseForWebhook] = useState(null);
   const [showGamificationModal, setShowGamificationModal] = useState(false);
+  const [showAssignTagsModal, setShowAssignTagsModal] = useState(false);
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.035)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -120,12 +123,67 @@ export default function StudentCard({ student, isLightBg }) {
                 <Clock size={13} /> Aluno desde: {formatDateTime(student.created_at)}
               </span>
             </div>
+
+            {/* Etiquetas do Aluno */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+              {(student.tags || []).map((t) => (
+                <span
+                  key={t.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    backgroundColor: `${t.color || '#3b82f6'}1a`,
+                    color: t.color || '#3b82f6',
+                    border: `1px solid ${t.color || '#3b82f6'}40`,
+                  }}
+                  data-testid={`student-tag-${student.id}-${t.id}`}
+                >
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: t.color || '#3b82f6' }} />
+                  {t.name}
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowAssignTagsModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '3px 9px',
+                  borderRadius: '999px',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  backgroundColor: isLightBg ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                  border: '1px solid rgba(139, 92, 246, 0.4)',
+                  color: isLightBg ? '#7c3aed' : '#c4b5fd',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Atribuir ou criar etiquetas manualmente para este aluno"
+                data-testid={`edit-student-tags-btn-${student.id}`}
+              >
+                <Tag size={11} /> + Etiqueta
+              </button>
+            </div>
+
           </div>
         </div>
 
         {/* Resumo do Progresso Geral do Aluno e Conquistas */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
           {/* Badge de Pontos no Ranking de Conquistas */}
+          <StudentRpgLevelBadge
+            totalPoints={student.total_points ?? 0}
+            onClick={() => setShowGamificationModal(true)}
+            isLightBg={isLightBg}
+            studentId={student.id}
+          />
+
           <button
             type="button"
             onClick={() => setShowGamificationModal(true)}
@@ -264,6 +322,16 @@ export default function StudentCard({ student, isLightBg }) {
         onClose={() => setShowGamificationModal(false)}
         student={student}
         isLightBg={isLightBg}
+      />
+
+      {/* Modal de Atribuição de Etiquetas */}
+      <StudentAssignTagsModal
+        isOpen={showAssignTagsModal}
+        onClose={() => setShowAssignTagsModal(false)}
+        student={student}
+        onSuccess={() => {
+          if (onRefreshStudents) onRefreshStudents();
+        }}
       />
     </div>
   );

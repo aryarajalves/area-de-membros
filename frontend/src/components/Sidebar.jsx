@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle,
   Settings, UserCheck, Webhook, HelpCircle, X, MessagesSquare,
-  MessageSquareQuote, Trophy, ExternalLink
+  MessageSquareQuote, Trophy, ExternalLink, GitBranch
 } from 'lucide-react';
 import { getLinkIcon, getLinkColor } from './platform-settings/linkIcons';
 
@@ -12,6 +12,7 @@ export default function Sidebar({
   user,
   onLogout,
   pendingReportsCount = 0,
+  chatUnreadCount = 0,
   bgColor = '#090d16',
   isMobileOpen = false,
   onCloseMobile
@@ -85,13 +86,16 @@ export default function Sidebar({
       title: 'Comunidade & Social',
       items: [
         ...(isSuperAdmin || isAdmin || isAluno
-          ? [{ id: 'chat', label: 'Chat da Comunidade', icon: MessagesSquare }]
+          ? [{ id: 'chat', label: 'Chat da Comunidade', icon: MessagesSquare, badge: chatUnreadCount }]
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'ranking', label: 'Ranking & Conquistas', icon: Trophy }]
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'testimonials', label: 'Depoimentos', icon: MessageSquareQuote }]
+          : []),
+        ...(isSuperAdmin || isAdmin
+          ? [{ id: 'funnels', label: 'Funis de Mensagens', icon: GitBranch }]
           : []),
       ],
     },

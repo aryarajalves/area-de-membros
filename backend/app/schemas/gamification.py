@@ -13,9 +13,30 @@ class GamificationStudentItem(BaseModel):
     solutions_count: int = 0
     lessons_completed_count: int = 0
     badge: str
+    level: int = 1
+    level_title: str = "Bronze I"
+    level_badge: str = "🛡️ Bronze I"
+    level_tier: str = "Bronze"
+    level_color: str = "#cd7f32"
+    level_progress_percent: int = 0
+    points_to_next_level: int = 25
+    is_max_level: bool = False
     is_current_user: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RpgLevelItem(BaseModel):
+    level: int
+    tier: str
+    sub: str
+    title: str
+    badge: str
+    min_points: int
+    next_level_min_points: Optional[int] = None
+    points_required: int = 0
+    color: str
+    tier_color: str
 
 
 class GamificationRankingResponse(BaseModel):

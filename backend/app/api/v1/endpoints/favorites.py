@@ -17,6 +17,7 @@ from app.models.course import (
 )
 from app.models.support import SupportTopic, SupportTopicPin, SupportTopicFavorite
 from app.models.chat import ChatMessage, ChatMessageFavorite
+from app.services.chat_ws_manager import chat_manager
 
 router = APIRouter(prefix="/favorites", tags=["Favoritos"])
 
@@ -40,14 +41,17 @@ def toggle_lesson_favorite(
     if existing:
         db.delete(existing)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Aula ID {lesson_id} desfavoritada por {current_user.email}")
         return {"is_favorited": False, "lesson_id": lesson_id}
     else:
         fav = LessonFavorite(lesson_id=lesson_id, user_id=current_user.id)
         db.add(fav)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Aula ID {lesson_id} favoritada por {current_user.email}")
         return {"is_favorited": True, "lesson_id": lesson_id}
+
 
 
 @router.get("/lessons/{lesson_id}/status", summary="Verificar status de favorito da aula")
@@ -83,12 +87,14 @@ def toggle_comment_favorite(
     if existing:
         db.delete(existing)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Comentário ID {comment_id} desfavoritado por {current_user.email}")
         return {"is_favorited": False, "comment_id": comment_id}
     else:
         fav = LessonCommentFavorite(comment_id=comment_id, user_id=current_user.id)
         db.add(fav)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Comentário ID {comment_id} favoritado por {current_user.email}")
         return {"is_favorited": True, "comment_id": comment_id}
 
@@ -126,14 +132,17 @@ def toggle_topic_favorite(
     if existing:
         db.delete(existing)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Dúvida ID {topic_id} desfavoritada por {current_user.email}")
         return {"is_favorited": False, "topic_id": topic_id}
     else:
         fav = SupportTopicFavorite(topic_id=topic_id, user_id=current_user.id)
         db.add(fav)
         db.commit()
+        chat_manager.send_to_user_sync(current_user.id, "favorites_updated", {"user_id": current_user.id})
         logger.info(f"Dúvida ID {topic_id} favoritada por {current_user.email}")
         return {"is_favorited": True, "topic_id": topic_id}
+
 
 
 @router.get("/topics/{topic_id}/status", summary="Verificar status de favorito da dúvida de suporte")

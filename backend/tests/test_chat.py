@@ -480,4 +480,221 @@ def test_chat_media_gallery_endpoint(seed_chat_data):
     assert all(item["media_type"] in ("file", "document") for item in data_file["items"])
 
 
+def test_send_and_list_dm_messages(seed_chat_data):
+    """Testa envio de DM entre contatos e listagem na inbox privada."""
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("chat_aluno2@test.com", "pass123")
+
+    db = TestingSessionLocal()
+    aluno2 = db.query(User).filter(User.email == "chat_aluno2@test.com").first()
+    aluno1 = db.query(User).filter(User.email == "chat_aluno1@test.com").first()
+    db.close()
+
+    # 1. Aluno 1 envia DM para Aluno 2
+    res_send = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "dm",
+            "recipient_id": aluno2.id,
+            "message": "Olá Aluno 2, mensagem privada!",
+        },
+        headers=aluno1_headers,
+    )
+    assert res_send.status_code == 201
+    dm_msg = res_send.json()
+    assert dm_msg["channel_type"] == "dm"
+    assert dm_msg["recipient_id"] == aluno2.id
+    assert dm_msg["message"] == "Olá Aluno 2, mensagem privada!"
+
+    # 2. Aluno 2 consulta suas conversas de DM (inbox)
+    res_convs = client.get("/api/v1/chat/dm/conversations", headers=aluno2_headers)
+    assert res_convs.status_code == 200
+    convs = res_convs.json()
+    assert len(convs) >= 1
+    found = next((c for c in convs if c["contact"]["id"] == aluno1.id), None)
+    assert found is not None
+    assert found["unread_count"] >= 1
+    assert found["last_message"] == "Olá Aluno 2, mensagem privada!"
+
+    # 3. Aluno 2 abre as mensagens com Aluno 1 (marca como lida)
+    res_msgs = client.get(f"/api/v1/chat/dm/messages/{aluno1.id}", headers=aluno2_headers)
+    assert res_msgs.status_code == 200
+    msgs = res_msgs.json()
+    assert any(m["message"] == "Olá Aluno 2, mensagem privada!" for m in msgs)
+
+    # 4. Aluno 2 consulta conversas não lidas e deve estar zerado
+    res_unread = client.get("/api/v1/chat/dm/conversations?unread_only=true", headers=aluno2_headers)
+    assert res_unread.status_code == 200
+    unread_convs = res_unread.json()
+    assert not any(c["contact"]["id"] == aluno1.id for c in unread_convs)
+
+
+def test_chat_unread_summary_and_mark_channel_read(seed_chat_data):
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("chat_aluno2@test.com", "pass123")
+
+    # 1. Aluno 1 envia mensagem na Comunidade Geral
+    res_send = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "message": "Nova mensagem na comunidade geral!",
+        },
+        headers=aluno1_headers,
+    )
+    assert res_send.status_code == 201
+    msg_id = res_send.json()["id"]
+
+    # 2. Aluno 2 consulta o unread-summary (deve contabilizar a mensagem não lida)
+    res_summary = client.get("/api/v1/chat/unread-summary", headers=aluno2_headers)
+    assert res_summary.status_code == 200
+    summary_data = res_summary.json()
+    assert summary_data["total_unread"] >= 1
+    assert summary_data["channel_unread"] >= 1
+
+    # 3. Aluno 2 consulta a lista de canais (Canal Geral deve ter unread_count >= 1)
+    res_channels = client.get("/api/v1/chat/channels", headers=aluno2_headers)
+    assert res_channels.status_code == 200
+    channels = res_channels.json()
+    gen_channel = next((c for c in channels if c["id"] == "general"), None)
+    assert gen_channel is not None
+    assert gen_channel["unread_count"] >= 1
+
+    # 4. Aluno 2 marca o canal geral como lido
+    res_read = client.post(
+        f"/api/v1/chat/channels/general/read?last_message_id={msg_id}",
+        headers=aluno2_headers,
+    )
+    assert res_read.status_code == 200
+    assert res_read.json()["status"] == "ok"
+
+    # 5. Ao consultar novamente os canais, unread_count do canal geral deve ser 0
+    res_channels_after = client.get("/api/v1/chat/channels", headers=aluno2_headers)
+    assert res_channels_after.status_code == 200
+    gen_after = next((c for c in res_channels_after.json() if c["id"] == "general"), None)
+    assert gen_after is not None
+    assert gen_after["unread_count"] == 0
+
+
+def test_chat_notifications_and_threads_flow(seed_chat_data):
+    """
+    Testa o fluxo da Central de Notificações:
+    - Menção ao Aluno 2
+    - Resposta na thread criada pelo Aluno 2
+    - Consulta de /notifications (inbox, mentions, threads)
+    - Consulta de /notifications/counts
+    - Marcar todas como lidas via /notifications/mark-all-read
+    """
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("chat_aluno2@test.com", "pass123")
+    db = TestingSessionLocal()
+    aluno2 = db.query(User).filter(User.email == "chat_aluno2@test.com").first()
+    aluno2_id = aluno2.id
+    db.close()
+
+    # 1. Aluno 2 cria uma mensagem pai
+    res_parent = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Minha pergunta sobre a aula"},
+        headers=aluno2_headers,
+    )
+    assert res_parent.status_code == 201
+    parent_id = res_parent.json()["id"]
+
+    # 2. Aluno 1 responde na thread do Aluno 2
+    res_reply = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "parent_id": parent_id,
+            "message": "Aqui está a resposta para sua dúvida!",
+        },
+        headers=aluno1_headers,
+    )
+    assert res_reply.status_code == 201
+
+    # 3. Aluno 1 também menciona Aluno 2 em outra mensagem
+    res_mention = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "message": "Atenção @Aluno Dois veja isso",
+            "mentioned_user_ids": [aluno2_id],
+        },
+        headers=aluno1_headers,
+    )
+    assert res_mention.status_code == 201
+
+    # 4. Aluno 2 verifica contadores de notificações
+    res_counts = client.get("/api/v1/chat/notifications/counts", headers=aluno2_headers)
+    assert res_counts.status_code == 200
+    counts = res_counts.json()
+    assert counts["mentions"] >= 1
+    assert counts["threads"] >= 1
+    assert counts["inbox"] >= 2
+
+    # 5. Aluno 2 consulta lista de notificações por aba
+    res_inbox = client.get("/api/v1/chat/notifications?tab=inbox", headers=aluno2_headers)
+    assert res_inbox.status_code == 200
+    inbox_items = res_inbox.json()
+    assert len(inbox_items) >= 2
+
+    res_threads = client.get("/api/v1/chat/notifications?tab=threads", headers=aluno2_headers)
+    assert res_threads.status_code == 200
+    threads_items = res_threads.json()
+    assert any(item["type"] == "thread_reply" for item in threads_items)
+
+    # 6. Aluno 2 marca todas como lidas
+    res_mark_all = client.post("/api/v1/chat/notifications/mark-all-read", headers=aluno2_headers)
+    assert res_mark_all.status_code == 200
+
+    # 7. Contadores devem estar zerados
+    res_counts_after = client.get("/api/v1/chat/notifications/counts", headers=aluno2_headers)
+    assert res_counts_after.status_code == 200
+    counts_after = res_counts_after.json()
+    assert counts_after["total_unread"] == 0
+
+
+@pytest.mark.asyncio
+async def test_chat_realtime_ws_manager_send_to_user():
+    """Valida o envio direcionado por usuário no ChatConnectionManager."""
+    from unittest.mock import AsyncMock
+    from app.services.chat_ws_manager import ChatConnectionManager
+
+    manager = ChatConnectionManager()
+    ws_user1 = AsyncMock()
+    ws_user2 = AsyncMock()
+
+    await manager.connect(ws_user1, user_id=10, role="aluno", name="Aluno 10")
+    await manager.connect(ws_user2, user_id=20, role="admin", name="Admin 20")
+
+    assert len(manager.active_connections) == 2
+
+    # Envia evento direcionado apenas para user_id=10
+    await manager.send_to_user(user_id=10, event_type="favorites_updated", data={"user_id": 10})
+
+    assert ws_user1.send_text.called
+    payload1 = ws_user1.send_text.call_args[0][0]
+    assert "favorites_updated" in payload1
+    assert '"user_id": 10' in payload1
+
+    # O usuário 2 não deve receber essa mensagem privada
+    assert not ws_user2.send_text.called
+
+    # Envia evento de nova DM para user_id=20
+    await manager.send_to_user(user_id=20, event_type="new_dm", data={"recipient_id": 20, "sender_id": 10})
+    assert ws_user2.send_text.called
+    payload2 = ws_user2.send_text.call_args[0][0]
+    assert "new_dm" in payload2
+    assert '"recipient_id": 20' in payload2
+
+    # Desconecta os sockets
+    await manager.disconnect(ws_user1)
+    await manager.disconnect(ws_user2)
+    assert len(manager.active_connections) == 0
+
+
+
+
+
 

@@ -70,4 +70,40 @@ describe('ChatSidebar Component', () => {
     // O canal geral permanece visível
     expect(screen.getByText('Comunidade Geral')).toBeInTheDocument();
   });
+
+  it('renders unread badges for general and course channels when unread_count > 0', () => {
+    const channelsWithUnread = [
+      {
+        id: 'general',
+        name: 'Comunidade Geral',
+        type: 'general',
+        description: 'Bate-papo geral',
+        unread_count: 7,
+      },
+      {
+        id: 'course-1',
+        name: 'Curso de React',
+        type: 'course',
+        course_id: 1,
+        description: 'Turma de React',
+        unread_count: 3,
+      },
+    ];
+
+    render(
+      <ChatSidebar
+        channels={channelsWithUnread}
+        selectedChannel={channelsWithUnread[0]}
+        onSelectChannel={vi.fn()}
+      />
+    );
+
+    const generalBadge = screen.getByTestId('unread-badge-general');
+    expect(generalBadge).toBeInTheDocument();
+    expect(generalBadge).toHaveTextContent('7');
+
+    const courseBadge = screen.getByTestId('unread-badge-course-1');
+    expect(courseBadge).toBeInTheDocument();
+    expect(courseBadge).toHaveTextContent('3');
+  });
 });

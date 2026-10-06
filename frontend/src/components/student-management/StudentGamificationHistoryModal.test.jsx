@@ -109,4 +109,51 @@ describe('StudentGamificationHistoryModal Component', () => {
       expect(screen.getByTestId('gamification-history-empty')).toHaveTextContent('Nenhum ponto registrado para este aluno ainda.');
     });
   });
+
+  it('paginates points history displaying 20 per page with pagination bar and navigation', async () => {
+    const manyHistory = Array.from({ length: 25 }, (_, i) => ({
+      id: 100 + i,
+      action: 'lesson_completed',
+      points: 15,
+      description: `Aula #${i + 1} Concluída`,
+      created_at: '2026-10-05T12:00:00Z',
+    }));
+
+    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ...mockHistoryData,
+        history: manyHistory,
+      }),
+    });
+
+    render(
+      <StudentGamificationHistoryModal
+        isOpen={true}
+        onClose={vi.fn()}
+        student={mockStudent}
+        isLightBg={false}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('history-item-100')).toBeInTheDocument();
+      expect(screen.getByTestId('history-item-119')).toBeInTheDocument();
+      expect(screen.queryByTestId('history-item-120')).not.toBeInTheDocument();
+    });
+
+    const paginationBar = screen.getByTestId('gamification-history-pagination-bar');
+    expect(paginationBar).toBeInTheDocument();
+    expect(paginationBar).toHaveTextContent(/Exibindo 1–20 de 25 pontuações/i);
+
+    // Navega para página 2
+    fireEvent.click(screen.getByTestId('gamification-history-page-2-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('history-item-100')).not.toBeInTheDocument();
+      expect(screen.getByTestId('history-item-120')).toBeInTheDocument();
+      expect(screen.getByTestId('history-item-124')).toBeInTheDocument();
+      expect(paginationBar).toHaveTextContent(/Exibindo 21–25 de 25 pontuações/i);
+    });
+  });
 });

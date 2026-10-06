@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Upload, ChevronDown } from 'lucide-react';
+import { Download, Upload, ChevronDown, Send, Tag } from 'lucide-react';
 
 export default function StudentHeaderActions({
   textColor,
@@ -9,9 +9,63 @@ export default function StudentHeaderActions({
   setIsExportDropdownOpen,
   onExport,
   onOpenImport,
+  onOpenBroadcast,
+  onOpenTags,
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', flexWrap: 'wrap' }}>
+      {/* Botão Gerenciar Etiquetas */}
+      {onOpenTags && (
+        <button
+          type="button"
+          onClick={onOpenTags}
+          style={{
+            padding: '9px 15px',
+            borderRadius: '8px',
+            border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
+            backgroundColor: isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.05)',
+            color: textColor,
+            fontSize: '0.88rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            transition: 'all 0.2s ease',
+          }}
+          data-testid="open-student-tags-modal-btn"
+        >
+          <Tag size={16} color="#3b82f6" />
+          Etiquetas
+        </button>
+      )}
+
+      {/* Botão Disparo em Massa */}
+      {onOpenBroadcast && (
+        <button
+          type="button"
+          onClick={onOpenBroadcast}
+          style={{
+            padding: '9px 18px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            color: '#ffffff',
+            border: 'none',
+            fontSize: '0.88rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 12px rgba(139, 92, 246, 0.35)',
+            transition: 'all 0.2s ease',
+          }}
+          data-testid="open-broadcast-modal-btn"
+        >
+          <Send size={16} />
+          Disparo em Massa
+        </button>
+      )}
       {/* Dropdown de Exportação */}
       <div style={{ position: 'relative' }}>
         <button

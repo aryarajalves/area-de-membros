@@ -237,6 +237,12 @@ describe('GamificationRanking Component', () => {
     expect(screen.getByTestId('podium-points-2')).toHaveTextContent('320');
     expect(screen.getByTestId('podium-points-3')).toHaveTextContent('210');
 
+    // Níveis RPG exibidos no banner "Sua Posição" e nos cards do Pódio
+    expect(screen.getByTestId('student-rpg-badge-my-position')).toBeInTheDocument();
+    expect(screen.getByTestId('student-rpg-badge-10')).toBeInTheDocument();
+    expect(screen.getByTestId('student-rpg-badge-20')).toBeInTheDocument();
+    expect(screen.getByTestId('student-rpg-badge-30')).toBeInTheDocument();
+
     // Tabela completa
     expect(screen.getByTestId('ranking-table-container')).toBeInTheDocument();
     expect(screen.getByTestId('student-points-40')).toHaveTextContent('110 pts');

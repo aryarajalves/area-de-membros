@@ -25,6 +25,8 @@ describe('FavoritesDropdown Component', () => {
         created_at: '2026-10-05T13:00:00Z',
         course_id: 1,
         course_title: 'Backend Expert',
+        module_id: 101,
+        module_title: 'Módulo de Microsserviços',
       },
     ],
     comments: [
@@ -103,6 +105,7 @@ describe('FavoritesDropdown Component', () => {
     // Clica na aba Aulas
     fireEvent.click(screen.getByTestId('fav-tab-aulas'));
     expect(screen.getByText('Arquitetura de Microsserviços')).toBeInTheDocument();
+    expect(screen.getByText(/Módulo: Módulo de Microsserviços/i)).toBeInTheDocument();
 
     // Clica na aba Comentários
     fireEvent.click(screen.getByTestId('fav-tab-comentarios'));

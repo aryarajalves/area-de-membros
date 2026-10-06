@@ -13,6 +13,26 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [initialTargetLesson, setInitialTargetLesson] = useState(null);
+
+  useEffect(() => {
+    const handleOpenCourseLesson = (e) => {
+      const { courseId, moduleId, lessonId } = e.detail || {};
+      if (!courseId) return;
+
+      setInitialTargetLesson({ moduleId, lessonId });
+      setSelectedCourse((prev) => {
+        if (prev?.id === Number(courseId)) return prev;
+        const found = courses.find((c) => c.id === Number(courseId));
+        return found || { id: Number(courseId) };
+      });
+    };
+
+    window.addEventListener('open_course_lesson', handleOpenCourseLesson);
+    return () => {
+      window.removeEventListener('open_course_lesson', handleOpenCourseLesson);
+    };
+  }, [courses]);
 
   useEffect(() => {
     if (onCourseViewChange) {
@@ -216,8 +236,11 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       <CourseClassroom
         course={{ ...selectedCourse, bg_color: activeBgColor }}
         currentUser={currentUser}
+        initialModuleId={initialTargetLesson?.moduleId}
+        initialLessonId={initialTargetLesson?.lessonId}
         onBack={() => {
           setSelectedCourse(null);
+          setInitialTargetLesson(null);
           fetchCourses();
         }}
       />
