@@ -1,0 +1,194 @@
+/* Mobile Header (Hidden on Desktop) */
+.mobile-header {
+  display: none;
+}
+
+.sidebar-close-btn {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Responsividade Global para Telas Médias e Pequenas (<= 900px) */
+@media (max-width: 900px) {
+  .classroom-layout-grid,
+  .classroom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+}
+
+/* Responsividade Completa para Dispositivos Móveis (<= 768px) */
+@media (max-width: 768px) {
+  /* Container Principal */
+  .app-container {
+    flex-direction: column;
+    overflow-x: hidden;
+    height: 100vh;
+  }
+
+  /* Mobile Header Visível */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 16px;
+    background-color: inherit;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .app-container:not(.app-dark-theme) .mobile-header {
+    border-bottom: 1px solid #eef0f3;
+  }
+
+  .mobile-menu-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .mobile-menu-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+  }
+
+  .mobile-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-logo-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mobile-header-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .mobile-header-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: #7c3aed;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Sidebar Drawer Retrátil */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1100;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: none;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeInBackdrop 0.2s ease forwards;
+  }
+
+  @keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    margin-left: auto;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .sidebar-close-btn:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Conteúdo Principal em 100% da Largura */
+  .main-content {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: 1;
+    height: calc(100vh - 60px);
+    overflow-x: hidden;
+  }
+
+  /* Sala de Aula e Paddings Reduzidos para Mobile */
+  .classroom-container {
+    padding: 16px 14px !important;
+  }
+
+  /* Tabelas com Scroll Horizontal Suave */
+  .table-card,
+  .table-container,
+  .users-table-container,
+  .data-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .users-table,
+  .students-table,
+  .data-table {
+    min-width: 620px;
+  }
+
+  /* Modais de Filtro e Barras de Busca */
+  .table-toolbar,
+  .student-filter-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+}
+
+

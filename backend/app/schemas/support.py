@@ -53,6 +53,8 @@ class SupportTopicListItem(BaseModel):
     replies_count: int
     liked_by_me: bool
     has_solution: bool = False
+    is_pinned: bool = False
+    is_favorited: bool = False
     course: SupportCourseItem
     author: SupportAuthor
     last_reply: Optional[LastReplyInfo] = None
@@ -70,6 +72,8 @@ class SupportTopicDetail(BaseModel):
     likes_count: int
     liked_by_me: bool
     has_solution: bool = False
+    is_pinned: bool = False
+    is_favorited: bool = False
     course: SupportCourseItem
     author: SupportAuthor
     created_at: datetime
@@ -107,4 +111,10 @@ class SupportStatsResponse(BaseModel):
     resolved_count: int
     resolution_rate_pct: int
     active_members_count: int
+
+
+class SupportTopicPinResponse(BaseModel):
+    pinned: bool
+    message: str
+    total_pinned: int
 

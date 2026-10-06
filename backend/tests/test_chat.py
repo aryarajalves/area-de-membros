@@ -342,3 +342,142 @@ def test_chat_send_media_message(seed_chat_data):
     assert data["media_type"] == "image"
     assert data["message"] == "Olhem esse print!"
 
+
+def test_chat_websocket_connection_and_ping(seed_chat_data):
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    token = aluno1_headers["Authorization"].split(" ")[1]
+
+    with client.websocket_connect(f"/api/v1/chat/ws?token={token}") as ws:
+        ws.send_text('{"type": "ping"}')
+        reply = ws.receive_text()
+        assert '{"type": "pong"}' in reply
+
+
+def test_chat_websocket_unauthorized_rejected():
+    with pytest.raises(Exception):
+        with client.websocket_connect("/api/v1/chat/ws?token=invalid_token") as ws:
+            pass
+
+
+def test_chat_websocket_broadcast_on_new_message(seed_chat_data):
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("chat_aluno2@test.com", "pass123")
+    token1 = aluno1_headers["Authorization"].split(" ")[1]
+
+    with client.websocket_connect(f"/api/v1/chat/ws?token={token1}") as ws:
+        # Aluno 2 envia mensagem via REST
+        res_post = client.post(
+            "/api/v1/chat/messages",
+            json={
+                "channel_type": "general",
+                "message": "Mensagem broadcast em tempo real!",
+            },
+            headers=aluno2_headers,
+        )
+        assert res_post.status_code == 201
+        created_id = res_post.json()["id"]
+
+        # Aluno 1 deve receber o evento no WebSocket imediatamente
+        event_raw = ws.receive_text()
+        import json
+        event = json.loads(event_raw)
+        assert event["type"] == "new_message"
+        assert event["data"]["id"] == created_id
+        assert event["data"]["message"] == "Mensagem broadcast em tempo real!"
+
+
+def test_chat_upload_audio_and_file(seed_chat_data):
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+
+    # 1. Upload de áudio
+    audio_content = b"fake audio content webm"
+    res_audio = client.post(
+        "/api/v1/chat/upload-media",
+        files={"file": ("audio_teste.webm", audio_content, "audio/webm")},
+        headers=aluno1_headers,
+    )
+    assert res_audio.status_code == 200
+    data_audio = res_audio.json()
+    assert data_audio["media_type"] == "audio"
+    assert "audio_teste.webm" in data_audio["filename"]
+    assert "media_url" in data_audio
+
+    # 2. Upload de documento
+    doc_content = b"fake pdf content"
+    res_doc = client.post(
+        "/api/v1/chat/upload-media",
+        files={"file": ("apostila.pdf", doc_content, "application/pdf")},
+        headers=aluno1_headers,
+    )
+    assert res_doc.status_code == 200
+    data_doc = res_doc.json()
+    assert data_doc["media_type"] == "file"
+    assert data_doc["filename"] == "apostila.pdf"
+
+
+def test_chat_media_gallery_endpoint(seed_chat_data):
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+
+    # Enviar mensagem com imagem
+    client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "message": "Foto 1",
+            "media_url": "https://cdn.test.com/foto1.jpg",
+            "media_type": "image",
+        },
+        headers=aluno1_headers,
+    )
+
+    # Enviar mensagem com áudio
+    client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "message": "Áudio explicativo",
+            "media_url": "https://cdn.test.com/audio1.webm",
+            "media_type": "audio",
+        },
+        headers=aluno1_headers,
+    )
+
+    # Enviar mensagem com documento
+    client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "general",
+            "message": "Guia PDF",
+            "media_url": "https://cdn.test.com/guia.pdf",
+            "media_type": "file",
+        },
+        headers=aluno1_headers,
+    )
+
+    # 1. Buscar todas as mídias
+    res_all = client.get("/api/v1/chat/media-gallery?channel_type=general", headers=aluno1_headers)
+    assert res_all.status_code == 200
+    data_all = res_all.json()
+    assert data_all["total"] >= 3
+    assert len(data_all["items"]) >= 3
+
+    # 2. Filtrar por áudio
+    res_audio = client.get("/api/v1/chat/media-gallery?channel_type=general&media_type=audio", headers=aluno1_headers)
+    assert res_audio.status_code == 200
+    data_audio = res_audio.json()
+    assert all(item["media_type"] == "audio" for item in data_audio["items"])
+
+    # 3. Filtrar por foto
+    res_img = client.get("/api/v1/chat/media-gallery?channel_type=general&media_type=image", headers=aluno1_headers)
+    assert res_img.status_code == 200
+    data_img = res_img.json()
+    assert all(item["media_type"] == "image" for item in data_img["items"])
+
+    # 4. Filtrar por documento
+    res_file = client.get("/api/v1/chat/media-gallery?channel_type=general&media_type=file", headers=aluno1_headers)
+    assert res_file.status_code == 200
+    data_file = res_file.json()
+    assert all(item["media_type"] in ("file", "document") for item in data_file["items"])
+
+
+

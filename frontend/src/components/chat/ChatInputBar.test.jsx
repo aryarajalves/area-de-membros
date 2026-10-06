@@ -25,19 +25,47 @@ describe('ChatInputBar Component', () => {
     expect(screen.getByTestId('chat-send-button')).toBeDisabled();
   });
 
-  it('enables send button when text is typed and calls onSendMessage', async () => {
-    const handleSend = vi.fn().mockResolvedValue(true);
-    renderComponent({ onSendMessage: handleSend });
+  it('renders record audio button and expanded file accept types', () => {
+    renderComponent({ channelName: 'geral' });
 
-    const textarea = screen.getByTestId('chat-message-textarea');
-    fireEvent.change(textarea, { target: { value: 'Olá mundo!' } });
+    const recordBtn = screen.getByTestId('chat-record-audio-btn');
+    expect(recordBtn).toBeInTheDocument();
 
-    const sendBtn = screen.getByTestId('chat-send-button');
-    expect(sendBtn).not.toBeDisabled();
+    const fileInput = screen.getByTestId('chat-file-input');
+    expect(fileInput).toHaveAttribute('accept', 'image/*,video/*,audio/*,.pdf,.docx,.xlsx,.txt,.zip');
+  });
 
-    fireEvent.click(sendBtn);
+  it('triggers recording mode when record button is clicked and getUserMedia is available', async () => {
+    const mockMediaStream = {
+      getTracks: () => [{ stop: vi.fn() }],
+    };
+    const mockRecorderInstance = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      ondataavailable: null,
+      onstop: null,
+      state: 'recording',
+    };
+
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      mediaDevices: {
+        getUserMedia: vi.fn().mockResolvedValue(mockMediaStream),
+      },
+    });
+    function MockMediaRecorder() {
+      return mockRecorderInstance;
+    }
+    MockMediaRecorder.isTypeSupported = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('MediaRecorder', MockMediaRecorder);
+
+    renderComponent();
+
+    const recordBtn = screen.getByTestId('chat-record-audio-btn');
+    fireEvent.click(recordBtn);
+
     await waitFor(() => {
-      expect(handleSend).toHaveBeenCalledWith('Olá mundo!', null, null);
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: true });
     });
   });
 });

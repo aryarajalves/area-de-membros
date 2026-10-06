@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Star, Flag, AlertTriangle, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, Star, Flag, AlertTriangle, X, Loader2, Bookmark } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 export default function LessonActionToolbar({
@@ -18,6 +18,55 @@ export default function LessonActionToolbar({
   const [reportDescription, setReportDescription] = useState('');
   const [sendingReport, setSendingReport] = useState(false);
   const [togglingProgress, setTogglingProgress] = useState(false);
+  const [isLessonFavorited, setIsLessonFavorited] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+
+  // Busca status de favorito da aula
+  useEffect(() => {
+    if (!lessonId) return;
+    const fetchFavoriteStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/v1/favorites/lessons/${lessonId}/status`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsLessonFavorited(!!data.is_favorited);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar favorito da aula:', err);
+      }
+    };
+    fetchFavoriteStatus();
+  }, [lessonId]);
+
+  const handleToggleFavoriteLesson = async () => {
+    if (togglingFavorite || !lessonId) return;
+    setTogglingFavorite(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/v1/favorites/lessons/${lessonId}/toggle`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const favState = data.is_favorited !== undefined ? data.is_favorited : data.is_favorite;
+        setIsLessonFavorited(!!favState);
+        addToast(
+          favState ? 'Aula adicionada aos favoritos!' : 'Aula removida dos favoritos.',
+          'success'
+        );
+        window.dispatchEvent(new CustomEvent('favorites_updated'));
+      }
+    } catch (err) {
+      console.error('Erro ao alternar favorito da aula:', err);
+      addToast('Erro ao atualizar favorito da aula.', 'error');
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   // Busca avaliação da aula
   useEffect(() => {
@@ -222,6 +271,32 @@ export default function LessonActionToolbar({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Botão de Favoritar Aula */}
+        <button
+          type="button"
+          onClick={handleToggleFavoriteLesson}
+          disabled={togglingFavorite}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 14px',
+            borderRadius: '999px',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            color: isLessonFavorited ? '#38bdf8' : '#94a3b8',
+            backgroundColor: isLessonFavorited ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.05)',
+            border: isLessonFavorited ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+            cursor: togglingFavorite ? 'wait' : 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          data-testid="toggle-lesson-favorite-btn"
+          title={isLessonFavorited ? 'Remover dos favoritos' : 'Favoritar aula'}
+        >
+          <Bookmark size={14} fill={isLessonFavorited ? '#38bdf8' : 'none'} color="#38bdf8" />
+          <span>{isLessonFavorited ? 'Favoritada' : 'Favoritar'}</span>
+        </button>
+
         {/* 2. Botão de Relatar Problema */}
         <button
           type="button"

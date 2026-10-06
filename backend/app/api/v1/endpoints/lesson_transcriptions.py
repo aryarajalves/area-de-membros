@@ -1,5 +1,5 @@
-import os
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query, Header
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -10,9 +10,29 @@ from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscr
 from app.schemas.course import LessonTranscriptionResponse, LessonTranscriptionTriggerRequest
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.api.v1.endpoints.courses import _verify_student_course_access
-from app.services.ai_transcription_service import ai_transcription_service
+from app.services.ai_transcription_service import (
+    ai_transcription_service,
+    run_transcription_background_task,
+    get_or_calculate_transcription_cost
+)
 
 router = APIRouter(prefix="/courses", tags=["Lesson Transcriptions"])
+
+
+def get_current_user_from_header_or_query(
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Permite autenticação via Header Authorization/X-Api-Key ou via Query Parameter 'token'.
+    Isso é essencial para abertura direta de documentos HTML em novas abas do navegador (window.open).
+    """
+    auth_header = authorization
+    if not auth_header and token:
+        auth_header = f"Bearer {token.strip()}"
+    return get_current_user(authorization=auth_header, x_api_key=x_api_key, db=db)
 
 
 def _check_lesson_access(db: Session, course_id: int, module_id: int, lesson_id: int, user: User) -> Lesson:
@@ -48,7 +68,7 @@ def get_lesson_transcription(
     current_user: User = Depends(get_current_user)
 ):
     """Retorna a transcrição e resumo inteligente gerados para a aula."""
-    _check_lesson_access(db, course_id, module_id, lesson_id, current_user)
+    lesson = _check_lesson_access(db, course_id, module_id, lesson_id, current_user)
 
     transcription = db.query(LessonTranscription).filter(
         LessonTranscription.lesson_id == lesson_id
@@ -65,12 +85,51 @@ def get_lesson_transcription(
             key_takeaways=[],
             status="not_started",
             error_message=None,
-            generated_by_user_id=None,
+            audio_duration_seconds=None,
+            prompt_tokens=None,
+            completion_tokens=None,
+            estimated_cost_usd=None,
+            estimated_cost_brl=None,
+            estimated_cost_formatted=None,
             created_at=None,
             updated_at=None
         )
 
-    return transcription
+    # Controle rigoroso: Apenas Admin e Super Admin têm permissão para ver custos e consumo de tokens
+    is_admin = current_user.role in ["admin", "superadmin"]
+    cost_info = get_or_calculate_transcription_cost(transcription, lesson) if is_admin else {}
+
+    # Se a transcrição no banco ainda não tinha os custos gravados e agora calculamos, persiste de forma lazy
+    if is_admin and transcription.status == "completed" and transcription.estimated_cost_brl is None and cost_info.get("estimated_cost_brl") is not None:
+        try:
+            transcription.audio_duration_seconds = cost_info.get("audio_duration_seconds")
+            transcription.prompt_tokens = cost_info.get("prompt_tokens")
+            transcription.completion_tokens = cost_info.get("completion_tokens")
+            transcription.estimated_cost_usd = cost_info.get("estimated_cost_usd")
+            transcription.estimated_cost_brl = cost_info.get("estimated_cost_brl")
+            db.commit()
+            db.refresh(transcription)
+        except Exception:
+            db.rollback()
+
+    return LessonTranscriptionResponse(
+        id=transcription.id,
+        lesson_id=transcription.lesson_id,
+        full_transcript=(transcription.full_transcript or "") if is_admin else "",
+        summary_html=transcription.summary_html,
+        summary_markdown=transcription.summary_markdown,
+        key_takeaways=transcription.key_takeaways,
+        status=transcription.status or "ready",
+        error_message=transcription.error_message,
+        audio_duration_seconds=cost_info.get("audio_duration_seconds") if is_admin else None,
+        prompt_tokens=cost_info.get("prompt_tokens") if is_admin else None,
+        completion_tokens=cost_info.get("completion_tokens") if is_admin else None,
+        estimated_cost_usd=cost_info.get("estimated_cost_usd") if is_admin else None,
+        estimated_cost_brl=cost_info.get("estimated_cost_brl") if is_admin else None,
+        estimated_cost_formatted=cost_info.get("estimated_cost_formatted") if is_admin else None,
+        created_at=transcription.created_at,
+        updated_at=transcription.updated_at
+    )
 
 
 from app.services.ai_transcription_service import ai_transcription_service, run_transcription_background_task
@@ -149,8 +208,9 @@ def get_lesson_transcription_html(
     course_id: int,
     module_id: int,
     lesson_id: int,
+    token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_header_or_query)
 ):
     """
     Retorna o documento HTML5 inteligente gerado por IA para visualização e impressão direta.

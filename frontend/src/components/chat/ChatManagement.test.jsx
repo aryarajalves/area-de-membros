@@ -115,6 +115,20 @@ describe('ChatManagement Component', () => {
         });
       }
 
+      if (urlStr.includes('/api/v1/chat/pinned-message')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              id: 101,
+              channel_type: 'general',
+              message: 'Aviso importante fixado!',
+              is_pinned: true,
+              user: { id: 1, name: 'Aryaraj Alves' },
+            }),
+        });
+      }
+
       if (urlStr.includes('/api/v1/chat/messages')) {
         return Promise.resolve({
           ok: true,
@@ -233,5 +247,23 @@ describe('ChatManagement Component', () => {
 
     expect(screen.queryByTestId('delete-chat-modal-content')).not.toBeInTheDocument();
     expect(screen.getByText('Boas-vindas a todos os alunos!')).toBeInTheDocument();
+  });
+
+  it('scrolls to pinned message and highlights it when clicking pinned message banner', async () => {
+    const scrollMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollMock;
+
+    renderChat();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-pinned-message-banner')).toBeInTheDocument();
+    });
+
+    const banner = screen.getByTestId('chat-pinned-message-banner');
+    fireEvent.click(banner);
+
+    const messageEl = screen.getByTestId('chat-message-item-101');
+    expect(messageEl).toHaveAttribute('data-highlighted', 'true');
+    expect(scrollMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
   });
 });

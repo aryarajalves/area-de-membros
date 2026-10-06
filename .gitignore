@@ -34,6 +34,8 @@ app.db
 backend/app.db
 backend/backups_local/
 backups_local/
+backups_refactor/
+frontend/src/backups_refactor/
 
 # Logs e Relatórios
 *.log

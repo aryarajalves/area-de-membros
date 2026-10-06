@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, CornerDownRight, Trash2, ChevronDown, ChevronUp, Reply, Heart } from 'lucide-react';
+import { Send, CornerDownRight, Trash2, ChevronDown, ChevronUp, Reply, Heart, Bookmark } from 'lucide-react';
 import { formatToBrasilia } from './LessonComments';
 
 export default function CommentItem({
@@ -8,6 +8,7 @@ export default function CommentItem({
   onReply,
   onDeleteRequest,
   onToggleLike,
+  onToggleFavorite,
   getRoleBadge,
   canDeleteComment,
   isLightBg = false
@@ -16,20 +17,42 @@ export default function CommentItem({
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
+  const [isFavorited, setIsFavorited] = useState(!!comment.is_favorited);
 
-  const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
-  const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
-  const authorColor = isLightBg ? '#0f172a' : '#f8fafc';
-  const contentColor = isLightBg ? '#334155' : '#e2e8f0';
-  const subColor = isLightBg ? '#64748b' : '#94a3b8';
-  const avatarBg = isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)';
-  const avatarColor = isLightBg ? '#334155' : '#f8fafc';
-  const replyBoxBg = isLightBg ? '#f8fafc' : 'rgba(15, 23, 42, 0.7)';
-  const replyBoxBorder = isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.14)';
-  const replyItemBg = isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.025)';
-  const replyItemBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.06)';
-  const threadBorder = isLightBg ? '2px solid #e2e8f0' : '2px solid rgba(255, 255, 255, 0.1)';
-  const inputTextColor = isLightBg ? '#0f172a' : '#f8fafc';
+  const handleToggleFavorite = async () => {
+    if (onToggleFavorite) {
+      onToggleFavorite(comment.id);
+      setIsFavorited((prev) => !prev);
+      return;
+    }
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/v1/favorites/comments/${comment.id}/toggle`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFavorited(data.is_favorited);
+        window.dispatchEvent(new CustomEvent('favorites_updated'));
+      }
+    } catch (err) {
+      console.error('Erro ao favoritar comentário:', err);
+    }
+  };
+
+  const theme = isLightBg ? {
+    cardBg: '#ffffff', cardBorder: '1px solid #e2e8f0', authorColor: '#0f172a',
+    contentColor: '#334155', subColor: '#64748b', avatarBg: '#e2e8f0', avatarColor: '#334155',
+    replyBoxBg: '#f8fafc', replyBoxBorder: '1px solid #cbd5e1', replyItemBg: '#f8fafc',
+    replyItemBorder: '1px solid #e2e8f0', threadBorder: '2px solid #e2e8f0', inputTextColor: '#0f172a'
+  } : {
+    cardBg: 'rgba(255, 255, 255, 0.04)', cardBorder: '1px solid rgba(255, 255, 255, 0.08)', authorColor: '#f8fafc',
+    contentColor: '#e2e8f0', subColor: '#94a3b8', avatarBg: 'rgba(255, 255, 255, 0.1)', avatarColor: '#f8fafc',
+    replyBoxBg: 'rgba(15, 23, 42, 0.7)', replyBoxBorder: '1px solid rgba(255, 255, 255, 0.14)', replyItemBg: 'rgba(255, 255, 255, 0.025)',
+    replyItemBorder: '1px solid rgba(255, 255, 255, 0.06)', threadBorder: '2px solid rgba(255, 255, 255, 0.1)', inputTextColor: '#f8fafc'
+  };
+  const { cardBg, cardBorder, authorColor, contentColor, subColor, avatarBg, avatarColor, replyBoxBg, replyBoxBorder, replyItemBg, replyItemBorder, threadBorder, inputTextColor } = theme;
 
   const author = comment.user;
   const badge = getRoleBadge(author?.role);
@@ -172,20 +195,26 @@ export default function CommentItem({
 
             <button
               type="button"
+              onClick={handleToggleFavorite}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none',
+                border: 'none', padding: '4px 8px', fontSize: '12px', fontWeight: 600,
+                color: isFavorited ? '#38bdf8' : subColor, cursor: 'pointer', borderRadius: '6px', transition: 'all 0.15s ease'
+              }}
+              title={isFavorited ? 'Remover dos favoritos' : 'Favoritar comentário'}
+              data-testid={`favorite-comment-btn-${comment.id}`}
+            >
+              <Bookmark size={13} color={isFavorited ? '#38bdf8' : subColor} fill={isFavorited ? '#38bdf8' : 'none'} />
+              <span>{isFavorited ? 'Favorito' : 'Favoritar'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleStartReply()}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                background: 'none',
-                border: 'none',
-                padding: '4px 8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                color: subColor,
-                cursor: 'pointer',
-                borderRadius: '6px',
-                transition: 'background 0.15s ease'
+                display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none',
+                border: 'none', padding: '4px 8px', fontSize: '12px', fontWeight: 600,
+                color: subColor, cursor: 'pointer', borderRadius: '6px', transition: 'background 0.15s ease'
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}

@@ -252,6 +252,34 @@ describe('Sidebar Component', () => {
     expect(avatarImg).toHaveAttribute('src', 'https://cdn.test.com/my-avatar.jpg');
     expect(screen.queryByTestId('user-avatar')).not.toBeInTheDocument();
   });
+
+  it('renders "Links" category with social and important links', async () => {
+    localStorage.setItem('auth_token', 'fake-token');
+    const mockLinks = [
+      { id: 1, title: 'Instagram Oficial', url: 'https://instagram.com/oficial', icon: 'instagram', order_index: 1, is_active: true },
+      { id: 2, title: 'Canal do YouTube', url: 'https://youtube.com/canal', icon: 'youtube', order_index: 2, is_active: true },
+    ];
+
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockLinks,
+    });
+
+    const user = { name: 'Aluno', email: 'aluno@test.com', role: 'aluno' };
+    render(<Sidebar user={user} />);
+
+    expect(await screen.findByTestId('nav-category-links')).toBeInTheDocument();
+    expect(screen.getByText('Instagram Oficial')).toBeInTheDocument();
+    expect(screen.getByText('Canal do YouTube')).toBeInTheDocument();
+
+    const linkEl = screen.getByTestId('sidebar-link-1');
+    expect(linkEl).toHaveAttribute('href', 'https://instagram.com/oficial');
+    expect(linkEl).toHaveAttribute('target', '_blank');
+
+    global.fetch = originalFetch;
+  });
 });
+
 
 

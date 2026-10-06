@@ -13,6 +13,7 @@ describe('SupportFilterPills Component', () => {
     );
 
     expect(screen.getByTestId('support-pill-all')).toHaveTextContent('Todas as Dúvidas');
+    expect(screen.getByTestId('support-pill-pinned')).toHaveTextContent('Fixadas por Mim');
     expect(screen.getByTestId('support-pill-popular')).toHaveTextContent('Mais Populares');
     expect(screen.getByTestId('support-pill-unanswered')).toHaveTextContent('Aguardando Resposta');
     expect(screen.getByTestId('support-pill-resolved')).toHaveTextContent('Resolvidas');
@@ -28,9 +29,12 @@ describe('SupportFilterPills Component', () => {
       />
     );
 
+    const pinnedPill = screen.getByTestId('support-pill-pinned');
+    fireEvent.click(pinnedPill);
+    expect(handleSelect).toHaveBeenCalledWith('pinned');
+
     const resolvedPill = screen.getByTestId('support-pill-resolved');
     fireEvent.click(resolvedPill);
-
     expect(handleSelect).toHaveBeenCalledWith('resolved');
   });
 });

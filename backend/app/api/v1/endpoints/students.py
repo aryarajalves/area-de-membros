@@ -12,12 +12,15 @@ from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
 from app.models.webhook import Webhook
+from app.models.gamification import GamificationPoint
 from app.schemas.student import (
     StudentListResponse, StudentListItem, StudentCourseProgressItem, StudentImportResponse,
-    StudentLessonActivityItem, StudentTriggerWebhookRequest, StudentTriggerWebhookResponse
+    StudentLessonActivityItem, StudentTriggerWebhookRequest, StudentTriggerWebhookResponse,
+    StudentGamificationHistoryResponse
 )
+from app.schemas.gamification import GamificationHistoryItem
 from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
-from app.api.v1.endpoints.users import require_admin_or_superadmin, calculate_course_expiration
+from app.api.v1.endpoints.users import require_admin_or_superadmin, get_current_user, calculate_course_expiration
 from app.services.student_import_export import (
     export_students_csv, export_students_xlsx,
     generate_template_csv, generate_template_xlsx,
@@ -30,6 +33,18 @@ router = APIRouter(prefix="/students", tags=["Alunos e Matrículas"])
 def _build_students_details(students: List[User], db: Session) -> List[StudentListItem]:
     now = datetime.now(timezone.utc)
     items: List[StudentListItem] = []
+    student_ids = [s.id for s in students]
+
+    points_agg = (
+        db.query(
+            GamificationPoint.user_id,
+            func.coalesce(func.sum(GamificationPoint.points), 0).label("pts")
+        )
+        .filter(GamificationPoint.user_id.in_(student_ids))
+        .group_by(GamificationPoint.user_id)
+        .all()
+    ) if student_ids else []
+    points_map = {uid: int(pts) for uid, pts in points_agg}
 
     for student in students:
         user_courses = db.query(UserCourse).filter(UserCourse.user_id == student.id).all()
@@ -116,6 +131,8 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
         total_courses = len(courses_data)
         overall_progress_percent = int(round(total_progress_sum / total_courses)) if total_courses > 0 else 0
 
+        total_pts = points_map.get(student.id, 0)
+
         items.append(
             StudentListItem(
                 id=student.id,
@@ -126,7 +143,8 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 created_at=student.created_at,
                 courses=courses_data,
                 total_courses=total_courses,
-                overall_progress_percent=overall_progress_percent
+                overall_progress_percent=overall_progress_percent,
+                total_points=total_pts
             )
         )
 
@@ -552,6 +570,89 @@ def get_student_course_history(
         )
 
     return activities
+
+
+@router.get(
+    "/{student_id}/gamification-history",
+    response_model=StudentGamificationHistoryResponse,
+    summary="Histórico de Pontos e Conquistas do Aluno",
+    description="Retorna a pontuação total, rank atual e o histórico cronológico de pontos do aluno."
+)
+def get_student_gamification_history(
+    student_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retorna o histórico de pontos e conquistas do aluno.
+    Acessível por administradores ou pelo próprio aluno autenticado.
+    """
+    if current_user.role not in ["admin", "superadmin"] and current_user.id != student_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado ao histórico de outro aluno.")
+
+    student = db.query(User).filter(User.id == student_id, User.role == "aluno").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    total_pts = (
+        db.query(func.coalesce(func.sum(GamificationPoint.points), 0))
+        .filter(GamificationPoint.user_id == student_id)
+        .scalar()
+    ) or 0
+
+    records = (
+        db.query(GamificationPoint)
+        .filter(GamificationPoint.user_id == student_id)
+        .order_by(GamificationPoint.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Identificar rank do aluno entre todos os alunos ativos
+    subq = (
+        db.query(
+            GamificationPoint.user_id,
+            func.sum(GamificationPoint.points).label("pts")
+        )
+        .group_by(GamificationPoint.user_id)
+        .subquery()
+    )
+    higher_count = (
+        db.query(func.count(subq.c.user_id))
+        .filter(subq.c.pts > total_pts)
+        .scalar()
+    ) or 0
+    current_rank = higher_count + 1
+
+    if current_rank == 1 and total_pts > 0:
+        badge = "🥇 Mestre da Comunidade"
+    elif current_rank == 2 and total_pts > 0:
+        badge = "🥈 Mentor Destaque"
+    elif current_rank == 3 and total_pts > 0:
+        badge = "🥉 Aluno Notável"
+    elif current_rank <= 10 and total_pts > 0:
+        badge = "⭐ Top Estudante"
+    else:
+        badge = "✨ Aluno Ativo"
+
+    return StudentGamificationHistoryResponse(
+        student_id=student.id,
+        student_name=student.name,
+        total_points=int(total_pts),
+        current_rank=current_rank,
+        badge=badge,
+        history=[
+            GamificationHistoryItem(
+                id=r.id,
+                action=r.action,
+                points=r.points,
+                description=r.description or r.action,
+                created_at=r.created_at
+            )
+            for r in records
+        ]
+    )
 
 
 @router.post(

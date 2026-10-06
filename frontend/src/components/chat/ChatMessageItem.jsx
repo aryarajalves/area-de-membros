@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Shield, Award, User, Heart, Star, Pin, FileText, ExternalLink } from 'lucide-react';
+import { Trash2, Shield, Award, User, Heart, Star, Pin, FileText, ExternalLink, Video, Mic } from 'lucide-react';
 
 function formatMessageTime(dateString) {
   if (!dateString) return '';
@@ -49,6 +49,7 @@ export default function ChatMessageItem({
   onToggleLike,
   onToggleFavorite,
   onTogglePin,
+  isHighlighted = false,
 }) {
   const [imgError, setImgError] = useState(false);
   const isOwn = message.user?.id === currentUser?.id;
@@ -60,15 +61,21 @@ export default function ChatMessageItem({
 
   return (
     <div
-      className={`chat-message-row ${isOwn ? 'own-message' : ''}`}
+      id={`chat-message-${message.id}`}
+      className={`chat-message-row ${isOwn ? 'own-message' : ''} ${isHighlighted ? 'chat-message-highlighted' : ''}`}
       data-testid={`chat-message-item-${message.id}`}
+      data-highlighted={isHighlighted ? 'true' : 'false'}
       style={{
         display: 'flex',
         gap: '12px',
         alignItems: 'flex-start',
         marginBottom: '16px',
         flexDirection: isOwn ? 'row-reverse' : 'row',
-        padding: '0 8px',
+        padding: '6px 8px',
+        borderRadius: '12px',
+        backgroundColor: isHighlighted ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
+        boxShadow: isHighlighted ? '0 0 0 2px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.35)' : 'none',
+        transition: 'all 0.35s ease',
       }}
     >
       {/* Avatar */}
@@ -185,17 +192,59 @@ export default function ChatMessageItem({
           )}
         </div>
 
-        {/* Mídia Anexada (Imagem ou Documento) */}
+        {/* Mídia Anexada (Imagem, Vídeo, Áudio ou Documento) */}
         {message.media_url && (
           <div
             style={{
               marginBottom: message.message ? '6px' : '0',
               borderRadius: '10px',
               overflow: 'hidden',
+              maxWidth: '320px',
             }}
             data-testid={`chat-media-attachment-${message.id}`}
           >
-            {message.media_type === 'file' ? (
+            {message.media_type === 'audio' ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#1e293b',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+                data-testid={`chat-media-audio-${message.id}`}
+              >
+                <Mic size={18} color="#10b981" />
+                <audio
+                  controls
+                  src={message.media_url}
+                  style={{ maxHeight: '36px', maxWidth: '240px' }}
+                />
+              </div>
+            ) : message.media_type === 'video' ? (
+              <div
+                style={{
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  backgroundColor: '#000',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+                data-testid={`chat-media-video-${message.id}`}
+              >
+                <video
+                  controls
+                  src={message.media_url}
+                  style={{
+                    width: '100%',
+                    maxHeight: '220px',
+                    display: 'block',
+                    objectFit: 'contain',
+                  }}
+                />
+              </div>
+            ) : message.media_type === 'file' ? (
               <a
                 href={message.media_url}
                 target="_blank"

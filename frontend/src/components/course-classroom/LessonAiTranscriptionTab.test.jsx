@@ -176,14 +176,16 @@ describe('LessonAiTranscriptionTab Component', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Primeira frase'));
     expect(mockAddToast).toHaveBeenCalledWith(expect.stringContaining('copiada'), 'success');
 
-    // Testa abertura do HTML em nova aba
+    // Testa abertura do HTML em nova aba (com token de autenticação)
+    localStorage.setItem('auth_token', 'mock_jwt_token_123');
     const openHtmlBtn = screen.getByTestId('btn-open-html-document');
     fireEvent.click(openHtmlBtn);
     expect(window.open).toHaveBeenCalledWith(
-      '/api/v1/courses/10/modules/5/lessons/1/transcription/html',
+      '/api/v1/courses/10/modules/5/lessons/1/transcription/html?token=mock_jwt_token_123',
       '_blank',
       'noopener,noreferrer'
     );
+    localStorage.removeItem('auth_token');
 
     // Testa busca rápida na transcrição
     const searchInput = screen.getByTestId('input-search-transcript');
@@ -191,6 +193,82 @@ describe('LessonAiTranscriptionTab Component', () => {
 
     expect(screen.getByTestId('transcript-content-box')).toHaveTextContent('Segunda frase sobre arquitetura.');
     expect(screen.getByTestId('transcript-content-box')).not.toHaveTextContent('Primeira frase de introdução.');
+  });
+
+  it('renders cost badge for admin when estimated_cost_formatted is provided', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        lesson_id: 1,
+        full_transcript: 'Texto transcrito da aula.',
+        summary_markdown: 'Resumo executivo.',
+        summary_html: '<p>HTML</p>',
+        key_takeaways: ['Takeaway'],
+        status: 'completed',
+        estimated_cost_brl: 0.18,
+        estimated_cost_formatted: 'R$ 0,18'
+      })
+    });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={adminUser}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-transcription-cost-badge')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('ai-transcription-cost-badge')).toHaveTextContent('Custo: R$ 0,18');
+  });
+
+  it('never renders cost badge for student even if estimated_cost_formatted is present', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        lesson_id: 1,
+        full_transcript: 'Texto transcrito da aula.',
+        summary_markdown: 'Resumo executivo.',
+        summary_html: '<p>HTML</p>',
+        key_takeaways: ['Takeaway'],
+        status: 'completed',
+        estimated_cost_brl: 0.18,
+        estimated_cost_formatted: 'R$ 0,18'
+      })
+    });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={studentUser}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-transcription-container')).toBeInTheDocument();
+    });
+
+    // O badge de custo NÃO pode estar visível para o aluno
+    expect(screen.queryByTestId('ai-transcription-cost-badge')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Custo:/i)).not.toBeInTheDocument();
+
+    // A transcrição integral e o botão de copiar NÃO devem aparecer para o aluno
+    expect(screen.queryByTestId('ai-full-transcription')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-copy-transcription')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Buscar termo no texto...')).not.toBeInTheDocument();
+
+    // O resumo da aula, pontos-chave e botão de abrir documento HTML continuam visíveis para o aluno
+    expect(screen.getByTestId('ai-key-takeaways')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-summary-executive')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-open-html-document')).toBeInTheDocument();
   });
 
   it('renders processing state with spinner and allows admin to cancel/reset', async () => {

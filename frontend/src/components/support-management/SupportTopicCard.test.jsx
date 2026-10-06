@@ -114,4 +114,53 @@ describe('SupportTopicCard Component', () => {
 
     expect(screen.queryByTestId('delete-topic-btn-42')).not.toBeInTheDocument();
   });
+
+  it('renders pinned badge and highlighted styling when topic.is_pinned is true', () => {
+    const pinnedTopic = { ...dummyTopic, is_pinned: true };
+    render(
+      <SupportTopicCard
+        topic={pinnedTopic}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    const badge = screen.getByTestId('topic-pinned-badge-42');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Fixada por você');
+  });
+
+  it('triggers onTogglePin callback when clicking the pin button', () => {
+    const handleTogglePin = vi.fn();
+    render(
+      <SupportTopicCard
+        topic={dummyTopic}
+        currentUser={{ id: 1, role: 'aluno' }}
+        onTogglePin={handleTogglePin}
+      />
+    );
+
+    const pinBtn = screen.getByTestId('pin-topic-btn-42');
+    expect(pinBtn).toBeInTheDocument();
+    fireEvent.click(pinBtn);
+
+    expect(handleTogglePin).toHaveBeenCalledWith(42);
+  });
+
+  it('triggers onToggleFavorite callback when clicking the favorite button', () => {
+    const handleToggleFavorite = vi.fn();
+    render(
+      <SupportTopicCard
+        topic={dummyTopic}
+        currentUser={{ id: 1, role: 'aluno' }}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    );
+
+    const favBtn = screen.getByTestId('favorite-topic-btn-42');
+    expect(favBtn).toBeInTheDocument();
+    fireEvent.click(favBtn);
+
+    expect(handleToggleFavorite).toHaveBeenCalledWith(42);
+  });
 });
+

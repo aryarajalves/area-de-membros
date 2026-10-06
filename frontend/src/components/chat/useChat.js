@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../../context/ToastContext';
+import { useChatSocket } from './useChatSocket';
 
 export function useChat(currentUser) {
   const { addToast } = useToast();
@@ -167,6 +168,73 @@ export function useChat(currentUser) {
     }
   }, [authHeaders]);
 
+  // Handlers para eventos recebidos em tempo real via WebSocket
+  const handleSocketNewMessage = useCallback((newMsg) => {
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === newMsg.id)) return prev;
+      return [...prev, newMsg];
+    });
+  }, []);
+
+  const handleSocketMessageDeleted = useCallback((delId) => {
+    setMessages((prev) => prev.filter((m) => m.id !== delId));
+    setPinnedMessage((current) => (current && current.id === delId ? null : current));
+  }, []);
+
+  const handleSocketMessageLiked = useCallback((data, user) => {
+    const { message_id, likes_count, user_id, liked } = data;
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== message_id) return m;
+        const isMe = user?.id === user_id;
+        return {
+          ...m,
+          likes_count,
+          liked_by_me: isMe ? liked : m.liked_by_me,
+        };
+      })
+    );
+  }, []);
+
+  const handleSocketMessagePinned = useCallback((data) => {
+    const { message_id, is_pinned, pinned_message } = data;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === message_id ? { ...m, is_pinned } : m))
+    );
+    if (is_pinned && pinned_message) {
+      setPinnedMessage(pinned_message);
+    } else {
+      setPinnedMessage(null);
+    }
+  }, []);
+
+  const handleSocketChannelActivity = useCallback((channel_type, course_id, messageData) => {
+    setChannels((prev) =>
+      prev.map((chan) => {
+        const matches =
+          (channel_type === 'general' && chan.type === 'general') ||
+          (channel_type === 'course' && chan.type === 'course' && Number(course_id) === Number(chan.course_id));
+        if (!matches) return chan;
+        return {
+          ...chan,
+          last_message: messageData?.message || (messageData?.media_url ? '[Mídia]' : chan.last_message),
+          last_message_at: messageData?.created_at || new Date().toISOString(),
+        };
+      })
+    );
+  }, []);
+
+  // Conexão em tempo real via WebSocket
+  const { isConnected: isWsConnected } = useChatSocket({
+    currentUser,
+    selectedChannel,
+    onNewMessage: handleSocketNewMessage,
+    onMessageDeleted: handleSocketMessageDeleted,
+    onMessageLiked: handleSocketMessageLiked,
+    onMessagePinned: handleSocketMessagePinned,
+    onChannelActivity: handleSocketChannelActivity,
+  });
+
   // Carrega canais no mount
   useEffect(() => {
     fetchChannels();
@@ -180,25 +248,25 @@ export function useChat(currentUser) {
     }
   }, [selectedChannel, favoritesOnly, fetchMessages, fetchPinnedMessage]);
 
-  // Inicia timer de polling incremental
+  // Polling como fallback de contingência somente se o WebSocket estiver desconectado
   useEffect(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
     }
 
     const token = getAuthToken();
-    if (!token || !selectedChannel || favoritesOnly) return;
+    if (!token || !selectedChannel || favoritesOnly || isWsConnected) return;
 
     pollingRef.current = setInterval(() => {
       pollNewMessages();
-    }, 3500);
+    }, 5000);
 
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
       }
     };
-  }, [pollNewMessages, selectedChannel, favoritesOnly]);
+  }, [pollNewMessages, selectedChannel, favoritesOnly, isWsConnected]);
 
   // Enviar mensagem (com suporte a texto e/ou mídia)
   const sendMessage = async (text, mediaUrl = null, mediaType = null) => {

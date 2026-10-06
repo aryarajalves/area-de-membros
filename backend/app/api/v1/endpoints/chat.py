@@ -1,14 +1,16 @@
+import json
 import os
 import uuid
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc, asc, func
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.logger import logger
+from app.core.security import decode_access_token
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.models.user import User
 from app.models.course import Course, UserCourse
@@ -22,6 +24,7 @@ from app.schemas.chat import (
     ChatMessageFavoriteToggleResponse,
 )
 from app.services.storage import upload_media_file
+from app.services.chat_ws_manager import chat_manager
 
 router = APIRouter(tags=["Chat da Comunidade"])
 
@@ -369,7 +372,7 @@ def send_chat_message(
             avatar_url=current_user.avatar_url,
         )
 
-        return ChatMessageResponse(
+        resp = ChatMessageResponse(
             id=new_msg.id,
             channel_type=new_msg.channel_type,
             course_id=new_msg.course_id,
@@ -386,6 +389,15 @@ def send_chat_message(
             user=user_info,
             can_delete=True,
         )
+
+        chat_manager.broadcast_sync(
+            "new_message",
+            resp.model_dump(mode="json"),
+            channel_type=new_msg.channel_type,
+            course_id=new_msg.course_id,
+        )
+
+        return resp
     except Exception as exc:
         db.rollback()
         logger.error(f"Erro ao salvar mensagem no chat: {exc}")
@@ -440,12 +452,24 @@ def toggle_chat_message_like(
             logger.error(f"Erro ao pontuar curtida em mensagem do chat: {g_exc}")
 
     count = db.query(func.count(ChatMessageLike.id)).filter(ChatMessageLike.message_id == message_id).scalar() or 0
-    return ChatMessageLikeToggleResponse(
+    resp_like = ChatMessageLikeToggleResponse(
         message_id=message_id,
         likes_count=count,
         liked_by_me=liked_by_me,
         liked=liked_by_me,
     )
+    chat_manager.broadcast_sync(
+        "message_liked",
+        {
+            "message_id": message_id,
+            "likes_count": count,
+            "user_id": current_user.id,
+            "liked": liked_by_me,
+        },
+        channel_type=msg.channel_type,
+        course_id=msg.course_id,
+    )
+    return resp_like
 
 
 @router.post(
@@ -532,7 +556,7 @@ def toggle_pin_chat_message(
     liked_by_me = db.query(ChatMessageLike).filter(ChatMessageLike.message_id == msg.id, ChatMessageLike.user_id == current_user.id).first() is not None
     is_favorited = db.query(ChatMessageFavorite).filter(ChatMessageFavorite.message_id == msg.id, ChatMessageFavorite.user_id == current_user.id).first() is not None
 
-    return ChatMessageResponse(
+    resp_pin = ChatMessageResponse(
         id=msg.id,
         channel_type=msg.channel_type,
         course_id=msg.course_id,
@@ -549,6 +573,18 @@ def toggle_pin_chat_message(
         user=user_info,
         can_delete=True,
     )
+    chat_manager.broadcast_sync(
+        "message_pinned",
+        {
+            "message_id": msg.id,
+            "is_pinned": msg.is_pinned,
+            "pinned_at": msg.pinned_at.isoformat() if msg.pinned_at else None,
+            "pinned_message": resp_pin.model_dump(mode="json") if msg.is_pinned else None,
+        },
+        channel_type=msg.channel_type,
+        course_id=msg.course_id,
+    )
+    return resp_pin
 
 
 
@@ -580,9 +616,17 @@ def delete_chat_message(
         )
 
     try:
+        channel_type = msg.channel_type
+        course_id = msg.course_id
         db.delete(msg)
         db.commit()
         logger.info(f"Mensagem ID {message_id} excluída por {current_user.email}")
+        chat_manager.broadcast_sync(
+            "message_deleted",
+            {"message_id": message_id},
+            channel_type=channel_type,
+            course_id=course_id,
+        )
         return {"ok": True, "message": "Mensagem excluída com sucesso."}
     except Exception as exc:
         db.rollback()
@@ -596,39 +640,58 @@ def delete_chat_message(
 @router.post(
     "/upload-media",
     summary="Upload de Mídia para o Chat",
-    description="Permite o envio de imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF) de até 15 MB para o chat."
+    description="Permite o envio de imagens (JPG, PNG, WEBP, GIF), vídeos (MP4, MOV, MKV), áudios (MP3, WAV, OGG, M4A, WEBM) ou documentos (PDF, DOCX, XLSX, TXT, ZIP) de até 25 MB para o chat."
 )
 async def upload_chat_media(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
     """Faz upload de mídia para o chat pelo aluno ou gestor."""
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"}
-    filename = file.filename or ""
+    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    audio_exts = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac"}
+    video_exts = {".mp4", ".mov", ".mkv"}
+    doc_exts = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".zip", ".rar", ".csv"}
+
+    allowed_extensions = image_exts | audio_exts | video_exts | doc_exts
+    filename = file.filename or "arquivo"
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Formato de arquivo inválido. Suportados: JPG, PNG, WEBP, GIF, PDF."
+            detail="Formato de arquivo inválido. Suportados: imagens, vídeos, áudios e documentos."
         )
 
     content = await file.read()
-    if len(content) > 15 * 1024 * 1024:
+    if len(content) > 25 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O arquivo excede o limite máximo permitido de 15 MB."
+            detail="O arquivo excede o limite máximo permitido de 25 MB."
         )
 
-    media_type = "file" if ext == ".pdf" else "image"
+    content_type = file.content_type or ""
+    # Determinar tipo de mídia de acordo com extensão e mime-type
+    if (content_type.startswith("audio/") or ext in audio_exts) and not content_type.startswith("video/"):
+        media_type = "audio"
+        default_mime = "audio/webm" if ext == ".webm" else "audio/mpeg"
+    elif content_type.startswith("video/") or ext in video_exts:
+        media_type = "video"
+        default_mime = "video/mp4"
+    elif content_type.startswith("image/") or ext in image_exts:
+        media_type = "image"
+        default_mime = "image/jpeg"
+    else:
+        media_type = "file"
+        default_mime = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+
+    final_content_type = content_type or default_mime
     unique_name = f"chat_{uuid.uuid4().hex[:14]}{ext}"
-    content_type = file.content_type or ("application/pdf" if ext == ".pdf" else "image/jpeg")
 
     # 1. Tentar salvar no Backblaze B2
     b2_url = upload_media_file(
         file_bytes=content,
         filename=unique_name,
-        content_type=content_type,
+        content_type=final_content_type,
         folder="AreaDeMembros/chat_media/"
     )
     if b2_url:
@@ -650,6 +713,69 @@ async def upload_chat_media(
     }
 
 
+@router.get(
+    "/media-gallery",
+    summary="Listar Mídias e Documentos do Canal",
+    description="Retorna todas as mensagens com mídias ou documentos anexados no canal selecionado."
+)
+def list_chat_media_gallery(
+    channel_type: str = Query(default="general"),
+    course_id: Optional[int] = Query(default=None),
+    media_type: Optional[str] = Query(default=None, description="Filtro: all, image, video, audio, file"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista as mídias trocadas no canal para o popup de galeria de mídias."""
+    if not check_channel_access(current_user, channel_type, course_id, db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para acessar este canal de bate-papo.",
+        )
+
+    query = db.query(ChatMessage).filter(
+        ChatMessage.channel_type == channel_type,
+        ChatMessage.media_url.isnot(None),
+        ChatMessage.media_url != "",
+    )
+    if channel_type == "course":
+        query = query.filter(ChatMessage.course_id == course_id)
+
+    if media_type and media_type != "all":
+        if media_type == "file":
+            query = query.filter(ChatMessage.media_type.in_(["file", "document"]))
+        else:
+            query = query.filter(ChatMessage.media_type == media_type)
+
+    total = query.count()
+    messages = query.order_by(desc(ChatMessage.id)).offset(offset).limit(limit).all()
+
+    items = []
+    for msg in messages:
+        items.append({
+            "id": msg.id,
+            "message": msg.message or "",
+            "media_url": msg.media_url,
+            "media_type": msg.media_type or "file",
+            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            "user": {
+                "id": msg.user.id if msg.user else 0,
+                "name": msg.user.name if msg.user else "Usuário Desconhecido",
+                "email": msg.user.email if msg.user else "",
+                "role": msg.user.role if msg.user else "aluno",
+                "avatar_url": msg.user.avatar_url if msg.user else None,
+            }
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
 @router.get("/media/{filename}", include_in_schema=False)
 def get_chat_media(filename: str):
     """Serve um arquivo de mídia do chat armazenado localmente no servidor."""
@@ -658,3 +784,65 @@ def get_chat_media(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     return FileResponse(filepath)
+
+
+@router.websocket("/ws")
+async def chat_websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Endpoint WebSocket para comunicação em tempo real no Chat da Comunidade.
+    Permite receber novas mensagens, curtidas, fixações e exclusões instantaneamente.
+    """
+    auth_token = token
+    if not auth_token:
+        # Tenta extrair token da query string no scope caso Query não resolva no handshake
+        query_str = websocket.scope.get("query_string", b"").decode("utf-8")
+        if "token=" in query_str:
+            for part in query_str.split("&"):
+                if part.startswith("token="):
+                    auth_token = part.split("=")[1]
+                    break
+
+    if not auth_token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    payload = decode_access_token(auth_token)
+    if not payload or "sub" not in payload:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user_id = payload.get("sub")
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user or not user.is_active:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        user_name = user.name
+        user_role = user.role
+        u_id = user.id
+    except Exception as exc:
+        logger.error(f"Erro ao autenticar usuário no WebSocket do Chat: {exc}")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await chat_manager.connect(websocket, u_id, user_role, user_name)
+
+    try:
+        while True:
+            raw_text = await websocket.receive_text()
+            try:
+                msg_data = json.loads(raw_text)
+                if msg_data.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+            except Exception:
+                pass
+    except WebSocketDisconnect:
+        await chat_manager.disconnect(websocket)
+    except Exception as exc:
+        logger.debug(f"Desconexão no WebSocket do Chat: {exc}")
+        await chat_manager.disconnect(websocket)
+

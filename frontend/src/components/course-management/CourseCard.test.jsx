@@ -83,18 +83,16 @@ describe('CourseCard Component', () => {
     expect(moreInfoBtn).toBeInTheDocument();
     expect(moreInfoBtn).toHaveTextContent('Ver Mais Informações');
 
-    const contactSupportBtn = screen.getByTestId('contact-support-course-btn-2');
-    expect(contactSupportBtn).toBeInTheDocument();
-    expect(contactSupportBtn).toHaveTextContent('Entrar em Contato');
+    // Botão "Entrar em Contato" foi removido e não deve existir
+    expect(screen.queryByTestId('contact-support-course-btn-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Entrar em Contato')).not.toBeInTheDocument();
 
     // Ao clicar, deve redirecionar para sales_page_url
     fireEvent.click(moreInfoBtn);
     expect(windowOpenSpy).toHaveBeenCalledWith('https://vendas.com/curso2', '_blank', 'noopener,noreferrer');
   });
 
-  it('triggers onContactSupport callback when student clicks Entrar em Contato button', () => {
-    const onContactSupport = vi.fn();
-
+  it('only renders "Ver Mais Informações" button and never "Entrar em Contato"', () => {
     render(
       <CourseCard
         course={mockCourseWithoutAccess}
@@ -107,13 +105,12 @@ describe('CourseCard Component', () => {
         onSelectCourse={vi.fn()}
         onOpenEditModal={vi.fn()}
         onPromptDelete={vi.fn()}
-        onContactSupport={onContactSupport}
       />
     );
 
-    const contactBtn = screen.getByTestId('contact-support-course-btn-2');
-    fireEvent.click(contactBtn);
-    expect(onContactSupport).toHaveBeenCalledWith(mockCourseWithoutAccess);
+    expect(screen.getByTestId('more-info-course-btn-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('contact-support-course-btn-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Entrar em Contato')).not.toBeInTheDocument();
   });
 
   it('shows friendly toast message when course has no sales_page_url and student clicks more info', () => {

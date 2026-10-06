@@ -168,3 +168,112 @@ def test_history_and_rules_endpoints(setup_gamification_users):
     rules = res_rules.json()
     assert any(r["action"] == "support_solution" and r["points"] == 50 for r in rules)
     assert any(r["action"] == "chat_message" and "limite" in r["daily_limit"].lower() for r in rules)
+
+
+def test_sync_student_historical_points(setup_gamification_users):
+    from app.models.course import LessonProgress
+    from app.services.gamification_service import sync_student_historical_points
+
+    db = TestingSessionLocal()
+    aluno_a_id = setup_gamification_users["a_id"]
+
+    # Limpar progresso anterior do teste para isolamento
+    db.query(LessonProgress).filter(
+        LessonProgress.user_id == aluno_a_id,
+        LessonProgress.lesson_id == 8888
+    ).delete(synchronize_session=False)
+    db.query(GamificationPoint).filter(
+        GamificationPoint.user_id == aluno_a_id,
+        GamificationPoint.reference_id == 8888
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    # Cria aula concluída sem ponto na tabela de gamificação (simulando aula concluída antes do módulo)
+    lp = LessonProgress(
+        user_id=aluno_a_id,
+        lesson_id=8888,
+        is_completed=True
+    )
+    db.add(lp)
+    db.commit()
+
+    # 1. Executa a sincronização retroativa
+    synced_count = sync_student_historical_points(db, user_id=aluno_a_id)
+    assert synced_count == 1
+
+    # 2. Confirma que os 15 pontos foram creditados
+    point_entry = db.query(GamificationPoint).filter(
+        GamificationPoint.user_id == aluno_a_id,
+        GamificationPoint.action == "lesson_completed",
+        GamificationPoint.reference_id == 8888
+    ).first()
+    assert point_entry is not None
+    assert point_entry.points == 15
+
+    # 3. Teste de idempotência: segunda execução não gera pontos duplicados
+    second_sync = sync_student_historical_points(db, user_id=aluno_a_id)
+    assert second_sync == 0
+
+    db.close()
+
+
+def test_completed_periods_endpoint(setup_gamification_users):
+    headers_a = get_headers("aluno_rank_a@test.com", "Pass123!")
+    res = client.get("/api/v1/gamification/completed-periods", headers=headers_a)
+    assert res.status_code == 200
+    data = res.json()
+    assert "completed_months" in data
+    assert "completed_years" in data
+
+    # Não deve incluir o mês corrente (2026-10) nos meses finalizados
+    assert not any(m["key"] == "2026-10" for m in data["completed_months"])
+    # Deve conter meses anteriores (ex: 2026-09)
+    assert any(m["key"] == "2026-09" for m in data["completed_months"])
+
+    # Não deve conter o ano corrente (2026) nos anos finalizados
+    assert not any(y["key"] == "2026" for y in data["completed_years"])
+    # Deve conter anos anteriores (ex: 2025)
+    assert any(y["key"] == "2025" for y in data["completed_years"])
+
+
+def test_closed_ranking_validation_and_top_10(setup_gamification_users):
+    from datetime import datetime, timezone
+
+    headers_a = get_headers("aluno_rank_a@test.com", "Pass123!")
+
+    # 1. Bloqueia consultar mês em andamento
+    res_curr_m = client.get("/api/v1/gamification/closed-ranking?period_type=month&period_key=2026-10", headers=headers_a)
+    assert res_curr_m.status_code == 400
+    assert "em andamento" in res_curr_m.json()["detail"].lower()
+
+    # 2. Bloqueia consultar ano em andamento
+    res_curr_y = client.get("/api/v1/gamification/closed-ranking?period_type=year&period_key=2026", headers=headers_a)
+    assert res_curr_y.status_code == 400
+    assert "em andamento" in res_curr_y.json()["detail"].lower()
+
+    # 3. Cria pontos em período fechado (Setembro/2026)
+    db = TestingSessionLocal()
+    aluno_a_id = setup_gamification_users["a_id"]
+    past_date = datetime(2026, 9, 15, 12, 0, 0, tzinfo=timezone.utc)
+    p_past = GamificationPoint(
+        user_id=aluno_a_id,
+        action="support_solution",
+        points=50,
+        description="Solução em Setembro",
+        created_at=past_date,
+    )
+    db.add(p_past)
+    db.commit()
+    db.close()
+
+    # 4. Consulta mês finalizado 2026-09
+    res_closed = client.get("/api/v1/gamification/closed-ranking?period_type=month&period_key=2026-09", headers=headers_a)
+    assert res_closed.status_code == 200
+    data_closed = res_closed.json()
+    assert data_closed["is_closed"] is True
+    assert data_closed["period_key"] == "2026-09"
+    assert len(data_closed["top_students"]) <= 10
+    assert data_closed["top_students"][0]["user_id"] == aluno_a_id
+    assert "Campeão do Mês" in data_closed["top_students"][0]["badge"]
+
+

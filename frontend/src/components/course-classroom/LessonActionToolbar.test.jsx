@@ -228,4 +228,49 @@ describe('LessonActionToolbar Component', () => {
       expect(screen.queryByText('Relatar Problema na Aula')).not.toBeInTheDocument();
     });
   });
+
+  it('fetches favorite status and toggles lesson favorite', async () => {
+    global.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/favorites/lessons/101/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ is_favorited: false, is_favorite: false })
+        });
+      }
+      if (url.includes('/favorites/lessons/101/toggle')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ is_favorited: true, is_favorite: true, message: 'Aula adicionada aos favoritos' })
+        });
+      }
+      if (url.includes('/rating')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ user_rating: 0, average_rating: 0, total_ratings: 0 })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <LessonActionToolbar {...defaultProps} />
+      </ToastProvider>
+    );
+
+    const favBtn = screen.getByTestId('toggle-lesson-favorite-btn');
+    expect(favBtn).toBeInTheDocument();
+    expect(screen.getByText('Favoritar')).toBeInTheDocument();
+
+    fireEvent.click(favBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/favorites/lessons/101/toggle',
+        expect.objectContaining({ method: 'POST' })
+      );
+      expect(screen.getByText('Favoritada')).toBeInTheDocument();
+    });
+  });
 });
+

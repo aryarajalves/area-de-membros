@@ -290,12 +290,18 @@ class VideoUploadUrlResponse(BaseModel):
 class LessonTranscriptionResponse(BaseModel):
     id: int
     lesson_id: int
-    full_transcript: str
+    full_transcript: Optional[str] = ""
     summary_html: Optional[str] = None
     summary_markdown: Optional[str] = None
     key_takeaways: Optional[List[str]] = None
     status: str = "ready"
     error_message: Optional[str] = None
+    audio_duration_seconds: Optional[float] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    estimated_cost_usd: Optional[float] = None
+    estimated_cost_brl: Optional[float] = None
+    estimated_cost_formatted: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

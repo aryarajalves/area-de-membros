@@ -4,14 +4,14 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, case
 
 from app.core.database import get_db
 from app.core.logger import logger
 from app.api.v1.endpoints.users import get_current_user
 from app.models.user import User
 from app.models.course import Course, UserCourse
-from app.models.support import SupportTopic, SupportReply, SupportTopicLike
+from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
 from app.schemas.support import (
     SupportCourseItem,
     SupportTopicCreate,
@@ -24,6 +24,7 @@ from app.schemas.support import (
     LastReplyInfo,
     SupportStatusUpdate,
     SupportStatsResponse,
+    SupportTopicPinResponse,
 )
 from fastapi.responses import FileResponse
 from app.services.storage import upload_media_file
@@ -121,7 +122,8 @@ def list_support_topics(
     course_id: Optional[int] = Query(None, description="Filtrar por curso específico"),
     search: Optional[str] = Query(None, description="Busca textual no título ou conteúdo"),
     status: Optional[str] = Query(None, description="Filtrar por status: open | resolved"),
-    sort: str = Query("recent", description="recent | popular | unanswered | my_topics | resolved"),
+    sort: str = Query("recent", description="recent | popular | unanswered | my_topics | resolved | pinned"),
+    sort_by: Optional[str] = Query(None, description="Alias para sort"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -129,8 +131,16 @@ def list_support_topics(
 ):
     """
     Lista dúvidas da comunidade com filtros por curso, busca textual e ordenação.
+    Prioriza dúvidas fixadas pelo usuário logado no topo na ordenação padrão.
     """
+    effective_sort = sort_by or sort
     query = db.query(SupportTopic)
+
+    # Identifica todas as dúvidas fixadas pelo usuário atual
+    user_pinned_pins = db.query(SupportTopicPin.topic_id).filter(
+        SupportTopicPin.user_id == current_user.id
+    ).all()
+    user_pinned_ids = {p[0] for p in user_pinned_pins}
 
     if course_id:
         query = query.filter(SupportTopic.course_id == course_id)
@@ -148,18 +158,30 @@ def list_support_topics(
         )
 
     # Ordenação e filtros por tipo
-    if sort == "popular":
+    if effective_sort == "popular":
         query = query.order_by(SupportTopic.likes_count.desc(), SupportTopic.created_at.desc())
-    elif sort == "unanswered":
+    elif effective_sort == "unanswered":
         # Subquery para tópicos sem respostas
         has_replies = db.query(SupportReply.topic_id).subquery()
         query = query.filter(~SupportTopic.id.in_(has_replies.select())).order_by(SupportTopic.created_at.desc())
-    elif sort == "my_topics":
+    elif effective_sort == "my_topics":
         query = query.filter(SupportTopic.user_id == current_user.id).order_by(SupportTopic.created_at.desc())
-    elif sort == "resolved":
+    elif effective_sort == "resolved":
         query = query.filter(SupportTopic.status == "resolved").order_by(SupportTopic.created_at.desc())
+    elif effective_sort == "pinned":
+        if user_pinned_ids:
+            query = query.filter(SupportTopic.id.in_(user_pinned_ids)).order_by(SupportTopic.created_at.desc())
+        else:
+            query = query.filter(SupportTopic.id == -1)
     else:
-        query = query.order_by(SupportTopic.created_at.desc())
+        # Padrão ('recent'): se houver tópicos fixados pelo usuário, exibe-os no topo
+        if user_pinned_ids:
+            query = query.order_by(
+                case((SupportTopic.id.in_(user_pinned_ids), 0), else_=1),
+                SupportTopic.created_at.desc()
+            )
+        else:
+            query = query.order_by(SupportTopic.created_at.desc())
 
     total = query.count()
     topics = query.offset((page - 1) * limit).limit(limit).all()
@@ -167,6 +189,7 @@ def list_support_topics(
     # IDs dos tópicos que o usuário curtiu
     topic_ids = [t.id for t in topics]
     liked_ids = set()
+    fav_ids = set()
     if topic_ids:
         likes = (
             db.query(SupportTopicLike.topic_id)
@@ -177,6 +200,15 @@ def list_support_topics(
             .all()
         )
         liked_ids = {l[0] for l in likes}
+        favs = (
+            db.query(SupportTopicFavorite.topic_id)
+            .filter(
+                SupportTopicFavorite.user_id == current_user.id,
+                SupportTopicFavorite.topic_id.in_(topic_ids),
+            )
+            .all()
+        )
+        fav_ids = {f[0] for f in favs}
 
     topic_items = []
     for t in topics:
@@ -204,6 +236,8 @@ def list_support_topics(
                 replies_count=replies_count,
                 liked_by_me=(t.id in liked_ids),
                 has_solution=has_solution,
+                is_pinned=(t.id in user_pinned_ids),
+                is_favorited=(t.id in fav_ids),
                 course=SupportCourseItem(
                     id=t.course.id,
                     title=t.course.title,
@@ -324,6 +358,26 @@ def get_support_topic_detail(
         .first()
     )
 
+    # Verifica se o usuário fixou este tópico
+    user_pin = (
+        db.query(SupportTopicPin)
+        .filter(
+            SupportTopicPin.topic_id == topic.id,
+            SupportTopicPin.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    # Verifica se o usuário favoritou este tópico
+    user_fav = (
+        db.query(SupportTopicFavorite)
+        .filter(
+            SupportTopicFavorite.topic_id == topic.id,
+            SupportTopicFavorite.user_id == current_user.id,
+        )
+        .first()
+    )
+
     replies = []
     for r in topic.replies:
         replies.append(
@@ -357,6 +411,8 @@ def get_support_topic_detail(
         likes_count=topic.likes_count or 0,
         liked_by_me=user_like is not None,
         has_solution=has_solution,
+        is_pinned=user_pin is not None,
+        is_favorited=user_fav is not None,
         created_at=topic.created_at,
         course=SupportCourseItem(
             id=topic.course.id,
@@ -556,6 +612,73 @@ def toggle_support_topic_like(
 
     db.commit()
     return {"liked": liked, "likes_count": topic.likes_count}
+
+
+@router.post(
+    "/topics/{topic_id}/pin",
+    response_model=SupportTopicPinResponse,
+    summary="Fixar ou Desafixar Dúvida",
+    description="Permite que cada usuário fixe ou desafixe até 5 dúvidas de suporte de sua preferência."
+)
+def toggle_pin_support_topic(
+    topic_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Alterna o status de fixação da dúvida para o usuário logado (máx. 5 dúvidas por usuário).
+    """
+    topic = db.query(SupportTopic).filter(SupportTopic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Dúvida não encontrada.")
+
+    existing_pin = (
+        db.query(SupportTopicPin)
+        .filter(
+            SupportTopicPin.topic_id == topic.id,
+            SupportTopicPin.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if existing_pin:
+        db.delete(existing_pin)
+        db.commit()
+        total_pinned = (
+            db.query(SupportTopicPin)
+            .filter(SupportTopicPin.user_id == current_user.id)
+            .count()
+        )
+        logger.info(f"Dúvida ID {topic_id} desafixada por {current_user.email} (Total restante: {total_pinned}/5)")
+        return SupportTopicPinResponse(
+            pinned=False,
+            message="Dúvida desafixada com sucesso.",
+            total_pinned=total_pinned,
+        )
+
+    # Validar limite máximo de 5 dúvidas fixadas por usuário
+    current_count = (
+        db.query(SupportTopicPin)
+        .filter(SupportTopicPin.user_id == current_user.id)
+        .count()
+    )
+    if current_count >= 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Você atingiu o limite de 5 dúvidas fixadas. Desafixe uma dúvida para fixar outra."
+        )
+
+    new_pin = SupportTopicPin(topic_id=topic.id, user_id=current_user.id)
+    db.add(new_pin)
+    db.commit()
+    total_pinned = current_count + 1
+    logger.info(f"Dúvida ID {topic_id} fixada por {current_user.email} (Total: {total_pinned}/5)")
+
+    return SupportTopicPinResponse(
+        pinned=True,
+        message="Dúvida fixada com sucesso no topo.",
+        total_pinned=total_pinned,
+    )
 
 
 @router.delete(

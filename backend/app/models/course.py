@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, Float
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime, timezone
 from app.core.database import Base
@@ -81,6 +81,7 @@ class Lesson(Base):
     quiz_questions = relationship("QuizQuestion", back_populates="lesson", cascade="all, delete-orphan", order_by="QuizQuestion.order_index.asc()")
     quiz_submissions = relationship("QuizSubmission", back_populates="lesson", cascade="all, delete-orphan")
     transcription = relationship("LessonTranscription", back_populates="lesson", uselist=False, cascade="all, delete-orphan")
+    favorites = relationship("LessonFavorite", back_populates="lesson", cascade="all, delete-orphan")
 
 
 class LessonVideo(Base):
@@ -119,6 +120,7 @@ class LessonComment(Base):
         order_by="LessonComment.created_at.asc()"
     )
     likes = relationship("LessonCommentLike", back_populates="comment", cascade="all, delete-orphan")
+    favorites = relationship("LessonCommentFavorite", back_populates="comment", cascade="all, delete-orphan")
 
 
 class LessonCommentLike(Base):
@@ -139,6 +141,46 @@ class LessonCommentLike(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     comment = relationship("LessonComment", back_populates="likes")
+
+
+class LessonFavorite(Base):
+    """
+    Aulas favoritadas pelos usuários (alunos e gestores).
+    Permite acesso rápido através do menu superior de favoritos.
+    """
+    __tablename__ = "lesson_favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "user_id", name="uq_lesson_favorite_user"),
+    )
+
+    user = relationship("User", foreign_keys=[user_id])
+    lesson = relationship("Lesson", back_populates="favorites")
+
+
+class LessonCommentFavorite(Base):
+    """
+    Comentários de aulas favoritados pelos usuários.
+    Permite acesso rápido através da aba de Comentários no menu de favoritos.
+    """
+    __tablename__ = "lesson_comment_favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("lesson_comments.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="uq_lesson_comment_favorite_user"),
+    )
+
+    user = relationship("User", foreign_keys=[user_id])
+    comment = relationship("LessonComment", back_populates="favorites")
 
 
 
@@ -276,6 +318,11 @@ class LessonTranscription(Base):
     status = Column(String, default="ready")  # 'processing', 'ready', 'error'
     error_message = Column(Text, nullable=True)
     generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    audio_duration_seconds = Column(Float, nullable=True)
+    prompt_tokens = Column(Integer, nullable=True)
+    completion_tokens = Column(Integer, nullable=True)
+    estimated_cost_usd = Column(Float, nullable=True)
+    estimated_cost_brl = Column(Float, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

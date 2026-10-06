@@ -27,6 +27,14 @@ from app.services.scheduler import setup_scheduler, parse_frequency_to_timedelta
 
 router = APIRouter(prefix="/backups", tags=["Backups"])
 
+def to_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """Garante que o datetime possua tzinfo UTC para serialização ISO com Z."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 def format_file_size(size_in_bytes: int) -> str:
     """Formata bytes em B, KB, MB, GB."""
     if size_in_bytes < 1024:
@@ -64,10 +72,24 @@ def get_dashboard_stats(
     frequency_label = get_frequency_label(schedule.frequency) if schedule else "A cada 6 hora(s)"
     retention_max = schedule.retention_max if schedule else 30
 
+    now_utc = datetime.now(timezone.utc)
+    next_date = None
+    if schedule and schedule.is_active:
+        sched_next = to_utc_aware(schedule.next_run_at)
+        # Se a data de próximo backup já passou ou está nula, recalcula para a próxima execução futura
+        if not sched_next or sched_next < now_utc:
+            delta = parse_frequency_to_timedelta(schedule.frequency)
+            schedule.next_run_at = now_utc + delta
+            db.commit()
+            db.refresh(schedule)
+        next_date = to_utc_aware(schedule.next_run_at)
+
+    last_backup_date = to_utc_aware(last_backup.created_at) if (last_backup and last_backup.created_at) else None
+
     return BackupDashboardStats(
         last_backup_filename=last_backup.filename if last_backup else None,
-        last_backup_date=last_backup.created_at if last_backup else None,
-        next_backup_date=schedule.next_run_at if schedule and schedule.is_active else None,
+        last_backup_date=last_backup_date,
+        next_backup_date=next_date,
         frequency_label=frequency_label,
         current_count=current_count,
         retention_max=retention_max,
@@ -88,6 +110,7 @@ def list_backups(
     for b in backups:
         dto = BackupHistoryResponse.model_validate(b)
         dto.file_size_formatted = format_file_size(b.file_size_bytes)
+        dto.created_at = to_utc_aware(dto.created_at)
         results.append(dto)
     return results
 
@@ -103,6 +126,7 @@ def trigger_manual_backup(
         history = create_backup_record(db, backup_type="manual", custom_name=custom_name)
         dto = BackupHistoryResponse.model_validate(history)
         dto.file_size_formatted = format_file_size(history.file_size_bytes)
+        dto.created_at = to_utc_aware(dto.created_at)
         return dto
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar backup manual: {str(e)}")
@@ -135,6 +159,7 @@ async def import_external_backup(
         )
         dto = BackupHistoryResponse.model_validate(history)
         dto.file_size_formatted = format_file_size(history.file_size_bytes)
+        dto.created_at = to_utc_aware(dto.created_at)
         return dto
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao importar backup: {str(e)}")
@@ -220,6 +245,7 @@ def rename_backup(
 
         dto = BackupHistoryResponse.model_validate(backup)
         dto.file_size_formatted = format_file_size(backup.file_size_bytes)
+        dto.created_at = to_utc_aware(dto.created_at)
         return dto
     except Exception as e:
         db.rollback()
@@ -280,7 +306,12 @@ def get_schedule(
         db.add(schedule)
         db.commit()
         db.refresh(schedule)
-    return schedule
+
+    dto = BackupScheduleResponse.model_validate(schedule)
+    dto.last_run_at = to_utc_aware(dto.last_run_at)
+    dto.next_run_at = to_utc_aware(dto.next_run_at)
+    dto.updated_at = to_utc_aware(dto.updated_at)
+    return dto
 
 @router.put("/schedule", response_model=BackupScheduleResponse)
 def update_schedule(
@@ -311,4 +342,8 @@ def update_schedule(
     # Reconfigura o scheduler em background
     setup_scheduler()
 
-    return schedule
+    dto = BackupScheduleResponse.model_validate(schedule)
+    dto.last_run_at = to_utc_aware(dto.last_run_at)
+    dto.next_run_at = to_utc_aware(dto.next_run_at)
+    dto.updated_at = to_utc_aware(dto.updated_at)
+    return dto

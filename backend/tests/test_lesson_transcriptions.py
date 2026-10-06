@@ -235,14 +235,77 @@ def test_student_and_html_endpoint_after_transcription(setup_transcription_data)
     assert res.status_code == 200
     res_data = res.json()
     assert res_data["status"] == "completed"
-    assert "Bem-vindos à aula" in res_data["full_transcript"]
+    # A transcrição integral não deve ser enviada para alunos (apenas resumo e destaques)
+    assert res_data["full_transcript"] == ""
+    assert "Resumo Executivo" in res_data["summary_markdown"]
+    assert len(res_data["key_takeaways"]) == 2
 
-    # 2. Aluno com acesso consegue acessar o documento HTML puro renderizado
+    # Aluno NUNCA deve receber dados de custo em reais ou tokens consumidos
+    assert res_data.get("estimated_cost_brl") is None
+    assert res_data.get("estimated_cost_formatted") is None
+    assert res_data.get("prompt_tokens") is None
+    assert res_data.get("completion_tokens") is None
+
+    # 2. Aluno com acesso consegue acessar o documento HTML puro renderizado com header
     html_url = f"/api/v1/courses/{data['course_id']}/modules/{data['module_id']}/lessons/{data['lesson_id']}/transcription/html"
     html_res = client.get(html_url, headers=student_headers)
     assert html_res.status_code == 200
     assert "text/html" in html_res.headers["content-type"]
     assert "<h1>Resumo Inteligente</h1>" in html_res.text
+
+    # 3. Aluno consegue abrir o documento HTML em nova aba usando ?token=... SEM header Authorization
+    student_login = client.post("/api/v1/auth/login", json={"email": data["student_email"], "password": data["student_pass"]})
+    student_token = student_login.json()["access_token"]
+    html_token_url = f"{html_url}?token={student_token}"
+    html_token_res = client.get(html_token_url)
+    assert html_token_res.status_code == 200
+    assert "<h1>Resumo Inteligente</h1>" in html_token_res.text
+
+    # 4. Requisição sem token e sem header é rejeitada com 401
+    html_no_auth = client.get(html_url)
+    assert html_no_auth.status_code == 401
+
+
+def test_admin_views_cost_and_tokens_metrics(setup_transcription_data):
+    data = setup_transcription_data
+    admin_headers = get_headers(data["admin_email"], data["admin_pass"])
+
+    # Salva transcrição com custos e tokens gravados
+    db = TestingSessionLocal()
+    trans = db.query(LessonTranscription).filter(LessonTranscription.lesson_id == data["lesson_id"]).first()
+    if not trans:
+        trans = LessonTranscription(lesson_id=data["lesson_id"])
+        db.add(trans)
+    trans.full_transcript = "Texto completo para cálculo de tokens e custos."
+    trans.summary_html = "<p>Resumo em HTML</p>"
+    trans.audio_duration_seconds = 180.0
+    trans.prompt_tokens = 500
+    trans.completion_tokens = 300
+    trans.estimated_cost_usd = 0.033
+    trans.estimated_cost_brl = 0.18
+    trans.status = "completed"
+    db.commit()
+    db.close()
+
+    url = f"/api/v1/courses/{data['course_id']}/modules/{data['module_id']}/lessons/{data['lesson_id']}/transcription"
+    res = client.get(url, headers=admin_headers)
+    assert res.status_code == 200
+    res_data = res.json()
+
+    # Admin e Super Admin têm acesso total aos custos em reais formatados e à transcrição integral
+    assert "Texto completo para cálculo" in res_data["full_transcript"]
+    assert res_data["estimated_cost_brl"] == 0.18
+    assert res_data["estimated_cost_formatted"] == "R$ 0,18"
+    assert res_data["prompt_tokens"] == 500
+    assert res_data["completion_tokens"] == 300
+
+    # Admin também acessa HTML via query param ?token=...
+    admin_login = client.post("/api/v1/auth/login", json={"email": data["admin_email"], "password": data["admin_pass"]})
+    admin_token = admin_login.json()["access_token"]
+    html_admin_url = f"/api/v1/courses/{data['course_id']}/modules/{data['module_id']}/lessons/{data['lesson_id']}/transcription/html?token={admin_token}"
+    html_admin_res = client.get(html_admin_url)
+    assert html_admin_res.status_code == 200
+    assert "<p>Resumo em HTML</p>" in html_admin_res.text
 
 
 def test_admin_can_reset_transcription(setup_transcription_data):
@@ -259,4 +322,5 @@ def test_admin_can_reset_transcription(setup_transcription_data):
     get_res = client.get(reset_url, headers=admin_headers)
     assert get_res.status_code == 200
     assert get_res.json()["status"] == "not_started"
+
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Palette, KeyRound, User } from 'lucide-react';
+import { Settings, Palette, KeyRound, User, Link2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import PlatformAppearanceTab from './platform-settings/PlatformAppearanceTab';
 import PlatformApiTokensTab from './platform-settings/PlatformApiTokensTab';
 import PlatformProfileTab from './platform-settings/PlatformProfileTab';
+import PlatformLinksTab from './platform-settings/PlatformLinksTab';
 
 export default function PlatformSettings({
   bgColor = '#090d16',
@@ -11,7 +12,7 @@ export default function PlatformSettings({
   currentUser,
   onUserUpdated
 }) {
-  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'profile' | 'api_tokens'
+  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'profile' | 'api_tokens' | 'links'
   const [selectedColor, setSelectedColor] = useState(bgColor || '#090d16');
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
@@ -23,10 +24,11 @@ export default function PlatformSettings({
   }, [bgColor]);
 
   useEffect(() => {
-    if (currentUser?.role === 'aluno' && activeTab === 'api_tokens') {
+    if (currentUser?.role === 'aluno' && (activeTab === 'api_tokens' || activeTab === 'links')) {
       setActiveTab('appearance');
     }
   }, [currentUser?.role, activeTab]);
+
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((selectedColor || '').toLowerCase());
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
@@ -183,6 +185,32 @@ export default function PlatformSettings({
             <span>Tokens de API</span>
           </button>
         )}
+
+        {currentUser?.role !== 'aluno' && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('links')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'links' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'links' ? '#0284c7' : 'transparent',
+              color: activeTab === 'links' ? '#ffffff' : subTextColor,
+              border: activeTab === 'links' ? 'none' : '1px solid transparent',
+              boxShadow: activeTab === 'links' ? '0 4px 14px rgba(2, 132, 199, 0.4)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+            data-testid="tab-platform-links-btn"
+          >
+            <Link2 size={16} />
+            <span>Links da Plataforma</span>
+          </button>
+        )}
       </div>
 
       {/* Conteúdo da Aba Ativa */}
@@ -214,6 +242,16 @@ export default function PlatformSettings({
 
       {activeTab === 'api_tokens' && currentUser?.role !== 'aluno' && (
         <PlatformApiTokensTab
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
+
+      {activeTab === 'links' && currentUser?.role !== 'aluno' && (
+        <PlatformLinksTab
           cardBg={cardBg}
           cardBorder={cardBorder}
           textColor={textColor}

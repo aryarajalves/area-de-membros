@@ -71,15 +71,17 @@ export default function SupportManagement({ currentUser, bgColor }) {
     // Mapeamento do filtro de pílulas rápidas
     if (activePillFilter === 'resolved') {
       params.append('status', 'resolved');
+    } else if (activePillFilter === 'pinned') {
+      params.append('sort', 'pinned');
     } else if (activePillFilter === 'unanswered') {
       params.append('status', 'open');
-      params.append('sort_by', 'unanswered');
+      params.append('sort', 'unanswered');
     } else if (activePillFilter === 'popular') {
-      params.append('sort_by', 'popular');
+      params.append('sort', 'popular');
     } else if (activePillFilter === 'my_topics') {
-      params.append('sort_by', 'my_topics');
+      params.append('sort', 'my_topics');
     } else if (sortBy) {
-      params.append('sort_by', sortBy);
+      params.append('sort', sortBy);
     }
 
     try {
@@ -130,6 +132,28 @@ export default function SupportManagement({ currentUser, bgColor }) {
       }
     } catch {
       // Ignora
+    }
+  };
+
+  const handleTogglePin = async (topicId) => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/v1/support/topics/${topicId}/pin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast(data.message, 'success');
+        setTopics((prev) =>
+          prev.map((t) => (t.id === topicId ? { ...t, is_pinned: data.pinned } : t))
+        );
+        fetchTopics();
+      } else {
+        addToast(data.detail || 'Não foi possível alterar a fixação.', 'error');
+      }
+    } catch (err) {
+      addToast(err.message || 'Erro ao conectar ao servidor.', 'error');
     }
   };
 
@@ -421,6 +445,8 @@ export default function SupportManagement({ currentUser, bgColor }) {
               onCommentClick={() => handleOpenDetail(topic)}
               onLike={() => handleToggleLike(topic.id)}
               onToggleLike={() => handleToggleLike(topic.id)}
+              onPin={() => handleTogglePin(topic.id)}
+              onTogglePin={() => handleTogglePin(topic.id)}
               onDelete={() => setTopicToDelete(topic)}
               onDeleteTopic={() => setTopicToDelete(topic)}
             />
@@ -433,35 +459,18 @@ export default function SupportManagement({ currentUser, bgColor }) {
         isOpen={isNewTopicModalOpen}
         onClose={() => setIsNewTopicModalOpen(false)}
         courses={courses}
-        onTopicCreated={(newTopic) => {
-          setTopics((prev) => [newTopic, ...prev]);
-          fetchStats();
-        }}
+        onTopicCreated={(newTopic) => { setTopics((prev) => [newTopic, ...prev]); fetchStats(); }}
       />
 
       <SupportTopicDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setSelectedTopicId(null);
-        }}
+        onClose={() => { setIsDetailModalOpen(false); setSelectedTopicId(null); }}
         topicId={selectedTopicId}
         currentUser={currentUser}
-        onTopicDeleted={(id) => {
-          setTopics((prev) => prev.filter((t) => t.id !== id));
-          fetchStats();
-        }}
+        onTopicDeleted={(id) => { setTopics((prev) => prev.filter((t) => t.id !== id)); fetchStats(); }}
         onRequestDeleteTopic={(topic) => setTopicToDelete(topic)}
-        onTopicUpdated={(updated) => {
-          setTopics((prev) =>
-            prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
-          );
-          fetchStats();
-        }}
-        onReplyAdded={() => {
-          fetchTopics();
-          fetchStats();
-        }}
+        onTopicUpdated={(updated) => { setTopics((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))); fetchStats(); }}
+        onReplyAdded={() => { fetchTopics(); fetchStats(); }}
       />
 
       <DeleteSupportConfirmModal

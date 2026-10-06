@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { MessageSquare, Globe, BookOpen, Search, Sparkles } from 'lucide-react';
+import { MessageSquare, Globe, BookOpen, Search, Sparkles, ArrowLeft } from 'lucide-react';
 
 export default function ChatSidebar({
   channels = [],
   selectedChannel,
   onSelectChannel,
   loading = false,
+  onBack,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -30,10 +31,50 @@ export default function ChatSidebar({
         height: '100%',
       }}
     >
+      {/* Botão Voltar para sair do modo de tela cheia do chat */}
+      {onBack && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <button
+            type="button"
+            onClick={onBack}
+            data-testid="chat-back-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '9px 14px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              color: '#f8fafc',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '999px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+              e.currentTarget.style.color = '#f8fafc';
+            }}
+          >
+            <ArrowLeft size={15} color="#60a5fa" />
+            <span>Voltar aos Cursos</span>
+          </button>
+        </div>
+      )}
+
       {/* Topo da barra de canais */}
       <div
         style={{
-          padding: '20px 16px 14px',
+          padding: onBack ? '12px 16px 14px' : '20px 16px 14px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >

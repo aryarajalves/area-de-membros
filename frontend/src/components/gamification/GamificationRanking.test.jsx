@@ -90,12 +90,110 @@ describe('GamificationRanking Component', () => {
     }
   ];
 
+  const mockCompletedPeriods = {
+    completed_months: [
+      { key: '2026-09', label: 'Setembro/2026', year: 2026, month: 9 },
+      { key: '2026-08', label: 'Agosto/2026', year: 2026, month: 8 }
+    ],
+    completed_years: [
+      { key: '2025', label: 'Ano de 2025', year: 2025, month: null },
+      { key: '2024', label: 'Ano de 2024', year: 2024, month: null }
+    ]
+  };
+
+  const mockClosedRankingMonth = {
+    period_type: 'month',
+    period_key: '2026-09',
+    period_label: 'Setembro/2026',
+    is_closed: true,
+    top_students: [
+      {
+        rank: 1,
+        user_id: 99,
+        name: 'Campeão de Setembro',
+        email: 'setembro@test.com',
+        avatar_url: null,
+        points: 520,
+        solutions_count: 7,
+        lessons_completed_count: 30,
+        badge: '🥇 Campeão do Mês',
+        is_current_user: false
+      },
+      {
+        rank: 2,
+        user_id: 10,
+        name: 'Aluno Campeão',
+        email: 'campeao@test.com',
+        avatar_url: null,
+        points: 410,
+        solutions_count: 4,
+        lessons_completed_count: 20,
+        badge: '🥈 Vice do Mês',
+        is_current_user: true
+      }
+    ],
+    my_position: {
+      rank: 2,
+      user_id: 10,
+      name: 'Aluno Campeão',
+      email: 'campeao@test.com',
+      avatar_url: null,
+      points: 410,
+      solutions_count: 4,
+      lessons_completed_count: 20,
+      badge: '🥈 Vice do Mês',
+      is_current_user: true
+    },
+    total_participants: 2
+  };
+
+  const mockClosedRankingYear = {
+    period_type: 'year',
+    period_key: '2025',
+    period_label: 'Ano de 2025',
+    is_closed: true,
+    top_students: [
+      {
+        rank: 1,
+        user_id: 77,
+        name: 'Lenda do Ano 2025',
+        email: 'lenda2025@test.com',
+        avatar_url: null,
+        points: 1800,
+        solutions_count: 25,
+        lessons_completed_count: 80,
+        badge: '👑 Campeão do Ano',
+        is_current_user: false
+      }
+    ],
+    my_position: null,
+    total_participants: 1
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('auth_token', 'mock_token');
 
     global.fetch = vi.fn().mockImplementation((url) => {
       const urlStr = String(url);
+      if (urlStr.includes('/api/v1/gamification/completed-periods')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockCompletedPeriods)
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/closed-ranking')) {
+        if (urlStr.includes('period_type=year')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockClosedRankingYear)
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockClosedRankingMonth)
+        });
+      }
       if (urlStr.includes('/api/v1/gamification/ranking')) {
         return Promise.resolve({
           ok: true,
@@ -193,5 +291,72 @@ describe('GamificationRanking Component', () => {
     // Fechar modal
     fireEvent.click(screen.getByTestId('close-rules-modal-btn'));
     expect(screen.queryByTestId('gamification-rules-modal')).not.toBeInTheDocument();
+  });
+
+  it('switches to closed months tab and renders completed period ranking and podium', async () => {
+    const userAluno = { id: 10, name: 'Aluno Campeão', role: 'aluno' };
+
+    render(
+      <ToastProvider>
+        <GamificationRanking user={userAluno} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-period-closed-months')).toBeInTheDocument();
+    });
+
+    // Clicar na aba Meses Anteriores (Top 10)
+    fireEvent.click(screen.getByTestId('tab-period-closed-months'));
+
+    // Aguardar carregar períodos e ranking fechado
+    await waitFor(() => {
+      expect(screen.getByTestId('closed-period-selector-banner')).toBeInTheDocument();
+      expect(screen.getByTestId('closed-period-select')).toBeInTheDocument();
+      expect(screen.getByText('Classificação Final (Top 10 Campeões)')).toBeInTheDocument();
+    });
+
+    // Verificar se o campeão histórico aparece (no pódio e/ou na tabela)
+    expect(screen.getAllByText('Campeão de Setembro').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('podium-points-1')).toHaveTextContent('520');
+    expect(screen.getAllByText('🥇 Campeão do Mês').length).toBeGreaterThan(0);
+
+    // Trocar o mês selecionado no dropdown
+    fireEvent.change(screen.getByTestId('closed-period-select'), {
+      target: { value: '2026-08' }
+    });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/gamification/closed-ranking?period_type=month&period_key=2026-08'),
+        expect.anything()
+      );
+    });
+  });
+
+  it('switches to closed years tab and displays completed annual top 10 champions', async () => {
+    const userAluno = { id: 10, name: 'Aluno Campeão', role: 'aluno' };
+
+    render(
+      <ToastProvider>
+        <GamificationRanking user={userAluno} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-period-closed-years')).toBeInTheDocument();
+    });
+
+    // Clicar na aba Anos Anteriores (Top 10)
+    fireEvent.click(screen.getByTestId('tab-period-closed-years'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('closed-period-selector-banner')).toBeInTheDocument();
+      expect(screen.getAllByText('Ano de 2025').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Lenda do Ano 2025').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId('podium-points-1')).toHaveTextContent('1.800');
+    expect(screen.getAllByText('👑 Campeão do Ano').length).toBeGreaterThan(0);
   });
 });

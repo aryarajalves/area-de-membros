@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock } from 'lucide-react';
+import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy } from 'lucide-react';
 import StudentCourseProgressItem from './StudentCourseProgressItem';
 import StudentAccessHistoryModal from './StudentAccessHistoryModal';
 import StudentTriggerWebhookModal from './StudentTriggerWebhookModal';
+import StudentGamificationHistoryModal from './StudentGamificationHistoryModal';
 import { formatBrasiliaDateTime } from './studentDateUtils';
 
 export default function StudentCard({ student, isLightBg }) {
   const [expanded, setExpanded] = useState(true);
   const [selectedCourseForHistory, setSelectedCourseForHistory] = useState(null);
   const [selectedCourseForWebhook, setSelectedCourseForWebhook] = useState(null);
+  const [showGamificationModal, setShowGamificationModal] = useState(false);
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.035)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -121,8 +123,58 @@ export default function StudentCard({ student, isLightBg }) {
           </div>
         </div>
 
-        {/* Resumo do Progresso Geral do Aluno */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        {/* Resumo do Progresso Geral do Aluno e Conquistas */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          {/* Badge de Pontos no Ranking de Conquistas */}
+          <button
+            type="button"
+            onClick={() => setShowGamificationModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: isLightBg ? 'rgba(234, 179, 8, 0.12)' : 'rgba(234, 179, 8, 0.1)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              color: '#eab308',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 0 10px rgba(234, 179, 8, 0.15)'
+            }}
+            title="Clique para ver o histórico completo de pontos e conquistas no ranking"
+            data-testid={`student-gamification-points-btn-${student.id}`}
+          >
+            <Trophy size={14} color="#eab308" />
+            <span>{student.total_points ?? 0} pts</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowGamificationModal(true)}
+            style={{
+              background: isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.05)',
+              border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              color: isLightBg ? '#0f172a' : '#f8fafc',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+            }}
+            title="Abrir histórico de pontos do ranking de conquistas"
+            data-testid={`open-gamification-history-btn-${student.id}`}
+          >
+            <Trophy size={14} color="#eab308" />
+            <span>Pontos & Conquistas</span>
+          </button>
+
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.78rem', color: textMuted }}>Progresso Geral</div>
             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#38bdf8' }}>
@@ -203,6 +255,14 @@ export default function StudentCard({ student, isLightBg }) {
         onClose={() => setSelectedCourseForWebhook(null)}
         student={student}
         course={selectedCourseForWebhook}
+        isLightBg={isLightBg}
+      />
+
+      {/* Modal de Histórico de Pontos e Conquistas do Aluno */}
+      <StudentGamificationHistoryModal
+        isOpen={showGamificationModal}
+        onClose={() => setShowGamificationModal(false)}
+        student={student}
         isLightBg={isLightBg}
       />
     </div>

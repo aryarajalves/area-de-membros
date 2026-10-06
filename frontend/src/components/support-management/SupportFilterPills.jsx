@@ -1,8 +1,9 @@
 import React from 'react';
-import { Sparkles, Flame, Clock, CheckCircle2, User } from 'lucide-react';
+import { Sparkles, Flame, Clock, CheckCircle2, User, Pin } from 'lucide-react';
 
 export const PILL_FILTERS = [
   { id: 'all', label: 'Todas as Dúvidas', icon: Sparkles },
+  { id: 'pinned', label: 'Fixadas por Mim', icon: Pin },
   { id: 'popular', label: 'Mais Populares', icon: Flame },
   { id: 'unanswered', label: 'Aguardando Resposta', icon: Clock },
   { id: 'resolved', label: 'Resolvidas', icon: CheckCircle2 },

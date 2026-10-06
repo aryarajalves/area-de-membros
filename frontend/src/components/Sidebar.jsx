@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle,
   Settings, UserCheck, Webhook, HelpCircle, X, MessagesSquare,
-  MessageSquareQuote, Trophy
+  MessageSquareQuote, Trophy, ExternalLink
 } from 'lucide-react';
+import { getLinkIcon, getLinkColor } from './platform-settings/linkIcons';
 
 export default function Sidebar({
   activeTab = 'courses',
@@ -15,11 +16,44 @@ export default function Sidebar({
   isMobileOpen = false,
   onCloseMobile
 }) {
+  const [platformLinks, setPlatformLinks] = useState([]);
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLinks = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        const res = await fetch('/api/v1/platform-links', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          setPlatformLinks(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar links na barra lateral:', err);
+      }
+    };
+
+    fetchLinks();
+
+    const handleLinksUpdated = () => {
+      fetchLinks();
+    };
+    window.addEventListener('platform_links_updated', handleLinksUpdated);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('platform_links_updated', handleLinksUpdated);
+    };
+  }, []);
+
 
   // Proposta 2: 3 Categorias Modernas (Mais compacta)
   // 1. ÁREA PEDAGÓGICA (ou MEU APRENDIZADO): Cursos, Alunos, Suporte, Relatos de Aulas
@@ -205,6 +239,89 @@ export default function Sidebar({
                 </div>
               );
             })}
+
+            {/* Categoria Links (Redes Sociais e Importantes) */}
+            {platformLinks && platformLinks.length > 0 && (
+              <div
+                className="nav-category-group"
+                data-testid="nav-category-links"
+              >
+                <span className="nav-category-title" style={{ color: isLightBg ? '#94a3b8' : '#64748b' }}>
+                  Links
+                </span>
+                <div className="nav-category-items">
+                  {platformLinks.map((link) => {
+                    const LinkIconComp = getLinkIcon(link.icon);
+                    const linkIconColor = getLinkColor(link.icon);
+
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="nav-button"
+                        data-testid={`sidebar-link-${link.id}`}
+                        title={`Abrir ${link.title} em nova aba`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          width: '100%',
+                          textDecoration: 'none',
+                          backgroundColor: 'transparent',
+                          color: isLightBg ? '#475569' : '#cbd5e1',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)';
+                          e.currentTarget.style.color = isLightBg ? '#0284c7' : '#38bdf8';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = isLightBg ? '#475569' : '#cbd5e1';
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '10px',
+                            color: linkIconColor,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <LinkIconComp size={16} />
+                        </span>
+                        <span
+                          style={{
+                            flex: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {link.title}
+                        </span>
+                        <ExternalLink
+                          size={12}
+                          style={{
+                            marginLeft: 'auto',
+                            opacity: 0.5,
+                            flexShrink: 0,
+                          }}
+                        />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </nav>
         </div>
 

@@ -221,7 +221,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **260 testes unitários passando (100% de aprovação em 59 arquivos de teste)** cobrindo feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **387 testes unitários passando (100% de aprovação em 83 arquivos de teste)** cobrindo sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -230,7 +230,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **45 testes unitários passando (100% de aprovação)** cobrindo geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **102 testes unitários passando (100% de aprovação)** cobrindo endpoints de Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 

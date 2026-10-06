@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Send, Loader2, Image, Paperclip, X, FileText } from 'lucide-react';
+import { Send, Loader2, Image, Paperclip, X, FileText, Video, Mic } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import ChatAudioRecorder from './ChatAudioRecorder';
 
 export default function ChatInputBar({
   onSendMessage,
@@ -11,6 +12,7 @@ export default function ChatInputBar({
   const [text, setText] = useState('');
   const [attachedMedia, setAttachedMedia] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -27,8 +29,8 @@ export default function ChatInputBar({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      addToast('O arquivo excede o limite de 15 MB.', 'error');
+    if (file.size > 25 * 1024 * 1024) {
+      addToast('O arquivo excede o limite máximo de 25 MB.', 'error');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -63,6 +65,43 @@ export default function ChatInputBar({
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSendRecordedAudio = async (audioBlob, durationSec) => {
+    setUploading(true);
+    const token = getAuthToken();
+    try {
+      const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: audioBlob.type || 'audio/webm' });
+      const formData = new FormData();
+      formData.append('file', audioFile);
+
+      const res = await fetch('/api/v1/chat/upload-media', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const trimmed = text.trim();
+        const success = await onSendMessage(trimmed, data.media_url, 'audio');
+        if (success) {
+          setText('');
+          setAttachedMedia(null);
+          setIsRecording(false);
+          addToast('Áudio enviado com sucesso!', 'success');
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        addToast(errData.detail || 'Falha no upload do áudio.', 'error');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar gravação de áudio:', err);
+      addToast('Erro ao enviar áudio.', 'error');
+    } finally {
+      setUploading(false);
+      setIsRecording(false);
     }
   };
 
@@ -115,7 +154,7 @@ export default function ChatInputBar({
       <input
         type="file"
         ref={fileInputRef}
-        accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+        accept="image/*,video/*,audio/*,.pdf,.docx,.xlsx,.txt,.zip"
         style={{ display: 'none' }}
         onChange={handleFileChange}
         data-testid="chat-file-input"
@@ -150,6 +189,36 @@ export default function ChatInputBar({
                 border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             />
+          ) : attachedMedia.type === 'video' ? (
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#3b82f6',
+              }}
+            >
+              <Video size={20} />
+            </div>
+          ) : attachedMedia.type === 'audio' ? (
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#10b981',
+              }}
+            >
+              <Mic size={20} />
+            </div>
           ) : (
             <div
               style={{
@@ -181,7 +250,13 @@ export default function ChatInputBar({
               {attachedMedia.name}
             </span>
             <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>
-              {attachedMedia.type === 'image' ? 'Imagem anexada' : 'Documento anexado'}
+              {attachedMedia.type === 'image'
+                ? 'Imagem anexada'
+                : attachedMedia.type === 'video'
+                ? 'Vídeo anexado'
+                : attachedMedia.type === 'audio'
+                ? 'Áudio anexado'
+                : 'Documento anexado'}
             </span>
           </div>
           <button
@@ -213,10 +288,10 @@ export default function ChatInputBar({
         style={{
           display: 'flex',
           alignItems: 'flex-end',
-          gap: '12px',
+          gap: '10px',
           backgroundColor: '#1e293b',
           borderRadius: '12px',
-          padding: '8px 12px 8px 16px',
+          padding: '8px 12px 8px 14px',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
           transition: 'border-color 0.2s',
@@ -226,14 +301,14 @@ export default function ChatInputBar({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || sending}
-          title="Anexar imagem ou documento"
+          disabled={uploading || sending || isRecording}
+          title="Anexar imagem, vídeo, áudio ou documento"
           data-testid="chat-attach-button"
           style={{
             background: 'none',
             border: 'none',
             color: uploading ? '#3b82f6' : '#94a3b8',
-            cursor: uploading || sending ? 'not-allowed' : 'pointer',
+            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
             padding: '6px',
             marginBottom: '2px',
             display: 'flex',
@@ -243,10 +318,10 @@ export default function ChatInputBar({
             transition: 'all 0.15s ease',
           }}
           onMouseEnter={(e) => {
-            if (!uploading && !sending) e.currentTarget.style.color = '#38bdf8';
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#38bdf8';
           }}
           onMouseLeave={(e) => {
-            if (!uploading && !sending) e.currentTarget.style.color = '#94a3b8';
+            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#94a3b8';
           }}
         >
           {uploading ? (
@@ -255,6 +330,15 @@ export default function ChatInputBar({
             <Paperclip size={18} />
           )}
         </button>
+
+        {/* Componente de Gravação de Áudio */}
+        <ChatAudioRecorder
+          isRecording={isRecording}
+          onStartRecording={() => setIsRecording(true)}
+          onCancelRecording={() => setIsRecording(false)}
+          onSendAudio={handleSendRecordedAudio}
+          sending={sending || uploading}
+        />
 
         <textarea
           ref={textareaRef}

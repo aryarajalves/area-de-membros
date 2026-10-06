@@ -284,6 +284,80 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
   - `ix_lesson_transcriptions_id`, `ix_lesson_transcriptions_lesson_id`.
 - **Script de Migração:** `backend/scripts/migrate_lesson_transcriptions.py`
 
+---
+
+### [05/10/2026] - Tabela de Links da Plataforma / Redes Sociais na Barra Lateral (Platform Links)
+- **Tabela Criada:**
+  - `platform_links`: Armazena links externos e redes sociais (Instagram, YouTube, etc.) gerenciados pelo administrador para exibição na seção "Links" da barra lateral (`id`, `title`, `url`, `icon`, `order_index`, `is_active`, `created_at`, `updated_at`).
+- **Índices Criados:**
+  - `ix_platform_links_id`.
+- **Script de Migração:** `backend/scripts/migrate_platform_links.py`
+
+---
+
+### [05/10/2026] - Métricas de Tokens e Custos em Reais (BRL) na Transcrição IA
+- **Tabela Afetada:**
+  - `lesson_transcriptions`: Adicionadas as colunas `audio_duration_seconds` (FLOAT), `prompt_tokens` (INTEGER), `completion_tokens` (INTEGER), `estimated_cost_usd` (FLOAT) e `estimated_cost_brl` (FLOAT) para mensuração precisa de consumo e custo das APIs da OpenAI (Whisper + GPT-4o-mini).
+- **Script de Migração:** `backend/scripts/migrate_transcription_cost_columns.py`
+
+---
+
+### [05/10/2026] - Sistema de Suporte ao Aluno (Tópicos, Mensagens e Anexos)
+- **Tabelas Criadas:**
+  - `support_topics`: Tópicos/chamados de suporte abertos por alunos ou vinculados a cursos/aulas (`id`, `user_id`, `course_id`, `lesson_id`, `title`, `description`, `status`, `priority`, `created_at`, `updated_at`).
+  - `support_messages`: Mensagens enviadas dentro do tópico de suporte (`id`, `topic_id`, `user_id`, `message`, `is_staff_reply`, `created_at`).
+  - `support_attachments`: Anexos vinculados a tópicos ou mensagens (`id`, `topic_id`, `message_id`, `file_url`, `file_name`, `file_type`, `file_size`, `created_at`).
+- **Script de Migração:** `backend/scripts/migrate_support_tables.py`
+
+---
+
+### [05/10/2026] - Fixação Personalizada de Dúvidas de Suporte (Support Topic Pins)
+- **Tabela Criada:**
+  - `support_topic_pins`: Armazena as dúvidas/tópicos de suporte fixados individualmente por cada usuário (limite de até 5 por usuário) (`id`, `topic_id`, `user_id`, `created_at`).
+- **Constraint Única:**
+  - `uq_support_topic_pin` em `(topic_id, user_id)` para prevenir duplicatas de fixação.
+- **Índices Criados:**
+  - `ix_support_topic_pins_id`, `ix_support_topic_pins_topic_id`, `ix_support_topic_pins_user_id`.
+- **Script de Migração:** `backend/scripts/migrate_support_topic_pins.py`
+
+---
+
+### [05/10/2026] - Sistema de Favoritos Unificado (Aulas, Comentários, Dúvidas e Mensagens)
+- **Tabelas Criadas:**
+  - `lesson_favorites`: Aulas favoritadas pelos usuários para acesso rápido (`id`, `lesson_id`, `user_id`, `created_at`). Constraint única `uq_lesson_favorite_user` em `(lesson_id, user_id)`.
+  - `lesson_comment_favorites`: Comentários de aulas favoritados pelos usuários (`id`, `comment_id`, `user_id`, `created_at`). Constraint única `uq_lesson_comment_favorite_user` em `(comment_id, user_id)`.
+- **Primary Key Garantida:**
+  - `lesson_comments`: Chave primária assegurada em `id`.
+- **Índices Criados:**
+  - `ix_lesson_favorites_lesson_id`, `ix_lesson_favorites_user_id`.
+  - `ix_lesson_comment_favorites_comment_id`, `ix_lesson_comment_favorites_user_id`.
+- **Script de Migração:** `backend/scripts/migrate_favorites.py`
+
+---
+
+### [05/10/2026] - Correção de Sequências Autoincrement no Chat (Favorites e Likes)
+- **Tabelas Afetadas:**
+  - `chat_message_favorites`: Criada sequência `chat_message_favorites_id_seq` e definido `DEFAULT nextval(...)` para a coluna `id`, resolvendo erro de `null value in column "id" violates not-null constraint`.
+  - `chat_message_likes`: Criada sequência `chat_message_likes_id_seq` e definido `DEFAULT nextval(...)` para a coluna `id`.
+- **Script de Migração:** `backend/scripts/fix_chat_favorites_sequence.py`
+
+---
+
+### [05/10/2026] - Sistema de Favoritos de Dúvidas de Suporte (Support Topic Favorites)
+- **Tabela Criada:**
+  - `support_topic_favorites`: Armazena as dúvidas de suporte favoritadas individualmente pelo usuário para o menu global de Favoritos (`id`, `topic_id`, `user_id`, `created_at`).
+- **Constraint Única:**
+  - `uq_support_topic_favorite` em `(topic_id, user_id)`.
+- **Índices Criados:**
+  - `ix_support_topic_favorites_id`, `ix_support_topic_favorites_topic_id`, `ix_support_topic_favorites_user_id`.
+- **Script de Migração:** `backend/scripts/migrate_support_topic_favorites.py`
+
+
+
+
+
+
+
 
 
 

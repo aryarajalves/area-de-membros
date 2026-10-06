@@ -77,6 +77,7 @@ services:
       - "3010:80"
     volumes:
       - ../frontend/dist:/usr/share/nginx/html:ro
+      - ../frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   area_de_membros_pg_data:

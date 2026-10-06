@@ -1,0 +1,196 @@
+/* ==========================================================================
+   TEMA GLOBAL DA ÁREA DE MEMBROS EM TODAS AS ABAS (.app-dark-theme)
+   Cobre: Relatos de Aulas, Backup Automático, Gerenciamento de Logs e Usuários
+   ========================================================================== */
+.app-dark-theme .page-header h2,
+.app-dark-theme .backup-page-header h1,
+.app-dark-theme .metric-value,
+.app-dark-theme .manual-backup-title,
+.app-dark-theme .schedule-settings-header h3,
+.app-dark-theme .toggle-main-label,
+.app-dark-theme .dropzone-header h3,
+.app-dark-theme .dropzone-title,
+.app-dark-theme .dropzone-notes-title,
+.app-dark-theme .restricted-card h2,
+.app-dark-theme .confirm-delete-title,
+.app-dark-theme .confirm-delete-message strong {
+  color: #f8fafc !important;
+}
+
+.app-dark-theme .page-header p,
+.app-dark-theme .backup-page-header p,
+.app-dark-theme .metric-label,
+.app-dark-theme .metric-subtext,
+.app-dark-theme .manual-backup-desc,
+.app-dark-theme .schedule-settings-header p,
+.app-dark-theme .toggle-sub-label,
+.app-dark-theme .dropzone-header p,
+.app-dark-theme .dropzone-subtitle,
+.app-dark-theme .dropzone-notes-list,
+.app-dark-theme .restricted-card p,
+.app-dark-theme .confirm-delete-message,
+.app-dark-theme .text-secondary,
+.app-dark-theme .help-text {
+  color: #94a3b8 !important;
+}
+
+.app-dark-theme .sub-tabs-container,
+.app-dark-theme .backup-sub-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.app-dark-theme .sub-tab-btn {
+  color: #94a3b8;
+}
+
+.app-dark-theme .sub-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+.app-dark-theme .sub-tab-btn.active {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.15);
+}
+
+.app-dark-theme .table-card,
+.app-dark-theme .backup-metric-card,
+.app-dark-theme .manual-backup-banner,
+.app-dark-theme .schedule-settings-card,
+.app-dark-theme .dropzone-card,
+.app-dark-theme .restricted-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.app-dark-theme .backup-metric-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.app-dark-theme .table-toolbar,
+.app-dark-theme .table-pagination-footer {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.app-dark-theme .table-toolbar label,
+.app-dark-theme .table-filter-group label,
+.app-dark-theme .selected-count-badge,
+.app-dark-theme .pagination-page-indicator {
+  color: #cbd5e1 !important;
+}
+
+.app-dark-theme .users-table th {
+  background-color: rgba(15, 23, 42, 0.55);
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-dark-theme .users-table td {
+  color: #f1f5f9;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.app-dark-theme .empty-table-state {
+  color: #94a3b8;
+}
+
+.app-dark-theme .text-primary {
+  color: #38bdf8;
+}
+
+.app-dark-theme .status-indicator {
+  color: #4ade80;
+}
+
+.app-dark-theme .pagination-btn,
+.app-dark-theme .btn-secondary,
+.app-dark-theme .secondary-btn,
+.app-dark-theme .cancel-btn {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+.app-dark-theme .pagination-btn:hover:not(:disabled),
+.app-dark-theme .btn-secondary:hover,
+.app-dark-theme .secondary-btn:hover:not(:disabled),
+.app-dark-theme .cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.app-dark-theme .schedule-toggle-row,
+.app-dark-theme .dropzone-area,
+.app-dark-theme .dropzone-notes-card,
+.app-dark-theme .user-details-summary,
+.app-dark-theme .welcome-info-grid {
+  background-color: rgba(15, 23, 42, 0.55);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.app-dark-theme .dropzone-area:hover,
+.app-dark-theme .dropzone-area.drag-active {
+  background-color: rgba(56, 189, 248, 0.08);
+  border-color: #38bdf8;
+}
+
+.app-dark-theme .dropzone-formats-badge {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.app-dark-theme .form-group label {
+  color: #e2e8f0;
+}
+
+.app-dark-theme .form-group input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.app-dark-theme .form-group select,
+.app-dark-theme .form-control-modern,
+.app-dark-theme .table-filter-group select,
+.app-dark-theme .table-toolbar input,
+.app-dark-theme .table-toolbar select,
+.app-dark-theme .invite-link-box input {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+}
+
+.app-dark-theme .course-selection-item {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.app-dark-theme .course-selection-item:hover {
+  background-color: rgba(30, 41, 59, 0.8);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.app-dark-theme .course-selection-title {
+  color: #f8fafc;
+}
+
+.app-dark-theme .course-selection-item.selected {
+  background-color: rgba(37, 99, 235, 0.22);
+  border-color: #3b82f6;
+}
+
+.app-dark-theme .course-selection-item.selected .course-selection-title {
+  color: #60a5fa;
+}
+
+.app-dark-theme .restricted-access-container {
+  background-color: transparent;
+}
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE DESIGN ENHANCEMENTS
+   ========================================================================== */
+

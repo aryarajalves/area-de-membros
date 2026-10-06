@@ -18,6 +18,8 @@ class StudentCourseProgressItem(BaseModel):
     last_lesson_title: Optional[str] = None
     last_activity_at: Optional[datetime] = None
 
+from app.schemas.gamification import GamificationHistoryItem
+
 class StudentListItem(BaseModel):
     id: int
     name: str
@@ -28,6 +30,16 @@ class StudentListItem(BaseModel):
     courses: List[StudentCourseProgressItem] = []
     total_courses: int = 0
     overall_progress_percent: int = 0
+    total_points: int = 0
+    gamification_badge: Optional[str] = None
+
+class StudentGamificationHistoryResponse(BaseModel):
+    student_id: int
+    student_name: str
+    total_points: int
+    current_rank: int
+    badge: str
+    history: List[GamificationHistoryItem]
 
 class StudentListResponse(BaseModel):
     items: List[StudentListItem]

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, BookOpen, Star, Pin, X } from 'lucide-react';
+import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen } from 'lucide-react';
 
 export default function ChatHeader({
   selectedChannel,
@@ -7,7 +7,10 @@ export default function ChatHeader({
   pinnedMessage,
   favoritesOnly = false,
   onToggleFavoritesOnly,
+  onOpenMediaGallery,
   onUnpinMessage,
+  onBack,
+  onJumpToMessage,
 }) {
   if (!selectedChannel) return null;
 
@@ -118,6 +121,31 @@ export default function ChatHeader({
             <span>{favoritesOnly ? '⭐ Favoritas' : 'Favoritas'}</span>
           </button>
 
+          {/* Botão para Abrir Galeria de Mídias e Documentos */}
+          <button
+            type="button"
+            onClick={onOpenMediaGallery}
+            data-testid="chat-open-media-gallery-btn"
+            title="Abrir galeria de fotos, vídeos, áudios e documentos do canal"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              color: '#38bdf8',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <FolderOpen size={13} />
+            <span>Mídias & Arquivos</span>
+          </button>
+
           {/* Indicador Ao Vivo */}
           <div
             style={{
@@ -151,6 +179,43 @@ export default function ChatHeader({
               Chat Ativo
             </span>
           </div>
+
+          {/* Botão de Voltar aos Cursos */}
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              data-testid="chat-header-back-btn"
+              title="Voltar aos Cursos"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: '#cbd5e1',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                e.currentTarget.style.color = '#cbd5e1';
+              }}
+            >
+              <ArrowLeft size={13} color="#60a5fa" />
+              <span>Voltar aos Cursos</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -158,6 +223,8 @@ export default function ChatHeader({
       {pinnedMessage && (
         <div
           data-testid="chat-pinned-message-banner"
+          onClick={() => onJumpToMessage && onJumpToMessage(pinnedMessage.id)}
+          title="Clique para ir até a mensagem fixada"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -167,6 +234,14 @@ export default function ChatHeader({
             borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
             color: '#e0f2fe',
             fontSize: '0.8125rem',
+            cursor: onJumpToMessage ? 'pointer' : 'default',
+            transition: 'background-color 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (onJumpToMessage) e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.16)';
+          }}
+          onMouseLeave={(e) => {
+            if (onJumpToMessage) e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.08)';
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
@@ -192,7 +267,10 @@ export default function ChatHeader({
           {isManager && onUnpinMessage && (
             <button
               type="button"
-              onClick={() => onUnpinMessage(pinnedMessage.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnpinMessage(pinnedMessage.id);
+              }}
               title="Desafixar mensagem"
               data-testid="unpin-message-banner-btn"
               style={{

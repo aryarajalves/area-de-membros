@@ -246,3 +246,109 @@ def test_support_stats_and_solution(seed_support_data):
     assert "resolved_count" in stats
     assert "resolution_rate_pct" in stats
 
+
+def test_user_can_pin_and_unpin_topic(seed_support_data):
+    aluno1_headers = get_headers("aluno1@test.com", "pass123")
+    db = TestingSessionLocal()
+    curso = db.query(Course).filter(Course.title == "Curso React").first()
+    db.close()
+
+    top_res = client.post("/api/v1/support/topics", headers=aluno1_headers, json={
+        "title": "Dúvida para Pin",
+        "content": "Como funciona a fixação de dúvidas?",
+        "course_id": curso.id,
+    })
+    topic_id = top_res.json()["id"]
+
+    # 1. Fixar tópico
+    pin_res = client.post(f"/api/v1/support/topics/{topic_id}/pin", headers=aluno1_headers)
+    assert pin_res.status_code == 200
+    data = pin_res.json()
+    assert data["pinned"] is True
+    assert data["total_pinned"] == 1
+    assert "sucesso" in data["message"]
+
+    # Consulta detalhes para validar is_pinned
+    det_res = client.get(f"/api/v1/support/topics/{topic_id}", headers=aluno1_headers)
+    assert det_res.status_code == 200
+    assert det_res.json()["is_pinned"] is True
+
+    # 2. Desafixar tópico (toggle)
+    unpin_res = client.post(f"/api/v1/support/topics/{topic_id}/pin", headers=aluno1_headers)
+    assert unpin_res.status_code == 200
+    unpin_data = unpin_res.json()
+    assert unpin_data["pinned"] is False
+    assert unpin_data["total_pinned"] == 0
+
+    det_res2 = client.get(f"/api/v1/support/topics/{topic_id}", headers=aluno1_headers)
+    assert det_res2.json()["is_pinned"] is False
+
+
+def test_user_cannot_pin_more_than_five_topics(seed_support_data):
+    aluno1_headers = get_headers("aluno1@test.com", "pass123")
+    db = TestingSessionLocal()
+    curso = db.query(Course).filter(Course.title == "Curso React").first()
+    db.close()
+
+    # Cria 6 tópicos
+    topic_ids = []
+    for i in range(1, 7):
+        r = client.post("/api/v1/support/topics", headers=aluno1_headers, json={
+            "title": f"Dúvida Número {i}",
+            "content": f"Conteúdo da dúvida {i}",
+            "course_id": curso.id,
+        })
+        topic_ids.append(r.json()["id"])
+
+    # Fixa os 5 primeiros
+    for i in range(5):
+        pin_res = client.post(f"/api/v1/support/topics/{topic_ids[i]}/pin", headers=aluno1_headers)
+        assert pin_res.status_code == 200
+        assert pin_res.json()["pinned"] is True
+        assert pin_res.json()["total_pinned"] == i + 1
+
+    # Tenta fixar o 6º tópico -> deve falhar com 400
+    excess_res = client.post(f"/api/v1/support/topics/{topic_ids[5]}/pin", headers=aluno1_headers)
+    assert excess_res.status_code == 400
+    assert "limite de 5 dúvidas fixadas" in excess_res.json()["detail"]
+
+
+def test_each_user_has_independent_pins(seed_support_data):
+    aluno1_headers = get_headers("aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("aluno2@test.com", "pass123")
+    admin_headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+
+    db = TestingSessionLocal()
+    curso = db.query(Course).filter(Course.title == "Curso React").first()
+    db.close()
+
+    top_res = client.post("/api/v1/support/topics", headers=aluno1_headers, json={
+        "title": "Dúvida de Teste de Isolamento",
+        "content": "Cada um deve ter seus próprios pins.",
+        "course_id": curso.id,
+    })
+    topic_id = top_res.json()["id"]
+
+    # Aluno 1 fixa o tópico
+    client.post(f"/api/v1/support/topics/{topic_id}/pin", headers=aluno1_headers)
+
+    # Aluno 1 vê como fixado
+    list1 = client.get("/api/v1/support/topics", headers=aluno1_headers).json()["items"]
+    topic1 = next(t for t in list1 if t["id"] == topic_id)
+    assert topic1["is_pinned"] is True
+
+    # Aluno 2 NÃO vê como fixado para si
+    list2 = client.get("/api/v1/support/topics", headers=aluno2_headers).json()["items"]
+    topic2 = next((t for t in list2 if t["id"] == topic_id), None)
+    if topic2:
+        assert topic2["is_pinned"] is False
+
+    # Filtro 'pinned' para aluno 2 deve estar vazio
+    pinned_list2 = client.get("/api/v1/support/topics?sort=pinned", headers=aluno2_headers).json()["items"]
+    assert len(pinned_list2) == 0
+
+    # Filtro 'pinned' para aluno 1 deve conter o tópico
+    pinned_list1 = client.get("/api/v1/support/topics?sort=pinned", headers=aluno1_headers).json()["items"]
+    assert any(t["id"] == topic_id for t in pinned_list1)
+
+

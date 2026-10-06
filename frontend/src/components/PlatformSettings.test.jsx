@@ -94,7 +94,12 @@ describe('PlatformSettings Component', () => {
     expect(screen.queryByTestId('tab-api-tokens-btn')).not.toBeInTheDocument();
   });
 
-  it('exibe a aba Tokens de API para administradores', () => {
+  it('exibe a aba Tokens de API e Links da Plataforma para administradores e permite alternar para Links', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+
     const adminUser = {
       id: 1,
       name: 'Admin Teste',
@@ -111,7 +116,36 @@ describe('PlatformSettings Component', () => {
       </ToastProvider>
     );
 
+    const linksTabBtn = screen.getByTestId('tab-platform-links-btn');
+    expect(linksTabBtn).toBeInTheDocument();
     expect(screen.getByTestId('tab-api-tokens-btn')).toBeInTheDocument();
+
+    // Clica na aba Links da Plataforma
+    fireEvent.click(linksTabBtn);
+
+    expect(await screen.findByTestId('platform-links-tab')).toBeInTheDocument();
+    expect(screen.getByText('Links da Barra Lateral')).toBeInTheDocument();
+  });
+
+  it('oculta a aba Links da Plataforma para alunos', () => {
+    const alunoUser = {
+      id: 2,
+      name: 'Aluno Teste',
+      email: 'aluno@test.com',
+      role: 'aluno',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={alunoUser}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.queryByTestId('tab-platform-links-btn')).not.toBeInTheDocument();
   });
 });
+
 

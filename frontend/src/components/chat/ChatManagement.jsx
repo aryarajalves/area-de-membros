@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useChat } from './useChat';
 import ChatSidebar from './ChatSidebar';
 import ChatHeader from './ChatHeader';
 import ChatMessagesList from './ChatMessagesList';
 import ChatInputBar from './ChatInputBar';
 import DeleteChatMessageModal from './DeleteChatMessageModal';
+import ChatMediaGalleryModal from './ChatMediaGalleryModal';
 
-export default function ChatManagement({ currentUser, bgColor }) {
+export default function ChatManagement({ currentUser, bgColor, onBack }) {
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
+
   const {
     channels,
     selectedChannel,
@@ -28,21 +32,34 @@ export default function ChatManagement({ currentUser, bgColor }) {
     confirmDeleteMessage,
   } = useChat(currentUser);
 
+  const handleJumpToMessage = (messageId) => {
+    if (!messageId) return;
+    const el = document.getElementById(`chat-message-${messageId}`);
+    if (el) {
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      setHighlightedMessageId(messageId);
+      setTimeout(() => {
+        setHighlightedMessageId((curr) => (curr === messageId ? null : curr));
+      }, 3000);
+    }
+  };
+
   return (
     <div
       className="chat-management-view"
       data-testid="chat-management-view"
       style={{
         display: 'flex',
-        height: 'calc(100vh - 40px)',
-        maxHeight: '1000px',
-        backgroundColor: '#070b13',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.7)',
-        margin: '0 auto',
+        height: '100vh',
         width: '100%',
+        backgroundColor: '#070b13',
+        borderRadius: 0,
+        overflow: 'hidden',
+        border: 'none',
+        boxShadow: 'none',
+        margin: 0,
       }}
     >
       {/* Barra Lateral com os Canais (Comunidade Geral + Cursos) */}
@@ -51,6 +68,7 @@ export default function ChatManagement({ currentUser, bgColor }) {
         selectedChannel={selectedChannel}
         onSelectChannel={setSelectedChannel}
         loading={loadingChannels}
+        onBack={onBack}
       />
 
       {/* Painel Central da Conversa */}
@@ -69,7 +87,10 @@ export default function ChatManagement({ currentUser, bgColor }) {
           pinnedMessage={pinnedMessage}
           favoritesOnly={favoritesOnly}
           onToggleFavoritesOnly={() => setFavoritesOnly((prev) => !prev)}
+          onOpenMediaGallery={() => setIsMediaGalleryOpen(true)}
           onUnpinMessage={togglePin}
+          onBack={onBack}
+          onJumpToMessage={handleJumpToMessage}
         />
 
         <ChatMessagesList
@@ -81,6 +102,7 @@ export default function ChatManagement({ currentUser, bgColor }) {
           onToggleLike={toggleLike}
           onToggleFavorite={toggleFavorite}
           onTogglePin={togglePin}
+          highlightedMessageId={highlightedMessageId}
         />
 
         <ChatInputBar
@@ -96,6 +118,14 @@ export default function ChatManagement({ currentUser, bgColor }) {
         loading={deleteModalState.loading}
         onConfirm={confirmDeleteMessage}
         onClose={closeDeleteModal}
+      />
+
+      {/* Modal de Galeria de Mídias e Arquivos */}
+      <ChatMediaGalleryModal
+        isOpen={isMediaGalleryOpen}
+        onClose={() => setIsMediaGalleryOpen(false)}
+        channel={selectedChannel}
+        onJumpToMessage={handleJumpToMessage}
       />
     </div>
   );

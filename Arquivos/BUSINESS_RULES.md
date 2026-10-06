@@ -23,8 +23,8 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - `superadmin` e `admin`: Têm visão completa e acesso irrestrito a todos os cursos cadastrados na plataforma.
   - `aluno`: Visualiza **todos** os cursos cadastrados e publicados na vitrine da Área de Membros (`/courses`), permitindo que conheça novos treinamentos disponíveis para compra.
     - **Cursos com Acesso Liberado:** O aluno visualiza o botão destacado **"Acessar Curso"** (`PlayCircle`) e pode navegar livremente por módulos e aulas.
-    - **Cursos Não Adquiridos / Sem Acesso:** O card do curso exibe o selo **"Disponível para Compra"** com ícone de cadeado (`Lock`), overlay sobre a thumbnail da capa com correntes cruzadas estilizadas e cadeado central indicando **"Produto Fechado"**, além do botão **"Ver Mais Informações"** (`ExternalLink`) e da opção de **"Entrar em Contato"** (`HelpCircle`) na parte inferior do card.
-    - **Redirecionamento:** Ao clicar em "Ver Mais Informações", o aluno é redirecionado em nova aba para a URL configurada no campo `sales_page_url` do curso. Se o curso não possuir URL cadastrada, o sistema exibe feedback amigável informando que a página estará disponível em breve. Ao clicar em "Entrar em Contato", o aluno é direcionado imediatamente para a aba interna de Suporte da Área de Membros para falar com a equipe.
+    - **Cursos Não Adquiridos / Sem Acesso:** O card do curso exibe o selo **"Disponível para Compra"** com ícone de cadeado (`Lock`), overlay sobre a thumbnail da capa com correntes cruzadas estilizadas e cadeado central indicando **"Produto Fechado"**, além do botão único **"Ver Mais Informações"** (`ExternalLink`) na parte inferior do card.
+    - **Redirecionamento:** Ao clicar em "Ver Mais Informações", o aluno é redirecionado em nova aba para a URL configurada no campo `sales_page_url` do curso. Se o curso não possuir URL cadastrada, o sistema exibe feedback amigável informando que a página estará disponível em breve.
     - **Segurança de Acesso:** O acesso direto ao conteúdo interno (`/courses/{id}`) de cursos não adquiridos permanece estritamente bloqueado (`HTTP 403`).
 - **Criação e Edição de Cursos:**
   - O formulário conta com o campo **Link da Página de Vendas / Mais Informações (`sales_page_url`)** (opcional), permitindo que o administrador insira o endereço externo da landing page ou checkout do treinamento.
@@ -398,7 +398,14 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - `Aguardando Resposta`
     - `Taxa de Resolução %`
     - `Membros Ativos`
-  - Filtros rápidos em formato de pílulas permitem alternar dinamicamente entre: `Todas as Dúvidas`, `Mais Populares`, `Aguardando Resposta`, `Resolvidas` e `Minhas Dúvidas`.
+  - Filtros rápidos em formato de pílulas permitem alternar dinamicamente entre: `Todas as Dúvidas`, `Fixadas por Mim`, `Mais Populares`, `Aguardando Resposta`, `Resolvidas` e `Minhas Dúvidas`.
+- **Fixação Personalizada de Dúvidas de Suporte (Support Topic Pins):**
+  - **Limite Máximo por Usuário:** Cada usuário (aluno, admin ou superadmin) pode fixar até no máximo **5 dúvidas** de suporte de sua preferência (`support_topic_pins`).
+  - **Independência de Lista:** A fixação é estritamente pessoal e individual. As dúvidas que o Aluno A fixa não alteram a visualização dos outros alunos ou administradores.
+  - **Bloqueio Amigável ao Exceder o Limite:** Ao tentar fixar uma 6ª dúvida, o sistema bloqueia a ação retornando HTTP 400 com a mensagem clara: *"Você atingiu o limite de 5 dúvidas fixadas. Desafixe uma dúvida para fixar outra."*, exibindo toast de erro no frontend.
+  - **Destaque Visual no Topo:** Na listagem padrão de dúvidas, as dúvidas fixadas pelo usuário logado aparecem com destaque prioritário no topo, fundo escurecido sutil, borda ciano neon (`#38bdf8`) e badge distintivo `📌 Fixada por você`.
+  - **Botão de Ação Rápida:** No card da dúvida, o botão de alfinete (`Pin`) permite alternar a fixação instantaneamente com um clique (toggle pin/unpin) com feedback via toast.
+  - **Pílula de Acesso Rápido ("Fixadas por Mim"):** Permite consultar em um clique exclusivamente as dúvidas que o próprio usuário fixou.
 - **Anexos e Visualização Lightbox:**
   - Dúvidas e respostas suportam anexo de imagens (PNG, JPG, WEBP de até 10 MB).
   - Clicar sobre qualquer imagem anexada abre o modal Lightbox de alta definição, centralizado e com fundo escuro de alto contraste.
@@ -491,8 +498,14 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - Suporte a tecla `Enter` para envio imediato e `Shift + Enter` para pular linha.
     - Validação de mensagens vazias e limite de até 3.000 caracteres.
     - Estado de carregamento com spinner no botão de envio enquanto a mensagem é persistida.
-  - **Sincronização em Tempo Real (Polling Incremental):**
-    - Polling leve em segundo plano a cada 3,5 segundos utilizando o parâmetro `after_id` para trazer apenas mensagens novas sem recarregar o feed inteiro nem travar a rolagem.
+  - **Experiência Imersiva em Tela Cheia (Fullscreen):**
+    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema e o cabeçalho mobile são ocultados automaticamente, exatamente como na sala de aula dos cursos. O chat e sua listagem de canais preenchem 100% da viewport (`100vw × 100vh`).
+    - Para alternar ou sair do chat, há botões destacados **"Voltar aos Cursos"** (`ArrowLeft`) tanto no topo da lista de canais (`ChatSidebar`) quanto nas ações do cabeçalho da conversa (`ChatHeader`).
+  - **Sincronização Instantânea em Tempo Real via WebSocket (`/api/v1/chat/ws`):**
+    - Conexão nativa e persistente via WebSocket com autenticação por token JWT.
+    - Novas mensagens enviadas por qualquer aluno ou administrador são entregues instantaneamente na tela dos participantes conectados sem necessidade de recarregar a página ou aguardar polling.
+    - Eventos de exclusão de mensagem, curtidas e mensagens fixadas/desafixadas também são transmitidos e refletidos em tempo real.
+    - Mecanismo de Heartbeat (`ping/pong` a cada 25s) e reconexão automática com fallback de segurança.
   - **Curtir Mensagens do Chat:**
     - Alunos e gestores podem curtir e descurtir mensagens de texto ou mídia clicando no botão de coração (`Heart`).
     - Contador em tempo real do número de curtidas por mensagem com destaque vermelho para o usuário que curtiu (`liked_by_me`).
@@ -501,10 +514,11 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - **Favoritar Mensagens e Filtro de Favoritas:**
     - Botão de estrela (`Star`) em cada balão de mensagem para favoritar/desfavoritar (tabela `chat_message_favorites`).
     - Botão de alternância **"⭐ Favoritas"** no cabeçalho do chat (`ChatHeader`), permitindo filtrar instantaneamente o canal para exibir apenas as mensagens salvas pelo usuário autenticado.
-  - **Fixar Mensagens no Topo do Chat (Pin):**
+  - **Fixar Mensagens no Topo do Chat (Pin) e Redirecionamento por Clique:**
     - Privilégio restrito a Administradores e Instrutores (`admin` e `superadmin`).
     - O gestor pode fixar ou desafixar mensagens importantes no canal (`is_pinned`, `pinned_at`, `pinned_by_user_id`).
     - Quando há uma mensagem fixada no canal, um banner superior estilizado em azul neon no cabeçalho (`chat-pinned-message-banner`) exibe o autor e o conteúdo da mensagem fixada, acompanhado de botão de desafixação rápida para gestores.
+    - **Redirecionamento ao Clicar na Mensagem Fixada:** Ao clicar em qualquer parte do banner da mensagem fixada, o chat executa uma rolagem suave (`scrollIntoView({ behavior: 'smooth', block: 'center' })`) até a mensagem correspondente na conversa e ativa temporariamente uma animação de destaque luminoso em neon azul ciano (`chat-message-highlighted`) ao redor do balão, facilitando a localização visual imediata pelo usuário. O clique no botão de desafixação (`X`) possui `stopPropagation()` para não disparar a rolagem.
     - A mensagem também recebe o selo `📌 Fixada` nos seus metadados.
   - **Envio de Mídias no Chat (Imagens e Documentos):**
     - Botão de anexo (`Paperclip`) na barra de entrada (`ChatInputBar`) permitindo selecionar imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF) de até 15 MB.
@@ -578,15 +592,26 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - **Curtida Recebida no Suporte (`support_like`):** **+5 pontos**. Atribuído ao receber curtidas da comunidade em tópicos e dúvidas.
   - **Comentário Construtivo em Aula (`lesson_comment`):** **+5 pontos**. Atribuído ao comentar e debater nas aulas.
   - **Mensagem no Chat da Comunidade (`chat_message`):** **+2 pontos** por mensagem, com **limite diário de até 10 mensagens pontuadas por dia (máximo de 20 pontos/dia)** para estimular conversas saudáveis e evitar flood/spam.
-- **Períodos de Classificação:**
-  - **Ranking Mensal (Padrão):** reinicia a pontuação a cada mês (ex: Outubro/2026), premiando os alunos mais ativos e engajados do período.
+- **Períodos de Classificação e Histórico de Campeões:**
+  - **Ranking Mensal (Ao Vivo):** reinicia a pontuação a cada mês (ex: Outubro/2026), premiando os alunos mais ativos e engajados do período atual.
   - **Histórico Geral (All-Time):** histórico acumulado de todos os tempos.
+  - **Meses Anteriores (Top 10 Encerrado):** histórico congelado dos meses que já foram finalizados (ex: Setembro/2026, Agosto/2026). O mês corrente é bloqueado dessa aba até seu encerramento total.
+  - **Anos Anteriores (Top 10 Encerrado):** histórico congelado dos anos civis concluídos (ex: 2025, 2024). O ano em curso nunca é listado nessa aba até ser concluído.
+  - **Corte Estrito no Top 10:** Tanto para meses finalizados quanto para anos finalizados, o sistema exibe estritamente os **10 primeiros alunos com maior pontuação** acumulada no período correspondente.
+  - **Insígnias Comemorativas de Período Fechado:**
+    - 🥇 1º Lugar: *"Campeão do Mês"* ou *"Campeão do Ano"*.
+    - 🥈 2º Lugar: *"Vice do Mês"* ou *"Vice do Ano"*.
+    - 🥉 3º Lugar: *"3º Lugar do Mês"* ou *"3º Lugar do Ano"*.
+    - Top 4 ao 10: *"Top 10 do Mês"* ou *"Top 10 do Ano"*.
 - **Pódio e Insígnias:**
   - **🥇 1º Lugar:** Pódio Ouro com a insígnia *"Mestre da Comunidade"*.
   - **🥈 2º Lugar:** Pódio Prata com a insígnia *"Mentor Destaque"*.
   - **🥉 3º Lugar:** Pódio Bronze com a insígnia *"Aluno Notável"*.
   - **Top 4 ao 10:** Insígnia *"Top Estudante"*.
   - **Demais Alunos:** Insígnia *"Aluno Ativo"*.
+- **Histórico de Conquistas no Card do Aluno (`/students`):**
+  - No card de cada aluno na Gestão de Alunos, é exibido o badge destacado com o total de pontos (`🏆 X pts`) e o botão **"Pontos & Conquistas"**.
+  - O modal (`StudentGamificationHistoryModal`) exibe a pontuação total, o rank do aluno, a insígnia conquistada e a linha do tempo detalhada com cada pontuação obtida, ação executada e data/hora no horário de Brasília.
 ---
 
 ## 18. Transcrição de Vídeos e Resumo Inteligente com IA (OpenAI Whisper & GPT)
@@ -598,13 +623,20 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 - **Documento HTML Inteligente:**
   - Documento HTML5 completo com tipografia moderna, seções pedagógicas bem definidas e estilos de impressão `@media print` para quem desejar imprimir ou salvar como PDF.
   - Acessível diretamente pelo botão **"Abrir Documento HTML"** via endpoint com streaming nativo (`GET /api/v1/courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/html`).
-- **Controle de Acesso e Custos de API:**
+  - **Autenticação em Nova Aba:** O endpoint suporta autenticação tanto via header `Authorization: Bearer <token>` quanto via query parameter `?token=<jwt_token>`. Isso permite que o navegador abra a nova aba diretamente sem ser bloqueado com erro 401.
+- **Controle de Acesso e Custos de API (Exclusivo Administradores e Super Admins):**
   - O acionamento da transcrição/re-geração é **restrito a Administradores e Super Admins** (`require_admin_or_superadmin`), evitando gastos desnecessários de API por alunos.
   - Uma vez processado, o material gerado é persistido na tabela `lesson_transcriptions` e fica permanentemente disponível para todos os alunos matriculados no curso.
+  - **Métricas e Custos em Reais (BRL):** O sistema calcula os custos oficiais cobrados pela OpenAI com base na duração do áudio (`$0.006/min` no Whisper-1) e no consumo exato de tokens do GPT-4o-mini (`$0.15/1M` prompt tokens e `$0.60/1M` completion tokens), convertidos para reais com base na taxa `OPENAI_USD_BRL_RATE` (padrão `5.50`).
+  - **Confidencialidade Rigorosa de Custos:** Os dados de custo em reais (`estimated_cost_brl`, `estimated_cost_formatted`) e tokens consumidos são enviados pela API e exibidos na interface (badge `💰 Custo: R$ X,XX`) **exclusivamente para Administradores e Super Admins**. Para o perfil `aluno`, o backend omite esses campos (retornando `null`) e a interface oculta qualquer indicação de custo.
+- **Exibição Seletiva entre Perfis (Aluno vs Gestor):**
+  - **Transcrição Integral e Busca no Texto:** O card com a **Transcrição Integral** completa do vídeo e o campo de pesquisa em tempo real, além do botão de "Copiar Texto" da transcrição integral, são exibidos **exclusivamente para Administradores e Super Admins**. No backend, o campo `full_transcript` é omitido (`""`) para requisições de alunos.
+  - **Experiência do Aluno:** Alunos visualizam uma interface limpa e focada no aprendizado, com os **Principais Pontos da Aula (Key Takeaways)**, o **Resumo da Aula** sintetizado e o botão **"Abrir Documento HTML"**.
 - **Recursos da Interface:**
-  - Busca em tempo real na transcrição com destaque de trechos filtrados.
-  - Botão de cópia rápida com feedback visual e toast.
-  - Botão de re-gerar para instrutores.
+  - Busca em tempo real na transcrição com destaque de trechos filtrados (Admin e Super Admin).
+  - Botão de cópia rápida com feedback visual e toast (Admin e Super Admin).
+  - Botão de re-gerar para instrutores (Admin e Super Admin).
+  - Badge de custo em reais na barra de ações (visível apenas para gestores).
 
 ---
 
@@ -621,10 +653,96 @@ Este documento registra as decisões de regras de negócio da plataforma para co
      - **Depoimentos** (`testimonials`): Avaliações em estrelas e relatos aprovados sobre os cursos (Todos).
   3. ⚙️ **Sistema & Configurações**:
      - **Configurações** (`settings`):
-       - **Alunos:** Visualizam exclusivamente as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual e dados de cadastro/avatar. A aba "Tokens de API" fica oculta.
-       - **Admin e Super Admin:** Visualizam as 3 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"** e **"Tokens de API"**).
+       - **Alunos:** Visualizam exclusivamente as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual e dados de cadastro/avatar. As abas "Tokens de API" e "Links da Plataforma" ficam ocultas.
+       - **Admin e Super Admin:** Visualizam as 4 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"**, **"Tokens de API"** e **"Links da Plataforma"**).
      - **Integrações** (`integrations`): Webhooks de checkout Kiwify/Hotmart (Admin/Super Admin).
      - **Gestão de Usuários** (`users`): Gestão de administradores e convites (Super Admin).
      - **Backup Automático** (`backup`): Snapshots de banco e uploads em nuvem Backblaze B2 (Super Admin).
      - **Logs do Sistema** (`logs`): Auditoria de eventos do servidor (Super Admin).
+
+  4. 🔗 **Links (Parte Inferior da Barra Lateral)**:
+     - Localizada na base do menu de navegação lateral (logo acima do card de perfil do usuário), exibe os links cadastrados e ativos de redes sociais e páginas externas importantes.
+     - Abre cada link em uma nova aba com segurança (`target="_blank" rel="noopener noreferrer"`).
+     - Visível para todos os perfis (Alunos, Administradores e Super Admins).
+
+---
+
+## 20. Gestão de Links da Plataforma e Redes Sociais
+- **Localização:** Aba **"Links da Plataforma"** (`Link2`) dentro de **Configurações** (`/settings`), acessível exclusivamente por Administradores e Super Admins.
+- **Campos do Link:**
+  - **Título:** Rótulo descritivo exibido na barra lateral (ex: "Instagram Oficial", "Canal do YouTube").
+  - **URL de Destino:** Link externo completo iniciado com `https://` ou `http://` (com botão de teste rápido em nova aba).
+  - **Ícone:** Seletor com ícones pré-definidos estilizados com cores oficiais (Instagram, YouTube, WhatsApp, Telegram, Website/Globo, Twitter/X, Facebook, LinkedIn, Discord, GitHub, Link Genérico).
+  - **Ordem de Exibição:** Número inteiro ordenando a lista (menor número aparece primeiro no menu).
+  - **Status Ativo/Oculto:** Permite ativar ou ocultar o link da barra lateral a qualquer momento sem precisar deletá-lo.
+- **Confirmação de Exclusão:** Modal com backdrop preto translúcido protetor, sem fechamento ao clicar fora e apenas 1 botão de cancelar além do botão de confirmação.
+- **Sincronização em Tempo Real:** Toda alteração de link dispara atualização instantânea na barra lateral através do evento `platform_links_updated`.
+
+---
+
+## 21. Backup Automático e Sincronização em Nuvem (PostgreSQL & Backblaze B2)
+- **Localização:** Aba **"Backup Automático"** (`Database`) na categoria **Sistema & Configurações** da barra lateral, de acesso exclusivo para **Super Admin**.
+- **Exibição Obrigatória no Horário Oficial de Brasília (`America/Sao_Paulo`):**
+  - **Cards de Métricas:**
+    - O card de **"Último Backup"** deve exibir a data e hora em que o backup foi gerado estritamente no **Horário Oficial de Brasília** no formato `DD/MM/AAAA, HH:MM` (ex: `05/10/2026, 17:27`), sincronizado com o timestamp contido no nome do arquivo físico (`teste_2026_10_05_17_27_47.dump.gz`).
+    - O card de **"Próximo Backup"** deve exibir o horário da próxima execução agendada convertido para o Horário de Brasília. Caso o agendamento esteja ativo e o horário anterior já tenha passado, o sistema recalcula dinamicamente para o próximo ciclo futuro relativo ao momento atual.
+  - **Tabela de Backups (Coluna "CRIADO EM"):**
+    - Todas as linhas da listagem de backups no S3/B2 exibem o momento da criação no Horário de Brasília completo com segundos: `DD/MM/AAAA, HH:MM:SS` (ex: `05/10/2026, 17:27:47`).
+- **Nomenclatura Padrão dos Arquivos:**
+  - O nome gerado inclui o timestamp no fuso de Brasília (`YYYY_MM_DD_HH_MM_SS`), permitindo auditoria visual imediata do momento exato do dump.
+
+---
+
+## 22. Chat da Comunidade — Galeria de Mídias e Gravação de Áudio
+- **Botão de Acesso à Galeria de Mídias:**
+  - Localizado no cabeçalho do chat (`ChatHeader`), diretamente ao lado do botão de filtro de favoritas (`⭐ Favoritas`).
+  - Rótulo: **"Mídias & Arquivos"** com ícone de pasta (`FolderOpen`).
+  - Ao clicar, abre o modal de galeria de mídias (`ChatMediaGalleryModal`).
+- **Modal de Galeria de Mídias:**
+  - **Padrão de Popups:** Centralizado na tela, com painel backdrop preto translúcido escuro (`rgba(0, 0, 0, 0.85)`), bloqueio de fechamento ao clicar fora (fechamento forçado apenas via botão `X`) e 1 único botão de fechar no cabeçalho.
+  - **Abas de Filtro:**
+    - `Todas` (`all`): Exibe todas as mídias trocadas no canal.
+    - `Fotos` (`image`): Apenas imagens (JPG, PNG, WEBP, GIF).
+    - `Vídeos` (`video`): Vídeos MP4, WebM, MOV, MKV com miniatura e botão de play.
+    - `Áudios` (`audio`): Áudios gravados e enviados com reprodução nativa.
+    - `Documentos` (`file`): PDFs, planilhas, arquivos compactados e documentos de texto com ícone e botão de download/visualização.
+  - **Ação "Ver no Chat":** Em cada item da galeria, há um botão de sobreposição "Ver no Chat". Ao clicar, o modal se fecha automaticamente e a lista de mensagens do chat realiza um scroll suave até a mensagem original com highlight luminoso de destaque.
+- **Gravação e Envio de Áudio Nativo:**
+  - O usuário pode gravar áudios diretamente pelo botão de microfone (`Mic`) no rodapé do chat (`ChatInputBar`).
+  - Utiliza `MediaRecorder` nativo do navegador (`audio/webm`).
+  - Exibe timer de gravação dinâmico com indicador vermelho pulsante e botões para "Descartar" ou "Enviar".
+  - O áudio é transmitido e hospedado com segurança e renderizado com player interativo no histórico do canal.
+- **Upload Ampliado de Arquivos:**
+  - O seletor de anexos aceita imagens, vídeos, áudios e documentos de até 25 MB por arquivo.
+
+---
+
+## 23. Botão e Dropdown de Favoritos no Cabeçalho Superior Global (TopNavbar)
+- **Localização:**
+  - Posicionado na barra superior fixa global da plataforma (`TopNavbar`), acessível a partir de qualquer tela (Cursos, Suporte, Chat, Ranking, Depoimentos, Configurações).
+  - Componente: botão estilizado com borda translúcida, ícone de marcador (`Bookmark`) em destaque ciano/azul e rótulo **"Favoritos"**.
+  - **Badge Numérico Dinâmico:** Exibe um contador em formato pílula com o total consolidado de itens favoritados pelo usuário ativo. O badge é ocultado automaticamente se a contagem for zero e atualizado em tempo real via evento customizado de broadcast `window.dispatchEvent(new CustomEvent('favorites_updated'))`.
+- **Dropdown de Favoritos (`FavoritesDropdown`):**
+  - **Menu Flutuante / Suspenso:** Abre abaixo do botão com alinhamento à direita, cantos arredondados, fundo escuro profundo (`#0f172a`), bordas sutis e efeito glassmorphism com sombra pronunciada.
+  - **Abas Organizadoras:**
+    1. **Dúvidas:** Lista os tópicos de suporte favoritados pelo aluno/administrador. Exibe título da dúvida, status e autor.
+    2. **Aulas:** Lista as aulas marcadas como favoritas pelo aluno. Exibe título da aula, nome do curso e duração estimada.
+    3. **Comentários:** Lista os comentários de aulas favoritados pelo usuário. Exibe o comentário, autor e aula de origem.
+    4. **Mensagens:** Lista as mensagens favoritadas no Chat da Comunidade. Exibe autor e trecho da mensagem.
+  - **Contadores por Aba:** Cada aba exibe um badge numérico discreto com a quantidade de itens favoritados naquele tipo.
+  - **Navegação Direta:**
+    - Ao clicar em um tópico de dúvida favoritado, o sistema navega automaticamente para a aba de Suporte e abre o tópico.
+    - Ao clicar em uma aula favoritada, o sistema navega diretamente para a sala de aula correspondente.
+    - Ao clicar em um comentário favoritado, o sistema navega para a aula e centraliza a visualização no comentário.
+    - Ao clicar em uma mensagem favoritada, o sistema navega para o Chat da Comunidade.
+  - **Remoção Rápida:** Cada card na listagem possui botão `X` discreto para desfavoritar o item diretamente de dentro do menu, com sincronização imediata nos contadores.
+  - **Mecanismos de Favoritar no Sistema:**
+    - **Aulas:** Botão "Favoritar / Favoritada" (`Bookmark`) na barra de ações inferior da aula (`LessonActionToolbar`).
+    - **Comentários de Aulas:** Botão de marcador (`Bookmark`) em cada item de comentário (`CommentItem`).
+    - **Dúvidas do Suporte:** Botão de favoritar tópico na visualização de detalhes do suporte.
+    - **Mensagens do Chat:** Ação de favoritar mensagem no menu de ações da mensagem.
+  - **Estrutura de Banco de Dados:**
+    - Tabelas dedicadas `lesson_favorites` (chave primária composta `lesson_id + user_id`) e `lesson_comment_favorites` (chave primária composta `comment_id + user_id`), com exclusão em cascata ao remover a aula/comentário ou usuário.
+
+
 

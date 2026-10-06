@@ -1,0 +1,279 @@
+/* Lista moderna de seleção de cursos para Alunos */
+.course-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.course-selection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.course-selection-item:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+.course-selection-item.selected {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.course-selection-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.course-selection-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.course-selection-icon-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.course-selection-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-selection-item.selected .course-selection-title {
+  color: #1d4ed8;
+}
+
+.course-selection-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Espaçamento interno para inputs que possuem ícone à esquerda e/ou botão à direita */
+.form-group .input-wrapper input,
+.input-wrapper input {
+  padding-left: 46px !important;
+  padding-right: 46px !important;
+}
+
+/* Course Management Component Styles */
+.courses-header-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.course-card-thumb {
+  height: 180px;
+  background-color: #1e293b;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.course-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-card-placeholder {
+  text-align: center;
+  color: #94a3b8;
+}
+
+.course-card-body {
+  padding: 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.course-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  margin-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.thumbnail-size-notice {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.thumbnail-preview-box {
+  border-radius: 8px;
+  overflow: hidden;
+  height: 140px;
+  background-color: #0f172a;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .classroom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tema Escuro dos Popups dentro da Área de Membros (Estilo Netflix) */
+.classroom-dark-theme .custom-modal-overlay > .table-card,
+.classroom-dark-theme .modal-overlay > .modal-content,
+.modal-overlay.classroom-dark-theme > .modal-content {
+  background-color: var(--classroom-modal-bg, #0f172a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay h2,
+.classroom-dark-theme .custom-modal-overlay h3,
+.classroom-dark-theme .custom-modal-overlay h4,
+.classroom-dark-theme .custom-modal-overlay label,
+.classroom-dark-theme .modal-overlay h2,
+.classroom-dark-theme .modal-overlay h3,
+.classroom-dark-theme .modal-overlay h4,
+.classroom-dark-theme .modal-overlay label:not(.primary-btn),
+.modal-overlay.classroom-dark-theme h3,
+.modal-overlay.classroom-dark-theme label:not(.primary-btn) {
+  color: #f8fafc !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay p,
+.classroom-dark-theme .modal-overlay p,
+.modal-overlay.classroom-dark-theme p {
+  color: #94a3b8 !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay input:not([type="color"]),
+.classroom-dark-theme .custom-modal-overlay textarea,
+.classroom-dark-theme .custom-modal-overlay select,
+.classroom-dark-theme .modal-overlay input:not([type="color"]),
+.classroom-dark-theme .modal-overlay textarea,
+.classroom-dark-theme .modal-overlay select,
+.modal-overlay.classroom-dark-theme input:not([type="color"]),
+.modal-overlay.classroom-dark-theme textarea,
+.modal-overlay.classroom-dark-theme select {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.classroom-dark-theme .thumbnail-size-notice,
+.modal-overlay.classroom-dark-theme .thumbnail-size-notice {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #94a3b8 !important;
+}
+
+.classroom-dark-theme .modal-header,
+.modal-overlay.classroom-dark-theme .modal-header,
+.classroom-dark-theme .modal-actions,
+.modal-overlay.classroom-dark-theme .modal-actions {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay .secondary-btn,
+.classroom-dark-theme .modal-overlay .secondary-btn,
+.modal-overlay.classroom-dark-theme .secondary-btn {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.classroom-dark-theme .custom-modal-overlay .secondary-btn:hover:not(:disabled),
+.classroom-dark-theme .modal-overlay .secondary-btn:hover:not(:disabled),
+.modal-overlay.classroom-dark-theme .secondary-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+

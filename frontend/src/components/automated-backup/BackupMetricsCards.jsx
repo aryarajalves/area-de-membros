@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, Calendar, HardDrive, Cloud } from 'lucide-react';
+import { formatBrasiliaBackupDateTime } from './backupDateUtils';
 
 export default function BackupMetricsCards({ stats }) {
   return (
@@ -12,15 +13,7 @@ export default function BackupMetricsCards({ stats }) {
         <div className="backup-metric-info">
           <span className="metric-label">Último Backup</span>
           <span className="metric-value">
-            {stats.last_backup_date
-              ? new Date(stats.last_backup_date).toLocaleString('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'Nenhum'}
+            {formatBrasiliaBackupDateTime(stats.last_backup_date) || 'Nenhum'}
           </span>
           <span className="metric-subtext">
             {stats.last_backup_filename || 'Aguardando execução'}
@@ -36,15 +29,7 @@ export default function BackupMetricsCards({ stats }) {
         <div className="backup-metric-info">
           <span className="metric-label">Próximo Backup</span>
           <span className="metric-value">
-            {stats.next_backup_date
-              ? new Date(stats.next_backup_date).toLocaleString('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'Desativado'}
+            {formatBrasiliaBackupDateTime(stats.next_backup_date) || 'Desativado'}
           </span>
           <span className="metric-subtext">{stats.frequency_label}</span>
         </div>

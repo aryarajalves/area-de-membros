@@ -42,3 +42,29 @@ class GamificationRuleItem(BaseModel):
     points: int
     description: str
     daily_limit: Optional[str] = None
+
+
+class CompletedPeriodOption(BaseModel):
+    key: str
+    label: str
+    period_type: str  # 'month' | 'year'
+    year: int
+    month: Optional[int] = None
+    start_date: datetime
+    end_date: datetime
+
+
+class CompletedPeriodsResponse(BaseModel):
+    completed_months: List[CompletedPeriodOption]
+    completed_years: List[CompletedPeriodOption]
+
+
+class ClosedPeriodRankingResponse(BaseModel):
+    period_type: str  # 'month' | 'year'
+    period_key: str  # '2026-09' ou '2025'
+    period_label: str  # 'Setembro/2026' ou 'Ano de 2025'
+    is_closed: bool = True
+    top_students: List[GamificationStudentItem]
+    my_position: Optional[GamificationStudentItem] = None
+    total_participants: int
+

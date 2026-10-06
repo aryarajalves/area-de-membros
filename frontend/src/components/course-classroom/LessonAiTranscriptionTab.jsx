@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles, ExternalLink, Copy, Check, RefreshCw,
-  Search, FileText, ListChecks, Loader2
+  Search, FileText, ListChecks, Loader2, Coins
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import LessonAiTranscriptionProcessing from './LessonAiTranscriptionProcessing';
 
 export default function LessonAiTranscriptionTab({
   courseId,
@@ -123,7 +124,9 @@ export default function LessonAiTranscriptionTab({
   };
 
   const handleOpenHtmlDocument = () => {
-    const htmlUrl = `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription/html`;
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    const htmlUrl = `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription/html${query}`;
     window.open(htmlUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -136,7 +139,7 @@ export default function LessonAiTranscriptionTab({
     );
   }
 
-  const isCompleted = data?.status === 'completed' && data?.full_transcript;
+  const isCompleted = data?.status === 'completed' && (data?.full_transcript || data?.summary_markdown || data?.summary_html);
   const isProcessing = transcribing || data?.status === 'processing';
 
   // Se falhou
@@ -250,99 +253,14 @@ export default function LessonAiTranscriptionTab({
   // Estado de Processamento com animação giratória garantida e etapas dinâmicas
   if (isProcessing) {
     return (
-      <div
-        data-testid="ai-transcription-processing"
-        style={{
-          marginTop: '20px',
-          padding: '48px 24px',
-          borderRadius: '14px',
-          border: isLightBg ? '1px solid #bfdbfe' : '1px solid rgba(59, 130, 246, 0.35)',
-          backgroundColor: isLightBg ? '#f0f9ff' : 'rgba(59, 130, 246, 0.04)',
-          boxShadow: isLightBg ? '0 10px 25px -5px rgba(59, 130, 246, 0.1)' : '0 10px 30px -5px rgba(0, 0, 0, 0.5)',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px'
-        }}
-      >
-        {/* Spinner giratório cinematográfico com brilho e anéis */}
-        <div style={{ position: 'relative', width: '70px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              border: '3px solid rgba(59, 130, 246, 0.2)',
-              borderTopColor: '#3b82f6',
-              borderRightColor: '#60a5fa',
-              animation: 'spin 1s linear infinite'
-            }}
-            data-testid="ai-loading-spinner-ring"
-          />
-          <Sparkles size={26} color="#3b82f6" style={{ animation: 'spin 4s linear infinite reverse' }} />
-        </div>
-
-        <div>
-          <h4 style={{ fontSize: '17px', fontWeight: 700, color: textColor, margin: '0 0 8px 0' }}>
-            Processando Transcrição e Resumo com IA...
-          </h4>
-          <p style={{ fontSize: '13.5px', color: subTextColor, margin: '0 auto', maxWidth: '480px', lineHeight: 1.6 }}>
-            A Inteligência Artificial está ouvindo o áudio da aula, gerando o texto completo e criando o resumo executivo com os principais tópicos. Isso pode levar alguns segundos.
-          </p>
-        </div>
-
-        {/* Barra de progresso animada com gradiente */}
-        <div
-          style={{
-            width: '100%',
-            maxWidth: '320px',
-            height: '6px',
-            borderRadius: '999px',
-            backgroundColor: isLightBg ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-            overflow: 'hidden',
-            position: 'relative'
-          }}
-        >
-          <div
-            style={{
-              width: '50%',
-              height: '100%',
-              borderRadius: '999px',
-              background: 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
-              animation: 'shimmer 1.8s ease-in-out infinite alternate',
-              position: 'absolute'
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: isLightBg ? '#2563eb' : '#60a5fa', fontWeight: 600 }}>
-          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Extraindo áudio • Whisper-1 • GPT-4o-mini</span>
-        </div>
-
-        {isManager && (
-          <button
-            type="button"
-            data-testid="btn-cancel-transcription"
-            onClick={handleResetTranscription}
-            style={{
-              marginTop: '4px',
-              padding: '6px 14px',
-              backgroundColor: 'transparent',
-              color: subTextColor,
-              border: `1px solid ${borderColor}`,
-              borderRadius: '6px',
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}
-          >
-            Cancelar / Reiniciar
-          </button>
-        )}
-      </div>
+      <LessonAiTranscriptionProcessing
+        isLightBg={isLightBg}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        borderColor={borderColor}
+        isManager={isManager}
+        onReset={handleResetTranscription}
+      />
     );
   }
 
@@ -360,6 +278,28 @@ export default function LessonAiTranscriptionTab({
             <Sparkles size={12} />
             <span>Processado por IA (Whisper + GPT)</span>
           </span>
+
+          {isManager && data?.estimated_cost_formatted && (
+            <span
+              data-testid="ai-transcription-cost-badge"
+              title="Custo estimado total em reais cobrado pelas APIs da OpenAI (Whisper + GPT-4o-mini)"
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <Coins size={12} />
+              <span>Custo: {data.estimated_cost_formatted}</span>
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -386,27 +326,29 @@ export default function LessonAiTranscriptionTab({
             <span>Abrir Documento HTML</span>
           </button>
 
-          <button
-            type="button"
-            data-testid="btn-copy-transcription"
-            onClick={handleCopyTranscript}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 12px',
-              backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)',
-              color: textColor,
-              border: `1px solid ${borderColor}`,
-              borderRadius: '7px',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-            <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
-          </button>
+          {isManager && data?.full_transcript && (
+            <button
+              type="button"
+              data-testid="btn-copy-transcription"
+              onClick={handleCopyTranscript}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)',
+                color: textColor,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '7px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+              <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
+            </button>
+          )}
 
           {isManager && (
             <button
@@ -463,32 +405,34 @@ export default function LessonAiTranscriptionTab({
         </div>
       )}
 
-      {/* Card: Transcrição Integral do Vídeo */}
-      <div data-testid="ai-full-transcription" style={{ padding: '16px 18px', borderRadius: '10px', border: `1px solid ${borderColor}`, backgroundColor: cardBg }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={18} color="#10b981" />
-            <h4 style={{ fontSize: '15px', fontWeight: 700, color: textColor, margin: 0 }}>Transcrição Integral</h4>
+      {/* Card: Transcrição Integral do Vídeo (Visível exclusivamente para Administradores e Super Admins) */}
+      {isManager && data?.full_transcript && (
+        <div data-testid="ai-full-transcription" style={{ padding: '16px 18px', borderRadius: '10px', border: `1px solid ${borderColor}`, backgroundColor: cardBg }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={18} color="#10b981" />
+              <h4 style={{ fontSize: '15px', fontWeight: 700, color: textColor, margin: 0 }}>Transcrição Integral</h4>
+            </div>
+            <div style={{ position: 'relative', minWidth: '220px' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: subTextColor }} />
+              <input
+                type="text"
+                data-testid="input-search-transcript"
+                placeholder="Buscar termo no texto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', padding: '6px 12px 6px 30px', borderRadius: '6px', border: `1px solid ${borderColor}`, backgroundColor: isLightBg ? '#f8fafc' : 'rgba(0,0,0,0.25)', color: textColor, fontSize: '12px', outline: 'none' }}
+              />
+            </div>
           </div>
-          <div style={{ position: 'relative', minWidth: '220px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: subTextColor }} />
-            <input
-              type="text"
-              data-testid="input-search-transcript"
-              placeholder="Buscar termo no texto..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '6px 12px 6px 30px', borderRadius: '6px', border: `1px solid ${borderColor}`, backgroundColor: isLightBg ? '#f8fafc' : 'rgba(0,0,0,0.25)', color: textColor, fontSize: '12px', outline: 'none' }}
-            />
+          <div
+            data-testid="transcript-content-box"
+            style={{ maxHeight: '360px', overflowY: 'auto', padding: '14px 16px', borderRadius: '8px', backgroundColor: isLightBg ? '#f8fafc' : 'rgba(0,0,0,0.35)', border: `1px solid ${borderColor}`, fontSize: '13px', lineHeight: 1.7, color: subTextColor, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
+          >
+            {filteredTranscript || 'Nenhum trecho correspondente ao termo pesquisado.'}
           </div>
         </div>
-        <div
-          data-testid="transcript-content-box"
-          style={{ maxHeight: '360px', overflowY: 'auto', padding: '14px 16px', borderRadius: '8px', backgroundColor: isLightBg ? '#f8fafc' : 'rgba(0,0,0,0.35)', border: `1px solid ${borderColor}`, fontSize: '13px', lineHeight: 1.7, color: subTextColor, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
-        >
-          {filteredTranscript || 'Nenhum trecho correspondente ao termo pesquisado.'}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

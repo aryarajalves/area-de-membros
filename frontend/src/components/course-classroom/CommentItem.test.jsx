@@ -82,4 +82,28 @@ describe('CommentItem Component', () => {
     fireEvent.click(likeReplyBtn);
     expect(handleToggleLike).toHaveBeenCalledWith(20);
   });
+
+  it('allows toggling favorite on comment', () => {
+    const handleToggleFavorite = vi.fn();
+
+    render(
+      <CommentItem
+        comment={mockComment}
+        currentUser={{ id: 5, role: 'aluno' }}
+        onReply={vi.fn()}
+        onDeleteRequest={vi.fn()}
+        onToggleLike={vi.fn()}
+        onToggleFavorite={handleToggleFavorite}
+        getRoleBadge={getRoleBadge}
+        canDeleteComment={() => false}
+      />
+    );
+
+    const favBtn = screen.getByTestId('favorite-comment-btn-10');
+    expect(favBtn).toBeInTheDocument();
+
+    fireEvent.click(favBtn);
+    expect(handleToggleFavorite).toHaveBeenCalledWith(10);
+  });
 });
+

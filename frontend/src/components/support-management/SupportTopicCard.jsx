@@ -1,5 +1,5 @@
-import React from 'react';
-import { Heart, MessageSquare, Trash2, BookOpen, Clock, CheckCircle2, Star, Image, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, MessageSquare, Trash2, BookOpen, Clock, CheckCircle2, Star, Image, HelpCircle, Pin, Bookmark } from 'lucide-react';
 
 export function formatTimeAgo(dateString) {
   if (!dateString) return '';
@@ -31,17 +31,52 @@ export default function SupportTopicCard({
   onClick,
   onLike,
   onToggleLike,
+  onPin,
+  onTogglePin,
+  onFavorite,
+  onToggleFavorite,
   onDelete,
   onDeleteTopic,
   onCommentClick,
 }) {
+  const [isFavorited, setIsFavorited] = useState(!!topic.is_favorited);
   const isAuthor = currentUser?.id === topic.author.id;
   const isManager = ['superadmin', 'admin'].includes(currentUser?.role);
   const canDelete = isAuthor || isManager;
 
+  const handleFavoriteClick = async (e) => {
+    e.stopPropagation();
+    const fn = onFavorite || onToggleFavorite;
+    if (fn) {
+      fn(topic.id);
+      setIsFavorited((prev) => !prev);
+      return;
+    }
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/v1/favorites/topics/${topic.id}/toggle`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFavorited(data.is_favorited);
+        window.dispatchEvent(new CustomEvent('favorites_updated'));
+      }
+    } catch (err) {
+      console.error('Erro ao alternar favorito da dúvida:', err);
+    }
+  };
+
   const handleLikeClick = (e) => {
     e.stopPropagation();
     const fn = onLike || onToggleLike;
+    if (fn) fn(topic.id);
+  };
+
+  const handlePinClick = (e) => {
+    e.stopPropagation();
+    const fn = onPin || onTogglePin;
     if (fn) fn(topic.id);
   };
 
@@ -69,8 +104,9 @@ export default function SupportTopicCard({
         alignItems: 'flex-start',
         justifyContent: 'space-between',
         padding: '16px 20px',
-        backgroundColor: 'rgba(30, 41, 59, 0.45)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        backgroundColor: topic.is_pinned ? 'rgba(15, 23, 42, 0.65)' : 'rgba(30, 41, 59, 0.45)',
+        border: topic.is_pinned ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: topic.is_pinned ? '0 4px 20px rgba(56, 189, 248, 0.08)' : 'none',
         borderRadius: '12px',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
@@ -78,11 +114,11 @@ export default function SupportTopicCard({
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = 'rgba(51, 65, 85, 0.6)';
-        e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+        e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.5)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.45)';
-        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+        e.currentTarget.style.backgroundColor = topic.is_pinned ? 'rgba(15, 23, 42, 0.65)' : 'rgba(30, 41, 59, 0.45)';
+        e.currentTarget.style.borderColor = topic.is_pinned ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.08)';
       }}
     >
       <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
@@ -109,6 +145,29 @@ export default function SupportTopicCard({
         {/* Informações da Dúvida */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+            {/* Badge de Tópico Fixado pelo Usuário */}
+            {topic.is_pinned && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(56, 189, 248, 0.18)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                data-testid={`topic-pinned-badge-${topic.id}`}
+                title="Dúvida fixada por você no topo (máximo 5)"
+              >
+                <Pin size={11} fill="#38bdf8" />
+                Fixada por você
+              </span>
+            )}
+
             <span
               style={{
                 fontSize: '11px',
@@ -275,6 +334,62 @@ export default function SupportTopicCard({
 
       {/* Ações e Contadores laterais */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: '12px' }}>
+        {/* Botão de Fixar / Desafixar Dúvida */}
+        <button
+          type="button"
+          onClick={handlePinClick}
+          style={{
+            background: topic.is_pinned ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            border: topic.is_pinned ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            color: topic.is_pinned ? '#38bdf8' : '#94a3b8',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 600,
+            padding: '5px 8px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#38bdf8';
+            e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = topic.is_pinned ? '#38bdf8' : '#94a3b8';
+            e.currentTarget.style.backgroundColor = topic.is_pinned ? 'rgba(56, 189, 248, 0.15)' : 'transparent';
+          }}
+          data-testid={`pin-topic-btn-${topic.id}`}
+          title={topic.is_pinned ? 'Desafixar dúvida' : 'Fixar dúvida no topo (máx. 5)'}
+        >
+          <Pin size={16} fill={topic.is_pinned ? '#38bdf8' : 'none'} color={topic.is_pinned ? '#38bdf8' : '#94a3b8'} />
+        </button>
+
+        {/* Botão de Favoritar Dúvida */}
+        <button
+          type="button"
+          onClick={handleFavoriteClick}
+          style={{
+            background: isFavorited ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            border: isFavorited ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            color: isFavorited ? '#38bdf8' : '#94a3b8',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 600,
+            padding: '5px 8px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+          }}
+          data-testid={`favorite-topic-btn-${topic.id}`}
+          title={isFavorited ? 'Remover dos favoritos' : 'Salvar dúvida nos favoritos'}
+        >
+          <Bookmark size={16} fill={isFavorited ? '#38bdf8' : 'none'} color={isFavorited ? '#38bdf8' : '#94a3b8'} />
+        </button>
+
         {/* Botão de Curtir */}
         <button
           type="button"

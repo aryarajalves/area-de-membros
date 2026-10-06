@@ -212,4 +212,70 @@ describe('ChatMessageItem Component', () => {
 
     expect(screen.getByText('Visualizar Documento')).toBeInTheDocument();
   });
+
+  it('renders with element id and highlights message when isHighlighted is true', () => {
+    const { rerender } = render(
+      <ChatMessageItem
+        message={mockMessageWithAvatar}
+        currentUser={{ id: 2, role: 'aluno' }}
+        isHighlighted={false}
+      />
+    );
+
+    const messageEl = screen.getByTestId('chat-message-item-1');
+    expect(messageEl).toHaveAttribute('id', 'chat-message-1');
+    expect(messageEl).toHaveAttribute('data-highlighted', 'false');
+    expect(messageEl).not.toHaveClass('chat-message-highlighted');
+
+    rerender(
+      <ChatMessageItem
+        message={mockMessageWithAvatar}
+        currentUser={{ id: 2, role: 'aluno' }}
+        isHighlighted={true}
+      />
+    );
+
+    expect(messageEl).toHaveAttribute('data-highlighted', 'true');
+    expect(messageEl).toHaveClass('chat-message-highlighted');
+  });
+
+  it('renders attached audio player when media_type is audio', () => {
+    const msgWithAudio = {
+      ...mockMessageWithAvatar,
+      media_url: 'https://cdn.test.com/audio/gravacao.webm',
+      media_type: 'audio',
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithAudio}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    const audioWrapper = screen.getByTestId('chat-media-audio-1');
+    expect(audioWrapper).toBeInTheDocument();
+    const audioElement = audioWrapper.querySelector('audio');
+    expect(audioElement).toHaveAttribute('src', 'https://cdn.test.com/audio/gravacao.webm');
+  });
+
+  it('renders attached video player when media_type is video', () => {
+    const msgWithVideo = {
+      ...mockMessageWithAvatar,
+      media_url: 'https://cdn.test.com/videos/demo.mp4',
+      media_type: 'video',
+    };
+
+    render(
+      <ChatMessageItem
+        message={msgWithVideo}
+        currentUser={{ id: 2, role: 'aluno' }}
+      />
+    );
+
+    const videoWrapper = screen.getByTestId('chat-media-video-1');
+    expect(videoWrapper).toBeInTheDocument();
+    const videoElement = videoWrapper.querySelector('video');
+    expect(videoElement).toHaveAttribute('src', 'https://cdn.test.com/videos/demo.mp4');
+  });
 });

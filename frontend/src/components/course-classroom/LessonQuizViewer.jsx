@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import {
-  HelpCircle, CheckCircle2, XCircle, AlertCircle, RefreshCw,
-  ChevronLeft, ChevronRight, Award, Send, BookOpen, Clock
-} from 'lucide-react';
+import { HelpCircle, RefreshCw, Send, AlertCircle } from 'lucide-react';
 import LessonComments from './LessonComments';
 import LessonNotes from './LessonNotes';
+import {
+  QuizHeaderBanner,
+  QuizResultBanner,
+  QuizQuestionCard,
+  QuizNavigationFooter
+} from './quiz';
 
 export default function LessonQuizViewer({
   lesson,
@@ -78,7 +81,6 @@ export default function LessonQuizViewer({
   }, [lesson?.id, courseId]);
 
   const handleSelectOption = (questionId, optionId) => {
-    // Permite alterar se não estiver submetendo
     if (submitting) return;
     setSelectedAnswers((prev) => ({
       ...prev,
@@ -89,7 +91,6 @@ export default function LessonQuizViewer({
   const handleSubmitQuiz = async () => {
     if (!quizData?.questions || quizData.questions.length === 0) return;
 
-    // Verificar se todas foram respondidas
     const unanswered = quizData.questions.filter((q) => !selectedAnswers[q.id]);
     if (unanswered.length > 0) {
       setErrorMsg(`Por favor, responda todas as perguntas antes de enviar. Faltam ${unanswered.length} pergunta(s).`);
@@ -141,93 +142,18 @@ export default function LessonQuizViewer({
   return (
     <div data-testid="lesson-quiz-viewer-container" style={{ width: '100%' }}>
       {/* Banner Superior do Quiz */}
-      <div
-        style={{
-          maxWidth: '1080px',
-          margin: '0 auto 32px auto',
-          borderRadius: '16px',
-          padding: '36px 32px',
-          background: isLightBg
-            ? 'linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%)'
-            : 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.88) 100%)',
-          border: `1px solid ${borderColor}`,
-          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.5)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 12px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(168, 85, 247, 0.15)',
-              border: '1px solid rgba(168, 85, 247, 0.35)',
-              color: '#c084fc',
-              fontSize: '11px',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.6px'
-            }}
-          >
-            <HelpCircle size={13} />
-            <span>Quiz Interativo de Conhecimento</span>
-          </div>
-
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '4px 10px',
-              borderRadius: '999px',
-              backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)',
-              color: subTextColor,
-              fontSize: '11.5px',
-              fontWeight: 600
-            }}
-          >
-            <Award size={12} />
-            <span>Aprovação com {passingScore}%</span>
-          </div>
-        </div>
-
-        <h1
-          data-testid="quiz-lesson-title"
-          style={{
-            fontSize: '26px',
-            fontWeight: 800,
-            color: textColor,
-            margin: '0 0 14px 0',
-            lineHeight: 1.3
-          }}
-        >
-          {lesson.title}
-        </h1>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginTop: '18px', paddingTop: '18px', borderTop: `1px solid ${borderColor}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: subTextColor }}>
-            <span>Curso: <strong style={{ color: textColor }}>{courseTitle}</strong></span>
-            <span>•</span>
-            <span>Módulo: <strong style={{ color: textColor }}>{moduleTitle}</strong></span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isManager && onEditLesson && (
-              <button
-                type="button"
-                onClick={() => onEditLesson(lesson)}
-                className="secondary-btn"
-                style={{ fontSize: '12.5px', padding: '8px 14px' }}
-                data-testid="edit-quiz-lesson-btn"
-              >
-                Configurar Perguntas do Quiz
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <QuizHeaderBanner
+        lesson={lesson}
+        courseTitle={courseTitle}
+        moduleTitle={moduleTitle}
+        passingScore={passingScore}
+        isManager={isManager}
+        onEditLesson={onEditLesson}
+        isLightBg={isLightBg}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        borderColor={borderColor}
+      />
 
       {/* Grid Principal */}
       <div
@@ -344,72 +270,15 @@ export default function LessonQuizViewer({
               ) : (
                 <div>
                   {/* Painel de Resultado caso já tenha submetido */}
-                  {submissionResult && (
-                    <div
-                      data-testid="quiz-result-banner"
-                      style={{
-                        marginBottom: '28px',
-                        padding: '24px',
-                        borderRadius: '14px',
-                        border: submissionResult.passed ? '1.5px solid #10b981' : '1.5px solid #f59e0b',
-                        backgroundColor: submissionResult.passed
-                          ? (isLightBg ? '#ecfdf5' : 'rgba(16, 185, 129, 0.12)')
-                          : (isLightBg ? '#fffbeb' : 'rgba(245, 158, 11, 0.12)'),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '16px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        {submissionResult.passed ? (
-                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <CheckCircle2 size={26} color="#10b981" />
-                          </div>
-                        ) : (
-                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <AlertCircle size={26} color="#f59e0b" />
-                          </div>
-                        )}
-
-                        <div>
-                          <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 800, color: textColor }}>
-                            {submissionResult.passed ? 'Parabéns! Você foi Aprovado no Quiz 🎉' : 'Quase lá! Tente Novamente'}
-                          </h4>
-                          <p style={{ margin: 0, fontSize: '13.5px', color: subTextColor }}>
-                            Você acertou <strong>{submissionResult.correct_answers}</strong> de <strong>{submissionResult.total_questions}</strong> perguntas ({submissionResult.score}%).
-                            {submissionResult.total_points ? (
-                              <span> Pontuação: <strong>{submissionResult.earned_points || 0}</strong> de <strong>{submissionResult.total_points}</strong> pontos.</span>
-                            ) : null}
-                            {submissionResult.passed ? ' Aula concluída com sucesso!' : ` Necessário no mínimo ${passingScore}% para aprovação.`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleRetryQuiz}
-                        data-testid="retry-quiz-btn"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          fontSize: '12.5px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          border: `1px solid ${borderColor}`,
-                          backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.08)',
-                          color: textColor
-                        }}
-                      >
-                        <RefreshCw size={14} />
-                        <span>Refazer Quiz</span>
-                      </button>
-                    </div>
-                  )}
+                  <QuizResultBanner
+                    submissionResult={submissionResult}
+                    passingScore={passingScore}
+                    onRetry={handleRetryQuiz}
+                    isLightBg={isLightBg}
+                    textColor={textColor}
+                    subTextColor={subTextColor}
+                    borderColor={borderColor}
+                  />
 
                   {errorMsg && (
                     <div
@@ -434,107 +303,21 @@ export default function LessonQuizViewer({
 
                   {/* Lista de Perguntas */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-                    {questions.map((q, qIndex) => {
-                      const selectedOptionId = selectedAnswers[q.id];
-                      return (
-                        <div
-                          key={q.id}
-                          data-testid={`quiz-question-card-${q.id}`}
-                          style={{
-                            backgroundColor: cardBg,
-                            borderRadius: '14px',
-                            border: `1px solid ${borderColor}`,
-                            padding: '24px',
-                            transition: 'border-color 0.2s ease'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flex: 1 }}>
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  width: '26px',
-                                  height: '26px',
-                                  borderRadius: '50%',
-                                  backgroundColor: 'rgba(168, 85, 247, 0.18)',
-                                  color: '#c084fc',
-                                  fontSize: '12.5px',
-                                  fontWeight: 800,
-                                  flexShrink: 0
-                                }}
-                              >
-                                {qIndex + 1}
-                              </span>
-                              <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: 700, color: textColor, lineHeight: 1.5 }}>
-                                {q.question}
-                              </h3>
-                            </div>
-                            <span
-                              data-testid={`question-points-badge-${q.id}`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                fontSize: '11.5px',
-                                fontWeight: 700,
-                                color: '#a855f7',
-                                backgroundColor: isLightBg ? '#f3e8ff' : 'rgba(168, 85, 247, 0.12)',
-                                border: '1px solid rgba(168, 85, 247, 0.25)',
-                                padding: '2px 8px',
-                                borderRadius: '6px'
-                              }}
-                            >
-                              {q.points || 1} {(q.points || 1) === 1 ? 'ponto' : 'pontos'}
-                            </span>
-                          </div>
-
-                          {/* Alternativas */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', paddingLeft: '36px' }}>
-                            {(q.options || []).map((opt, optIndex) => {
-                              const isSelected = selectedOptionId === opt.id;
-                              const letter = String.fromCharCode(65 + optIndex); // A, B, C, D...
-
-                              return (
-                                <label
-                                  key={opt.id}
-                                  data-testid={`option-label-${opt.id}`}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '12px 16px',
-                                    borderRadius: '10px',
-                                    cursor: submitting ? 'not-allowed' : 'pointer',
-                                    border: isSelected ? '1.5px solid #a855f7' : `1px solid ${borderColor}`,
-                                    backgroundColor: isSelected
-                                      ? (isLightBg ? '#faf5ff' : 'rgba(168, 85, 247, 0.12)')
-                                      : (isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'),
-                                    color: isSelected ? (isLightBg ? '#7e22ce' : '#e9d5ff') : textColor,
-                                    fontSize: '13.5px',
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`question-${q.id}`}
-                                    value={opt.id}
-                                    checked={isSelected}
-                                    onChange={() => handleSelectOption(q.id, opt.id)}
-                                    disabled={submitting}
-                                    style={{ accentColor: '#a855f7', cursor: 'pointer' }}
-                                  />
-                                  <span style={{ fontWeight: 700, color: isSelected ? '#a855f7' : subTextColor, minWidth: '18px' }}>
-                                    {letter})
-                                  </span>
-                                  <span style={{ flex: 1 }}>{opt.option_text}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {questions.map((q, qIndex) => (
+                      <QuizQuestionCard
+                        key={q.id}
+                        question={q}
+                        qIndex={qIndex}
+                        selectedOptionId={selectedAnswers[q.id]}
+                        onSelectOption={handleSelectOption}
+                        submitting={submitting}
+                        isLightBg={isLightBg}
+                        cardBg={cardBg}
+                        textColor={textColor}
+                        subTextColor={subTextColor}
+                        borderColor={borderColor}
+                      />
+                    ))}
                   </div>
 
                   {/* Botão de Envio */}
@@ -594,42 +377,12 @@ export default function LessonQuizViewer({
           )}
 
           {/* Navegação Entre Aulas */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginTop: '40px',
-              paddingTop: '24px',
-              borderTop: `1px solid ${borderColor}`
-            }}
-          >
-            {prevLesson ? (
-              <button
-                type="button"
-                onClick={() => onSelectLesson(prevLesson)}
-                className="secondary-btn"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}
-                data-testid="prev-lesson-btn"
-              >
-                <ChevronLeft size={16} />
-                <span>Aula Anterior: {prevLesson.title}</span>
-              </button>
-            ) : <div />}
-
-            {nextLesson && (
-              <button
-                type="button"
-                onClick={() => onSelectLesson(nextLesson)}
-                className="primary-btn"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}
-                data-testid="next-lesson-btn"
-              >
-                <span>Próxima Aula: {nextLesson.title}</span>
-                <ChevronRight size={16} />
-              </button>
-            )}
-          </div>
+          <QuizNavigationFooter
+            prevLesson={prevLesson}
+            nextLesson={nextLesson}
+            onSelectLesson={onSelectLesson}
+            borderColor={borderColor}
+          />
         </div>
 
         {rightSidebar && <div>{rightSidebar}</div>}

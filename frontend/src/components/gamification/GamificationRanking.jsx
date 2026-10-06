@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, HelpCircle, Calendar, Sparkles, User, Award, Flame } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Trophy, HelpCircle, Calendar, Sparkles, User, Award, Flame, History } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import PodiumCard from './PodiumCard';
 import RankingTable from './RankingTable';
 import GamificationRulesModal from './GamificationRulesModal';
+import ClosedPeriodSelector from './ClosedPeriodSelector';
 
 export default function GamificationRanking({ user }) {
   const { addToast } = useToast();
   const isAluno = user?.role === 'aluno';
 
-  const [period, setPeriod] = useState('monthly'); // 'monthly' | 'all_time'
+  const [period, setPeriod] = useState('monthly'); // 'monthly' | 'all_time' | 'closed_month' | 'closed_year'
   const [rankingData, setRankingData] = useState(null);
+  const [completedPeriods, setCompletedPeriods] = useState(null);
+  const [selectedClosedKey, setSelectedClosedKey] = useState('');
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
@@ -23,15 +26,80 @@ export default function GamificationRanking({ user }) {
     };
   };
 
-  const fetchRanking = async () => {
-    setLoading(true);
+  const fetchCompletedPeriods = useCallback(async () => {
     try {
-      const res = await fetch(`/api/v1/gamification/ranking?period=${period}`, {
+      const res = await fetch('/api/v1/gamification/completed-periods', {
         headers: getHeaders()
       });
       if (res.ok) {
         const data = await res.json();
-        setRankingData(data);
+        setCompletedPeriods(data);
+        return data;
+      }
+    } catch (err) {
+      console.error('Erro ao buscar períodos finalizados:', err);
+    }
+    return null;
+  }, []);
+
+  const fetchRanking = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (period === 'monthly' || period === 'all_time') {
+        const res = await fetch(`/api/v1/gamification/ranking?period=${period}`, {
+          headers: getHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRankingData(data);
+        }
+      } else if (period === 'closed_month' || period === 'closed_year') {
+        const pType = period === 'closed_month' ? 'month' : 'year';
+        let key = selectedClosedKey;
+
+        // Se ainda não tiver chave selecionada, busca a primeira disponível
+        if (!key) {
+          let periods = completedPeriods;
+          if (!periods) {
+            periods = await fetchCompletedPeriods();
+          }
+          const list = pType === 'month' ? periods?.completed_months : periods?.completed_years;
+          if (list && list.length > 0) {
+            key = list[0].key;
+            setSelectedClosedKey(key);
+          }
+        }
+
+        if (key) {
+          const res = await fetch(
+            `/api/v1/gamification/closed-ranking?period_type=${pType}&period_key=${key}`,
+            { headers: getHeaders() }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            // Normaliza a resposta para a estrutura esperada pelo pódio e tabela
+            setRankingData({
+              period,
+              month_name: data.period_label,
+              ranking: data.top_students || [],
+              my_position: data.my_position,
+              total_participants: data.total_participants || 0,
+              is_closed: true,
+            });
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            addToast(errJson.detail || 'Erro ao carregar histórico finalizado.', 'error');
+          }
+        } else {
+          setRankingData({
+            period,
+            month_name: period === 'closed_month' ? 'Mês Anterior' : 'Ano Anterior',
+            ranking: [],
+            my_position: null,
+            total_participants: 0,
+            is_closed: true,
+          });
+        }
       }
     } catch (err) {
       console.error('Erro ao buscar ranking:', err);
@@ -39,7 +107,7 @@ export default function GamificationRanking({ user }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, selectedClosedKey, completedPeriods, fetchCompletedPeriods, addToast]);
 
   const fetchRules = async () => {
     try {
@@ -57,17 +125,26 @@ export default function GamificationRanking({ user }) {
 
   useEffect(() => {
     fetchRules();
-  }, []);
+    fetchCompletedPeriods();
+  }, [fetchCompletedPeriods]);
 
   useEffect(() => {
     fetchRanking();
-  }, [period]);
+  }, [fetchRanking]);
+
+  const handleSelectPeriodMode = (newMode) => {
+    if (newMode === period) return;
+    setPeriod(newMode);
+    setSelectedClosedKey(''); // Redefine para carregar o primeiro do modo
+  };
 
   const ranking = rankingData?.ranking || [];
   const top1 = ranking.find((s) => s.rank === 1);
   const top2 = ranking.find((s) => s.rank === 2);
   const top3 = ranking.find((s) => s.rank === 3);
   const myPosition = rankingData?.my_position;
+  const isClosedPeriod = period === 'closed_month' || period === 'closed_year';
+
 
   return (
     <div
@@ -125,12 +202,13 @@ export default function GamificationRanking({ user }) {
               borderRadius: '12px',
               padding: '4px',
               display: 'flex',
-              gap: '4px'
+              gap: '4px',
+              flexWrap: 'wrap',
             }}
           >
             <button
               type="button"
-              onClick={() => setPeriod('monthly')}
+              onClick={() => handleSelectPeriodMode('monthly')}
               style={{
                 padding: '8px 14px',
                 borderRadius: '8px',
@@ -148,7 +226,7 @@ export default function GamificationRanking({ user }) {
             </button>
             <button
               type="button"
-              onClick={() => setPeriod('all_time')}
+              onClick={() => handleSelectPeriodMode('all_time')}
               style={{
                 padding: '8px 14px',
                 borderRadius: '8px',
@@ -163,6 +241,42 @@ export default function GamificationRanking({ user }) {
               data-testid="tab-period-alltime"
             >
               Histórico Geral
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectPeriodMode('closed_month')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: period === 'closed_month' ? '#3b82f6' : 'transparent',
+                color: period === 'closed_month' ? '#fff' : '#94a3b8',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              data-testid="tab-period-closed-months"
+            >
+              Meses Anteriores (Top 10)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectPeriodMode('closed_year')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: period === 'closed_year' ? '#3b82f6' : 'transparent',
+                color: period === 'closed_year' ? '#fff' : '#94a3b8',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              data-testid="tab-period-closed-years"
+            >
+              Anos Anteriores (Top 10)
             </button>
           </div>
 
@@ -190,6 +304,17 @@ export default function GamificationRanking({ user }) {
           </button>
         </div>
       </div>
+
+      {/* Banner / Seletor de Período Finalizado (Meses e Anos Fechados) */}
+      {isClosedPeriod && (
+        <ClosedPeriodSelector
+          periodMode={period}
+          completedPeriods={completedPeriods}
+          selectedKey={selectedClosedKey}
+          onChangeKey={(newKey) => setSelectedClosedKey(newKey)}
+          periodLabel={rankingData?.month_name}
+        />
+      )}
 
       {/* Card "Sua Posição" se for Aluno */}
       {isAluno && myPosition && (
@@ -229,7 +354,7 @@ export default function GamificationRanking({ user }) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                Sua Posição no Ranking
+                {isClosedPeriod ? 'Seu Resultado Final no Período' : 'Sua Posição no Ranking'}
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>{myPosition.name}</span>
@@ -282,10 +407,14 @@ export default function GamificationRanking({ user }) {
         >
           <Trophy size={48} style={{ color: '#64748b', marginBottom: '12px' }} />
           <h3 style={{ margin: '0 0 6px 0', color: '#f8fafc', fontSize: '1.2rem' }}>
-            Nenhum ponto registrado ainda neste mês
+            {isClosedPeriod
+              ? 'Nenhum aluno pontuou no período finalizado selecionado'
+              : 'Nenhum ponto registrado ainda neste mês'}
           </h3>
           <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '0.9rem' }}>
-            Comece a responder dúvidas no suporte ou assistir às suas aulas para inaugurar o pódio!
+            {isClosedPeriod
+              ? 'O Top 10 fica congelado com as pontuações conquistadas até o encerramento do período.'
+              : 'Comece a responder dúvidas no suporte ou assistir às suas aulas para inaugurar o pódio!'}
           </p>
         </div>
       ) : (
@@ -311,9 +440,11 @@ export default function GamificationRanking({ user }) {
           {/* Tabela com a lista completa */}
           <div style={{ marginTop: '20px' }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tabela Geral de Classificação</span>
+              <span>
+                {isClosedPeriod ? 'Classificação Final (Top 10 Campeões)' : 'Tabela Geral de Classificação'}
+              </span>
               <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>
-                ({ranking.length} alunos pontuando)
+                ({ranking.length} alunos {isClosedPeriod ? 'no Top 10' : 'pontuando'})
               </span>
             </h2>
             <RankingTable students={ranking} />

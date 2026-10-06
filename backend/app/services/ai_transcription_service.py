@@ -105,6 +105,94 @@ def _execute_ffmpeg_cmd(input_video_path: str, output_audio_path: str) -> str:
     return output_audio_path
 
 
+def _get_audio_duration_seconds(audio_path: str) -> float:
+    """Extrai a duração exata do áudio em segundos via ffprobe com tratamento seguro."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            audio_path
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if res.returncode == 0 and res.stdout.strip():
+            return float(res.stdout.strip())
+    except Exception as e:
+        logger.warning(f"[AI Transcription] Falha ao ler duração com ffprobe: {e}")
+    return 0.0
+
+
+def format_cost_brl(cost_brl: Optional[float]) -> str:
+    """Formata valor em reais para exibição amigável (ex: R$ 0,18)."""
+    if cost_brl is None or cost_brl < 0:
+        return "R$ 0,00"
+    if 0 < cost_brl < 0.01:
+        return "R$ < 0,01"
+    return f"R$ {cost_brl:.2f}".replace(".", ",")
+
+
+def get_or_calculate_transcription_cost(
+    transcription: LessonTranscription,
+    lesson: Optional[Lesson] = None
+) -> Dict[str, Any]:
+    """
+    Retorna os custos em BRL/USD e tokens da transcrição.
+    Para transcrições já geradas anteriormente sem métricas gravadas,
+    calcula uma estimativa retroativa realista baseada no tamanho do texto e duração.
+    """
+    try:
+        usd_rate = float(os.getenv("OPENAI_USD_BRL_RATE", "5.50"))
+    except Exception:
+        usd_rate = 5.50
+
+    if transcription.estimated_cost_brl is not None and transcription.estimated_cost_brl >= 0:
+        return {
+            "audio_duration_seconds": transcription.audio_duration_seconds,
+            "prompt_tokens": transcription.prompt_tokens,
+            "completion_tokens": transcription.completion_tokens,
+            "estimated_cost_usd": transcription.estimated_cost_usd,
+            "estimated_cost_brl": transcription.estimated_cost_brl,
+            "estimated_cost_formatted": format_cost_brl(transcription.estimated_cost_brl)
+        }
+
+    # Cálculo retroativo / estimado
+    full_text = transcription.full_transcript or ""
+    if not full_text:
+        return {
+            "audio_duration_seconds": None,
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "estimated_cost_usd": None,
+            "estimated_cost_brl": None,
+            "estimated_cost_formatted": None
+        }
+
+    # Estima duração do áudio (~130 palavras por minuto)
+    words = len(full_text.split())
+    if lesson and lesson.duration and isinstance(lesson.duration, (int, float)) and lesson.duration > 0:
+        duration_sec = float(lesson.duration) * 60.0
+    else:
+        duration_sec = max(30.0, (words / 130.0) * 60.0)
+
+    # Estima tokens (~3.8 caracteres por token em português)
+    prompt_tokens = int(len(full_text) / 3.8) + 400
+    comp_text = transcription.summary_html or transcription.summary_markdown or ""
+    completion_tokens = int(len(comp_text) / 3.8) + 200
+
+    whisper_usd = (duration_sec / 60.0) * 0.006
+    gpt_usd = (prompt_tokens * 0.15 / 1_000_000.0) + (completion_tokens * 0.60 / 1_000_000.0)
+    total_usd = whisper_usd + gpt_usd
+    total_brl = total_usd * usd_rate
+
+    return {
+        "audio_duration_seconds": round(duration_sec, 2),
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "estimated_cost_usd": round(total_usd, 4),
+        "estimated_cost_brl": round(total_brl, 2),
+        "estimated_cost_formatted": format_cost_brl(round(total_brl, 2))
+    }
+
 
 class AITranscriptionService:
     """Serviço para gerenciar transcrição e resumos gerados por IA."""
@@ -248,12 +336,18 @@ Instruções para o "summary_html":
         content_raw = data["choices"][0]["message"]["content"]
         parsed = json.loads(content_raw)
 
+        usage = data.get("usage", {})
+        prompt_tokens = usage.get("prompt_tokens") or 0
+        completion_tokens = usage.get("completion_tokens") or 0
+
         return {
             "summary_executive": parsed.get("summary_executive", ""),
             "key_takeaways": parsed.get("key_takeaways", []),
             "action_plan": parsed.get("action_plan", []),
             "summary_html": parsed.get("summary_html", ""),
-            "summary_markdown": f"## Resumo Executivo\n{parsed.get('summary_executive', '')}\n\n## Principais Pontos\n" + "\n".join(f"- {pt}" for pt in parsed.get("key_takeaways", []))
+            "summary_markdown": f"## Resumo Executivo\n{parsed.get('summary_executive', '')}\n\n## Principais Pontos\n" + "\n".join(f"- {pt}" for pt in parsed.get("key_takeaways", [])),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens
         }
 
     async def process_lesson_transcription(
@@ -308,6 +402,10 @@ Instruções para o "summary_html":
 
             # 1. Extração do áudio em thread não-bloqueante
             await self.extract_audio_from_video(input_video, temp_audio_file)
+            audio_duration_seconds = await asyncio.to_thread(_get_audio_duration_seconds, temp_audio_file)
+            if not audio_duration_seconds or audio_duration_seconds <= 0:
+                if lesson.duration and isinstance(lesson.duration, (int, float)) and lesson.duration > 0:
+                    audio_duration_seconds = float(lesson.duration) * 60.0
 
             # 2. Transcrição com Whisper
             full_transcript = await self.transcribe_audio_whisper(temp_audio_file)
@@ -319,13 +417,34 @@ Instruções para o "summary_html":
 
             # 3. Resumo inteligente e HTML com GPT-4o-mini
             ai_data = await self.generate_summary_and_html(full_transcript, lesson.title)
+            prompt_tokens = ai_data.get("prompt_tokens") or 0
+            completion_tokens = ai_data.get("completion_tokens") or 0
 
-            # 4. Atualiza registro
+            # 4. Cálculo oficial de custos (OpenAI Whisper + GPT-4o-mini)
+            # Whisper: $0.006 por minuto ($0.0001 por segundo)
+            whisper_cost_usd = (audio_duration_seconds / 60.0) * 0.006 if audio_duration_seconds else 0.0
+            # GPT-4o-mini: $0.15 por 1M de prompt tokens, $0.60 por 1M de completion tokens
+            gpt_cost_usd = (prompt_tokens * 0.15 / 1_000_000.0) + (completion_tokens * 0.60 / 1_000_000.0)
+            total_cost_usd = whisper_cost_usd + gpt_cost_usd
+
+            try:
+                usd_rate = float(os.getenv("OPENAI_USD_BRL_RATE", "5.50"))
+            except Exception:
+                usd_rate = 5.50
+
+            total_cost_brl = total_cost_usd * usd_rate
+
+            # 5. Atualiza registro com métricas completas
             transcription.full_transcript = full_transcript
             transcription.summary_html = ai_data["summary_html"]
             transcription.summary_markdown = ai_data["summary_markdown"]
             takeaways = ai_data.get("key_takeaways")
             transcription.key_takeaways = json.dumps(takeaways, ensure_ascii=False) if isinstance(takeaways, list) else (takeaways or "")
+            transcription.audio_duration_seconds = round(audio_duration_seconds, 2) if audio_duration_seconds else None
+            transcription.prompt_tokens = prompt_tokens
+            transcription.completion_tokens = completion_tokens
+            transcription.estimated_cost_usd = round(total_cost_usd, 4)
+            transcription.estimated_cost_brl = round(total_cost_brl, 2)
             transcription.status = "completed"
             transcription.error_message = None
             db.commit()

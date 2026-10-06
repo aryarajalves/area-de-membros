@@ -19,6 +19,7 @@ import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
+import TopNavbar from './components/navigation/TopNavbar';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 
@@ -213,12 +214,14 @@ function App() {
   const isSuperAdmin = user?.role === 'superadmin';
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
 
+  const isFullView = isInsideCourse || activeTab === 'chat';
+
   return (
     <div
       className={`app-container ${!isLightBg ? 'app-dark-theme classroom-dark-theme' : ''}`}
       style={{ backgroundColor: memberAreaBgColor, '--classroom-modal-bg': memberAreaBgColor }}
     >
-      {!isInsideCourse && (
+      {!isFullView && (
         <Sidebar
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
@@ -235,34 +238,18 @@ function App() {
         aria-label="Conteúdo Principal"
         style={{
           backgroundColor: memberAreaBgColor,
-          ...(isInsideCourse || activeTab === 'courses' || activeTab === 'settings'
+          ...(isFullView || activeTab === 'courses' || activeTab === 'settings'
             ? { padding: 0, width: '100%', maxWidth: '100%' }
             : {})
         }}
       >
-        {!isInsideCourse && (
-          <header className="mobile-header" data-testid="mobile-header">
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Abrir menu lateral"
-              data-testid="mobile-menu-toggle-btn"
-            >
-              <Menu size={22} />
-            </button>
-            <div className="mobile-header-brand">
-              <div className="logo-icon mobile-logo-icon">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <span className="mobile-header-title">Área de Membros</span>
-            </div>
-            <div className="mobile-header-avatar" data-testid="mobile-header-avatar">
-              {(user?.name || 'U').charAt(0).toUpperCase()}
-            </div>
-          </header>
+        {!isFullView && (
+          <TopNavbar
+            user={user}
+            onNavigateTab={handleSelectTab}
+            onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+            bgColor={memberAreaBgColor}
+          />
         )}
         {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <CourseManagement
@@ -283,6 +270,7 @@ function App() {
           <ChatManagement
             currentUser={user}
             bgColor={memberAreaBgColor}
+            onBack={() => handleSelectTab('courses')}
           />
         )}
         {activeTab === 'testimonials' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (

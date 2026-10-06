@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, HelpCircle } from 'lucide-react';
+import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2 } from 'lucide-react';
 import ChainedLockOverlay from './ChainedLockOverlay';
 
 export default function CourseCard({
@@ -13,8 +13,7 @@ export default function CourseCard({
   onSelectCourse,
   onOpenEditModal,
   onPromptDelete,
-  onShowInfoToast,
-  onContactSupport
+  onShowInfoToast
 }) {
   const hasAccess = isManager || course.has_access !== false;
 
@@ -128,51 +127,22 @@ export default function CourseCard({
               <span>Acessar Curso</span>
             </button>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={handleCardClick}
-                data-testid={`more-info-course-btn-${course.id}`}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12.5px',
-                  gap: '6px',
-                  backgroundColor: '#2563eb',
-                  borderColor: '#1d4ed8'
-                }}
-              >
-                <ExternalLink size={14} />
-                <span>Ver Mais Informações</span>
-              </button>
-
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onContactSupport) {
-                    onContactSupport(course);
-                  }
-                }}
-                data-testid={`contact-support-course-btn-${course.id}`}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12.5px',
-                  gap: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: isLightBg ? '#0f172a' : '#38bdf8',
-                  borderColor: isLightBg ? '#cbd5e1' : 'rgba(56, 189, 248, 0.4)',
-                  backgroundColor: isLightBg ? 'rgba(0,0,0,0.05)' : 'rgba(56, 189, 248, 0.1)',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                <HelpCircle size={14} />
-                <span>Entrar em Contato</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleCardClick}
+              data-testid={`more-info-course-btn-${course.id}`}
+              style={{
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                gap: '6px',
+                backgroundColor: '#2563eb',
+                borderColor: '#1d4ed8'
+              }}
+            >
+              <ExternalLink size={14} />
+              <span>Ver Mais Informações</span>
+            </button>
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

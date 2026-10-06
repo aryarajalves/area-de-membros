@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { formatBrasiliaBackupDateTimeFull } from './backupDateUtils';
 
 export default function S3BackupsTab({
   loadingManual,
@@ -176,7 +177,7 @@ export default function S3BackupsTab({
                       </span>
                     </td>
                     <td className="text-secondary">
-                      {new Date(bkp.created_at).toLocaleString('pt-BR')}
+                      {formatBrasiliaBackupDateTimeFull(bkp.created_at) || '—'}
                     </td>
                     <td>
                       <div className="table-actions-group" style={{ justifyContent: 'center' }}>

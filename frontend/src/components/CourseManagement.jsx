@@ -57,8 +57,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
           onThemeColorChange(data[0].bg_color);
         }
       } else {
-        const err = await res.json();
-        throw new Error(err.detail || 'Erro ao carregar cursos.');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || (res.status >= 500 ? 'O servidor está iniciando. Aguarde instantes e tente novamente.' : 'Erro ao carregar cursos.'));
       }
     } catch (err) {
       addToast(err.message || 'Erro ao conectar à API.', 'error');
@@ -173,7 +173,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         setModalOpen(false);
         fetchCourses();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Erro ao salvar curso.');
       }
     } catch (err) {
@@ -202,7 +202,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         setCourseToDelete(null);
         fetchCourses();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Erro ao excluir curso.');
       }
     } catch (err) {
@@ -324,11 +324,6 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
                 onOpenEditModal={handleOpenEditModal}
                 onPromptDelete={handlePromptDelete}
                 onShowInfoToast={(msg) => addToast(msg, 'info')}
-                onContactSupport={() => {
-                  if (onNavigateTab) {
-                    onNavigateTab('support');
-                  }
-                }}
               />
             ))}
           </div>

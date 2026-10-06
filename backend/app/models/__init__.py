@@ -18,14 +18,17 @@ from app.models.course import (
     QuizQuestion,
     QuizOption,
     QuizSubmission,
+    LessonFavorite,
+    LessonCommentFavorite,
 )
-from app.models.support import SupportTopic, SupportReply, SupportTopicLike
+from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
 from app.models.chat import ChatMessage
 from app.models.testimonial import Testimonial
 from app.models.gamification import GamificationPoint
 from app.models.webhook import Webhook, WebhookLog
 from app.models.backup import BackupSchedule, BackupHistory
 from app.models.api_token import ApiToken
+from app.models.platform_link import PlatformLink
 
 __all__ = [
     "User",
@@ -44,9 +47,13 @@ __all__ = [
     "QuizQuestion",
     "QuizOption",
     "QuizSubmission",
+    "LessonFavorite",
+    "LessonCommentFavorite",
     "SupportTopic",
     "SupportReply",
     "SupportTopicLike",
+    "SupportTopicPin",
+    "SupportTopicFavorite",
     "ChatMessage",
     "Testimonial",
     "GamificationPoint",
@@ -55,4 +62,5 @@ __all__ = [
     "BackupSchedule",
     "BackupHistory",
     "ApiToken",
+    "PlatformLink",
 ]

@@ -81,3 +81,54 @@ def award_points(
         db.rollback()
         logger.error(f"[Gamificação] Erro ao atribuir pontos para o usuário #{user.id}: {exc}")
         return None
+
+
+def sync_student_historical_points(db: Session, user_id: Optional[int] = None) -> int:
+    """
+    Sincroniza retroativamente os pontos de aulas concluídas
+    para garantir a integridade da pontuação de alunos existentes.
+    Retorna a quantidade de novas entradas criadas.
+    """
+    from app.models.course import LessonProgress
+
+    query_lp = (
+        db.query(LessonProgress, User)
+        .join(User, LessonProgress.user_id == User.id)
+        .filter(LessonProgress.is_completed == True, User.role == "aluno")
+    )
+    if user_id:
+        query_lp = query_lp.filter(LessonProgress.user_id == user_id)
+
+    completed_lessons = query_lp.all()
+    created_count = 0
+    pts, desc = POINTS_MAP["lesson_completed"]
+
+    for lp, user in completed_lessons:
+        existing = (
+            db.query(GamificationPoint)
+            .filter(
+                GamificationPoint.user_id == lp.user_id,
+                GamificationPoint.action == "lesson_completed",
+                GamificationPoint.reference_id == lp.lesson_id,
+            )
+            .first()
+        )
+        if not existing:
+            created_at = lp.completed_at or datetime.utcnow()
+            point_entry = GamificationPoint(
+                user_id=lp.user_id,
+                action="lesson_completed",
+                points=pts,
+                description=desc,
+                reference_id=lp.lesson_id,
+                created_at=created_at,
+            )
+            db.add(point_entry)
+            created_count += 1
+
+    if created_count > 0:
+        db.commit()
+        logger.info(f"[Gamificação Sync] {created_count} pontos históricos sincronizados com sucesso.")
+
+    return created_count
+
