@@ -14,7 +14,7 @@ services:
   # ----------------------------------------------------------------------------
   backend:
     # Imagem oficial do Backend da Área de Membros
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.0.1}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.0.6}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Volumes do Backend (Uploads locais de arquivos e socket Docker para logs)
@@ -198,7 +198,7 @@ services:
   # ----------------------------------------------------------------------------
   frontend:
     # Imagem da aplicação Frontend (Nginx servindo dist/)
-    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.0.1}
+    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.0.6}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Redes do Swarm
