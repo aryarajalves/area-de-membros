@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sparkles, ExternalLink, Copy, Check, RefreshCw,
+  Sparkles, Copy, Check, RefreshCw,
   Search, FileText, ListChecks, Loader2, Coins
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import LessonAiTranscriptionProcessing from './LessonAiTranscriptionProcessing';
+import LessonChaptersCard from './LessonChaptersCard';
+import ConfirmRetriggerAiModal from './ConfirmRetriggerAiModal';
+import AgentFlowLessonSync from './AgentFlowLessonSync';
+
+// Cache em memória persistido por ID da aula para navegação instantânea e zero layout shift
+const transcriptionMemoryCache = new Map();
 
 export default function LessonAiTranscriptionTab({
   courseId,
@@ -13,9 +19,11 @@ export default function LessonAiTranscriptionTab({
   currentUser,
   isLightBg = false
 }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedData = lesson?.id ? transcriptionMemoryCache.get(lesson.id) : null;
+  const [data, setData] = useState(cachedData || null);
+  const [loading, setLoading] = useState(!cachedData);
   const [transcribing, setTranscribing] = useState(false);
+  const [showRetriggerConfirmModal, setShowRetriggerConfirmModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -37,26 +45,41 @@ export default function LessonAiTranscriptionTab({
 
   const fetchTranscription = useCallback(async (isInitial = false) => {
     if (!lesson?.id || !courseId || !moduleId) return;
+    const hasCache = transcriptionMemoryCache.has(lesson.id);
     try {
-      if (isInitial) setLoading(true);
+      if (isInitial && !hasCache) setLoading(true);
       const res = await fetch(
         `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription`,
         { headers: getAuthHeaders() }
       );
       if (res.ok) {
         const json = await res.json();
+        transcriptionMemoryCache.set(lesson.id, json);
         setData(json);
+        if (Array.isArray(json?.chapters) && json.chapters.length > 0) {
+          window.dispatchEvent(new CustomEvent('video-chapters-loaded', { detail: { chapters: json.chapters } }));
+        }
+        if (json?.status === 'completed' && ((json?.lesson_title && json.lesson_title !== lesson?.title) || (json?.lesson_description && json.lesson_description !== lesson?.description))) {
+          window.dispatchEvent(new CustomEvent('lesson-title-updated', { detail: { lessonId: lesson.id, newTitle: json.lesson_title, newDescription: json.lesson_description } }));
+        }
       }
     } catch (err) {
       console.error('Erro ao buscar transcrição da aula:', err);
     } finally {
-      if (isInitial) setLoading(false);
+      setLoading(false);
     }
   }, [courseId, moduleId, lesson?.id]);
 
   useEffect(() => {
-    fetchTranscription(true);
-  }, [fetchTranscription]);
+    const existing = lesson?.id ? transcriptionMemoryCache.get(lesson.id) : null;
+    if (existing) {
+      setData(existing);
+      setLoading(false);
+      fetchTranscription(false);
+    } else {
+      fetchTranscription(true);
+    }
+  }, [fetchTranscription, lesson?.id]);
 
   // Polling silencioso a cada 3s enquanto o status for 'processing' (sem recarregar tela inteira)
   useEffect(() => {
@@ -108,7 +131,9 @@ export default function LessonAiTranscriptionTab({
       );
       if (res.ok) {
         addToast('Processamento cancelado / reiniciado.', 'info');
-        setData({ status: 'not_started', full_transcript: '' });
+        const emptyState = { status: 'not_started', full_transcript: '' };
+        if (lesson?.id) transcriptionMemoryCache.set(lesson.id, emptyState);
+        setData(emptyState);
       }
     } catch (err) {
       console.error('Erro ao cancelar transcrição:', err);
@@ -123,16 +148,28 @@ export default function LessonAiTranscriptionTab({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenHtmlDocument = () => {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
-    const query = token ? `?token=${encodeURIComponent(token)}` : '';
-    const htmlUrl = `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription/html${query}`;
-    window.open(htmlUrl, '_blank', 'noopener,noreferrer');
+  const handleUpdateChapters = (updatedChapters) => {
+    setData((prev) => {
+      const next = { ...prev, chapters: updatedChapters };
+      if (lesson?.id) transcriptionMemoryCache.set(lesson.id, next);
+      return next;
+    });
+    window.dispatchEvent(new CustomEvent('video-chapters-loaded', { detail: { chapters: updatedChapters } }));
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0', color: subTextColor, gap: '10px' }} data-testid="ai-transcription-loading">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '260px',
+          color: subTextColor,
+          gap: '10px'
+        }}
+        data-testid="ai-transcription-loading"
+      >
         <Loader2 size={20} className="animate-spin" />
         <span style={{ fontSize: '14px' }}>Carregando dados da aula...</span>
       </div>
@@ -300,32 +337,25 @@ export default function LessonAiTranscriptionTab({
               <span>Custo: {data.estimated_cost_formatted}</span>
             </span>
           )}
+
+          <AgentFlowLessonSync
+            lessonId={lesson?.id}
+            isManager={isManager}
+            initialSyncedAt={data?.agentflow_synced_at}
+            initialKbId={data?.agentflow_kb_id}
+            isLightBg={isLightBg}
+            lessonTitle={lesson?.title}
+            onSyncSuccess={(s) => {
+              setData((prev) => {
+                const u = { ...prev, agentflow_synced_at: s.synced_at, agentflow_kb_id: s.kb_id };
+                if (lesson?.id) transcriptionMemoryCache.set(lesson.id, u);
+                return u;
+              });
+            }}
+          />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            data-testid="btn-open-html-document"
-            onClick={handleOpenHtmlDocument}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              backgroundColor: '#3b82f6',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            <ExternalLink size={14} />
-            <span>Abrir Documento HTML</span>
-          </button>
-
           {isManager && data?.full_transcript && (
             <button
               type="button"
@@ -354,7 +384,7 @@ export default function LessonAiTranscriptionTab({
             <button
               type="button"
               data-testid="btn-retrigger-ai"
-              onClick={handleTriggerTranscription}
+              onClick={() => setShowRetriggerConfirmModal(true)}
               disabled={transcribing}
               title="Re-gerar transcrição com IA"
               style={{
@@ -376,6 +406,23 @@ export default function LessonAiTranscriptionTab({
           )}
         </div>
       </div>
+
+      {/* Card: Capítulos da Aula (Minutagem estilo YouTube) */}
+      {data.chapters && data.chapters.length > 0 && (
+        <LessonChaptersCard
+          chapters={data.chapters}
+          borderColor={borderColor}
+          cardBg={cardBg}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+          isManager={isManager}
+          courseId={courseId}
+          moduleId={moduleId}
+          lessonId={lesson?.id}
+          onUpdateChapters={handleUpdateChapters}
+        />
+      )}
 
       {/* Card: Principais Pontos (Key Takeaways) */}
       {data.key_takeaways && data.key_takeaways.length > 0 && (
@@ -433,6 +480,15 @@ export default function LessonAiTranscriptionTab({
           </div>
         </div>
       )}
+
+      {/* Popup Central de Confirmação para Re-gerar Transcrição */}
+      <ConfirmRetriggerAiModal
+        isOpen={showRetriggerConfirmModal}
+        loading={transcribing}
+        isLightBg={isLightBg}
+        onClose={() => setShowRetriggerConfirmModal(false)}
+        onConfirm={async () => { setShowRetriggerConfirmModal(false); await handleTriggerTranscription(); }}
+      />
     </div>
   );
 }

@@ -42,6 +42,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Polling Silencioso em Segundo Plano:** Atualização de status em background sem piscar ou desmontar a interface.
   - **Transcrição Integral Whisper:** Transcrição completa em texto na íntegra.
   - **Resumo Executivo e Principais Pontos (Key Takeaways):** Síntese pedagógica gerada por IA com plano de ação prático.
+  - **Capítulos e Minutagem Interativa com Edição (Admin/Super Admin):** Marcação de capítulos estilo YouTube com seek imediato no vídeo. Gestores contam com modal centralizado (`EditLessonChaptersModal`) para corrigir erros ortográficos ou palavras geradas incorretamente pela IA, alterar minutagens e adicionar/remover tópicos com sincronização em tempo real no player.
   - **Documento HTML Inteligente:** Documento HTML5 autônomo com estilos modernos e suporte nativo a impressão/PDF (`@media print`), acessível diretamente pelo botão "Abrir Documento HTML" em nova aba.
   - **Tratamento Amigável de Quotas:** Detecção e mensagem explicativa em português caso a chave OpenAI esteja sem créditos.
   - **Interface Interativa:** Aba "Transcrição & Resumo IA" no player da aula com busca instantânea de termos, botão de cópia com feedback e re-geração para administradores.
@@ -252,7 +253,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **473 testes unitários passando (100% de aprovação em 101 arquivos de teste)** cobrindo editor visual de funis (FunnelCanvasPage, nós de conteúdo, cálculo geométrico de conexões Bézier e drag-and-drop bidirecional), sistema de gamificação RPG com 20 níveis e modal de escada, campanhas de chat broadcast com botões interativos e segmentação por tags de alunos, sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **480 testes unitários passando (100% de aprovação em 102 arquivos de teste)** cobrindo edição e visualização de capítulos gerados por IA (LessonChaptersCard e EditLessonChaptersModal), editor visual de funis (FunnelCanvasPage, nós de conteúdo, cálculo geométrico de conexões Bézier e drag-and-drop bidirecional), sistema de gamificação RPG com 20 níveis e modal de escada, campanhas de chat broadcast com botões interativos e segmentação por tags de alunos, sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -261,7 +262,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **121 testes unitários passando (100% de aprovação)** cobrindo endpoints de funis (`/api/v1/funnels`), campanhas de chat broadcast, tags de alunos, níveis de gamificação RPG, Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **149 testes unitários passando (100% de aprovação)** cobrindo edição de capítulos e minutagens IA (`/api/v1/courses/.../transcription/chapters`), sincronização com base de conhecimento AgentFlow, endpoints de funis (`/api/v1/funnels`), campanhas de chat broadcast, tags de alunos, níveis de gamificação RPG, Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
 
 ---
 

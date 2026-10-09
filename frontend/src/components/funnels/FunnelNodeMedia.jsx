@@ -1,5 +1,6 @@
-import React from 'react';
-import { Image, Video, FileText, Copy, Trash2, Link as LinkIcon, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Image, Video, FileText, Copy, Trash2, Link as LinkIcon, Sparkles, Upload, Loader2, X } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function FunnelNodeMedia({
   node,
@@ -13,9 +14,61 @@ export default function FunnelNodeMedia({
 }) {
   const data = node.data || {};
   const mediaType = data.media_type || 'image';
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const { addToast } = useToast();
 
   const handleUpdate = (field, value) => {
     onUpdateData(node.id, { ...data, [field]: value });
+  };
+
+  const getAcceptedExtensions = () => {
+    if (mediaType === 'image') return 'image/*';
+    if (mediaType === 'video') return 'video/*';
+    return '.pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.zip,.rar,.csv';
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      addToast('O arquivo excede o limite máximo permitido de 50 MB.', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('media_type', mediaType);
+
+      const res = await fetch('/api/v1/funnels/upload-media', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Falha ao fazer upload da mídia.');
+      }
+
+      const resData = await res.json();
+      onUpdateData(node.id, {
+        ...data,
+        media_url: resData.media_url,
+        media_type: resData.media_type || mediaType,
+        media_filename: resData.filename,
+      });
+      addToast('Mídia enviada com sucesso!', 'success');
+    } catch (err) {
+      addToast(err.message || 'Erro no envio da mídia.', 'error');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -190,30 +243,151 @@ export default function FunnelNodeMedia({
         })}
       </div>
 
-      {/* Campo URL da Mídia */}
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '0.7rem', color: '#cbd5e1', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <LinkIcon size={11} />
-          <span>URL da Mídia (Link direto)</span>
-        </div>
+      {/* Seção de Upload de Arquivo */}
+      <div style={{ marginBottom: '10px' }}>
         <input
-          type="text"
-          value={data.media_url || ''}
-          onChange={(e) => handleUpdate('media_url', e.target.value)}
-          placeholder="https://exemplo.com/arquivo.jpg"
-          style={{
-            width: '100%',
-            backgroundColor: '#020617',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            borderRadius: '6px',
-            color: '#f8fafc',
-            padding: '6px 8px',
-            fontSize: '0.75rem',
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-          data-testid={`node-media-url-input-${node.id}`}
+          ref={fileInputRef}
+          type="file"
+          accept={getAcceptedExtensions()}
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+          data-testid={`node-media-file-input-${node.id}`}
         />
+
+        {data.media_url ? (
+          <div
+            style={{
+              padding: '8px',
+              backgroundColor: '#020617',
+              border: '1px solid rgba(236, 72, 153, 0.35)',
+              borderRadius: '8px',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '0.68rem', color: '#f472b6', fontWeight: 600 }}>
+                {mediaType === 'image' ? 'Imagem Anexada' : mediaType === 'video' ? 'Vídeo Anexado' : 'Documento Anexado'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleUpdate('media_url', '')}
+                title="Remover mídia"
+                style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}
+                data-testid={`node-media-remove-${node.id}`}
+              >
+                <X size={13} />
+              </button>
+            </div>
+
+            {mediaType === 'image' && (
+              <div style={{ borderRadius: '6px', overflow: 'hidden', maxHeight: '110px', textAlign: 'center', backgroundColor: '#000', marginBottom: '6px' }}>
+                <img
+                  src={data.media_url}
+                  alt="Pré-visualização"
+                  style={{ maxWidth: '100%', maxHeight: '110px', objectFit: 'contain' }}
+                />
+              </div>
+            )}
+
+            {mediaType === 'video' && (
+              <div style={{ padding: '6px', backgroundColor: 'rgba(236, 72, 153, 0.08)', borderRadius: '6px', fontSize: '0.68rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <Video size={14} color="#f472b6" />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {data.media_filename || 'Arquivo de vídeo carregado'}
+                </span>
+              </div>
+            )}
+
+            {mediaType === 'file' && (
+              <div style={{ padding: '6px', backgroundColor: 'rgba(236, 72, 153, 0.08)', borderRadius: '6px', fontSize: '0.68rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <FileText size={14} color="#f472b6" />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {data.media_filename || 'Documento anexado'}
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  borderRadius: '5px',
+                  backgroundColor: 'rgba(236, 72, 153, 0.15)',
+                  border: '1px dashed #ec4899',
+                  color: '#f472b6',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                }}
+                data-testid={`node-media-reupload-btn-${node.id}`}
+              >
+                {uploading ? <Loader2 size={12} className="spin" /> : <Upload size={12} />}
+                <span>{uploading ? 'Enviando...' : 'Trocar Arquivo'}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: '100%',
+              padding: '10px 8px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(236, 72, 153, 0.12)',
+              border: '1px dashed rgba(236, 72, 153, 0.5)',
+              color: '#f472b6',
+              fontSize: '0.74rem',
+              fontWeight: 600,
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              marginBottom: '8px',
+              transition: 'all 0.15s ease',
+            }}
+            data-testid={`node-media-upload-btn-${node.id}`}
+          >
+            {uploading ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+            <span>{uploading ? 'Enviando arquivo...' : `Fazer Upload de ${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Documento'}`}</span>
+          </button>
+        )}
+
+        {/* Input alternativo para URL externa */}
+        <div>
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <LinkIcon size={10} />
+            <span>Ou insira URL direta da mídia:</span>
+          </div>
+          <input
+            type="text"
+            value={data.media_url || ''}
+            onChange={(e) => handleUpdate('media_url', e.target.value)}
+            placeholder="https://exemplo.com/arquivo.jpg"
+            style={{
+              width: '100%',
+              backgroundColor: '#020617',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '6px',
+              color: '#f8fafc',
+              padding: '5px 8px',
+              fontSize: '0.72rem',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            data-testid={`node-media-url-input-${node.id}`}
+          />
+        </div>
       </div>
 
       {/* Legenda Opcional */}

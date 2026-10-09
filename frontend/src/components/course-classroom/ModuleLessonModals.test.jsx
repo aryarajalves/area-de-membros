@@ -17,6 +17,11 @@ vi.mock('./LessonAttachmentsManager', () => ({
   default: () => <div data-testid="mock-attachments-manager" />
 }));
 
+const mockAddToast = vi.fn();
+vi.mock('../../context/ToastContext', () => ({
+  useToast: () => ({ addToast: mockAddToast })
+}));
+
 describe('LessonModal & ConfirmDeleteModal Components', () => {
   const defaultProps = {
     isOpen: true,
@@ -98,22 +103,23 @@ describe('LessonModal & ConfirmDeleteModal Components', () => {
     expect(screen.getByTestId('cancel-delete-btn')).toHaveStyle({ color: '#f8fafc' });
   });
 
-  it('renders maximize button on LessonModal description and toggles expansion', () => {
+  it('renders default expanded description on LessonModal with Tela Cheia button', () => {
     render(<LessonModal {...defaultProps} />);
 
-    const toggleBtn = screen.getByTestId('toggle-expand-lesson-description-btn');
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).toHaveTextContent('Maximizar');
+    // Não deve existir botão inline Restaurar ou Maximizar
+    expect(screen.queryByText('Maximizar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Restaurar')).not.toBeInTheDocument();
 
     const descInput = screen.getByTestId('lesson-description-input');
-    expect(descInput).toHaveAttribute('rows', '2');
-
-    fireEvent.click(toggleBtn);
-    expect(toggleBtn).toHaveTextContent('Restaurar');
+    expect(descInput).toBeInTheDocument();
     expect(descInput).toHaveAttribute('rows', '8');
+    expect(descInput.style.minHeight).toBe('220px');
+
+    // Botão de tela cheia
+    expect(screen.getByText('Tela Cheia')).toBeInTheDocument();
   });
 
-  it('renders maximize button on ModuleModal description and toggles expansion', () => {
+  it('renders default expanded description on ModuleModal with Tela Cheia button', () => {
     render(
       <ModuleModal
         isOpen={true}
@@ -122,16 +128,167 @@ describe('LessonModal & ConfirmDeleteModal Components', () => {
       />
     );
 
-    const toggleBtn = screen.getByTestId('toggle-expand-module-description-btn');
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).toHaveTextContent('Maximizar');
+    // Não deve existir botão inline Restaurar ou Maximizar
+    expect(screen.queryByText('Maximizar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Restaurar')).not.toBeInTheDocument();
 
     const descInput = screen.getByTestId('module-description-input');
-    expect(descInput).toHaveAttribute('rows', '2');
-
-    fireEvent.click(toggleBtn);
-    expect(toggleBtn).toHaveTextContent('Restaurar');
+    expect(descInput).toBeInTheDocument();
     expect(descInput).toHaveAttribute('rows', '8');
+    expect(descInput.style.minHeight).toBe('220px');
+
+    // Botão de tela cheia
+    expect(screen.getByText('Tela Cheia')).toBeInTheDocument();
+  });
+
+  it('renders "Gerar com IA" button only when editingModule is provided', () => {
+    const { rerender } = render(
+      <ModuleModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        editingModule={null}
+      />
+    );
+    expect(screen.queryByTestId('btn-generate-module-ai-overview')).not.toBeInTheDocument();
+
+    rerender(
+      <ModuleModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        editingModule={{ id: 2, title: 'Módulo 2', description: '' }}
+      />
+    );
+    expect(screen.getByTestId('btn-generate-module-ai-overview')).toBeInTheDocument();
+    expect(screen.getByText('Gerar com IA')).toBeInTheDocument();
+  });
+
+  it('opens confirmation modal and generates module title and description with AI when confirmed', async () => {
+    const handleModuleUpdated = vi.fn();
+    const mockModule = { id: 2, title: 'Módulo 2', description: 'Antiga descrição' };
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 2,
+        title: 'Módulo 2 - Fundamentos e Estruturas Astrológicas',
+        description: 'Neste módulo completo, você dominará os conceitos fundamentais com base nas transcrições das aulas.'
+      })
+    });
+
+    render(
+      <ModuleModal
+        isOpen={true}
+        courseId={10}
+        editingModule={mockModule}
+        onModuleUpdated={handleModuleUpdated}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    // Clica no botão "Gerar com IA"
+    const aiBtn = screen.getByTestId('btn-generate-module-ai-overview');
+    fireEvent.click(aiBtn);
+
+    // Modal de confirmação deve aparecer
+    expect(screen.getByTestId('confirm-generate-ai-metadata-modal')).toBeInTheDocument();
+    expect(screen.getByText('Gerar Título e Descrição do Módulo com IA?')).toBeInTheDocument();
+
+    // Clica em "Sim, Gerar com IA"
+    const confirmBtn = screen.getByTestId('confirm-generate-ai-metadata-btn');
+    fireEvent.click(confirmBtn);
+
+    // Valida chamada correta à API
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/v1/courses/10/modules/2/generate-ai-overview',
+      expect.objectContaining({ method: 'POST' })
+    );
+
+    // Aguarda atualização dos inputs do formulário
+    const titleInput = screen.getByTestId('module-title-input');
+    const descInput = screen.getByTestId('module-description-input');
+
+    await vi.waitFor(() => {
+      expect(titleInput).toHaveValue('Módulo 2 - Fundamentos e Estruturas Astrológicas');
+      expect(descInput).toHaveValue('Neste módulo completo, você dominará os conceitos fundamentais com base nas transcrições das aulas.');
+    });
+
+    expect(mockAddToast).toHaveBeenCalledWith(
+      expect.stringContaining('Título e descrição do módulo gerados com sucesso'),
+      'success'
+    );
+    expect(handleModuleUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Módulo 2 - Fundamentos e Estruturas Astrológicas'
+      })
+    );
+  });
+
+  it('renders "Gerar com IA" button on LessonModal when editingLesson is provided and updates fields on confirm', async () => {
+    const mockLessonToEdit = {
+      id: 55,
+      module_id: 3,
+      title: 'Aula Original Antiga',
+      description: 'Descrição antiga antes da IA',
+      duration: '10:00',
+      order_index: 1,
+      content_type: 'video'
+    };
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 55,
+        title: 'Trânsitos Lunares e Ciclos Emocionais',
+        description: 'Nesta aula prática, você entenderá o impacto profundo dos trânsitos da Lua.',
+        duration: '10:00',
+        module_id: 3
+      })
+    });
+
+    render(
+      <LessonModal
+        {...defaultProps}
+        courseId={1}
+        moduleId={3}
+        editingLesson={mockLessonToEdit}
+      />
+    );
+
+    // Botão deve estar presente
+    const aiBtn = screen.getByTestId('btn-generate-lesson-ai-metadata');
+    expect(aiBtn).toBeInTheDocument();
+    expect(aiBtn).toHaveTextContent('Gerar com IA');
+
+    // Clica no botão para abrir confirmação
+    fireEvent.click(aiBtn);
+
+    expect(screen.getByTestId('confirm-generate-ai-metadata-modal')).toBeInTheDocument();
+    expect(screen.getByText('Gerar Título e Descrição com IA?')).toBeInTheDocument();
+
+    // Confirma
+    const confirmBtn = screen.getByTestId('confirm-generate-ai-metadata-btn');
+    fireEvent.click(confirmBtn);
+
+    // Valida chamada correta à API
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/v1/courses/1/modules/3/lessons/55/generate-metadata',
+      expect.objectContaining({ method: 'POST' })
+    );
+
+    // Aguarda atualização dos inputs de título e descrição do LessonModal
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('lesson-title-input')).toHaveValue('Trânsitos Lunares e Ciclos Emocionais');
+      expect(screen.getByTestId('lesson-description-input')).toHaveValue('Nesta aula prática, você entenderá o impacto profundo dos trânsitos da Lua.');
+    });
+
+    expect(mockAddToast).toHaveBeenCalledWith(
+      expect.stringContaining('Título e descrição da aula gerados com sucesso'),
+      'success'
+    );
   });
 });
+
 

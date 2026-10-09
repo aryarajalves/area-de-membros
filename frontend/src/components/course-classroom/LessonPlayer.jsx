@@ -9,32 +9,20 @@ import LessonAttachmentsList from './LessonAttachmentsList';
 import LessonActionToolbar from './LessonActionToolbar';
 import LessonNotes from './LessonNotes';
 import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
+import LessonOverviewTab from './LessonOverviewTab';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 const LANG_FLAGS = {
-  pt: '🇧🇷',
-  en: '🇺🇸',
-  es: '🇪🇸',
-  fr: '🇫🇷',
-  de: '🇩🇪',
-  it: '🇮🇹',
-  other: '🌐'
+  pt: '🇧🇷', en: '🇺🇸', es: '🇪🇸', fr: '🇫🇷', de: '🇩🇪', it: '🇮🇹', other: '🌐'
 };
 
 function getEmbedUrl(videoUrl) {
   if (!videoUrl) return null;
-
   const ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
-  if (ytMatch) {
-    return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=0&rel=0`;
-  }
-
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=0&rel=0`;
   const vimeoMatch = videoUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeoMatch) {
-    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  }
-
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   return null;
 }
 
@@ -55,10 +43,22 @@ export default function LessonPlayer({
   isLightBg = false,
   onCloseModule,
   onEditLesson,
+  onLessonUpdated,
   rightSidebar
 }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [visitedTabs, setVisitedTabs] = useState(['overview']);
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setVisitedTabs((prev) => (prev.includes(tabId) ? prev : [...prev, tabId]));
+  };
+
+  useEffect(() => {
+    setVisitedTabs(['overview']);
+    setActiveTab('overview');
+  }, [lesson?.id]);
 
   const videos = (lesson?.videos && lesson.videos.length > 0)
     ? lesson.videos
@@ -169,8 +169,8 @@ export default function LessonPlayer({
   const activeVideo = videos.find((v) => v.language === selectedLang) || videos[0] || null;
   const currentVideoUrl = activeVideo?.video_url || lesson.video_url;
   const currentVideoType = activeVideo?.video_type || lesson.video_type;
-  const currentTitle = activeVideo?.title || lesson.title;
-  const currentDescription = activeVideo?.description || lesson.description;
+  const currentTitle = (videos.length > 1 && activeVideo?.title) ? activeVideo.title : (lesson.title || activeVideo?.title);
+  const currentDescription = (videos.length > 1 && activeVideo?.description) ? activeVideo.description : (lesson.description || activeVideo?.description);
 
   const isComingSoon = isLessonComingSoon(lesson);
   const embedUrl = !isComingSoon ? getEmbedUrl(currentVideoUrl, currentVideoType) : null;
@@ -409,7 +409,7 @@ export default function LessonPlayer({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: isTabActive ? '#eab308' : subTextColor, borderBottom: isTabActive ? '2px solid #eab308' : '2px solid transparent', whiteSpace: 'nowrap' }}
                   data-testid={tab.testId}
                 >
@@ -425,44 +425,36 @@ export default function LessonPlayer({
             })}
           </div>
 
-          {/* Conteúdo da Aba Ativa */}
-          {activeTab === 'overview' && (
-            <div style={{ marginTop: '22px' }}>
-              {currentDescription ? (
-                <div style={{ fontSize: '14.5px', color: subTextColor, lineHeight: '1.75', whiteSpace: 'pre-wrap' }} data-testid="active-lesson-description">
-                  {currentDescription}
-                </div>
-              ) : (
-                <p style={{ fontSize: '13.5px', color: mutedColor, fontStyle: 'italic', margin: 0 }}>
-                  Esta aula não possui descrição textual adicional.
-                </p>
+          {/* Conteúdo das Abas: Altura mínima estável e preservação de componentes montados para eliminar layout shift / tela piscando */}
+          <div style={{ minHeight: '280px', marginTop: '16px' }} data-testid="lesson-tabs-content-container">
+            <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
+              {visitedTabs.includes('overview') && (
+                <LessonOverviewTab lesson={lesson} courseId={courseId} moduleId={moduleId || lesson.module_id} currentDescription={currentDescription} isManager={isManager} textColor={textColor} subTextColor={subTextColor} mutedColor={mutedColor} onLessonUpdated={onLessonUpdated} />
               )}
             </div>
-          )}
-
-          {activeTab === 'transcription' && (
-            <LessonAiTranscriptionTab
-              courseId={courseId}
-              moduleId={moduleId || lesson.module_id}
-              lesson={lesson}
-              currentUser={currentUser}
-              isLightBg={isLightBg}
-            />
-          )}
-
-          {activeTab === 'attachments' && (
-            <div style={{ marginTop: '20px' }}>
-              <LessonAttachmentsList attachments={lesson.attachments || []} isLightBg={isLightBg} />
+            <div style={{ display: activeTab === 'transcription' ? 'block' : 'none' }}>
+              {visitedTabs.includes('transcription') && (
+                <LessonAiTranscriptionTab courseId={courseId} moduleId={moduleId || lesson.module_id} lesson={lesson} currentUser={currentUser} isLightBg={isLightBg} />
+              )}
             </div>
-          )}
-
-          {activeTab === 'notes' && (
-            <LessonNotes courseId={courseId} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} />
-          )}
-
-          {activeTab === 'comments' && (
-            <LessonComments courseId={courseId} moduleId={moduleId || lesson.module_id} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} />
-          )}
+            <div style={{ display: activeTab === 'attachments' ? 'block' : 'none' }}>
+              {visitedTabs.includes('attachments') && (
+                <div style={{ marginTop: '20px' }}>
+                  <LessonAttachmentsList attachments={lesson.attachments || []} isLightBg={isLightBg} />
+                </div>
+              )}
+            </div>
+            <div style={{ display: activeTab === 'notes' ? 'block' : 'none' }}>
+              {visitedTabs.includes('notes') && (
+                <LessonNotes courseId={courseId} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} />
+              )}
+            </div>
+            <div style={{ display: activeTab === 'comments' ? 'block' : 'none' }}>
+              {visitedTabs.includes('comments') && (
+                <LessonComments courseId={courseId} moduleId={moduleId || lesson.module_id} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} />
+              )}
+            </div>
+          </div>
 
           {/* Barra de Ações da Aula (Avaliação, Relatar Problema, Marcar como visto ✓) */}
           <LessonActionToolbar

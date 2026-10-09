@@ -1,5 +1,7 @@
+import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, status, BackgroundTasks, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -128,3 +130,29 @@ async def trigger_funnel(
         success=True,
         message="Disparo do funil iniciado com sucesso!",
     )
+
+
+@router.post("/upload-media", summary="Upload de Mídia para Funis")
+async def upload_funnel_media(
+    file: UploadFile = File(...),
+    media_type: Optional[str] = Form(None),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Realiza upload de imagem, vídeo, áudio ou documento para nó de funil.
+    Salva no Backblaze B2 com fallback seguro para armazenamento local.
+    """
+    from app.services.funnel_media_service import process_funnel_media_upload
+    return await process_funnel_media_upload(file=file, media_type_hint=media_type)
+
+
+@router.get("/media/{filename}", summary="Servir Mídia Local de Funil")
+def get_funnel_local_media(filename: str):
+    """Serve arquivos de mídia de funil salvos localmente."""
+    from app.services.funnel_media_service import FUNNEL_MEDIA_DIR
+    safe_name = os.path.basename(filename)
+    path = os.path.join(FUNNEL_MEDIA_DIR, safe_name)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo de mídia não encontrado.")
+    return FileResponse(path)
+

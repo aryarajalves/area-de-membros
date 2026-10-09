@@ -4,6 +4,34 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
 
 ---
 
+### [08/10/2026] - Integração com AgentFlow (Base de Conhecimento RAG e Sincronização de Transcrições)
+- **Tabelas Afetadas:** `courses`, `modules`, `lesson_transcriptions`
+- **Colunas Adicionadas:**
+  - `courses.agentflow_kb_id`: ID da Base de Conhecimento vinculada no AgentFlow.
+  - `courses.agentflow_kb_name`: Nome descritivo da Base de Conhecimento vinculada.
+  - `modules.agentflow_synced_at`: Timestamp da sincronização do resumo pedagógico do módulo na base.
+  - `lesson_transcriptions.agentflow_kb_id`: ID da base para a qual a aula foi exportada.
+  - `lesson_transcriptions.agentflow_synced_at`: Timestamp de quando a transcrição e P&R da aula foram sincronizados.
+- **Script de Migração:** `backend/scripts/migrate_agentflow_kb.py`
+
+---
+
+### [07/10/2026] - Sistema de Identificador de Origem e Idempotência de Aulas (Import Identifier)
+- **Tabelas Afetadas:** `lessons`
+- **Colunas Adicionadas:**
+  - `import_identifier`: Armazena o identificador original da aula (nome original do arquivo ou código de referência) para evitar duplicação em reimportações de pastas e permitir atualização da mesma aula existente.
+- **Script de Migração:** `backend/scripts/migrate_lesson_import_identifier.py`
+
+---
+
+### [07/10/2026] - Sistema de Capítulos e Minutagem Automática de Vídeo via IA (YouTube Style)
+- **Tabelas Afetadas:** `lesson_transcriptions`
+- **Colunas Adicionadas:**
+  - `chapters`: Armazena lista JSON de minutagem/capítulos (`time`, `seconds`, `title`) gerados pelo GPT a partir da transcrição de áudio Whisper.
+- **Script de Migração:** `backend/scripts/migrate_transcription_chapters.py`
+
+---
+
 ### [06/10/2026] - Sistema de Funis de Mensagens e Fluxos Visuais (Funnels)
 - **Tabelas Criadas:**
   - `funnels`: Armazena os funis criados com nome, descrição, gatilhos e JSON completo do fluxo/canvas (`id`, `name`, `description`, `trigger_type`, `trigger_keywords`, `flow_data`, `is_active`, `created_by_user_id`, `created_at`, `updated_at`).

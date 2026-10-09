@@ -10,6 +10,13 @@ import LessonQuizEditor from './LessonQuizEditor';
 import LessonArticleEditor from './LessonArticleEditor';
 import ExpandableTextarea from '../common/ExpandableTextarea';
 import { normalizeLessonDuration } from './lessonUtils';
+import LessonAiGenerateButton from './LessonAiGenerateButton';
+
+const CONTENT_TYPES = [
+  { id: 'video', label: 'Vídeo-aula', icon: Video, color: '#eab308', lightBg: '#fefce8', darkBg: 'rgba(234, 179, 8, 0.16)', testId: 'type-video-btn' },
+  { id: 'text', label: 'Apenas Texto / Artigo', icon: BookOpen, color: '#38bdf8', lightBg: '#f0f9ff', darkBg: 'rgba(56, 189, 248, 0.16)', testId: 'type-text-btn' },
+  { id: 'quiz', label: 'Quiz Interativo', icon: HelpCircle, color: '#a855f7', lightBg: '#faf5ff', darkBg: 'rgba(168, 85, 247, 0.16)', testId: 'type-quiz-btn' }
+];
 
 export default function LessonModal({
   isOpen,
@@ -20,12 +27,14 @@ export default function LessonModal({
   editingLesson,
   moduleTitle,
   courseId,
+  moduleId,
   loading,
   bgColor = '#090d16'
 }) {
   const [contentType, setContentType] = useState('video'); // 'video', 'text', 'quiz'
   const [activeTab, setActiveTab] = useState('info');
   const [title, setTitle] = useState('');
+  const [importIdentifier, setImportIdentifier] = useState('');
   const [description, setDescription] = useState('');
   const [textContent, setTextContent] = useState('');
   const [duration, setDuration] = useState('');
@@ -37,12 +46,14 @@ export default function LessonModal({
   const [attachments, setAttachments] = useState([]);
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [passingScorePct, setPassingScorePct] = useState(70);
+  const [tempLessonKey, setTempLessonKey] = useState('');
 
   useEffect(() => {
     setActiveTab('info');
     if (editingLesson) {
       setContentType(editingLesson.content_type || 'video');
       setTitle(editingLesson.title || '');
+      setImportIdentifier(editingLesson.import_identifier || editingLesson.title || '');
       setDescription(editingLesson.description || '');
       setTextContent(editingLesson.text_content || '');
       setDuration(editingLesson.duration || '');
@@ -52,7 +63,7 @@ export default function LessonModal({
       setAttachments(editingLesson.attachments || []);
       setPassingScorePct(editingLesson.passing_score_pct !== undefined && editingLesson.passing_score_pct !== null ? editingLesson.passing_score_pct : 70);
 
-      if (editingLesson.videos && editingLesson.videos.length > 0) {
+        if (editingLesson.videos && editingLesson.videos.length > 0) {
         setVideos(editingLesson.videos);
       } else if (editingLesson.video_url) {
         setVideos([{
@@ -64,6 +75,7 @@ export default function LessonModal({
       } else {
         setVideos([{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]);
       }
+      setTempLessonKey(editingLesson.id ? `lesson_${editingLesson.id}` : `new_${Date.now()}`);
 
       // Se a aula for quiz e tiver id, busca as perguntas existentes com token autenticado
       if (editingLesson.content_type === 'quiz' && editingLesson.id && courseId) {
@@ -84,6 +96,7 @@ export default function LessonModal({
     } else {
       setContentType('video');
       setTitle('');
+      setImportIdentifier('');
       setDescription('');
       setTextContent('');
       setDuration('');
@@ -94,6 +107,7 @@ export default function LessonModal({
       setQuizQuestions([]);
       setPassingScorePct(70);
       setVideos([{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]);
+      setTempLessonKey(`new_${Date.now()}`);
     }
   }, [editingLesson, isOpen, courseId]);
 
@@ -105,24 +119,17 @@ export default function LessonModal({
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
   const borderColor = isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.12)';
 
+  const effectiveModuleId = moduleId || editingLesson?.module_id;
+
   // Definir as abas dinâmicas conforme o contentType
   const tabs = [
-    { id: 'info', label: 'Dados Gerais', icon: FileText }
+    { id: 'info', label: 'Dados Gerais', icon: FileText },
+    ...(contentType === 'video' ? [{ id: 'videos', label: 'Vídeos e Idiomas', icon: Video }] : []),
+    ...(contentType === 'text' ? [{ id: 'text_body', label: 'Texto do Artigo', icon: BookOpen }] : []),
+    ...(contentType === 'quiz' ? [{ id: 'quiz', label: 'Perguntas do Quiz', icon: HelpCircle }] : []),
+    { id: 'thumbnail', label: 'Capa da Aula', icon: ImageIcon },
+    ...(contentType !== 'quiz' ? [{ id: 'attachments', label: 'Materiais', icon: Paperclip }] : [])
   ];
-
-  if (contentType === 'video') {
-    tabs.push({ id: 'videos', label: 'Vídeos e Idiomas', icon: Video });
-  } else if (contentType === 'text') {
-    tabs.push({ id: 'text_body', label: 'Texto do Artigo', icon: BookOpen });
-  } else if (contentType === 'quiz') {
-    tabs.push({ id: 'quiz', label: 'Perguntas do Quiz', icon: HelpCircle });
-  }
-
-  tabs.push({ id: 'thumbnail', label: 'Capa da Aula', icon: ImageIcon });
-
-  if (contentType !== 'quiz') {
-    tabs.push({ id: 'attachments', label: 'Materiais', icon: Paperclip });
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -154,6 +161,7 @@ export default function LessonModal({
 
     onSave({
       title: title.trim(),
+      import_identifier: importIdentifier.trim() || title.trim(),
       description: description.trim() || null,
       content_type: contentType,
       text_content: contentType === 'text' ? (textContent.trim() || null) : null,
@@ -198,74 +206,35 @@ export default function LessonModal({
             Tipo de Aula:
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => { setContentType('video'); setActiveTab('info'); }}
-              data-testid="type-video-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                fontWeight: contentType === 'video' ? 700 : 500,
-                cursor: 'pointer',
-                border: contentType === 'video' ? '1.5px solid #eab308' : `1px solid ${borderColor}`,
-                backgroundColor: contentType === 'video' ? (isLightBg ? '#fefce8' : 'rgba(234, 179, 8, 0.16)') : 'transparent',
-                color: contentType === 'video' ? '#eab308' : subTextColor
-              }}
-            >
-              <Video size={15} />
-              <span>Vídeo-aula</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setContentType('text'); setActiveTab('info'); }}
-              data-testid="type-text-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                fontWeight: contentType === 'text' ? 700 : 500,
-                cursor: 'pointer',
-                border: contentType === 'text' ? '1.5px solid #38bdf8' : `1px solid ${borderColor}`,
-                backgroundColor: contentType === 'text' ? (isLightBg ? '#f0f9ff' : 'rgba(56, 189, 248, 0.16)') : 'transparent',
-                color: contentType === 'text' ? '#38bdf8' : subTextColor
-              }}
-            >
-              <BookOpen size={15} />
-              <span>Apenas Texto / Artigo</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setContentType('quiz'); setActiveTab('info'); }}
-              data-testid="type-quiz-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                fontWeight: contentType === 'quiz' ? 700 : 500,
-                cursor: 'pointer',
-                border: contentType === 'quiz' ? '1.5px solid #a855f7' : `1px solid ${borderColor}`,
-                backgroundColor: contentType === 'quiz' ? (isLightBg ? '#faf5ff' : 'rgba(168, 85, 247, 0.16)') : 'transparent',
-                color: contentType === 'quiz' ? '#a855f7' : subTextColor
-              }}
-            >
-              <HelpCircle size={15} />
-              <span>Quiz Interativo</span>
-            </button>
+            {CONTENT_TYPES.map((type) => {
+              const Icon = type.icon;
+              const isSelected = contentType === type.id;
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  onClick={() => { setContentType(type.id); setActiveTab('info'); }}
+                  data-testid={type.testId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    fontWeight: isSelected ? 700 : 500,
+                    cursor: 'pointer',
+                    border: isSelected ? `1.5px solid ${type.color}` : `1px solid ${borderColor}`,
+                    backgroundColor: isSelected ? (isLightBg ? type.lightBg : type.darkBg) : 'transparent',
+                    color: isSelected ? type.color : subTextColor
+                  }}
+                >
+                  <Icon size={15} />
+                  <span>{type.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -304,11 +273,26 @@ export default function LessonModal({
 
         {/* Conteúdo do Formulário */}
         <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' }}>
-          <div data-testid="lesson-modal-panel-info" style={{ display: activeTab === 'info' ? 'block' : 'none', display: activeTab === 'info' ? 'flex' : 'none', flexDirection: 'column', gap: '14px' }}>
+          <div data-testid="lesson-modal-panel-info" style={{ display: activeTab === 'info' ? 'flex' : 'none', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-                Título da Aula *
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: textColor, margin: 0 }}>
+                  Título da Aula *
+                </label>
+                {editingLesson?.id && (
+                  <LessonAiGenerateButton
+                    courseId={courseId}
+                    moduleId={effectiveModuleId}
+                    lessonId={editingLesson.id}
+                    disabled={loading}
+                    isLightBg={isLightBg}
+                    onSuccess={({ title: newTitle, description: newDesc }) => {
+                      if (newTitle) setTitle(newTitle);
+                      if (newDesc) setDescription(newDesc);
+                    }}
+                  />
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -320,6 +304,24 @@ export default function LessonModal({
               />
             </div>
 
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
+                <span>ID / Nome de Origem da Aula</span>
+                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 500 }}>Identificador de Deduplicação</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: 01 - Introdução - Sol"
+                value={importIdentifier}
+                onChange={(e) => setImportIdentifier(e.target.value)}
+                className="form-control-modern"
+                data-testid="lesson-import-identifier-input"
+              />
+              <span style={{ fontSize: '11px', color: subTextColor, marginTop: '4px', display: 'block' }}>
+                Identificador persistido para reconhecer a mesma aula em reimportações de pastas e evitar duplicação.
+              </span>
+            </div>
+
             <ExpandableTextarea
               label="Breve Resumo ou Descrição da Aula"
               placeholder="Explicação do objetivo ou resumo do conteúdo..."
@@ -328,7 +330,6 @@ export default function LessonModal({
               textColor={textColor}
               subTextColor={subTextColor}
               testId="lesson-description-input"
-              toggleTestId="toggle-expand-lesson-description-btn"
             />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -426,7 +427,12 @@ export default function LessonModal({
                 onUploadVideo={onUploadVideo}
                 uploading={uploading}
                 setUploading={setUploading}
+                lessonId={editingLesson?.id || tempLessonKey}
+                lessonTitle={title}
                 isLightBg={isLightBg}
+                onDurationDetected={(clockTime) => {
+                  if (clockTime) setDuration(clockTime);
+                }}
               />
             </div>
           )}

@@ -177,7 +177,9 @@ def create_course(
         bg_color=course_in.bg_color or global_bg,
         is_published=course_in.is_published,
         sales_page_url=course_in.sales_page_url.strip() if course_in.sales_page_url else None,
-        order_index=course_in.order_index if course_in.order_index is not None else 0
+        order_index=course_in.order_index if course_in.order_index is not None else 0,
+        agentflow_kb_id=course_in.agentflow_kb_id,
+        agentflow_kb_name=course_in.agentflow_kb_name
     )
     db.add(new_course)
     db.commit()
@@ -185,18 +187,12 @@ def create_course(
     setattr(new_course, "has_access", True)
     return new_course
 
-
-# ============================================================================
 # MÓDULOS (MODULES)
-# ============================================================================
-
-
 @router.get(
     "/{course_id}",
     response_model=CourseDetailResponse,
     tags=["Cursos e Módulos"],
-    summary="Obter Detalhes do Curso",
-    description="Retorna dados completos de um curso com seus módulos e aulas para a sala de aula."
+    summary="Obter Detalhes do Curso"
 )
 def get_course(
     course_id: int,
@@ -251,9 +247,50 @@ def update_course(
         course.sales_page_url = course_update.sales_page_url.strip() if course_update.sales_page_url else None
     if course_update.order_index is not None:
         course.order_index = course_update.order_index
+    if course_update.agentflow_kb_id is not None:
+        course.agentflow_kb_id = course_update.agentflow_kb_id if course_update.agentflow_kb_id > 0 else None
+    if course_update.agentflow_kb_name is not None:
+        course.agentflow_kb_name = course_update.agentflow_kb_name or None
 
     db.commit()
     db.refresh(course)
+    setattr(course, "has_access", True)
+    return course
+
+@router.post(
+    "/{course_id}/generate-ai-description",
+    response_model=CourseResponse,
+    tags=["Cursos e Módulos"],
+    summary="Gerar Descrição do Curso com IA"
+)
+async def generate_course_ai_description(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Gera automaticamente a descrição do curso analisando todos os seus módulos e conteúdos."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+
+    modules = db.query(Module).filter(Module.course_id == course_id).order_by(Module.order_index.asc()).all()
+    if not modules:
+        raise HTTPException(
+            status_code=400,
+            detail="O curso precisa ter pelo menos um módulo cadastrado para que a IA possa analisar e gerar a descrição."
+        )
+
+    modules_data = [
+        {"title": m.title, "description": m.description or "", "lessons": [l.title for l in m.lessons] if m.lessons else []}
+        for m in modules
+    ]
+    from app.services.ai_transcription_service import ai_transcription_service
+    ai_desc = await ai_transcription_service.generate_course_description(course.title, modules_data)
+    if ai_desc:
+        course.description = ai_desc
+        db.commit()
+        db.refresh(course)
+
     setattr(course, "has_access", True)
     return course
 
@@ -353,8 +390,9 @@ def create_module(
     db.refresh(new_module)
     return new_module
 
-@router.patch(
+@router.api_route(
     "/{course_id}/modules/{module_id}",
+    methods=["PATCH", "PUT"],
     response_model=ModuleResponse,
     tags=["Cursos e Módulos"],
     summary="Atualizar Módulo"
@@ -410,6 +448,63 @@ def delete_module(
     return {"message": "Módulo excluído com sucesso."}
 
 
+@router.post(
+    "/{course_id}/modules/{module_id}/generate-ai-overview",
+    response_model=ModuleResponse,
+    tags=["Cursos e Módulos"],
+    summary="Gerar Título e Descrição do Módulo com IA"
+)
+async def generate_module_ai_overview(
+    course_id: int,
+    module_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Gera automaticamente um título atrativo e descrição pedagógica para o módulo via GPT-4o-mini."""
+    module = db.query(Module).filter(Module.id == module_id, Module.course_id == course_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Módulo não encontrado neste curso.")
+
+    lessons = db.query(Lesson).filter(Lesson.module_id == module_id).order_by(Lesson.order_index.asc()).all()
+    if not lessons:
+        raise HTTPException(
+            status_code=400,
+            detail="O módulo precisa ter pelo menos uma aula cadastrada para que a IA possa analisar e gerar o título e a descrição."
+        )
+
+    lessons_data = []
+    for les in lessons:
+        summary_text = ""
+        transcript_text = ""
+        if les.transcription:
+            if les.transcription.summary_executive:
+                summary_text = les.transcription.summary_executive
+            elif les.transcription.summary_markdown:
+                summary_text = les.transcription.summary_markdown[:400]
+            if les.transcription.full_transcript:
+                transcript_text = les.transcription.full_transcript[:1200]
+        elif les.description:
+            summary_text = les.description[:300]
+
+        lessons_data.append({
+            "title": les.title,
+            "summary": summary_text,
+            "transcript": transcript_text
+        })
+
+    from app.services.ai_transcription_service import ai_transcription_service
+    ai_result = await ai_transcription_service.generate_module_overview(module.title, lessons_data)
+
+    if ai_result.get("title"):
+        module.title = ai_result["title"]
+    if ai_result.get("description"):
+        module.description = ai_result["description"]
+
+    db.commit()
+    db.refresh(module)
+    return module
+
+
 # ============================================================================
 # AULAS (LESSONS)
 # ============================================================================
@@ -452,7 +547,8 @@ def create_lesson(
         availability_status=lesson_in.availability_status or "available",
         content_type=lesson_in.content_type or "video",
         text_content=lesson_in.text_content,
-        passing_score_pct=lesson_in.passing_score_pct if lesson_in.passing_score_pct is not None else 70
+        passing_score_pct=lesson_in.passing_score_pct if lesson_in.passing_score_pct is not None else 70,
+        import_identifier=lesson_in.import_identifier.strip() if lesson_in.import_identifier else lesson_in.title.strip()
     )
     db.add(new_lesson)
     db.commit()
@@ -539,6 +635,8 @@ def update_lesson(
         if lesson.thumbnail_url and lesson.thumbnail_url != lesson_in.thumbnail_url:
             delete_media_file(lesson.thumbnail_url)
         lesson.thumbnail_url = lesson_in.thumbnail_url.strip() if lesson_in.thumbnail_url else None
+    if lesson_in.import_identifier is not None:
+        lesson.import_identifier = lesson_in.import_identifier.strip() if lesson_in.import_identifier else None
 
     if lesson_in.videos is not None:
         # Atualizar a lista de vídeos da aula
@@ -567,6 +665,16 @@ def update_lesson(
             lesson.video_type = lesson_in.video_type
         if lesson_in.video_url is not None:
             lesson.video_url = lesson_in.video_url
+            for v in lesson.videos:
+                if v.language == "pt" or len(lesson.videos) == 1:
+                    v.video_url = lesson_in.video_url
+        if lesson_in.title is not None or lesson_in.description is not None:
+            for v in lesson.videos:
+                if v.language == "pt" or len(lesson.videos) == 1:
+                    if lesson_in.title is not None:
+                        v.title = lesson.title
+                    if lesson_in.description is not None:
+                        v.description = lesson.description
 
     if lesson_in.attachments is not None:
         existing_attachments = db.query(LessonAttachment).filter(LessonAttachment.lesson_id == lesson_id).all()

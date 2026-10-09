@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Search, RefreshCw, BookOpen, CheckCircle, TrendingUp, X } from 'lucide-react';
+import { Users, Search, RefreshCw, BookOpen, CheckCircle, TrendingUp, X, AlertTriangle, UploadCloud } from 'lucide-react';
 import StudentCard from './StudentCard';
 import StudentImportModal from './StudentImportModal';
 import StudentHeaderActions from './StudentHeaderActions';
 import StudentFilterBar from './StudentFilterBar';
+import StudentPaginationBar from './StudentPaginationBar';
 import StudentTagsModal from './StudentTagsModal';
 import ChatBroadcastModal from './ChatBroadcastModal';
 import ChatBroadcastHistoryModal from './ChatBroadcastHistoryModal';
@@ -12,6 +13,7 @@ import { useToast } from '../../context/ToastContext';
 export default function StudentManagement({ bgColor = '#090d16' }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [orderBy, setOrderBy] = useState('recent');
@@ -75,6 +77,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams({
@@ -108,7 +111,9 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       setTotalStudents(data.total || 0);
       setTotalPages(data.pages || 1);
     } catch (err) {
-      addToast(err.message || 'Erro ao carregar lista de alunos', 'error');
+      const msg = err.message || 'Erro ao carregar lista de alunos';
+      setLoadError(msg);
+      addToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -292,6 +297,40 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
           <RefreshCw size={28} className="spin" style={{ marginBottom: '10px', display: 'inline-block' }} />
           <div>Carregando alunos e dados de progresso...</div>
         </div>
+      ) : loadError ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '40px 20px',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '12px',
+            color: '#f87171',
+          }}
+          data-testid="students-load-error"
+        >
+          <AlertTriangle size={36} style={{ marginBottom: '10px', opacity: 0.8 }} />
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', color: textColor }}>Erro ao carregar dados</h3>
+          <p style={{ margin: '0 0 16px 0', fontSize: '0.88rem', color: subTextColor }}>{loadError}</p>
+          <button
+            type="button"
+            onClick={fetchStudents}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '8px',
+              backgroundColor: '#3b82f6',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <RefreshCw size={14} /> Tentar Novamente
+          </button>
+        </div>
       ) : students.length === 0 ? (
         <div
           style={{
@@ -308,11 +347,33 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
           <h3 style={{ margin: '0 0 6px 0', color: textColor, fontSize: '1.15rem' }}>
             Nenhum aluno encontrado
           </h3>
-          <p style={{ margin: 0, fontSize: '0.88rem' }}>
+          <p style={{ margin: '0 0 16px 0', fontSize: '0.88rem' }}>
             {appliedSearch
               ? `Não foram encontrados alunos correspondentes a "${appliedSearch}".`
               : 'Nenhum aluno com este perfil foi cadastrado na plataforma ainda.'}
           </p>
+          {!appliedSearch && (
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                backgroundColor: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              data-testid="empty-import-students-btn"
+            >
+              <UploadCloud size={16} /> Importar Alunos (CSV / Excel)
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} data-testid="students-list">
@@ -328,104 +389,18 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       )}
 
       {/* Paginação e Seletor de Quantidade */}
-      {!loading && totalStudents > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '28px',
-            paddingTop: '16px',
-            borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)',
-            flexWrap: 'wrap',
-            gap: '16px',
-            fontSize: '0.85rem',
-            color: subTextColor,
-          }}
-          data-testid="students-pagination-bar"
-        >
-          {/* Contador de alunos exibidos */}
-          <div>
-            Exibindo <strong>{(page - 1) * limit + 1}–{Math.min(page * limit, totalStudents)}</strong> de{' '}
-            <strong>{totalStudents}</strong> {totalStudents === 1 ? 'aluno' : 'alunos'}
-          </div>
-
-          {/* Seletor de quantidade por página e botões de navegação */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="students-per-page-select" style={{ fontSize: '0.82rem', color: subTextColor }}>
-                Exibir:
-              </label>
-              <select
-                id="students-per-page-select"
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
-                  color: textColor,
-                  border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
-                  fontSize: '0.84rem',
-                  cursor: 'pointer',
-                  outline: 'none',
-                }}
-                data-testid="students-per-page-select"
-              >
-                <option value={20} style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>20 por vez</option>
-                <option value={50} style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>50 por vez</option>
-                <option value={100} style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>100 por vez</option>
-                <option value={200} style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>200 por vez</option>
-              </select>
-            </div>
-
-            {/* Controles de página */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: 'transparent',
-                  color: textColor,
-                  cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: page <= 1 ? 0.35 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-                data-testid="prev-students-page-btn"
-              >
-                Anterior
-              </button>
-              <span style={{ fontSize: '0.84rem', color: subTextColor, padding: '0 4px' }}>
-                Página <strong>{page}</strong> de <strong>{totalPages}</strong>
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: 'transparent',
-                  color: textColor,
-                  cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                  opacity: page >= totalPages ? 0.35 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-                data-testid="next-students-page-btn"
-              >
-                Próxima
-              </button>
-            </div>
-          </div>
-        </div>
+      {!loading && (
+        <StudentPaginationBar
+          page={page}
+          limit={limit}
+          setPage={setPage}
+          setLimit={setLimit}
+          totalStudents={totalStudents}
+          totalPages={totalPages}
+          isLightBg={isLightBg}
+          textColor={textColor}
+          subTextColor={subTextColor}
+        />
       )}
 
       {/* Modal de Importação de Alunos */}

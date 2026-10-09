@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Maximize2, Minimize2, X, Check, FileText } from 'lucide-react';
+import { Maximize2, X, Check, FileText } from 'lucide-react';
 
 export default function ExpandableTextarea({
   label = 'Descrição',
   value = '',
   onChange,
   placeholder = '',
-  rows = 2,
-  expandedRows = 8,
-  minHeight = '65px',
-  expandedMinHeight = '230px',
+  rows = 8,
+  minHeight = '220px',
   textColor = '#f8fafc',
   subTextColor = '#94a3b8',
   className = 'form-control-modern',
   testId = 'expandable-textarea',
-  toggleTestId = 'toggle-expand-textarea-btn',
   fullscreenTestId = 'fullscreen-textarea-btn',
   fullscreenModalTestId = 'fullscreen-textarea-modal',
   id,
-  style = {}
+  style = {},
+  extraActions = null
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Fecha o popup ao pressionar a tecla Esc
@@ -65,6 +62,7 @@ export default function ExpandableTextarea({
         </label>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {extraActions}
           {/* Botão de Tela Cheia / Popup Gigante */}
           <button
             type="button"
@@ -90,46 +88,19 @@ export default function ExpandableTextarea({
             <Maximize2 size={12} />
             <span>Tela Cheia</span>
           </button>
-
-          {/* Botão Inline Maximizar/Restaurar */}
-          <button
-            type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            data-testid={toggleTestId}
-            title={isExpanded ? 'Restaurar tamanho normal' : 'Maximizar campo de descrição'}
-            style={{
-              background: isExpanded ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-              border: isExpanded ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: isExpanded ? '#60a5fa' : subTextColor,
-              cursor: 'pointer',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontSize: '11px',
-              fontWeight: 500,
-              transition: 'all 0.2s ease',
-              outline: 'none'
-            }}
-          >
-            {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-            <span>{isExpanded ? 'Restaurar' : 'Maximizar'}</span>
-          </button>
         </div>
       </div>
 
       <textarea
         id={id}
-        rows={isExpanded ? expandedRows : rows}
+        rows={rows}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         className={className}
         style={{
           resize: 'vertical',
-          minHeight: isExpanded ? expandedMinHeight : minHeight,
-          transition: 'min-height 0.2s ease',
+          minHeight,
           lineHeight: '1.5'
         }}
         data-testid={testId}

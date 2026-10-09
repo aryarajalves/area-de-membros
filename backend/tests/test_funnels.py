@@ -179,3 +179,49 @@ async def test_funnel_execution_flow(seed_funnel_data):
     assert exec_record is not None
     assert exec_record.status == "completed"
     db_check.close()
+
+
+def test_upload_funnel_media_endpoints():
+    """Valida o upload de mídias para nós de funil (imagem, vídeo, áudio e documento)."""
+    admin_headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+
+    # 1. Upload de imagem válida
+    image_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
+    files = {"file": ("banner.png", image_bytes, "image/png")}
+    res_img = client.post("/api/v1/funnels/upload-media", files=files, data={"media_type": "image"}, headers=admin_headers)
+    assert res_img.status_code == 200
+    img_data = res_img.json()
+    assert "media_url" in img_data
+    assert img_data["media_type"] == "image"
+    assert img_data["filename"] == "banner.png"
+
+    # 2. Upload de vídeo válido
+    video_bytes = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00isommp42"
+    files_vid = {"file": ("video_aula.mp4", video_bytes, "video/mp4")}
+    res_vid = client.post("/api/v1/funnels/upload-media", files=files_vid, data={"media_type": "video"}, headers=admin_headers)
+    assert res_vid.status_code == 200
+    vid_data = res_vid.json()
+    assert vid_data["media_type"] == "video"
+
+    # 3. Upload de documento válido
+    doc_bytes = b"%PDF-1.4\n%teste pdf documento"
+    files_doc = {"file": ("ebook_guia.pdf", doc_bytes, "application/pdf")}
+    res_doc = client.post("/api/v1/funnels/upload-media", files=files_doc, data={"media_type": "file"}, headers=admin_headers)
+    assert res_doc.status_code == 200
+    doc_data = res_doc.json()
+    assert doc_data["media_type"] == "file"
+
+    # 4. Upload de áudio válido
+    audio_bytes = b"ID3\x03\x00\x00\x00\x00\x00\x00fake audio content"
+    files_audio = {"file": ("audio_voz.mp3", audio_bytes, "audio/mpeg")}
+    res_audio = client.post("/api/v1/funnels/upload-media", files=files_audio, data={"media_type": "audio"}, headers=admin_headers)
+    assert res_audio.status_code == 200
+    audio_data = res_audio.json()
+    assert audio_data["media_type"] == "audio"
+
+    # 5. Tentativa com extensão inválida (deve falhar com 400)
+    files_bad = {"file": ("malware.exe", b"MZ\x90\x00", "application/octet-stream")}
+    res_bad = client.post("/api/v1/funnels/upload-media", files=files_bad, headers=admin_headers)
+    assert res_bad.status_code == 400
+    assert "não suportada" in res_bad.json()["detail"]
+

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Play,
   Pause,
@@ -7,9 +7,12 @@ import {
   Volume2,
   VolumeX,
   Maximize,
-  Minimize
+  Minimize,
+  Bookmark,
+  Gauge
 } from 'lucide-react';
 import { formatSecondsToTimer } from './lessonUtils';
+import VideoChaptersTrack from './VideoChaptersTrack';
 
 export default function VideoControls({
   showControls,
@@ -30,8 +33,23 @@ export default function VideoControls({
   handleProgressBarMouseDown,
   toggleMute,
   handleVolumeChange,
-  toggleFullscreen
+  toggleFullscreen,
+  chapters = [],
+  onSeekToSeconds,
+  onToggleChaptersDrawer,
+  isChaptersDrawerOpen = false,
+  playbackRate = 1,
+  onPlaybackRateChange
 }) {
+  const [hoveredChapter, setHoveredChapter] = useState(null);
+  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const hasChapters = Array.isArray(chapters) && chapters.length > 0;
+  const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+  // Capítulo atualmente sendo reproduzido
+  const activeChapter = hasChapters
+    ? [...chapters].sort((a, b) => (a.seconds || 0) - (b.seconds || 0)).filter((c) => (c.seconds || 0) <= currentTime).pop()
+    : null;
   return (
     <div
       style={{
@@ -64,46 +82,91 @@ export default function VideoControls({
         }}
         data-testid="video-progress-bar-container"
       >
-        {/* Trilho Fundo */}
+        {/* Tooltip de Pré-visualização do Capítulo ao passar o mouse */}
+        {hoveredChapter && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '22px',
+              left: `${Math.min(90, Math.max(10, ((hoveredChapter.startSec || 0) / (effectiveDuration || 1)) * 100))}%`,
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(9, 13, 22, 0.95)',
+              border: '1px solid rgba(59, 130, 246, 0.4)',
+              color: '#ffffff',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '11.5px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
+              zIndex: 30,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            data-testid="video-chapter-hover-tooltip"
+          >
+            <span style={{ color: '#60a5fa' }}>{hoveredChapter.time}</span>
+            <span>•</span>
+            <span>{hoveredChapter.title}</span>
+          </div>
+        )}
+
+        {/* Trilho Fundo (ou Trilha de Capítulos estilo YouTube) */}
         <div
           style={{
             position: 'relative',
             width: '100%',
             height: '5px',
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            backgroundColor: hasChapters ? 'transparent' : 'rgba(255, 255, 255, 0.2)',
             borderRadius: '999px',
-            overflow: 'hidden'
+            overflow: hasChapters ? 'visible' : 'hidden'
           }}
         >
-          {/* Barra de Buffer (Progresso de Download à frente) */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: 0,
-              width: `${Math.min(100, Math.max(0, bufferedPercentage))}%`,
-              backgroundColor: 'rgba(255, 255, 255, 0.45)',
-              borderRadius: '999px',
-              transition: 'width 0.2s ease',
-              zIndex: 1
-            }}
-            data-testid="video-buffered-bar"
-          />
+          {/* Se houver capítulos gerados por IA, renderiza a trilha segmentada estilo YouTube */}
+          {hasChapters ? (
+            <VideoChaptersTrack
+              chapters={chapters}
+              effectiveDuration={effectiveDuration}
+              currentTime={currentTime}
+              onSeekToSeconds={onSeekToSeconds}
+              hoveredChapter={hoveredChapter}
+              setHoveredChapter={setHoveredChapter}
+            />
+          ) : (
+            <>
+              {/* Barra de Buffer (Progresso de Download à frente) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: `${Math.min(100, Math.max(0, bufferedPercentage))}%`,
+                  backgroundColor: 'rgba(255, 255, 255, 0.45)',
+                  borderRadius: '999px',
+                  transition: 'width 0.2s ease',
+                  zIndex: 1
+                }}
+                data-testid="video-buffered-bar"
+              />
 
-          {/* Barra Preenchida (Progresso atual de reprodução) */}
-          <div
-            style={{
-              position: 'relative',
-              width: `${progressPercentage}%`,
-              height: '100%',
-              backgroundColor: '#3b82f6',
-              borderRadius: '999px',
-              transition: isScrubbing ? 'none' : 'width 0.1s linear',
-              zIndex: 2
-            }}
-            data-testid="video-progress-filled"
-          />
+              {/* Barra Preenchida (Progresso atual de reprodução) */}
+              <div
+                style={{
+                  position: 'relative',
+                  width: `${progressPercentage}%`,
+                  height: '100%',
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '999px',
+                  transition: isScrubbing ? 'none' : 'width 0.1s linear',
+                  zIndex: 2
+                }}
+                data-testid="video-progress-filled"
+              />
+            </>
+          )}
         </div>
 
         {/* Marcador Circular (Thumb) */}
@@ -119,7 +182,7 @@ export default function VideoControls({
             pointerEvents: 'none',
             transform: isScrubbing ? 'scale(1.25)' : 'scale(1)',
             transition: 'transform 0.1s ease',
-            zIndex: 3
+            zIndex: 10
           }}
           data-testid="video-progress-thumb"
         />
@@ -228,11 +291,68 @@ export default function VideoControls({
             >
               Faltam {formatSecondsToTimer(remainingSeconds)}
             </span>
+
+            {/* Badge do Capítulo Ativo (estilo YouTube ao lado do tempo) */}
+            {activeChapter && (
+              <button
+                type="button"
+                onClick={onToggleChaptersDrawer}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: '#f8fafc',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  marginLeft: '4px',
+                  cursor: 'pointer',
+                  maxWidth: '180px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+                title="Clique para ver todos os capítulos"
+                data-testid="video-active-chapter-badge"
+              >
+                <Bookmark size={11} color="#60a5fa" />
+                <span data-testid="active-chapter-indicator" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeChapter.title}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Lado Direito: Volume e Tela Cheia */}
+        {/* Lado Direito: Capítulos, Volume e Tela Cheia */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Botão de Capítulos (se houver capítulos na aula) */}
+          {hasChapters && (
+            <button
+              type="button"
+              onClick={onToggleChaptersDrawer}
+              title={isChaptersDrawerOpen ? 'Fechar Capítulos' : 'Ver Capítulos da Aula'}
+              style={{
+                background: isChaptersDrawerOpen ? 'rgba(59, 130, 246, 0.25)' : 'none',
+                border: isChaptersDrawerOpen ? '1px solid rgba(59, 130, 246, 0.5)' : 'none',
+                color: isChaptersDrawerOpen ? '#60a5fa' : '#ffffff',
+                cursor: 'pointer',
+                padding: '4px 6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11.5px',
+                fontWeight: 600
+              }}
+              data-testid="btn-toggle-video-chapters"
+            >
+              <Bookmark size={16} />
+              <span style={{ display: 'none' }}>Capítulos</span>
+            </button>
+          )}
+
           {/* Controle de Volume */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button
@@ -255,6 +375,93 @@ export default function VideoControls({
               title="Ajustar Volume"
               data-testid="video-volume-slider"
             />
+          </div>
+
+          {/* Seletor de Velocidade de Reprodução (Playback Rate) */}
+          <div style={{ position: 'relative' }} data-testid="video-speed-selector-container">
+            <button
+              type="button"
+              onClick={() => setIsSpeedMenuOpen((prev) => !prev)}
+              title="Velocidade de Reprodução"
+              style={{
+                background: isSpeedMenuOpen || playbackRate !== 1 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                border: isSpeedMenuOpen || playbackRate !== 1 ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                color: isSpeedMenuOpen || playbackRate !== 1 ? '#60a5fa' : '#ffffff',
+                cursor: 'pointer',
+                padding: '3px 7px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                outline: 'none',
+                transition: 'all 0.15s ease'
+              }}
+              data-testid="video-speed-btn"
+            >
+              <Gauge size={13} />
+              <span data-testid="video-speed-label">{playbackRate === 1 ? '1x' : `${playbackRate}x`}</span>
+            </button>
+
+            {/* Menu Popover Flutuante de Velocidades */}
+            {isSpeedMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '36px',
+                  right: 0,
+                  backgroundColor: 'rgba(10, 15, 29, 0.96)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  borderRadius: '10px',
+                  padding: '6px',
+                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(37, 99, 235, 0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  minWidth: '100px',
+                  zIndex: 40
+                }}
+                data-testid="video-speed-menu"
+              >
+                <div style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Velocidade
+                </div>
+                {speedOptions.map((speed) => {
+                  const isSelected = playbackRate === speed;
+                  return (
+                    <button
+                      key={speed}
+                      type="button"
+                      onClick={() => {
+                        if (onPlaybackRateChange) onPlaybackRateChange(speed);
+                        setIsSpeedMenuOpen(false);
+                      }}
+                      data-testid={`video-speed-option-${speed}`}
+                      style={{
+                        background: isSelected ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                        border: 'none',
+                        color: isSelected ? '#60a5fa' : '#f8fafc',
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '11.5px',
+                        fontWeight: isSelected ? 700 : 500,
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'background 0.15s ease'
+                      }}
+                    >
+                      <span>{speed === 1 ? '1x (Normal)' : `${speed}x`}</span>
+                      {isSelected && <span style={{ color: '#38bdf8', fontSize: '12px' }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Botão Tela Cheia */}

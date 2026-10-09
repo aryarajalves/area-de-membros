@@ -67,4 +67,75 @@ describe('VideoControls Component', () => {
     fireEvent.click(screen.getByTestId('video-fullscreen-btn'));
     expect(defaultProps.toggleFullscreen).toHaveBeenCalled();
   });
+
+  it('renders chapters progress track, active chapter badge and triggers drawer toggle', () => {
+    const onToggleChaptersDrawer = vi.fn();
+    const onSeekToSeconds = vi.fn();
+    const sampleChapters = [
+      { time: '00:00', seconds: 0, title: 'Introdução' },
+      { time: '01:00', seconds: 60, title: 'Conteúdo' }
+    ];
+
+    render(
+      <VideoControls
+        {...defaultProps}
+        currentTime={10}
+        chapters={sampleChapters}
+        onToggleChaptersDrawer={onToggleChaptersDrawer}
+        onSeekToSeconds={onSeekToSeconds}
+        isChaptersDrawerOpen={false}
+      />
+    );
+
+    // Segmentos da barra de progresso estilo YouTube
+    expect(screen.getByTestId('video-chapters-track')).toBeInTheDocument();
+    expect(screen.getByTestId('video-chapter-segment-0')).toBeInTheDocument();
+    expect(screen.getByTestId('video-chapter-segment-1')).toBeInTheDocument();
+
+    // Badge do capítulo ativo
+    const activeBadge = screen.getByTestId('active-chapter-indicator');
+    expect(activeBadge).toBeInTheDocument();
+    expect(activeBadge).toHaveTextContent('Introdução');
+
+    // Botão de abrir/fechar drawer de capítulos
+    const toggleBtn = screen.getByTestId('btn-toggle-video-chapters');
+    expect(toggleBtn).toBeInTheDocument();
+    fireEvent.click(toggleBtn);
+    expect(onToggleChaptersDrawer).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders playback speed button, opens speed options menu and selects new speed', () => {
+    const handlePlaybackRateChange = vi.fn();
+    render(
+      <VideoControls
+        {...defaultProps}
+        playbackRate={1}
+        onPlaybackRateChange={handlePlaybackRateChange}
+      />
+    );
+
+    // Botão de velocidade visível exibindo 1x
+    const speedBtn = screen.getByTestId('video-speed-btn');
+    expect(speedBtn).toBeInTheDocument();
+    expect(screen.getByTestId('video-speed-label')).toHaveTextContent('1x');
+
+    // Menu inicialmente fechado
+    expect(screen.queryByTestId('video-speed-menu')).not.toBeInTheDocument();
+
+    // Clica no botão de velocidade para abrir o popover
+    fireEvent.click(speedBtn);
+    expect(screen.getByTestId('video-speed-menu')).toBeInTheDocument();
+
+    // Opções de velocidade disponíveis (0.5x até 2x)
+    expect(screen.getByTestId('video-speed-option-1.5')).toBeInTheDocument();
+    expect(screen.getByTestId('video-speed-option-2')).toBeInTheDocument();
+
+    // Seleciona 1.5x
+    fireEvent.click(screen.getByTestId('video-speed-option-1.5'));
+    expect(handlePlaybackRateChange).toHaveBeenCalledWith(1.5);
+
+    // Menu fecha após a seleção
+    expect(screen.queryByTestId('video-speed-menu')).not.toBeInTheDocument();
+  });
 });
+

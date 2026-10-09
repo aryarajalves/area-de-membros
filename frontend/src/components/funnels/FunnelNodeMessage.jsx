@@ -37,14 +37,6 @@ export default function FunnelNodeMessage({
     onUpdateData(node.id, { ...data, buttons: updated });
   };
 
-  const toggleCommercialHours = () => {
-    onUpdateData(node.id, { ...data, only_business_hours: !data.only_business_hours });
-  };
-
-  const toggleInMemory = () => {
-    onUpdateData(node.id, { ...data, in_memory: !data.in_memory });
-  };
-
   return (
     <div
       style={{
@@ -269,32 +261,10 @@ export default function FunnelNodeMessage({
               data-testid={`add-button-to-node-${node.id}`}
             >
               <Plus size={12} />
-              <span>+ Adicionar Botão</span>
+              <span>Adicionar Botão</span>
             </button>
           )}
         </div>
-      </div>
-
-      {/* Switches de Configuração */}
-      <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '8px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: '#cbd5e1', cursor: 'pointer' }}>
-          <span>APENAS HORÁRIO COMERCIAL?</span>
-          <input
-            type="checkbox"
-            checked={!!data.only_business_hours}
-            onChange={toggleCommercialHours}
-            style={{ accentColor: '#8b5cf6', cursor: 'pointer' }}
-          />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: '#cbd5e1', cursor: 'pointer' }}>
-          <span>DISPARAR NA MEMÓRIA?</span>
-          <input
-            type="checkbox"
-            checked={data.in_memory ?? true}
-            onChange={toggleInMemory}
-            style={{ accentColor: '#38bdf8', cursor: 'pointer' }}
-          />
-        </label>
       </div>
     </div>
   );

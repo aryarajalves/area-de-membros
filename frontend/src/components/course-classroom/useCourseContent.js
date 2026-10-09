@@ -382,6 +382,7 @@ export function useCourseContent(courseId) {
     completedLessonIds,
     handleToggleLessonComplete,
     fetchCourseProgress,
+    fetchCourseData,
     handleSaveModule,
     handleDeleteModule,
     handleSaveLesson,

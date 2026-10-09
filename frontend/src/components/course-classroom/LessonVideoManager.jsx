@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Upload, Link2, Globe, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { FileDeleteConfirmModal } from '../common/FeedbackModals';
 import { useUploadQueue } from '../../context/UploadQueueContext';
+import { getVideoFileDuration, formatSecondsToClock } from './lessonUtils';
+import ExpandableTextarea from '../common/ExpandableTextarea';
+import LessonVideoPreviewPlayer from './LessonVideoPreviewPlayer';
 
 export const LANGUAGE_OPTIONS = [
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
@@ -19,9 +22,11 @@ export default function LessonVideoManager({
   onUploadVideo,
   uploading,
   setUploading,
+  lessonId = null,
   lessonTitle = '',
   lessonDescription = '',
-  isLightBg = false
+  isLightBg = false,
+  onDurationDetected = null
 }) {
   const [activeLang, setActiveLang] = useState('pt');
   const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -54,7 +59,7 @@ export default function LessonVideoManager({
 
   const activeVideo = currentVideos.find((v) => v.language === activeLang) || currentVideos[0];
   const currentUpload = uploadQueue?.uploads?.find(
-    (u) => u.status === 'uploading' && u.language === activeVideo.language
+    (u) => u.status === 'uploading' && u.language === activeVideo.language && (!lessonId || !u.lessonId || String(u.lessonId) === String(lessonId))
   );
 
   const handleUpdateActiveVideo = (updates) => {
@@ -124,10 +129,20 @@ export default function LessonVideoManager({
       return;
     }
 
+    // Detecta duração exata em minutos/segundos via metadados do vídeo no navegador
+    if (onDurationDetected) {
+      getVideoFileDuration(file).then((durSec) => {
+        if (durSec > 0) {
+          onDurationDetected(formatSecondsToClock(durSec));
+        }
+      }).catch(() => {});
+    }
+
     if (uploadQueue?.startVideoUpload) {
       // Inicia upload 100% em segundo plano! Sem travar a tela com nenhum modal
       uploadQueue.startVideoUpload({
         file,
+        lessonId: lessonId || null,
         lessonTitle: activeVideo.title || lessonTitle || file.name,
         language: activeVideo.language,
         onSuccessUrl: (url) => {
@@ -320,19 +335,19 @@ export default function LessonVideoManager({
           />
         </div>
 
-        {/* Descrição da Aula no Idioma */}
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>
-            Descrição da Aula em {activeVideo.language_label || 'este idioma'}
-          </label>
-          <textarea
-            rows={2}
+        {/* Descrição da Aula no Idioma com visualização expandida e Tela Cheia */}
+        <div style={{ marginBottom: '14px' }}>
+          <ExpandableTextarea
+            label={`Descrição da Aula em ${activeVideo.language_label || 'este idioma'}`}
             placeholder={lessonDescription ? `Ex: ${lessonDescription.slice(0, 50)}...` : `Objetivos e conteúdo da aula em ${activeVideo.language_label || 'este idioma'}...`}
             value={activeVideo.description || ''}
             onChange={(e) => handleUpdateActiveVideo({ description: e.target.value })}
-            className="form-control-modern"
-            style={{ fontSize: '12px', padding: '7px 10px', resize: 'vertical' }}
-            data-testid={`lesson-lang-desc-input-${activeVideo.language}`}
+            rows={6}
+            minHeight="170px"
+            textColor={textColor}
+            subTextColor={subTextColor}
+            testId={`lesson-lang-desc-input-${activeVideo.language}`}
+            fullscreenTestId={`fullscreen-desc-btn-${activeVideo.language}`}
           />
         </div>
 
@@ -415,33 +430,12 @@ export default function LessonVideoManager({
             )}
 
             {activeVideo.video_url && (
-              <div style={{
-                marginTop: '10px',
-                padding: '8px 12px',
-                backgroundColor: isLightBg ? '#ecfdf5' : 'rgba(16, 185, 129, 0.14)',
-                border: isLightBg ? '1px solid #a7f3d0' : '1px solid rgba(16, 185, 129, 0.35)',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: isLightBg ? '#065f46' : '#6ee7b7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                  <CheckCircle2 size={14} color="#10b981" />
-                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '380px' }}>
-                    Vídeo salvo: {activeVideo.video_url}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRequestRemoveVideo}
-                  style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
-                  data-testid="remove-video-btn"
-                >
-                  Remover
-                </button>
-              </div>
+              <LessonVideoPreviewPlayer
+                videoUrl={activeVideo.video_url}
+                videoType={activeVideo.video_type}
+                onRemove={handleRequestRemoveVideo}
+                isLightBg={isLightBg}
+              />
             )}
           </div>
         ) : (
@@ -458,6 +452,14 @@ export default function LessonVideoManager({
             <span style={{ display: 'block', fontSize: '11.5px', color: subTextColor, marginTop: '4px' }}>
               Cole o link do YouTube, Vimeo, Panda Video ou link direto .mp4.
             </span>
+            {activeVideo.video_url && (
+              <LessonVideoPreviewPlayer
+                videoUrl={activeVideo.video_url}
+                videoType="url"
+                onRemove={handleRequestRemoveVideo}
+                isLightBg={isLightBg}
+              />
+            )}
           </div>
         )}
       </div>

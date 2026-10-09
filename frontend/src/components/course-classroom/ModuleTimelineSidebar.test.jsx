@@ -74,4 +74,41 @@ describe('ModuleTimelineSidebar', () => {
       expect.objectContaining({ id: 2, title: 'Módulo 2: Avançado' })
     );
   });
+
+  it('aplica line-clamp de 2 linhas e atributo title no título para evitar poluição visual com nomes longos', () => {
+    const longTitleLesson = {
+      id: 1,
+      title: 'Módulo 1',
+      lessons: [
+        {
+          id: 999,
+          title: 'Aula 01 - Introdução à Bússola Astrológica: Como Funcionam os Trânsitos e o Guia de Previsões Detalhado'
+        }
+      ]
+    };
+
+    render(
+      <ModuleTimelineSidebar
+        modules={[longTitleLesson]}
+        selectedModule={longTitleLesson}
+        activeLesson={longTitleLesson.lessons[0]}
+        completedLessonIds={[]}
+        totalLessonsCount={1}
+        onSelectModule={vi.fn()}
+        onSelectLesson={vi.fn()}
+      />
+    );
+
+    const titleEl = screen.getByTestId('lesson-title-999');
+    expect(titleEl).toBeInTheDocument();
+    // Atributo title garante o tooltip nativo com o nome completo ao passar o mouse
+    expect(titleEl).toHaveAttribute(
+      'title',
+      '1. Aula 01 - Introdução à Bússola Astrológica: Como Funcionam os Trânsitos e o Guia de Previsões Detalhado'
+    );
+    // Estilos de line-clamp e reticências aplicados
+    expect(titleEl.style.WebkitLineClamp || titleEl.style.webkitLineClamp).toBe('2');
+    expect(titleEl.style.overflow).toBe('hidden');
+    expect(titleEl.style.textOverflow).toBe('ellipsis');
+  });
 });

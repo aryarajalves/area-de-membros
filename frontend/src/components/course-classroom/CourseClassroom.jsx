@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, FolderPlus, X } from 'lucide-react';
+import { ArrowLeft, Plus, FolderPlus, FolderUp, X } from 'lucide-react';
 import { useCourseContent } from './useCourseContent';
 import LessonPlayer from './LessonPlayer';
 import LessonTextViewer from './LessonTextViewer';
@@ -7,6 +7,7 @@ import LessonQuizViewer from './LessonQuizViewer';
 import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
+import BatchCourseImportModal from './BatchCourseImportModal';
 
 export default function CourseClassroom({
   course: initialCourse,
@@ -25,6 +26,7 @@ export default function CourseClassroom({
     actionLoading,
     completedLessonIds,
     handleToggleLessonComplete,
+    fetchCourseData,
     handleSaveModule,
     handleDeleteModule,
     handleSaveLesson,
@@ -36,10 +38,8 @@ export default function CourseClassroom({
     totalLessonsCount
   } = useCourseContent(initialCourse.id);
 
-  // Módulo escolhido pelo usuário (inicia fechado/null até clicar em um módulo)
   const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
 
-  // Sincroniza módulo e aula alvo inicial (ex: quando vem de favoritos ou deep link)
   useEffect(() => {
     if (!modules || modules.length === 0) return;
     if (initialLessonId) {
@@ -61,32 +61,40 @@ export default function CourseClassroom({
     }
   }, [modules, initialModuleId, initialLessonId, setActiveLesson]);
 
+  // Atualização em tempo real quando a IA gera novo título/descrição para a aula
+  useEffect(() => {
+    const onTitleUpdated = (e) => {
+      const { lessonId, newTitle, newDescription } = e.detail || {};
+      if (lessonId && (newTitle || newDescription)) {
+        setActiveLesson((prev) => (prev?.id === lessonId ? {
+          ...prev,
+          ...(newTitle ? { title: newTitle } : {}),
+          ...(newDescription ? { description: newDescription } : {}),
+          videos: (prev.videos || []).map((v) => ({ ...v, ...(newTitle ? { title: newTitle } : {}), ...(newDescription ? { description: newDescription } : {}) }))
+        } : prev));
+        fetchCourseData();
+      }
+    };
+    window.addEventListener('lesson-title-updated', onTitleUpdated);
+    return () => window.removeEventListener('lesson-title-updated', onTitleUpdated);
+  }, [fetchCourseData, setActiveLesson]);
+
   // Modais
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
-
+  const [batchImportOpen, setBatchImportOpen] = useState(false);
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
   const [targetModuleId, setTargetModuleId] = useState(null);
   const [targetModuleTitle, setTargetModuleTitle] = useState('');
   const [editingLesson, setEditingLesson] = useState(null);
 
-  const [deleteModalState, setDeleteModalState] = useState({
-    isOpen: false,
-    type: null, // 'module' | 'lesson'
-    id: null,
-    parentId: null,
-    title: '',
-    message: ''
-  });
+  const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, type: null, id: null, parentId: null, title: '', message: '' });
 
   const handleSelectModule = (mod) => {
     setSelectedModuleId(mod.id);
     const modLessons = mod.lessons || [];
     if (modLessons.length > 0) {
-      const alreadyInMod = modLessons.some((l) => l.id === activeLesson?.id);
-      if (!alreadyInMod) {
-        setActiveLesson(modLessons[0]);
-      }
+      if (!modLessons.some((l) => l.id === activeLesson?.id)) setActiveLesson(modLessons[0]);
     } else {
       setActiveLesson(null);
     }
@@ -96,9 +104,7 @@ export default function CourseClassroom({
     const firstModWithLessons = modules.find((m) => m.lessons && m.lessons.length > 0) || modules[0];
     if (firstModWithLessons) {
       setSelectedModuleId(firstModWithLessons.id);
-      if (firstModWithLessons.lessons?.length > 0) {
-        setActiveLesson(firstModWithLessons.lessons[0]);
-      }
+      if (firstModWithLessons.lessons?.length > 0) setActiveLesson(firstModWithLessons.lessons[0]);
     }
   };
 
@@ -113,55 +119,25 @@ export default function CourseClassroom({
   };
 
   // Handlers Módulos
-  const handleOpenCreateModule = () => {
-    setEditingModule(null);
-    setModuleModalOpen(true);
-  };
-
-  const handleOpenEditModule = (mod, e) => {
-    if (e) e.stopPropagation();
-    setEditingModule(mod);
-    setModuleModalOpen(true);
-  };
-
+  const handleOpenCreateModule = () => { setEditingModule(null); setModuleModalOpen(true); };
+  const handleOpenEditModule = (mod, e) => { if (e) e.stopPropagation(); setEditingModule(mod); setModuleModalOpen(true); };
   const handlePromptDeleteModule = (mod, e) => {
     if (e) e.stopPropagation();
-    setDeleteModalState({
-      isOpen: true,
-      type: 'module',
-      id: mod.id,
-      title: `Excluir Módulo: ${mod.title}?`,
-      message: 'Ao excluir este módulo, todas as aulas cadastradas nele também serão apagadas permanentemente.'
-    });
+    setDeleteModalState({ isOpen: true, type: 'module', id: mod.id, title: `Excluir Módulo: ${mod.title}?`, message: 'Ao excluir este módulo, todas as aulas cadastradas nele também serão apagadas permanentemente.' });
   };
 
   // Handlers Aulas
   const handleOpenCreateLesson = (mod, e) => {
     if (e) e.stopPropagation();
-    setEditingLesson(null);
-    setTargetModuleId(mod.id);
-    setTargetModuleTitle(mod.title);
-    setLessonModalOpen(true);
+    setEditingLesson(null); setTargetModuleId(mod.id); setTargetModuleTitle(mod.title); setLessonModalOpen(true);
   };
-
   const handleOpenEditLesson = (mod, lesson, e) => {
     if (e) e.stopPropagation();
-    setEditingLesson(lesson);
-    setTargetModuleId(mod.id);
-    setTargetModuleTitle(mod.title);
-    setLessonModalOpen(true);
+    setEditingLesson(lesson); setTargetModuleId(mod.id); setTargetModuleTitle(mod.title); setLessonModalOpen(true);
   };
-
   const handlePromptDeleteLesson = (mod, lesson, e) => {
     if (e) e.stopPropagation();
-    setDeleteModalState({
-      isOpen: true,
-      type: 'lesson',
-      id: lesson.id,
-      parentId: mod.id,
-      title: `Excluir Aula: ${lesson.title}?`,
-      message: 'Esta aula será removida permanentemente deste módulo.'
-    });
+    setDeleteModalState({ isOpen: true, type: 'lesson', id: lesson.id, parentId: mod.id, title: `Excluir Aula: ${lesson.title}?`, message: 'Esta aula será removida permanentemente deste módulo.' });
   };
 
   // Confirmação de exclusão unificada
@@ -226,16 +202,28 @@ export default function CourseClassroom({
         </div>
 
         {isManager && (
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={handleOpenCreateModule}
-            data-testid="create-module-btn"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 16px', fontSize: '13px' }}
-          >
-            <FolderPlus size={16} />
-            <span>Novo Módulo</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => setBatchImportOpen(true)}
+              data-testid="open-batch-import-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 16px', fontSize: '13px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', border: '1px solid rgba(99, 102, 241, 0.4)' }}
+            >
+              <FolderUp size={16} />
+              <span>Importar Pasta de Aulas</span>
+            </button>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleOpenCreateModule}
+              data-testid="create-module-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 16px', fontSize: '13px' }}
+            >
+              <FolderPlus size={16} />
+              <span>Novo Módulo</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -426,6 +414,10 @@ export default function CourseClassroom({
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
+                  onLessonUpdated={(updated) => {
+                    setActiveLesson((prev) => (prev ? { ...prev, ...updated, ...(updated.title && prev.videos ? { videos: prev.videos.map((v) => ({ ...v, title: updated.title, ...(updated.description ? { description: updated.description } : {}) })) } : {}) } : updated));
+                    fetchCourseData();
+                  }}
                   rightSidebar={
                     <ModuleTimelineSidebar
                       modules={modules}
@@ -456,6 +448,8 @@ export default function CourseClassroom({
         isOpen={moduleModalOpen}
         onClose={() => setModuleModalOpen(false)}
         editingModule={editingModule}
+        courseId={course?.id || initialCourse.id}
+        onModuleUpdated={fetchCourseData}
         loading={actionLoading}
         bgColor={bgColor}
         onUploadThumbnail={uploadLessonThumbnail}
@@ -471,6 +465,7 @@ export default function CourseClassroom({
         editingLesson={editingLesson}
         moduleTitle={targetModuleTitle}
         courseId={course?.id || initialCourse.id}
+        moduleId={targetModuleId}
         loading={actionLoading}
         bgColor={bgColor}
         onUploadVideo={uploadLessonVideo}
@@ -485,14 +480,19 @@ export default function CourseClassroom({
       />
 
       <ConfirmDeleteModal
-        isOpen={deleteModalState.isOpen}
-        title={deleteModalState.title}
-        message={deleteModalState.message}
-        loading={actionLoading}
-        bgColor={bgColor}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteModalState({ isOpen: false })}
+        isOpen={deleteModalState.isOpen} title={deleteModalState.title} message={deleteModalState.message}
+        loading={actionLoading} bgColor={bgColor} onConfirm={handleConfirmDelete} onCancel={() => setDeleteModalState({ isOpen: false })}
       />
+
+      {batchImportOpen && (
+        <BatchCourseImportModal
+          isOpen={batchImportOpen}
+          onClose={() => setBatchImportOpen(false)}
+          courseId={course?.id || initialCourse.id}
+          existingModules={modules}
+          onImportCompleted={fetchCourseData}
+        />
+      )}
     </div>
   );
 }

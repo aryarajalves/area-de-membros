@@ -231,8 +231,13 @@ def delete_media_file(media_url: str) -> bool:
     return False
 
 
+_b2_cors_configured = False
+
 def configure_b2_cors():
-    """Configura regras de CORS no bucket Backblaze B2 para permitir uploads diretos do navegador."""
+    """Configura regras de CORS no bucket Backblaze B2 para permitir uploads diretos do navegador (executado uma única vez)."""
+    global _b2_cors_configured
+    if _b2_cors_configured:
+        return
     s3 = get_s3_client()
     if not s3 or not settings.B2_BUCKET_NAME:
         return
@@ -247,6 +252,7 @@ def configure_b2_cors():
             }]
         }
         s3.put_bucket_cors(Bucket=settings.B2_BUCKET_NAME, CORSConfiguration=cors_config)
+        _b2_cors_configured = True
         logger.info(f"[B2] Regras de CORS configuradas com sucesso no bucket {settings.B2_BUCKET_NAME}.")
     except Exception as e:
         logger.warning(f"[B2] Não foi possível configurar CORS automaticamente no bucket: {e}")

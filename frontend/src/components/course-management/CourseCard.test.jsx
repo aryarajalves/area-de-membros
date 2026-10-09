@@ -172,4 +172,32 @@ describe('CourseCard Component', () => {
     fireEvent.click(deleteBtn);
     expect(onPromptDelete).toHaveBeenCalledWith(mockCourseWithAccess);
   });
+
+  it('renders cover_image_url when thumbnail_url is not provided', () => {
+    const courseWithBannerOnly = {
+      id: 3,
+      title: 'Bussola Astrologica',
+      description: 'Curso com banner',
+      thumbnail_url: null,
+      cover_image_url: 'https://b2.com/banner-bussola.jpg',
+      has_access: true
+    };
+
+    render(
+      <CourseCard
+        course={courseWithBannerOnly}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    const img = screen.getByRole('img', { name: 'Bussola Astrologica' });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', 'https://b2.com/banner-bussola.jpg');
+  });
 });

@@ -50,13 +50,71 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 - **Gestão de Módulos:**
   - Módulos organizam os tópicos do curso (Título, Descrição, Ordem).
   - O campo de Descrição possui botões de **"Tela Cheia"** (popup gigante) e **"Maximizar / Restaurar"** (`ExpandableTextarea`), permitindo expandir a área de digitação para textos extensos com facilidade.
+  - **Geração de Título e Descrição do Módulo com IA baseada nas Transcrições das Aulas (`ModuleModal`):**
+    - No modal de **"Editar Módulo"**, administradores e instrutores contam com o botão de destaque **"Gerar com IA"** (`Sparkles`) ao lado do campo "Título do Módulo *".
+    - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema exibe um popup modal centralizado com backdrop preto translúcido (não fechável por clique externo) informando que a IA analisará as transcrições e conteúdos de todas as aulas daquele módulo para formular um título atrativo (preservando identificadores numéricos como 'Módulo 2') e uma descrição pedagógica didática de 2 a 3 parágrafos curtos.
+    - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/generate-ai-overview`, preenche os campos do formulário no modal em tempo real e atualiza a interface, permitindo ao gestor revisar e salvar as alterações.
   - A exclusão de um módulo apaga em cascata todas as aulas associadas após confirmação em popup modal preto.
 - **Gestão de Aulas (Lessons):**
   - Cada aula pertence a um módulo e contém:
     - **Nome/Título da Aula** (obrigatório).
     - **Descrição da Aula** (opcional, com botões de **"Tela Cheia"** com popup gigante e **"Maximizar / Restaurar"** para escrita confortável, renderizada abaixo do player com quebras de linha preservadas).
-    - **Duração Estimada:** Especificada em **minutos** (ex: `20 min` ou formato cronômetro `15:30`). No formulário de cadastro/edição, o campo deixa explícito no rótulo `(em minutos)` e instrução de ajuda. Se o administrador preencher apenas números (ex: `20`), o sistema normaliza e exibe automaticamente como `20 min` tanto no player da aula quanto na listagem de aulas do curso.
+    - **Duração Estimada Automática (Formato Cronômetro Exato):** Especificada no formato cronômetro exato (ex: `15:30`, `25:40`, `01:10:20`). É calculada e preenchida **automaticamente**:
+      - **No Cadastro/Edição da Aula:** Ao selecionar o arquivo de vídeo no computador, o sistema lê os metadados do vídeo no navegador em milissegundos e já preenche o campo "Duração Estimada" automaticamente no formato `MM:SS` ou `HH:MM:SS`.
+      - **Na Importação em Lote:** O sistema calcula a duração de cada vídeo localmente e cadastra a aula já com a minutagem exata.
+      - **Na Transcrição por IA:** O backend afere os segundos precisos via `ffprobe` e sincroniza `lesson.duration` no banco de dados.
+      - **Geração Automática de Título e Descrição com IA na Conclusão da Transcrição:**
+        - Assim que o processamento da transcrição por IA (Whisper) é finalizado em background, o sistema analisa a transcrição completa e gera **automaticamente** um título otimizado e atrativo (máximo de 65 caracteres) e uma descrição pedagógica envolvente de 2 a 3 parágrafos curtos.
+        - Os dados gerados são salvos imediatamente nas colunas `title` e `description` da tabela `Lesson` e sincronizados nas faixas de vídeo correspondentes (`lesson_videos`), atualizando a interface em tempo real via eventos globais no frontend sem necessidade de intervenção manual do gestor.
+      - **Geração Sob Demanda de Título e Descrição com IA na Visão Geral (`LessonOverviewTab`):**
+        - Sempre que uma aula já possuir transcrição concluída, a aba **"Visão Geral"** exibe para administradores e instrutores o botão destacado **"Gerar Título e Descrição com IA"** (`Sparkles`), permitindo re-gerar o conteúdo pedagógico a qualquer momento.
+        - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema abre um popup modal centralizado de confirmação com backdrop translúcido escuro (não fechável por clique externo) explicando que o título e a descrição atuais serão substituídos pelo conteúdo pedagógico gerado com base na transcrição. A geração só é iniciada após o clique em **"Sim, Gerar com IA"**, mantendo a opção segura de **"Cancelar"**.
+        - Ao confirmar, o sistema aciona o GPT-4o-mini para re-gerar o título conciso e a descrição pedagógica envolvente, salvando imediatamente na tabela `Lesson` e atualizando o player e a visão geral em tempo real.
+      - **Geração Sob Demanda de Título e Descrição com IA no Modal de Edição da Aula (`LessonModal`):**
+        - No modal de edição de aula, na aba **"Dados Gerais"**, administradores e instrutores contam com o botão destacado **"Gerar com IA"** (`Sparkles`) no cabeçalho do campo "Título da Aula *".
+        - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema abre o modal centralizado de confirmação com backdrop translúcido escuro (não fechável por clique externo) informando que a IA formulará um novo título atrativo e uma descrição pedagógica completa a partir da transcrição existente da aula.
+        - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/generate-metadata` e preenche imediatamente os campos "Título da Aula" e "Breve Resumo ou Descrição da Aula" no formulário em tempo real, permitindo que o gestor revise, complemente se desejar e salve as alterações com total flexibilidade.
       - **Upload em Segundo Plano no Backblaze B2 (Múltiplos Vídeos):** arquivos de vídeo MP4, WebM, MOV ou MKV de até **2 GB (2048 MB)** são enviados diretamente para a nuvem no bucket Backblaze B2 (`AreaDeMembros/videos/`) através de URLs pré-assinadas (S3 Presigned URLs). O envio ocorre em **segundo plano** gerenciado pelo `UploadQueueContext`, **sem nenhum modal bloqueante**. O usuário pode preencher e salvar a aula imediatamente, fechar o formulário, criar novas aulas e enviar múltiplos vídeos concorrentemente. Um painel flutuante discreto no canto inferior direito (`BackgroundUploadWidget`) exibe o progresso individual e permite cancelamento ou acompanhamento em tempo real.
+      - **Importação em Lote de Aulas e Módulos via Pasta Local com IA Automática (`BatchCourseImportModal`):**
+        - **Acesso:** Disponível na sala de aula (`CourseClassroom`) para administradores e instrutores através do botão em destaque **"Importar Pasta de Aulas"** (`FolderUp`).
+        - **Leitura de Diretórios pelo Navegador:** Permite ao usuário selecionar uma pasta do seu computador contendo subpastas e arquivos de vídeo usando a API nativa de diretórios (`webkitdirectory`).
+        - **Mapeamento Automático:**
+          - Cada subpasta é mapeada como um **Módulo** do curso. Se já existir um módulo com o mesmo título cadastrado no curso, o sistema identifica como "Módulo Existente" e vincula as novas aulas a ele sem duplicar o módulo.
+          - **Ordem de Exibição Manual e Automática do Módulo:** Cada card de módulo no modal exibe um campo numérico editável **"Ordem: [N]"** no cabeçalho. O sistema preenche inicialmente com o número extraído do título (ex: 'Módulo 2' -> `2`) ou com o `order_index` do módulo existente, permitindo que o administrador altere livremente o número antes de iniciar a importação. Na criação ou atualização, esse valor é persistido no banco de dados.
+          - Cada arquivo de vídeo (`.mp4`, `.webm`, `.mov`, `.mkv`) é mapeado para uma **Aula**, com título limpo derivado do nome do arquivo e ordenação alfanumérica natural (`01`, `02`, `10`).
+        - **Expansão Fluida e Rolagem Sem Bloqueios das Aulas:** As aulas de cada módulo expandido fluem naturalmente integradas à barra de rolagem principal do modal, permitindo visualizar todas as aulas (mesmo mais de 10 ou 13 aulas) sem scroll interno conflitante ou travamentos na rolagem.
+        - **Desmarcação Flexível de Módulos e Aulas:** O modal apresenta a árvore hierárquica em acordeão com checkboxes individuais. O administrador pode desmarcar módulos inteiros ou aulas específicas que já foram importadas anteriormente ou que não deseja subir, além de contar com botões rápidos "Marcar Todas" e "Desmarcar Todas".
+        - **Fila Sequencial e Disparo Imediato de IA:** Ao iniciar a importação:
+          1. Cria ou reutiliza o Módulo no banco de dados.
+          2. Gera a Presigned URL S3 e faz o upload direto do vídeo para o Backblaze B2 com acompanhamento de progresso de 0% a 100%. Em aulas com múltiplas faixas de idioma, realiza o upload de cada faixa e as cadastra vinculadas à aula.
+          3. Cadastra a Aula no sistema vinculada ao vídeo e módulo (incluindo faixas de múltiplos idiomas quando presentes).
+          4. **Disparo Imediato da IA na Aula:** Imediatamente após a criação da aula, aciona a transcrição por inteligência artificial (OpenAI Whisper + GPT-4o) para gerar a minutagem, capítulos e resumo inteligente em background.
+          5. **Geração Automática de Título e Descrição do Módulo com IA:** Ao concluir o upload de todas as aulas selecionadas de um módulo, o sistema aciona automaticamente a IA (GPT-4o-mini) para analisar os títulos e resumos das aulas e gerar um título atrativo e profissional preservando o identificador numérico original (ex: `Módulo 01 - Fundamentos e Estrutura dos Signos`) e uma descrição didática completa de 2 a 3 parágrafos, atualizando o módulo no banco de dados em tempo real.
+          6. Avança para o próximo módulo da fila de forma sequencial e resiliente.
+        - **Suporte a Múltiplos Idiomas por Subpastas (Opção A):**
+          - O sistema reconhece pastas estruturadas no padrão `Modulo 01/PT/01 - Introducao.mp4`, `Modulo 01/EN/01 - Introduction.mp4`, `Modulo 01/ES/01 - Introduccion.mp4`.
+          - Os arquivos com o mesmo identificador/numeração de aula dentro de subpastas de idiomas (PT, EN, ES, FR, DE, IT) são unificados automaticamente em uma **única aula** contendo as faixas de vídeo correspondentes (`lesson_videos`).
+          - O modal exibe badges com as bandeiras dos idiomas identificados (ex: `🇧🇷 🇺🇸 🇪🇸`) ao lado de cada aula, e realiza o upload sequencial de todas as faixas cadastradas.
+        - **Upload e Replicação de Capas (Módulos e Aulas) na Importação em Lote:** O gestor pode anexar manualmente imagens de capa diretamente no modal de importação antes de iniciar o processo:
+          - **Capa do Módulo:** Botão "+ Capa Módulo" no cabeçalho de cada módulo, permitindo escolher uma imagem do computador com pré-visualização miniatura e botão de remoção. Caso o módulo seja novo, é criado com `image_url`; caso já exista, a capa é atualizada na conclusão.
+          - **Capa da Aula Individual:** Botão "+ Capa" ao lado do tamanho de cada aula, permitindo anexar imagens individuais que são enviadas para o Backblaze B2 (`AreaDeMembros/thumbnails/`) e associadas como `thumbnail_url` da respectiva aula.
+          - **Replicação de Capa para Todas as Aulas (3 Formas Rápidas):**
+            1. **Botão "Replicar p/ todas" na Linha da Aula:** Sempre que o usuário anexar uma capa em qualquer aula, surge imediatamente ao lado um botão destacado "Replicar p/ todas" (`Copy`). Ao clicar, essa imagem é copiada instantaneamente para todas as outras aulas de todos os módulos.
+            2. **Botão "Capa p/ Aulas do Módulo" no Cabeçalho do Módulo:** Permite escolher 1 imagem de capa do computador e aplicá-la em lote especificamente para todas as aulas daquele módulo.
+            3. **Botão "Capa p/ Todas as Aulas" na Barra Superior:** Permite escolher 1 imagem de capa do computador e aplicá-la em lote para todas as aulas de todos os módulos importados.
+        - **Controle e UX:** Barra de progresso geral no topo, indicador de status por aula, botão para interromper a fila a qualquer momento, backdrop fixo não fechável por clique externo e recarregamento automático do curso ao concluir.
+        - **Reinicialização do Estado ao Fechar e Reabrir:** Ao fechar o modal de Importação em Lote (seja pelo botão "X" superior ou "Fechar" inferior), todo o estado temporário do lote é resetado imediatamente (lista de módulos, aulas analisadas, capas vinculadas e seleção de arquivos). Ao reabrir o modal em "Importar Pasta de Aulas", ele sempre se inicia 100% limpo em seu estado inicial de Dropzone, garantindo que importações anteriores ou canceladas não persistam na interface.
+        - **Interrupção Imediata do Upload em Lote:** Ao clicar em "Interromper Envio", qualquer requisição HTTP ativa para o storage (Presigned URL e XMLHttpRequest PUT no Backblaze B2) é abortada imediatamente no mesmo segundo (`xhr.abort()` e `AbortController.abort()`). O status da aula em progresso é restaurado com segurança para "Pronta para envio", liberando a interface instantaneamente sem aguardar o término de uploads de arquivos pesados.
+        - **Reimportação e Retentativa de Aulas com Falha:**
+          - **Botão Individual de Reimportação:** Ao ocorrer qualquer erro durante o upload ou criação da aula (exibindo `(!) Falha`), é renderizado imediatamente um botão `↺ Reimportar` ao lado do status da aula. Ao clicar, o sistema reinicia o processo especificamente para aquela aula de forma isolada e transparente.
+          - **Botão de Reimportar Falhas do Módulo:** No cabeçalho de cada módulo com aulas pendentes de erro, surge o botão `↺ Reimportar Falhas`, permitindo reprocessar todas as aulas com falha daquele módulo com um único clique.
+          - **Botão Geral de Reimportar Falhas no Rodapé:** Sempre que houver 1 ou mais aulas com falha em qualquer módulo, surge no rodapé do modal o botão destacado `↺ Reimportar Falhas (N)`. Ao clicar, todas as aulas falhadas têm o status resetado para pendente e a fila de processamento é retomada automaticamente, pulando com segurança as aulas já concluídas anteriormente e aproveitando o ID do módulo já criado para não gerar duplicatas.
+        - **Enquadramento e Proporções de Capas de Módulos (Cards Netflix):**
+          - **Proporção Ideal de Pôster:** Recomenda-se a proporção vertical **2:3 ou 3:4** (ex: `600×900px` ou `1080×1620px`), idêntica a pôsteres de filmes e séries da Netflix.
+          - **Camadas Inteligentes de Apresentação:** Para suportar qualquer imagem enviada pelo usuário (mesmo artes quadradas 1:1 com mandalas circulares ou banners horizontais 16:9), os cards de módulos utilizam renderização em duas camadas:
+            1. **Fundo Atmosférico (`Ambient Glow`):** Preenche o card com desfoque suave (`blur(16px) brightness(0.35)`) espelhando as cores da arte original, eliminando bordas pretas secas.
+            2. **Pôster Contido em Alta Definição (`contain`):** Mantém a arte integralmente visível sem cortar textos, circunferências ou bordas laterais, eliminando completamente distorções e efeito de super zoom.
+            3. **Degradê Cinematográfico:** Camada de gradiente escuro garantindo contraste e leitura nítida do identificador do módulo e contagem de aulas.
       - **Aba Padrão:** Por padrão, o modal de criação e edição da aula já se inicia diretamente na aba **"Upload do PC (Backblaze B2)"**.
       - **Capa do Vídeo da Aula (Thumbnail / Poster):**
         - Cada aula possui suporte a uma capa personalizada exclusiva, hospedada no Backblaze B2 (`AreaDeMembros/thumbnails/`).
@@ -67,6 +125,7 @@ Este documento registra as decisões de regras de negócio da plataforma para co
         - **Barra de Progresso Interativa (Scrubbing / Seek):** O aluno pode clicar ou arrastar livremente na barra de progresso para avançar ou retroceder a reprodução em qualquer ponto do vídeo instantaneamente.
         - **Avançar e Retroceder 10 Segundos:** Botões dedicados `-10s` (`RotateCcw`) e `+10s` (`RotateCw`) para saltos ágeis durante o estudo.
         - **Indicador Exato de Tempo Restante:** O display de tempo exibe o tempo decorrido, a duração total e destaca explicitamente quanto tempo falta para o término do vídeo (ex: `00:09 / 10:00 (Faltam 09:51)`), com fallback inteligente para a duração estimada cadastrada na aula caso o vídeo ainda esteja em buffer de metadados.
+        - **Controle de Velocidade de Reprodução (Playback Rate):** O player conta com seletor dedicado de velocidade (`0.5x`, `0.75x`, `1x normal`, `1.25x`, `1.5x`, `1.75x`, `2x`) com menu popover translúcido, feedback com ícone de velocímetro (`Gauge`), indicador ativo e persistência automática da preferência do aluno no `localStorage` entre aulas e recarregamentos de página.
         - **Controles de Volume e Tela Cheia:** Ajuste fino de volume com slider, botão mute/unmute e alternância para tela cheia nativa.
       - **Thumbnails dos Cursos:** Capas enviadas por upload também são hospedadas no Backblaze B2 (`AreaDeMembros/thumbnails/`).
       - **Limpeza Automática:** Ao excluir um curso ou aula, as mídias vinculadas correspondentes são automaticamente deletadas do Backblaze B2.
@@ -75,6 +134,8 @@ Este documento registra as decisões de regras de negócio da plataforma para co
         - A mesma aula pode conter faixas de vídeo em múltiplos idiomas (ex: Português 🇧🇷, Inglês 🇺🇸, Espanhol 🇪🇸, Francês 🇫🇷, Alemão 🇩🇪, Italiano 🇮🇹, etc.).
         - **Nome Personalizado do Idioma (Rótulo):** O administrador pode alterar o nome exibido de cada idioma cadastrado (campo `language_label`, ex: "Português (Brasil)", "Inglês (UK)", "Espanhol Neutro", etc.). O nome editado reflete em tempo real nas abas de edição e nos botões de troca de idioma do player visualizados pelo aluno.
         - **Nome e Descrição da Aula por Idioma:** Além do vídeo, cada idioma cadastrado possui seu próprio **Nome da Aula** e **Descrição da Aula** específicos, permitindo que a interface se adapte completamente ao idioma selecionado pelo aluno.
+          - **Campo de Descrição Maximizado com Tela Cheia:** O campo de descrição de cada faixa de idioma utiliza o componente `ExpandableTextarea` com altura padrão expandida (`rows={6}`, `minHeight="170px"`) e botão **"Tela Cheia"** (`Maximize2`), permitindo escrita e leitura amplas sem que o texto fique recolhido ou difícil de visualizar.
+          - **Renderização Visual do Vídeo Anexado (`LessonVideoPreviewPlayer`):** Tanto em vídeos enviados do computador (Backblaze B2) quanto em links externos (YouTube/Vimeo), o sistema **NÃO** exibe links de texto brutos. Em vez disso, renderiza diretamente o player de vídeo interativo (16:9 widescreen) para que o gestor possa assistir, pausar e conferir a mídia na hora, com botão dedicado de remoção/troca.
         - Cada faixa de idioma possui seu próprio vídeo independente, com suporte individual a upload direto para o Backblaze B2 ou links externos (YouTube, Vimeo, Panda Video, URL).
         - No cadastro/edição da aula, o gerenciador em abas permite adicionar, remover e alternar entre os idiomas cadastrados, editando individualmente o rótulo do idioma, o título, a descrição e o vídeo de cada faixa.
         - No player da sala de aula (`LessonPlayer`), ao alternar entre os botões de idiomas, o título da aula e o texto da aba de visão geral são atualizados dinamicamente em tempo real para os textos daquele idioma.
@@ -227,7 +288,7 @@ Este documento registra as decisões de regras de negócio da plataforma para co
       - **Player Widescreen no Topo:** O player de vídeo ocupa toda a largura superior da seção da aula com cantos arredondados e sombra cinemática, sem caixa branca ao redor.
       - **Grid em 2 Colunas Abaixo do Player:**
         - **Coluna Esquerda (Editorial & Interações):** Título da aula em destaque, trilha de navegação (*breadcrumb* `Início > Curso > Módulo > Editar esse conteúdo`), descrição editorial limpa sobre o fundo escuro da área de membros, barra de ações com botão verde em pílula (`Marcar como Assistida` / `Aula Concluída`), além das abas interativas (`Visão Geral`, `Materiais Complementares`, `Minhas Anotações`, `Comentários`).
-        - **Coluna Direita (`ModuleTimelineSidebar`):** Exibe no topo o indicador circular `Meu Progresso - X% (X de Y aulas)` e, logo abaixo, a árvore vertical de módulos e aulas em formato de **Timeline** (cada módulo com seu anel de progresso; o módulo selecionado expande uma linha vertical conectora listando as aulas numeradas `1. ...`, `2. ...` com marcador dourado na aula ativa e verde nas aulas concluídas).
+        - **Coluna Direita (`ModuleTimelineSidebar`):** Exibe no topo o indicador circular `Meu Progresso - X% (X de Y aulas)` e, logo abaixo, a árvore vertical de módulos e aulas em formato de **Timeline** (cada módulo com seu anel de progresso; o módulo selecionado expande uma linha vertical conectora listando as aulas numeradas `1. ...`, `2. ...` com marcador dourado na aula ativa e verde nas aulas concluídas). Para títulos longos de aula, o card aplica limitação elegante de até **2 linhas com reticências (`line-clamp: 2`)** e exibe o título completo em **tooltip nativo ao passar o mouse (`title`)**, preservando o alinhamento e a harmonia visual da barra lateral sem cards desproporcionais.
   - **Imagem de Fundo / Capa das Aulas (`thumbnail_url` na tabela `lessons`):**
     - Além de servir como pôster do player de vídeo da aula, a miniatura da aula também é exibida na timeline e nos cards de aulas do módulo selecionado.
   - **Limpeza Automática no Backblaze B2:**
@@ -662,23 +723,33 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - Extração de áudio otimizada via FFmpeg compacto em MP3 mono 16kHz a 48kbps, garantindo que mesmo aulas de até 1 hora fiquem abaixo do limite de 25 MB da API OpenAI Whisper.
   - Transcrição textual completa através do modelo `whisper-1`.
   - Análise pedagógica e geração de Resumo Executivo, Principais Pontos (Key Takeaways) e Documento HTML5 autônomo via `gpt-4o-mini`.
+- **Geração e Edição Automática do Título da Aula por IA:**
+  - A partir da transcrição textual completa do vídeo gerada pelo Whisper, o modelo `gpt-4o-mini` analisa o assunto central e gera um título conciso, profissional e pedagógico para a aula (`generated_lesson_title`, máx. 60–70 caracteres, sem prefixos ou aspas).
+  - O sistema salva e substitui automaticamente o título da aula no banco de dados (`lesson.title`) ao finalizar a transcrição.
+  - No frontend, o evento `lesson-title-updated` atualiza em tempo real o cabeçalho da aula ativa no player e a lista/linha do tempo de aulas na barra lateral (`CourseClassroom`), sem exigir recarregamento manual da página pelo usuário.
 - **Documento HTML Inteligente:**
   - Documento HTML5 completo com tipografia moderna, seções pedagógicas bem definidas e estilos de impressão `@media print` para quem desejar imprimir ou salvar como PDF.
   - Acessível diretamente pelo botão **"Abrir Documento HTML"** via endpoint com streaming nativo (`GET /api/v1/courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/html`).
   - **Autenticação em Nova Aba:** O endpoint suporta autenticação tanto via header `Authorization: Bearer <token>` quanto via query parameter `?token=<jwt_token>`. Isso permite que o navegador abra a nova aba diretamente sem ser bloqueado com erro 401.
 - **Controle de Acesso e Custos de API (Exclusivo Administradores e Super Admins):**
   - O acionamento da transcrição/re-geração é **restrito a Administradores e Super Admins** (`require_admin_or_superadmin`), evitando gastos desnecessários de API por alunos.
+  - Ao clicar no botão **"Re-gerar"**, o sistema abre obrigatoriamente um **popup modal centralizado de confirmação** (`ConfirmRetriggerAiModal`) com backdrop escuro translúcido, explicando que a ação reprocessará o áudio da aula na IA, evitando cliques acidentais e cobranças desnecessárias de tokens.
   - Uma vez processado, o material gerado é persistido na tabela `lesson_transcriptions` e fica permanentemente disponível para todos os alunos matriculados no curso.
   - **Métricas e Custos em Reais (BRL):** O sistema calcula os custos oficiais cobrados pela OpenAI com base na duração do áudio (`$0.006/min` no Whisper-1) e no consumo exato de tokens do GPT-4o-mini (`$0.15/1M` prompt tokens e `$0.60/1M` completion tokens), convertidos para reais com base na taxa `OPENAI_USD_BRL_RATE` (padrão `5.50`).
   - **Confidencialidade Rigorosa de Custos:** Os dados de custo em reais (`estimated_cost_brl`, `estimated_cost_formatted`) e tokens consumidos são enviados pela API e exibidos na interface (badge `💰 Custo: R$ X,XX`) **exclusivamente para Administradores e Super Admins**. Para o perfil `aluno`, o backend omite esses campos (retornando `null`) e a interface oculta qualquer indicação de custo.
 - **Exibição Seletiva entre Perfis (Aluno vs Gestor):**
   - **Transcrição Integral e Busca no Texto:** O card com a **Transcrição Integral** completa do vídeo e o campo de pesquisa em tempo real, além do botão de "Copiar Texto" da transcrição integral, são exibidos **exclusivamente para Administradores e Super Admins**. No backend, o campo `full_transcript` é omitido (`""`) para requisições de alunos.
-  - **Experiência do Aluno:** Alunos visualizam uma interface limpa e focada no aprendizado, com os **Principais Pontos da Aula (Key Takeaways)**, o **Resumo da Aula** sintetizado e o botão **"Abrir Documento HTML"**.
+  - **Experiência do Aluno:** Alunos visualizam uma interface limpa e focada no aprendizado, com os **Principais Pontos da Aula (Key Takeaways)**, a **Minutagem dos Capítulos** e o **Resumo da Aula** sintetizado.
 - **Recursos da Interface:**
   - Busca em tempo real na transcrição com destaque de trechos filtrados (Admin e Super Admin).
   - Botão de cópia rápida com feedback visual e toast (Admin e Super Admin).
-  - Botão de re-gerar para instrutores (Admin e Super Admin).
+  - Botão de re-gerar protegido por modal central de confirmação (Admin e Super Admin).
   - Badge de custo em reais na barra de ações (visível apenas para gestores).
+- **Edição de Capítulos e Minutagens por Administradores e Super Admins:**
+  - **Permissão de Edição:** Administradores e Super Admins possuem permissão para editar os capítulos e minutagens gerados pela IA (`PUT /courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/chapters`), permitindo corrigir erros ortográficos ou palavras transcritas incorretamente pelo modelo (ex: termos técnicos ou neologismos), ajustar tempos e adicionar/remover tópicos da minutagem.
+  - **Interface de Edição:** No card de Capítulos (`LessonChaptersCard`), é exibido o botão **"Editar Capítulos"** (`Pencil`) exclusivamente para gestores. Ao clicar, o sistema abre o modal centralizado (`EditLessonChaptersModal`) com backdrop escuro translúcido (não fechável por clique externo).
+  - **Sincronização em Tempo Real:** Ao salvar as alterações, os novos capítulos são persistidos no banco de dados, a interface da aba atualiza imediatamente e o evento `video-chapters-loaded` é disparado, sincronizando os marcadores do player de vídeo sem requerer recarregamento da página.
+  - **Restrição de Alunos:** O perfil `aluno` visualiza os capítulos apenas em modo de leitura/navegação com seek interativo, sem botões de edição ou acesso ao endpoint (retornando `HTTP 403 Forbidden` caso tente submeter alterações).
 
 ---
 
@@ -896,6 +967,29 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 - **Disparo e Execução (`FunnelService`):**
   - **Gatilho via Botão de Disparo em Massa:** No modal de envio de mensagens em massa (`ChatBroadcastModal`), o administrador pode configurar um botão de ação com o tipo `"Disparar Funil" (`funnel`)` selecionando o funil desejado.
   - **Acionamento na DM do Aluno:** Quando o aluno recebe o comunicado na conversa privada (DM) e clica no botão, o frontend dispara a execução imediata através do endpoint `POST /api/v1/funnels/{funnel_id}/trigger`, iniciando a sequência de nós configurada no funil para aquele aluno em segundo plano com entrega instantânea via WebSocket e registro no histórico de execuções (`FunnelExecution`).
+
+---
+
+## 28. Integração com AgentFlow (Base de Conhecimento e Robô de Dúvidas)
+- **Vínculo Curso ➔ Base de Conhecimento:**
+  - No modal de Criação e Edição de Cursos (`CourseFormModal`), o gestor pode selecionar a qual **Base de Conhecimento do AgentFlow** o curso estará associado.
+  - **Design do Seletor (`AgentFlowKbSelector`):**
+    - Componente dropdown customizado com design Dark Glassmorphism, ícone temático e iluminação neon índigo (`#818cf8`).
+    - **Exibição Limpa:** O dropdown e os itens da lista exibem **estritamente o nome da base** (ex: `Base - Tarcira`), sem textos extensos ou descrições no item.
+    - **Feedback de Sincronização:** Quando uma base é selecionada, o componente exibe um badge sutil confirmando que as transcrições das aulas serão enviadas para aquela base.
+    - **Criação Rápida no Modal (`AgentFlowCreateKbModal`):** O botão "+ Criar Nova Base" permite cadastrar uma nova base no AgentFlow sem sair da tela do curso.
+- **Sincronização e Re-sincronização de Aulas (`AgentFlowLessonSync`):**
+  - Na aba de Transcrição / IA da aula (`LessonAiTranscriptionTab`), o gestor visualiza o status de sincronização com o AgentFlow.
+  - **Popup Centralizado de Confirmação:** Ao clicar no botão **"Re-sincronizar"**, o sistema obrigatoriamente abre um popup modal centralizado com fundo escuro translúcido (*backdrop blur*, não fechável por clique externo), solicitando confirmação explícita antes de re-enviar os trechos, perguntas, respostas e resumos para o AgentFlow, evitando reprocessamentos acidentais.
+  - **Popup Bloqueante de Progresso em Tempo Real (`AgentFlowSyncProgressModal`):** Durante toda a execução da sincronização (seja inicial ou re-sincronização), é exibido obrigatoriamente um popup centralizado bloqueante na tela com animação de progresso, etapas dinâmicas de processamento e alerta explícito de segurança orientando o usuário a não sair da tela até a conclusão definitiva do envio.
+  - **Fatiamento Inteligente com Overlay Contextual (*Contextual Chunking*):**
+    - **Overlay de Contexto:** Cada trecho salvo na base de conhecimento do AgentFlow recebe obrigatoriamente no corpo do texto um cabeçalho explícito: `[Contexto da Aula: Curso: "{curso}" | Módulo: "{modulo}" | Aula: "{aula}"]`. Isso garante que as buscas semânticas vetoriais no RAG recuperem trechos que já contenham o contexto completo da origem.
+    - **Overlap Real sem Quebra de Palavras:** Os trechos possuem tamanho máximo de ~1.100 caracteres com overlap de ~180 caracteres, quebrando estritamente em finais de frase (`. `, `! `, `? `) ou fronteiras de palavras (` `), impedindo cortes no meio de palavras (como "deal" em vez de "ideal").
+    - **Envio Unificado de Perguntas & Respostas:** O backend gera perguntas e respostas didáticas formuladas com base no conteúdo da aula com variações de dúvidas de alunos (`question_variations`), enviando simultaneamente as P&R didáticas, os trechos contextuais e os resumos oficiais da aula e do módulo.
+
+
+
+
 
 
 

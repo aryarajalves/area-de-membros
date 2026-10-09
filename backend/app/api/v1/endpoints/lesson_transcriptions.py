@@ -1,4 +1,5 @@
-from typing import Optional
+import json
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query, Header
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -6,8 +7,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.logger import logger
 from app.models.user import User
-from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscription, UserCourse
-from app.schemas.course import LessonTranscriptionResponse, LessonTranscriptionTriggerRequest
+from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscription, UserCourse, utc_now
+from app.schemas.course import (
+    LessonTranscriptionResponse,
+    LessonTranscriptionTriggerRequest,
+    LessonChaptersUpdateRequest,
+    LessonChapter
+)
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.api.v1.endpoints.courses import _verify_student_course_access
 from app.services.ai_transcription_service import (
@@ -79,10 +85,13 @@ def get_lesson_transcription(
         return LessonTranscriptionResponse(
             id=0,
             lesson_id=lesson_id,
+            lesson_title=lesson.title,
+            lesson_description=lesson.description,
             full_transcript="",
             summary_html="",
             summary_markdown="",
             key_takeaways=[],
+            chapters=[],
             status="not_started",
             error_message=None,
             audio_duration_seconds=None,
@@ -91,6 +100,8 @@ def get_lesson_transcription(
             estimated_cost_usd=None,
             estimated_cost_brl=None,
             estimated_cost_formatted=None,
+            agentflow_kb_id=None,
+            agentflow_synced_at=None,
             created_at=None,
             updated_at=None
         )
@@ -115,10 +126,13 @@ def get_lesson_transcription(
     return LessonTranscriptionResponse(
         id=transcription.id,
         lesson_id=transcription.lesson_id,
+        lesson_title=lesson.title,
+        lesson_description=lesson.description,
         full_transcript=(transcription.full_transcript or "") if is_admin else "",
         summary_html=transcription.summary_html,
         summary_markdown=transcription.summary_markdown,
         key_takeaways=transcription.key_takeaways,
+        chapters=transcription.chapters,
         status=transcription.status or "ready",
         error_message=transcription.error_message,
         audio_duration_seconds=cost_info.get("audio_duration_seconds") if is_admin else None,
@@ -127,6 +141,8 @@ def get_lesson_transcription(
         estimated_cost_usd=cost_info.get("estimated_cost_usd") if is_admin else None,
         estimated_cost_brl=cost_info.get("estimated_cost_brl") if is_admin else None,
         estimated_cost_formatted=cost_info.get("estimated_cost_formatted") if is_admin else None,
+        agentflow_kb_id=transcription.agentflow_kb_id,
+        agentflow_synced_at=transcription.agentflow_synced_at,
         created_at=transcription.created_at,
         updated_at=transcription.updated_at
     )
@@ -260,4 +276,173 @@ def reset_lesson_transcription(
         db.commit()
 
     return {"message": "Status de transcrição resetado com sucesso."}
+
+
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/generate-metadata"
+)
+async def generate_lesson_title_and_description(
+    course_id: int,
+    module_id: int,
+    lesson_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """
+    Gera título e descrição da aula com IA a partir da sua transcrição existente
+    e salva imediatamente na aula no banco de dados.
+    """
+    lesson = _check_lesson_access(db, course_id, module_id, lesson_id, current_user)
+
+    transcription = db.query(LessonTranscription).filter(
+        LessonTranscription.lesson_id == lesson_id
+    ).first()
+
+    if not transcription or not transcription.full_transcript or len(transcription.full_transcript.strip()) < 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A aula ainda não possui uma transcrição concluída. Gere a transcrição primeiro antes de criar o título e a descrição."
+        )
+
+    result = await ai_transcription_service.generate_lesson_title_and_description(
+        transcript=transcription.full_transcript,
+        current_title=lesson.title
+    )
+
+    lesson.title = result["title"]
+    lesson.description = result["description"]
+
+    # Mantém os vídeos associados da aula em sincronia com o novo título e descrição
+    for v in lesson.videos:
+        if v.language == "pt" or len(lesson.videos) == 1:
+            v.title = lesson.title
+            v.description = lesson.description
+
+    db.commit()
+    db.refresh(lesson)
+
+    logger.info(f"[AI Metadata] Título e descrição da aula {lesson_id} gerados e salvos com sucesso: '{lesson.title}'")
+
+    return {
+        "id": lesson.id,
+        "title": lesson.title,
+        "description": lesson.description,
+        "duration": lesson.duration,
+        "module_id": lesson.module_id
+    }
+
+
+def parse_chapter_time_to_seconds(time_str: str) -> float:
+    """Converte string MM:SS ou HH:MM:SS para segundos em ponto flutuante."""
+    parts = str(time_str).strip().split(":")
+    try:
+        if len(parts) == 3:
+            return float(int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2]))
+        elif len(parts) == 2:
+            return float(int(parts[0]) * 60 + float(parts[1]))
+    except Exception:
+        pass
+    return 0.0
+
+
+def format_seconds_to_chapter_time(seconds: float) -> str:
+    """Formata segundos para string de minutagem MM:SS ou HH:MM:SS."""
+    s = int(round(seconds))
+    hrs = s // 3600
+    mins = (s % 3600) // 60
+    secs = s % 60
+    if hrs > 0:
+        return f"{hrs:02d}:{mins:02d}:{secs:02d}"
+    return f"{mins:02d}:{secs:02d}"
+
+
+@router.put(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/transcription/chapters",
+    response_model=LessonTranscriptionResponse
+)
+def update_lesson_chapters(
+    course_id: int,
+    module_id: int,
+    lesson_id: int,
+    payload: LessonChaptersUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """
+    Atualiza os capítulos e minutagens da aula gerados por IA.
+    Permite aos administradores corrigir palavras grafadas incorretamente, ajustar minutagens ou adicionar/remover capítulos.
+    Acesso restrito a Administradores e Super Admins.
+    """
+    lesson = _check_lesson_access(db, course_id, module_id, lesson_id, current_user)
+
+    transcription = db.query(LessonTranscription).filter(
+        LessonTranscription.lesson_id == lesson_id
+    ).first()
+
+    if not transcription:
+        transcription = LessonTranscription(
+            lesson_id=lesson_id,
+            full_transcript="",
+            status="ready",
+            generated_by_user_id=current_user.id
+        )
+        db.add(transcription)
+
+    clean_chapters = []
+    for item in payload.chapters:
+        title = (item.title or "").strip()
+        if not title:
+            continue
+        time_str = (item.time or "00:00").strip()
+        sec = item.seconds
+        if sec is None or sec <= 0:
+            sec = parse_chapter_time_to_seconds(time_str)
+        if not time_str or (time_str == "00:00" and sec > 0):
+            time_str = format_seconds_to_chapter_time(sec)
+
+        clean_chapters.append({
+            "time": time_str,
+            "seconds": float(sec),
+            "title": title
+        })
+
+    # Ordena por minutagem (seconds) crescente
+    clean_chapters.sort(key=lambda x: x["seconds"])
+
+    transcription.chapters = json.dumps(clean_chapters, ensure_ascii=False)
+    transcription.updated_at = utc_now()
+    db.commit()
+    db.refresh(transcription)
+
+    logger.info(
+        f"[Chapters] Capítulos da aula {lesson_id} atualizados com sucesso por {current_user.email} (total: {len(clean_chapters)})"
+    )
+
+    is_admin = current_user.role in ["admin", "superadmin"]
+    cost_info = get_or_calculate_transcription_cost(transcription, lesson) if is_admin else {}
+
+    return LessonTranscriptionResponse(
+        id=transcription.id,
+        lesson_id=transcription.lesson_id,
+        lesson_title=lesson.title,
+        lesson_description=lesson.description,
+        full_transcript=(transcription.full_transcript or "") if is_admin else "",
+        summary_html=transcription.summary_html,
+        summary_markdown=transcription.summary_markdown,
+        key_takeaways=transcription.key_takeaways,
+        chapters=clean_chapters,
+        status=transcription.status or "ready",
+        error_message=transcription.error_message,
+        audio_duration_seconds=cost_info.get("audio_duration_seconds") if is_admin else None,
+        prompt_tokens=cost_info.get("prompt_tokens") if is_admin else None,
+        completion_tokens=cost_info.get("completion_tokens") if is_admin else None,
+        estimated_cost_usd=cost_info.get("estimated_cost_usd") if is_admin else None,
+        estimated_cost_brl=cost_info.get("estimated_cost_brl") if is_admin else None,
+        estimated_cost_formatted=cost_info.get("estimated_cost_formatted") if is_admin else None,
+        agentflow_kb_id=transcription.agentflow_kb_id,
+        agentflow_synced_at=transcription.agentflow_synced_at,
+        created_at=transcription.created_at,
+        updated_at=transcription.updated_at
+    )
+
 

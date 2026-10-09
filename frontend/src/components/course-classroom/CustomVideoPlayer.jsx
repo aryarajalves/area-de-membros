@@ -1,18 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Play,
-  Loader2,
-  AlertCircle,
-  RefreshCw
-} from 'lucide-react';
+import { Play, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { parseDurationToSeconds } from './lessonUtils';
 import VideoControls from './VideoControls';
+import VideoChaptersDrawer from './VideoChaptersDrawer';
 
 export default function CustomVideoPlayer({
   src,
   poster,
   title,
-  lessonDuration
+  lessonDuration,
+  chapters = []
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -22,6 +19,14 @@ export default function CustomVideoPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(() => {
+    try {
+      const savedRate = localStorage.getItem('area_de_membros_playback_rate');
+      return savedRate ? parseFloat(savedRate) || 1 : 1;
+    } catch {
+      return 1;
+    }
+  });
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -30,11 +35,22 @@ export default function CustomVideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
 
   const hideControlsTimeoutRef = useRef(null);
 
   // Duração de fallback a partir da aula cadastrada (caso video.duration seja Infinity/NaN em streams parciais)
   const fallbackDuration = parseDurationToSeconds(lessonDuration);
+
+  const [activeChapters, setActiveChapters] = useState(chapters || []);
+  useEffect(() => { setActiveChapters(chapters || []); }, [chapters]);
+  useEffect(() => {
+    const handleChaptersLoaded = (e) => {
+      if (Array.isArray(e?.detail?.chapters)) setActiveChapters(e.detail.chapters);
+    };
+    window.addEventListener('video-chapters-loaded', handleChaptersLoaded);
+    return () => window.removeEventListener('video-chapters-loaded', handleChaptersLoaded);
+  }, []);
 
   // Feedback e reset imediato ao alternar de vídeo (0ms de latência percebida)
   useEffect(() => {
@@ -57,6 +73,10 @@ export default function CustomVideoPlayer({
   // Inicializa e atualiza duração ao carregar metadados do vídeo
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
+      // Aplica a velocidade salva ao novo vídeo carregado
+      if (typeof playbackRate === 'number' && playbackRate > 0) {
+        videoRef.current.playbackRate = playbackRate;
+      }
       const vidDuration = videoRef.current.duration;
       if (vidDuration && !isNaN(vidDuration) && vidDuration !== Infinity) {
         setDuration(vidDuration);
@@ -66,6 +86,21 @@ export default function CustomVideoPlayer({
     }
   };
 
+  const handlePlaybackRateChange = useCallback((rate) => {
+    const numRate = parseFloat(rate);
+    if (!isNaN(numRate) && numRate > 0) {
+      setPlaybackRate(numRate);
+      if (videoRef.current) {
+        videoRef.current.playbackRate = numRate;
+      }
+      try {
+        localStorage.setItem('area_de_membros_playback_rate', String(numRate));
+      } catch {
+        // Ignora erros de localStorage
+      }
+    }
+  }, []);
+
   // Se o fallbackDuration mudar e duration for 0, atualiza
   useEffect(() => {
     if (duration === 0 && fallbackDuration > 0) {
@@ -73,13 +108,11 @@ export default function CustomVideoPlayer({
     }
   }, [fallbackDuration, duration]);
 
-  // Cálculo contínuo do buffer baixado à frente na rede
   const updateBuffered = useCallback(() => {
     if (!videoRef.current) return;
     const b = videoRef.current.buffered;
     const curTime = videoRef.current.currentTime;
     const effectiveDur = duration > 0 ? duration : fallbackDuration;
-
     if (b && b.length > 0 && effectiveDur > 0) {
       let currentBufferedEnd = 0;
       for (let i = 0; i < b.length; i++) {
@@ -90,8 +123,7 @@ export default function CustomVideoPlayer({
           currentBufferedEnd = b.end(i);
         }
       }
-      const pct = Math.min(100, Math.max(0, (currentBufferedEnd / effectiveDur) * 100));
-      setBufferedPercentage(pct);
+      setBufferedPercentage(Math.min(100, Math.max(0, (currentBufferedEnd / effectiveDur) * 100)));
     }
   }, [duration, fallbackDuration]);
 
@@ -134,7 +166,6 @@ export default function CustomVideoPlayer({
     }
   }, []);
 
-  // Retroceder 10 segundos
   const handleSkipBackward10 = () => {
     if (!videoRef.current) return;
     const newTime = Math.max(0, videoRef.current.currentTime - 10);
@@ -142,7 +173,6 @@ export default function CustomVideoPlayer({
     setCurrentTime(newTime);
   };
 
-  // Avançar 10 segundos
   const handleSkipForward10 = () => {
     if (!videoRef.current) return;
     const maxTime = duration > 0 ? duration : (videoRef.current.duration || 99999);
@@ -209,7 +239,6 @@ export default function CustomVideoPlayer({
     }
   };
 
-  // Fullscreen
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -220,27 +249,37 @@ export default function CustomVideoPlayer({
   };
 
   useEffect(() => {
-    const onFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // Ocultação automática dos controles durante a reprodução
   const resetHideControlsTimer = useCallback(() => {
     setShowControls(true);
-    if (hideControlsTimeoutRef.current) {
-      clearTimeout(hideControlsTimeoutRef.current);
-    }
+    if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
     if (isPlaying) {
       hideControlsTimeoutRef.current = setTimeout(() => {
-        if (!isScrubbing) {
-          setShowControls(false);
-        }
+        if (!isScrubbing) setShowControls(false);
       }, 3000);
     }
   }, [isPlaying, isScrubbing]);
+
+  const seekToSeconds = useCallback((targetSec) => {
+    const effectiveDur = duration > 0 ? duration : fallbackDuration;
+    const boundedTime = Math.max(0, Math.min(effectiveDur || targetSec, targetSec));
+    if (videoRef.current) {
+      videoRef.current.currentTime = boundedTime;
+      setCurrentTime(boundedTime);
+    }
+  }, [duration, fallbackDuration]);
+
+  useEffect(() => {
+    const handleGlobalSeek = (e) => {
+      if (typeof e?.detail?.seconds === 'number') seekToSeconds(e.detail.seconds);
+    };
+    window.addEventListener('video-seek-to', handleGlobalSeek);
+    return () => window.removeEventListener('video-seek-to', handleGlobalSeek);
+  }, [seekToSeconds]);
 
   const effectiveDuration = duration > 0 ? duration : fallbackDuration;
   const progressPercentage = effectiveDuration > 0 ? (currentTime / effectiveDuration) * 100 : 0;
@@ -463,6 +502,22 @@ export default function CustomVideoPlayer({
         toggleMute={toggleMute}
         handleVolumeChange={handleVolumeChange}
         toggleFullscreen={toggleFullscreen}
+        chapters={activeChapters}
+        onSeekToSeconds={seekToSeconds}
+        onToggleChaptersDrawer={() => setIsChaptersDrawerOpen((prev) => !prev)}
+        isChaptersDrawerOpen={isChaptersDrawerOpen}
+        playbackRate={playbackRate}
+        onPlaybackRateChange={handlePlaybackRateChange}
+      />
+
+      {/* Menu / Drawer Lateral de Capítulos do Vídeo (estilo YouTube) */}
+      <VideoChaptersDrawer
+        chapters={activeChapters}
+        currentTime={currentTime}
+        effectiveDuration={effectiveDuration}
+        onSeekToSeconds={seekToSeconds}
+        isOpen={isChaptersDrawerOpen}
+        onClose={() => setIsChaptersDrawerOpen(false)}
       />
     </div>
   );

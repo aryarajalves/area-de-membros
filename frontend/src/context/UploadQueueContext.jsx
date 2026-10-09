@@ -29,6 +29,7 @@ export function UploadQueueProvider({ children }) {
 
   const startVideoUpload = useCallback(async ({
     file,
+    lessonId = null,
     lessonTitle = 'Aula',
     language = 'pt',
     onSuccessUrl,
@@ -45,6 +46,7 @@ export function UploadQueueProvider({ children }) {
 
     const newUpload = {
       id: uploadId,
+      lessonId: lessonId || null,
       fileName: file.name,
       lessonTitle: lessonTitle || file.name,
       fileSize: file.size,

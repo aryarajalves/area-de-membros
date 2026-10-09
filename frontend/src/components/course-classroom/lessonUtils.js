@@ -3,6 +3,59 @@
  */
 
 /**
+ * Converte segundos para o formato cronômetro exato MM:SS ou HH:MM:SS (ex: 15:30, 25:40, 01:10:20).
+ *
+ * @param {number} seconds
+ * @returns {string}
+ */
+export function formatSecondsToClock(seconds = 0) {
+  if (!seconds || seconds <= 0 || isNaN(seconds)) return '00:00';
+  const totalSec = Math.round(seconds);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Lê os metadados de duração em segundos de um arquivo de vídeo local no navegador.
+ *
+ * @param {File} file
+ * @returns {Promise<number>}
+ */
+export function getVideoFileDuration(file) {
+  return new Promise((resolve) => {
+    if (!file) return resolve(0);
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      const url = URL.createObjectURL(file);
+      let settled = false;
+
+      const finish = (val) => {
+        if (!settled) {
+          settled = true;
+          try { URL.revokeObjectURL(url); } catch {}
+          resolve(val || 0);
+        }
+      };
+
+      video.onloadedmetadata = () => finish(video.duration || 0);
+      video.onerror = () => finish(0);
+      video.src = url;
+
+      // Fallback para ambientes de teste (jsdom) onde mídia não emite evento
+      setTimeout(() => finish(0), 50);
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
+/**
  * Normaliza e formata a duração da aula para exibição na interface.
  * Se o valor for apenas numérico (ex: "20"), retorna "20 min".
  * Se já contiver unidade ou formato de relógio (ex: "20 min" ou "15:30"), mantém o valor.

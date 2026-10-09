@@ -59,6 +59,19 @@ async def lifespan(app: FastAPI):
             pass
     # Seed initial superadmin from env
     init_superadmin()
+    # Reset de transcrições órfãs interrompidas por reinício do servidor
+    try:
+        from app.models.course import LessonTranscription
+        with SessionLocal() as db:
+            orphaned = db.query(LessonTranscription).filter(LessonTranscription.status == "processing").all()
+            for t in orphaned:
+                t.status = "failed"
+                t.error_message = "O processamento foi interrompido por um reinício do servidor. Por favor, clique em Tentar Novamente."
+            if orphaned:
+                db.commit()
+    except Exception as e:
+        from app.core.logger import logger
+        logger.error(f"[MAIN] Erro ao recuperar transcrições órfãs no startup: {e}")
     # Inicializa agendador de backup automático em background apenas se configurado
     if settings.ENABLE_INTERNAL_SCHEDULER:
         setup_scheduler()

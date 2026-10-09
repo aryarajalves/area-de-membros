@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch, AsyncMock
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.models.user import User
@@ -170,4 +171,120 @@ def test_course_order_index_ordering():
     new_index_a = next(i for i, c in enumerate(courses2) if c["id"] == course_a_id)
     new_index_b = next(i for i, c in enumerate(courses2) if c["id"] == course_b_id)
     assert new_index_b < new_index_a, "Após atualizar order_index, curso B deve vir antes de A"
+
+
+def test_update_module_patch_and_put(setup_courses_and_users):
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    c1_id = setup_courses_and_users["c1_id"]
+
+    # Cria módulo
+    res_mod = client.post(f"/api/v1/courses/{c1_id}/modules", json={
+        "title": "Módulo Teste Verbos",
+        "order_index": 0
+    }, headers=headers)
+    assert res_mod.status_code == 201
+    mod_id = res_mod.json()["id"]
+
+    # Atualiza via PATCH
+    res_patch = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}", json={
+        "image_url": "https://storage.com/capa_patch.jpg"
+    }, headers=headers)
+    assert res_patch.status_code == 200
+    assert res_patch.json()["image_url"] == "https://storage.com/capa_patch.jpg"
+
+    # Atualiza via PUT (compatibilidade com batch import e clientes REST)
+    res_put = client.put(f"/api/v1/courses/{c1_id}/modules/{mod_id}", json={
+        "image_url": "https://storage.com/capa_put.jpg"
+    }, headers=headers)
+    assert res_put.status_code == 200
+    assert res_put.json()["image_url"] == "https://storage.com/capa_put.jpg"
+
+
+def test_lesson_import_identifier_create_and_update(setup_courses_and_users):
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    c1_id = setup_courses_and_users["c1_id"]
+
+    # Cria módulo
+    res_mod = client.post(f"/api/v1/courses/{c1_id}/modules", json={
+        "title": "Módulo Import Identifiers",
+        "order_index": 10
+    }, headers=headers)
+    assert res_mod.status_code == 201
+    mod_id = res_mod.json()["id"]
+
+    # 1. Cria aula com import_identifier explícito
+    res_lesson1 = client.post(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons", json={
+        "title": "Aula 01 - O Sol",
+        "video_url": "https://storage.com/video1.mp4",
+        "import_identifier": "01 - Introducao - Sol.mp4"
+    }, headers=headers)
+    assert res_lesson1.status_code == 201
+    lesson1_data = res_lesson1.json()
+    assert lesson1_data["import_identifier"] == "01 - Introducao - Sol.mp4"
+
+    # 2. Cria aula sem import_identifier explícito (deve usar o título como fallback)
+    res_lesson2 = client.post(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons", json={
+        "title": "Aula 02 - A Lua",
+        "video_url": "https://storage.com/video2.mp4"
+    }, headers=headers)
+    assert res_lesson2.status_code == 201
+    lesson2_data = res_lesson2.json()
+    assert lesson2_data["import_identifier"] == "Aula 02 - A Lua"
+
+    # 3. Atualiza aula 1 via PATCH com novo vídeo e novo import_identifier
+    l1_id = lesson1_data["id"]
+    res_patch = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons/{l1_id}", json={
+        "video_url": "https://storage.com/video1_atualizado.mp4",
+        "import_identifier": "01 - Introducao - Sol - HD.mp4"
+    }, headers=headers)
+    assert res_patch.status_code == 200
+    patched_data = res_patch.json()
+    assert patched_data["import_identifier"] == "01 - Introducao - Sol - HD.mp4"
+    assert patched_data["video_url"] == "https://storage.com/video1_atualizado.mp4"
+
+
+def test_generate_course_ai_description_not_found():
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    res = client.post("/api/v1/courses/999999/generate-ai-description", headers=headers)
+    assert res.status_code == 404
+
+
+def test_generate_course_ai_description_no_modules(setup_courses_and_users):
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    # Criar um curso sem módulos
+    res_create = client.post("/api/v1/courses", json={
+        "title": "Curso Sem Modulos Para IA",
+        "description": "Vazio",
+        "is_published": True
+    }, headers=headers)
+    assert res_create.status_code == 201
+    course_id = res_create.json()["id"]
+
+    res_ai = client.post(f"/api/v1/courses/{course_id}/generate-ai-description", headers=headers)
+    assert res_ai.status_code == 400
+    assert "pelo menos um módulo" in res_ai.json()["detail"]
+
+
+@patch("app.services.ai_transcription_service.ai_transcription_service.generate_course_description", new_callable=AsyncMock)
+def test_generate_course_ai_description_success(mock_generate, setup_courses_and_users):
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    c1_id = setup_courses_and_users["c1_id"]
+
+    # Cria módulo no c1 se ainda não existir
+    client.post(f"/api/v1/courses/{c1_id}/modules", json={
+        "title": "Módulo de Exemplo para IA",
+        "description": "Descrição do módulo",
+        "order_index": 1
+    }, headers=headers)
+
+    mock_generate.return_value = "Descrição pedagógica completa gerada via IA mockada com sucesso."
+
+    res = client.post(f"/api/v1/courses/{c1_id}/generate-ai-description", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["description"] == "Descrição pedagógica completa gerada via IA mockada com sucesso."
+    mock_generate.assert_called_once()
+
+
+
 

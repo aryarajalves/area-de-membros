@@ -2,6 +2,12 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import LessonVideoManager from './LessonVideoManager';
 
+let mockUploadQueue = null;
+
+vi.mock('../../context/UploadQueueContext', () => ({
+  useUploadQueue: () => mockUploadQueue
+}));
+
 describe('LessonVideoManager Component', () => {
   it('renders default Portuguese tab and allows switching video type', () => {
     const onChange = vi.fn();
@@ -199,6 +205,84 @@ describe('LessonVideoManager Component', () => {
 
     expect(setUploading).toHaveBeenCalledWith(true);
     expect(onUploadVideo).toHaveBeenCalled();
+  });
+
+  it('only displays inline upload progress for matching lessonId and language', () => {
+    mockUploadQueue = {
+      uploads: [
+        {
+          id: 'up_123',
+          lessonId: 'lesson_10',
+          language: 'pt',
+          status: 'uploading',
+          progress: 45
+        }
+      ],
+      startVideoUpload: vi.fn()
+    };
+
+    // Renderiza em outra aula (lesson_20)
+    const { rerender } = render(
+      <LessonVideoManager
+        videos={[{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]}
+        onChange={vi.fn()}
+        lessonId="lesson_20"
+      />
+    );
+
+    // Na aula 20, NÃO deve exibir o upload da aula 10!
+    expect(screen.queryByTestId('inline-upload-progress')).not.toBeInTheDocument();
+
+    // Rerenderiza na aula 10
+    rerender(
+      <LessonVideoManager
+        videos={[{ language: 'pt', language_label: 'Português', video_url: '', video_type: 'upload' }]}
+        onChange={vi.fn()}
+        lessonId="lesson_10"
+      />
+    );
+
+    // Na aula 10, DEVE exibir o progresso
+    expect(screen.getByTestId('inline-upload-progress')).toBeInTheDocument();
+    expect(screen.getByText(/45%/i)).toBeInTheDocument();
+  });
+
+  it('renders video player element instead of raw URL text when video_url is present', () => {
+    render(
+      <LessonVideoManager
+        videos={[
+          { language: 'pt', language_label: 'Português', video_url: 'https://b2.com/pt.mp4', video_type: 'upload' }
+        ]}
+        onChange={vi.fn()}
+      />
+    );
+
+    // O player de vídeo deve estar presente renderizando a mídia
+    const videoPlayer = screen.getByTestId('lesson-video-preview-player');
+    expect(videoPlayer).toBeInTheDocument();
+    expect(videoPlayer).toHaveAttribute('src', 'https://b2.com/pt.mp4');
+
+    // O texto "Vídeo salvo:" com link cru NÃO deve ser exibido
+    expect(screen.queryByText(/Vídeo salvo:/i)).not.toBeInTheDocument();
+  });
+
+  it('renders expanded description field with ExpandableTextarea and Tela Cheia button', () => {
+    render(
+      <LessonVideoManager
+        videos={[
+          { language: 'pt', language_label: 'Português', description: 'Descrição detalhada da aula', video_url: '' }
+        ]}
+        onChange={vi.fn()}
+      />
+    );
+
+    const descInput = screen.getByTestId('lesson-lang-desc-input-pt');
+    expect(descInput).toBeInTheDocument();
+    expect(descInput).toHaveValue('Descrição detalhada da aula');
+    expect(descInput).toHaveAttribute('rows', '6');
+
+    // Botão de tela cheia deve existir
+    expect(screen.getByTestId('fullscreen-desc-btn-pt')).toBeInTheDocument();
   });
 });
 

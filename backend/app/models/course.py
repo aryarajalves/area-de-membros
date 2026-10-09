@@ -18,6 +18,8 @@ class Course(Base):
     is_published = Column(Boolean, default=True)
     sales_page_url = Column(String, nullable=True)
     order_index = Column(Integer, default=0, index=True)
+    agentflow_kb_id = Column(Integer, nullable=True)
+    agentflow_kb_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -44,6 +46,7 @@ class Module(Base):
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
     order_index = Column(Integer, default=0, index=True)
+    agentflow_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -67,6 +70,7 @@ class Lesson(Base):
     content_type = Column(String, default="video", nullable=True)  # 'video', 'text', 'quiz'
     text_content = Column(Text, nullable=True)
     passing_score_pct = Column(Integer, default=70, nullable=True)  # Nota mínima de aprovação no quiz (ex: 70%)
+    import_identifier = Column(String(255), nullable=True, index=True)  # Identificador de origem / nome original para deduplicação
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -315,6 +319,7 @@ class LessonTranscription(Base):
     summary_html = Column(Text, nullable=True)
     summary_markdown = Column(Text, nullable=True)
     key_takeaways = Column(Text, nullable=True)  # JSON ou lista em texto dos principais destaques
+    chapters = Column(Text, nullable=True)  # JSON dos capítulos e minutagens gerados por IA
     status = Column(String, default="ready")  # 'processing', 'ready', 'error'
     error_message = Column(Text, nullable=True)
     generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -323,6 +328,8 @@ class LessonTranscription(Base):
     completion_tokens = Column(Integer, nullable=True)
     estimated_cost_usd = Column(Float, nullable=True)
     estimated_cost_brl = Column(Float, nullable=True)
+    agentflow_kb_id = Column(Integer, nullable=True)
+    agentflow_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

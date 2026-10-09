@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CourseFormModal, CourseDeleteModal } from './CourseModals';
+import { ToastProvider } from '../../context/ToastContext';
 
 describe('CourseModals Components', () => {
   describe('CourseFormModal', () => {
@@ -159,6 +160,116 @@ describe('CourseModals Components', () => {
 
       fireEvent.change(orderInput, { target: { value: '5' } });
       expect(setOrderIndex).toHaveBeenCalledWith('5');
+    });
+
+    it('does not render AI description button when creating new course (editingCourse is null)', () => {
+      render(
+        <ToastProvider>
+          <CourseFormModal
+            isOpen={true}
+            onClose={vi.fn()}
+            editingCourse={null}
+            title=""
+            setTitle={vi.fn()}
+            description=""
+            setDescription={vi.fn()}
+            thumbnailUrl=""
+            setThumbnailUrl={vi.fn()}
+            uploading={false}
+            saving={false}
+            onSaveCourse={vi.fn()}
+          />
+        </ToastProvider>
+      );
+
+      expect(screen.queryByTestId('generate-course-ai-description-btn')).not.toBeInTheDocument();
+    });
+
+    it('renders AI description button when editing course and opens confirmation modal on click', () => {
+      render(
+        <ToastProvider>
+          <CourseFormModal
+            isOpen={true}
+            onClose={vi.fn()}
+            editingCourse={{ id: 42, title: 'Curso Completo' }}
+            title="Curso Completo"
+            setTitle={vi.fn()}
+            description="Descrição Antiga"
+            setDescription={vi.fn()}
+            thumbnailUrl=""
+            setThumbnailUrl={vi.fn()}
+            uploading={false}
+            saving={false}
+            onSaveCourse={vi.fn()}
+          />
+        </ToastProvider>
+      );
+
+      const aiBtn = screen.getByTestId('generate-course-ai-description-btn');
+      expect(aiBtn).toBeInTheDocument();
+      expect(aiBtn).toHaveTextContent('Gerar com IA');
+
+      // Modal de confirmação inicialmente fechado
+      expect(screen.queryByTestId('confirm-generate-ai-metadata-modal')).not.toBeInTheDocument();
+
+      // Clicar no botão para abrir confirmação
+      fireEvent.click(aiBtn);
+      expect(screen.getByTestId('confirm-generate-ai-metadata-modal')).toBeInTheDocument();
+      expect(screen.getByText('Gerar Descrição do Curso com IA?')).toBeInTheDocument();
+    });
+
+    it('calls AI endpoint and updates course description on confirm', async () => {
+      const setDescription = vi.fn();
+      const mockAiResponse = {
+        id: 42,
+        title: 'Curso Completo',
+        description: 'Esta é a nova descrição detalhada e pedagógica gerada pela IA a partir dos módulos.'
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockAiResponse
+      });
+
+      render(
+        <ToastProvider>
+          <CourseFormModal
+            isOpen={true}
+            onClose={vi.fn()}
+            editingCourse={{ id: 42, title: 'Curso Completo' }}
+            title="Curso Completo"
+            setTitle={vi.fn()}
+            description="Descrição Antiga"
+            setDescription={setDescription}
+            thumbnailUrl=""
+            setThumbnailUrl={vi.fn()}
+            uploading={false}
+            saving={false}
+            onSaveCourse={vi.fn()}
+          />
+        </ToastProvider>
+      );
+
+      // Clica para abrir modal de confirmação
+      fireEvent.click(screen.getByTestId('generate-course-ai-description-btn'));
+      expect(screen.getByTestId('confirm-generate-ai-metadata-modal')).toBeInTheDocument();
+
+      // Confirma a geração com IA
+      const confirmBtn = screen.getByTestId('confirm-generate-ai-metadata-btn');
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/v1/courses/42/generate-ai-description',
+          expect.objectContaining({
+            method: 'POST'
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(setDescription).toHaveBeenCalledWith(mockAiResponse.description);
+      });
     });
   });
 

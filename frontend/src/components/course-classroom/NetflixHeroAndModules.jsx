@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Play, Plus, Edit2, Trash2, CheckCircle2, Layers, Sparkles } from 'lucide-react';
+import CourseDescriptionModal from './CourseDescriptionModal';
 
 export default function NetflixHeroAndModules({
   course,
@@ -16,6 +17,7 @@ export default function NetflixHeroAndModules({
   onPromptDeleteModule,
   onOpenCreateLesson
 }) {
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const heroBgImage = course?.cover_image_url || course?.thumbnail_url || null;
 
   // Referência e controle de drag-to-scroll horizontal
@@ -93,11 +95,55 @@ export default function NetflixHeroAndModules({
             {course?.title}
           </h1>
 
-          {course?.description && (
-            <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '0 0 18px 0', lineHeight: 1.6, maxWidth: '540px', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
-              {course.description}
-            </p>
-          )}
+          {course?.description && (() => {
+            const isLongDescription = course.description.length > 180;
+            const previewText = isLongDescription
+              ? course.description.slice(0, 180).trim() + '...'
+              : course.description;
+
+            return (
+              <div style={{ marginBottom: '18px', maxWidth: '560px' }}>
+                <p
+                  onClick={() => isLongDescription && setShowDescriptionModal(true)}
+                  title={isLongDescription ? 'Clique para ler a descrição completa' : undefined}
+                  style={{
+                    fontSize: '14px',
+                    color: '#cbd5e1',
+                    margin: 0,
+                    lineHeight: 1.6,
+                    textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                    cursor: isLongDescription ? 'pointer' : 'default'
+                  }}
+                  data-testid="course-hero-description"
+                >
+                  <span>{previewText}</span>
+                  {isLongDescription && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDescriptionModal(true);
+                      }}
+                      data-testid="course-hero-read-more-btn"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#facc15',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        marginLeft: '8px',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Ler mais
+                    </button>
+                  )}
+                </p>
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <button
@@ -216,12 +262,7 @@ export default function NetflixHeroAndModules({
                     borderRadius: '12px',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    backgroundColor: '#1e293b',
-                    backgroundImage: modPoster
-                      ? `linear-gradient(180deg, rgba(9,13,22,0.25) 0%, rgba(9,13,22,0.65) 55%, rgba(9,13,22,0.95) 100%), url(${modPoster})`
-                      : 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                    backgroundColor: '#0b1120',
                     border: isModSelected ? '2px solid #eab308' : '1px solid rgba(255,255,255,0.12)',
                     boxShadow: isModSelected ? '0 10px 25px -5px rgba(234, 179, 8, 0.35)' : '0 8px 20px rgba(0,0,0,0.35)',
                     display: 'flex',
@@ -233,8 +274,52 @@ export default function NetflixHeroAndModules({
                   }}
                   data-testid={`netflix-module-card-${mod.id}`}
                 >
+                  {/* Camada Atmosférica de Fundo e Pôster com Enquadramento Inteligente */}
+                  {modPoster ? (
+                    <>
+                      {/* Fundo com desfoque ambiente que preenche qualquer proporção (1:1, 16:9, etc) sem bordas secas */}
+                      <div
+                        data-testid={`module-ambient-glow-${mod.id}`}
+                        style={{
+                          position: 'absolute',
+                          inset: '-12px',
+                          backgroundImage: `url(${modPoster})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          filter: 'blur(16px) brightness(0.35)',
+                          zIndex: 0,
+                          pointerEvents: 'none'
+                        }}
+                      />
+                      {/* Pôster em alta definição contido e centralizado com degradê de leitura */}
+                      <div
+                        data-testid={`module-poster-image-${mod.id}`}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          backgroundImage: `linear-gradient(180deg, rgba(9,13,22,0.18) 0%, rgba(9,13,22,0.3) 45%, rgba(9,13,22,0.92) 100%), url(${modPoster})`,
+                          backgroundSize: 'contain',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                          zIndex: 0,
+                          pointerEvents: 'none'
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
+                        zIndex: 0,
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  )}
+
                   {/* Topo do Pôster: Tag MÓDULO X e botões Admin */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                  <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                     <span style={{
                       fontSize: '10.5px',
                       fontWeight: 800,
@@ -283,7 +368,7 @@ export default function NetflixHeroAndModules({
                   </div>
 
                   {/* Base do Pôster: Título e Contagem de Aulas */}
-                  <div>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
                     <h4 style={{
                       fontSize: '15px',
                       fontWeight: 800,
@@ -315,6 +400,14 @@ export default function NetflixHeroAndModules({
           </div>
         )}
       </div>
+
+      {/* Modal Centralizado de Leitura da Descrição Completa do Curso */}
+      <CourseDescriptionModal
+        isOpen={showDescriptionModal}
+        onClose={() => setShowDescriptionModal(false)}
+        title={course?.title || 'Sobre o Curso'}
+        description={course?.description || ''}
+      />
     </div>
   );
 }

@@ -62,6 +62,12 @@ describe('NetflixHeroAndModules Component', () => {
     expect(screen.getByText('MÓDULO 1')).toBeInTheDocument();
     expect(screen.getByText('MÓDULO 2')).toBeInTheDocument();
 
+    // Ambos os módulos possuem imagem de pôster (módulo 10 direta, módulo 20 fallback do curso)
+    expect(screen.getByTestId('module-ambient-glow-10')).toBeInTheDocument();
+    expect(screen.getByTestId('module-poster-image-10')).toBeInTheDocument();
+    expect(screen.getByTestId('module-ambient-glow-20')).toBeInTheDocument();
+    expect(screen.getByTestId('module-poster-image-20')).toBeInTheDocument();
+
     // Clicar no card do módulo 2 chama onSelectModule com o módulo 2
     fireEvent.click(screen.getByTestId('netflix-module-card-20'));
     expect(onSelectModule).toHaveBeenCalledWith(mockModules[1]);
@@ -149,6 +155,76 @@ describe('NetflixHeroAndModules Component', () => {
     // Mouse leave finaliza o estado de drag
     fireEvent.mouseLeave(carousel);
     expect(carousel.style.cursor).toBe('grab');
+  });
+
+  it('exibe texto completo sem botão "Ler mais" quando a descrição tiver até 180 caracteres', () => {
+    const shortCourse = {
+      ...mockCourse,
+      description: 'Uma descrição objetiva e curta com menos de 180 caracteres.'
+    };
+
+    render(
+      <NetflixHeroAndModules
+        course={shortCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Uma descrição objetiva e curta com menos de 180 caracteres.')).toBeInTheDocument();
+    expect(screen.queryByTestId('course-hero-read-more-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('course-description-modal')).not.toBeInTheDocument();
+  });
+
+  it('trunca a descrição e exibe botão "Ler mais" quando a descrição tiver mais de 180 caracteres, abrindo modal ao clicar', () => {
+    const longDesc = 'A'.repeat(250) + ' ' + 'Descrição completa ultra longa com muitos detalhes astrológicos para o aluno.';
+    const longCourse = {
+      ...mockCourse,
+      description: longDesc
+    };
+
+    render(
+      <NetflixHeroAndModules
+        course={longCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    // O botão "Ler mais" deve estar visível
+    const readMoreBtn = screen.getByTestId('course-hero-read-more-btn');
+    expect(readMoreBtn).toBeInTheDocument();
+    expect(readMoreBtn).toHaveTextContent('Ler mais');
+
+    // Inicialmente, o modal não está aberto
+    expect(screen.queryByTestId('course-description-modal')).not.toBeInTheDocument();
+
+    // Clica no botão "Ler mais"
+    fireEvent.click(readMoreBtn);
+
+    // O modal deve ser exibido
+    const modal = screen.getByTestId('course-description-modal');
+    expect(modal).toBeInTheDocument();
+    expect(screen.getByTestId('course-description-modal-title')).toHaveTextContent(mockCourse.title);
+
+    // Clica no botão "Fechar" do modal para fechar
+    const closeBtn = screen.getByTestId('confirm-close-course-description-modal-btn');
+    fireEvent.click(closeBtn);
+
+    // O modal deve ser fechado
+    expect(screen.queryByTestId('course-description-modal')).not.toBeInTheDocument();
   });
 });
 

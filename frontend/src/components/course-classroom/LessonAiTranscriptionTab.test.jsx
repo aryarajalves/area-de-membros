@@ -176,16 +176,9 @@ describe('LessonAiTranscriptionTab Component', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Primeira frase'));
     expect(mockAddToast).toHaveBeenCalledWith(expect.stringContaining('copiada'), 'success');
 
-    // Testa abertura do HTML em nova aba (com token de autenticação)
-    localStorage.setItem('auth_token', 'mock_jwt_token_123');
-    const openHtmlBtn = screen.getByTestId('btn-open-html-document');
-    fireEvent.click(openHtmlBtn);
-    expect(window.open).toHaveBeenCalledWith(
-      '/api/v1/courses/10/modules/5/lessons/1/transcription/html?token=mock_jwt_token_123',
-      '_blank',
-      'noopener,noreferrer'
-    );
-    localStorage.removeItem('auth_token');
+    // Botão de abrir documento HTML foi removido conforme solicitação
+    expect(screen.queryByTestId('btn-open-html-document')).not.toBeInTheDocument();
+    expect(screen.queryByText('Abrir Documento HTML')).not.toBeInTheDocument();
 
     // Testa busca rápida na transcrição
     const searchInput = screen.getByTestId('input-search-transcript');
@@ -193,6 +186,73 @@ describe('LessonAiTranscriptionTab Component', () => {
 
     expect(screen.getByTestId('transcript-content-box')).toHaveTextContent('Segunda frase sobre arquitetura.');
     expect(screen.getByTestId('transcript-content-box')).not.toHaveTextContent('Primeira frase de introdução.');
+  });
+
+  it('opens confirmation modal when clicking Re-gerar and confirms retriggering', async () => {
+    // 1. Initial GET
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 1,
+          lesson_id: 1,
+          status: 'completed',
+          full_transcript: 'Texto original',
+          summary_markdown: 'Resumo original',
+          key_takeaways: ['Ponto']
+        })
+      })
+      // 2. POST transcribe after modal confirmation
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 1,
+          lesson_id: 1,
+          status: 'processing'
+        })
+      });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={adminUser}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('btn-retrigger-ai')).toBeInTheDocument();
+    });
+
+    // Modal inicialmente fechado
+    expect(screen.queryByTestId('confirm-retrigger-ai-modal')).not.toBeInTheDocument();
+
+    // Clica no botão Re-gerar
+    fireEvent.click(screen.getByTestId('btn-retrigger-ai'));
+
+    // Modal central de confirmação deve abrir
+    expect(screen.getByTestId('confirm-retrigger-ai-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('confirm-retrigger-ai-title')).toHaveTextContent('Re-gerar Transcrição com IA?');
+    expect(screen.getByTestId('confirm-retrigger-ai-message')).toHaveTextContent(/Esta ação irá reprocessar o áudio do vídeo com a IA/i);
+
+    // Clica em Cancelar primeiro para testar cancelamento
+    fireEvent.click(screen.getByTestId('cancel-retrigger-ai-btn'));
+    expect(screen.queryByTestId('confirm-retrigger-ai-modal')).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1); // Não disparou o POST
+
+    // Abre novamente e confirma a ação
+    fireEvent.click(screen.getByTestId('btn-retrigger-ai'));
+    expect(screen.getByTestId('confirm-retrigger-ai-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('confirm-retrigger-ai-btn'));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/courses/10/modules/5/lessons/1/transcribe',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
   });
 
   it('renders cost badge for admin when estimated_cost_formatted is provided', async () => {
@@ -265,10 +325,10 @@ describe('LessonAiTranscriptionTab Component', () => {
     expect(screen.queryByTestId('btn-copy-transcription')).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Buscar termo no texto...')).not.toBeInTheDocument();
 
-    // O resumo da aula, pontos-chave e botão de abrir documento HTML continuam visíveis para o aluno
+    // O resumo da aula e pontos-chave continuam visíveis para o aluno
     expect(screen.getByTestId('ai-key-takeaways')).toBeInTheDocument();
     expect(screen.getByTestId('ai-summary-executive')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-open-html-document')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-open-html-document')).not.toBeInTheDocument();
   });
 
   it('renders processing state with spinner and allows admin to cancel/reset', async () => {
@@ -337,4 +397,94 @@ describe('LessonAiTranscriptionTab Component', () => {
       expect(screen.getByTestId('btn-retry-ai-transcription')).toBeInTheDocument();
     });
   });
+
+  it('renders chapters card and dispatches video-seek-to when clicking a chapter timestamp', async () => {
+    const seekSpy = vi.fn();
+    window.addEventListener('video-seek-to', seekSpy);
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        lesson_id: 1,
+        status: 'completed',
+        summary_markdown: 'Resumo completo',
+        key_takeaways: ['Ponto A'],
+        full_transcript: 'Texto completo',
+        chapters: [
+          { time: '00:00', seconds: 0, title: 'Início da Aula' },
+          { time: '01:30', seconds: 90, title: 'Desenvolvimento Teórico' }
+        ]
+      })
+    });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={studentUser}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-chapters-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Capítulos da Aula (Minutagem)')).toBeInTheDocument();
+    expect(screen.getByText('Início da Aula')).toBeInTheDocument();
+    expect(screen.getByText('Desenvolvimento Teórico')).toBeInTheDocument();
+
+    const seekBtn = screen.getByTestId('btn-seek-chapter-1');
+    expect(seekBtn).toHaveTextContent('01:30');
+    fireEvent.click(seekBtn);
+
+    expect(seekSpy).toHaveBeenCalled();
+    const eventDetail = seekSpy.mock.calls[0][0].detail;
+    expect(eventDetail.seconds).toBe(90);
+
+    window.removeEventListener('video-seek-to', seekSpy);
+  });
+
+  it('dispatches lesson-title-updated event when backend provides a generated lesson title and description', async () => {
+    const titleUpdateSpy = vi.fn();
+    window.addEventListener('lesson-title-updated', titleUpdateSpy);
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        lesson_id: 1,
+        lesson_title: 'Lua na Casa 2: Recursos e Finanças',
+        lesson_description: 'Nesta aula completa, você aprenderá o impacto da Lua na casa 2.',
+        status: 'completed',
+        summary_markdown: 'Resumo completo',
+        key_takeaways: ['Conceito'],
+        full_transcript: 'Texto',
+        chapters: []
+      })
+    });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={studentUser}
+      />
+    );
+
+    await waitFor(() => {
+      expect(titleUpdateSpy).toHaveBeenCalled();
+    });
+
+    const eventDetail = titleUpdateSpy.mock.calls[0][0].detail;
+    expect(eventDetail.lessonId).toBe(1);
+    expect(eventDetail.newTitle).toBe('Lua na Casa 2: Recursos e Finanças');
+    expect(eventDetail.newDescription).toBe('Nesta aula completa, você aprenderá o impacto da Lua na casa 2.');
+
+    window.removeEventListener('lesson-title-updated', titleUpdateSpy);
+  });
 });
+
+

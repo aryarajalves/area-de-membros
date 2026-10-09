@@ -94,6 +94,7 @@ class LessonBase(BaseModel):
     content_type: Optional[str] = "video"  # 'video', 'text', 'quiz'
     text_content: Optional[str] = None
     passing_score_pct: Optional[int] = 70
+    import_identifier: Optional[str] = None
 
 class LessonCreate(LessonBase):
     videos: Optional[List[LessonVideoCreate]] = None
@@ -111,6 +112,7 @@ class LessonUpdate(BaseModel):
     content_type: Optional[str] = None
     text_content: Optional[str] = None
     passing_score_pct: Optional[int] = None
+    import_identifier: Optional[str] = None
     videos: Optional[List[LessonVideoCreate]] = None
     attachments: Optional[List[LessonAttachmentCreate]] = None
 
@@ -165,6 +167,8 @@ class CourseBase(BaseModel):
     is_published: bool = True
     sales_page_url: Optional[str] = None
     order_index: Optional[int] = 0
+    agentflow_kb_id: Optional[int] = None
+    agentflow_kb_name: Optional[str] = None
 
 class CourseCreate(CourseBase):
     pass
@@ -178,6 +182,8 @@ class CourseUpdate(BaseModel):
     is_published: Optional[bool] = None
     sales_page_url: Optional[str] = None
     order_index: Optional[int] = None
+    agentflow_kb_id: Optional[int] = None
+    agentflow_kb_name: Optional[str] = None
 
 class CourseResponse(CourseBase):
     id: int
@@ -286,14 +292,25 @@ class VideoUploadUrlResponse(BaseModel):
     final_url: Optional[str] = None
     method: Optional[str] = None
 
+class LessonChapter(BaseModel):
+    time: str
+    seconds: Optional[float] = 0.0
+    title: str
+
+class LessonChaptersUpdateRequest(BaseModel):
+    chapters: List[LessonChapter] = []
+
 # --- Schemas de Transcrição e Resumo IA da Aula (OpenAI Whisper & GPT) ---
 class LessonTranscriptionResponse(BaseModel):
     id: int
     lesson_id: int
+    lesson_title: Optional[str] = None
+    lesson_description: Optional[str] = None
     full_transcript: Optional[str] = ""
     summary_html: Optional[str] = None
     summary_markdown: Optional[str] = None
     key_takeaways: Optional[List[str]] = None
+    chapters: Optional[List[LessonChapter]] = None
     status: str = "ready"
     error_message: Optional[str] = None
     audio_duration_seconds: Optional[float] = None
@@ -302,6 +319,8 @@ class LessonTranscriptionResponse(BaseModel):
     estimated_cost_usd: Optional[float] = None
     estimated_cost_brl: Optional[float] = None
     estimated_cost_formatted: Optional[str] = None
+    agentflow_kb_id: Optional[int] = None
+    agentflow_synced_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -318,6 +337,21 @@ class LessonTranscriptionResponse(BaseModel):
                 return [str(parsed)]
             except Exception:
                 return [v]
+        return v or []
+
+    @field_validator('chapters', mode='before')
+    @classmethod
+    def parse_chapters(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+                return []
+            except Exception:
+                return []
         return v or []
 
     model_config = ConfigDict(from_attributes=True)

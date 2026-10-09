@@ -272,13 +272,13 @@ export default function ModuleTimelineSidebar({
                             }}
                           />
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0, flex: 1 }}>
                             {isCompleted && (
                               <CheckCircle2
                                 size={13}
                                 color="#22c55e"
                                 data-testid={`lesson-completed-icon-${lesson.id}`}
-                                style={{ flexShrink: 0 }}
+                                style={{ flexShrink: 0, marginTop: '2px' }}
                               />
                             )}
                             {lesson.thumbnail_url ? (
@@ -292,23 +292,32 @@ export default function ModuleTimelineSidebar({
                                   objectFit: 'cover',
                                   borderRadius: '3px',
                                   flexShrink: 0,
+                                  marginTop: '1px',
                                   opacity: isActive ? 1 : 0.75
                                 }}
                               />
                             ) : lesson.content_type === 'text' ? (
-                              <FileText size={13} color="#38bdf8" style={{ flexShrink: 0 }} data-testid={`lesson-type-icon-text-${lesson.id}`} />
+                              <FileText size={13} color="#38bdf8" style={{ flexShrink: 0, marginTop: '2px' }} data-testid={`lesson-type-icon-text-${lesson.id}`} />
                             ) : lesson.content_type === 'quiz' ? (
-                              <HelpCircle size={13} color="#a855f7" style={{ flexShrink: 0 }} data-testid={`lesson-type-icon-quiz-${lesson.id}`} />
+                              <HelpCircle size={13} color="#a855f7" style={{ flexShrink: 0, marginTop: '2px' }} data-testid={`lesson-type-icon-quiz-${lesson.id}`} />
                             ) : null}
                             <span
                               data-testid={`lesson-title-${lesson.id}`}
+                              title={`${idx + 1}. ${lesson.title}`}
                               style={{
                                 fontSize: '13px',
                                 fontWeight: isActive ? 700 : 500,
                                 color: itemTextColor,
                                 textDecoration: isCompleted ? 'line-through' : 'none',
-                                lineHeight: 1.4,
-                                transition: 'color 0.15s ease'
+                                lineHeight: 1.35,
+                                transition: 'color 0.15s ease',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word',
+                                minWidth: 0
                               }}
                             >
                               {idx + 1}. {lesson.title}
@@ -326,7 +335,9 @@ export default function ModuleTimelineSidebar({
                                   borderRadius: '4px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0,
+                                  marginTop: '1px'
                                 }}
                               >
                                 <Clock size={9} />

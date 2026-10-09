@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { formatLessonDuration, normalizeLessonDuration, parseDurationToSeconds, formatSecondsToTimer } from './lessonUtils';
+import {
+  formatLessonDuration,
+  normalizeLessonDuration,
+  parseDurationToSeconds,
+  formatSecondsToTimer,
+  formatSecondsToClock
+} from './lessonUtils';
 
 describe('lessonUtils - formatLessonDuration & normalizeLessonDuration', () => {
   it('formats pure numbers as "X min"', () => {
@@ -50,3 +56,15 @@ describe('lessonUtils - parseDurationToSeconds & formatSecondsToTimer', () => {
     expect(formatSecondsToTimer(null)).toBe('00:00');
   });
 });
+
+describe('lessonUtils - formatSecondsToClock', () => {
+  it('converte segundos em formato cronômetro exato MM:SS e HH:MM:SS', () => {
+    expect(formatSecondsToClock(0)).toBe('00:00');
+    expect(formatSecondsToClock(930)).toBe('15:30');
+    expect(formatSecondsToClock(1540)).toBe('25:40');
+    expect(formatSecondsToClock(3600)).toBe('01:00:00');
+    expect(formatSecondsToClock(3665)).toBe('01:01:05');
+    expect(formatSecondsToClock(null)).toBe('00:00');
+  });
+});
+

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import LessonThumbnailManager from './LessonThumbnailManager';
 import ExpandableTextarea from '../common/ExpandableTextarea';
+import { useToast } from '../../context/ToastContext';
+import ConfirmGenerateAiMetadataModal from './ConfirmGenerateAiMetadataModal';
 
 export default function ModuleModal({
   isOpen,
@@ -9,13 +11,26 @@ export default function ModuleModal({
   onSave,
   onUploadThumbnail,
   editingModule,
+  courseId,
+  onModuleUpdated,
   loading,
   bgColor = '#090d16'
 }) {
+  const { addToast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [orderIndex, setOrderIndex] = useState(0);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('auth_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
 
   useEffect(() => {
     if (editingModule) {
@@ -36,6 +51,32 @@ export default function ModuleModal({
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
   const modalBg = isLightBg ? '#ffffff' : (bgColor === '#000000' ? '#0f172a' : bgColor);
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
+
+  const handleGenerateAiOverview = async () => {
+    if (!courseId || !editingModule?.id) return;
+    try {
+      setAiLoading(true);
+      const res = await fetch(`/api/v1/courses/${courseId}/modules/${editingModule.id}/generate-ai-overview`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || 'Falha ao gerar título e descrição do módulo com IA.');
+      }
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      addToast('Título e descrição do módulo gerados com sucesso com base nas transcrições das aulas!', 'success');
+      setAiConfirmOpen(false);
+      onModuleUpdated?.(data);
+    } catch (err) {
+      console.error('Erro ao gerar visão do módulo com IA:', err);
+      addToast(err.message || 'Erro ao gerar conteúdo com IA.', 'error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -67,9 +108,38 @@ export default function ModuleModal({
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-              Título do Módulo *
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: textColor, margin: 0 }}>
+                Título do Módulo *
+              </label>
+              {editingModule && (
+                <button
+                  type="button"
+                  onClick={() => setAiConfirmOpen(true)}
+                  disabled={aiLoading || loading}
+                  className="table-action-btn"
+                  data-testid="btn-generate-module-ai-overview"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '7px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.25) 100%)',
+                    color: '#c084fc',
+                    border: '1px solid rgba(168, 85, 247, 0.45)',
+                    cursor: (aiLoading || loading) ? 'not-allowed' : 'pointer',
+                    opacity: (aiLoading || loading) ? 0.7 : 1
+                  }}
+                  title="Gerar título e descrição com base nas transcrições de todas as aulas deste módulo"
+                >
+                  {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  <span>{aiLoading ? 'Gerando com IA...' : 'Gerar com IA'}</span>
+                </button>
+              )}
+            </div>
             <input
               type="text"
               required
@@ -89,7 +159,6 @@ export default function ModuleModal({
             textColor={textColor}
             subTextColor={isLightBg ? '#64748b' : '#94a3b8'}
             testId="module-description-input"
-            toggleTestId="toggle-expand-module-description-btn"
           />
 
           {onUploadThumbnail && (
@@ -128,6 +197,18 @@ export default function ModuleModal({
           </div>
         </form>
       </div>
+
+      <ConfirmGenerateAiMetadataModal
+        isOpen={aiConfirmOpen}
+        loading={aiLoading}
+        isLightBg={isLightBg}
+        title="Gerar Título e Descrição do Módulo com IA?"
+        message="A Inteligência Artificial analisará as transcrições e conteúdos de todas as aulas cadastradas neste módulo para criar um título atrativo e uma descrição pedagógica completa. O título e a descrição atuais serão substituídos pelo conteúdo gerado. Deseja continuar?"
+        onConfirm={handleGenerateAiOverview}
+        onClose={() => {
+          if (!aiLoading) setAiConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

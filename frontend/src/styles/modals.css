@@ -383,3 +383,23 @@
   background-color: #22c55e;
 }
 
+/* Scrollbars customizadas para listas longas no modal de importação */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.6);
+  border-radius: 8px;
+  border: 2px solid rgba(15, 23, 42, 0.7);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 180, 252, 0.95);
+}
+
+
+

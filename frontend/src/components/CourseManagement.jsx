@@ -55,6 +55,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [salesPageUrl, setSalesPageUrl] = useState('');
   const [orderIndex, setOrderIndex] = useState(0);
+  const [agentflowKbId, setAgentflowKbId] = useState(null);
+  const [agentflowKbName, setAgentflowKbName] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -103,6 +105,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setCoverImageUrl('');
     setSalesPageUrl('');
     setOrderIndex(0);
+    setAgentflowKbId(null);
+    setAgentflowKbName(null);
     setModalOpen(true);
   };
 
@@ -114,6 +118,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setCoverImageUrl(course.cover_image_url || '');
     setSalesPageUrl(course.sales_page_url || '');
     setOrderIndex(course.order_index ?? 0);
+    setAgentflowKbId(course.agentflow_kb_id || null);
+    setAgentflowKbName(course.agentflow_kb_name || null);
     setModalOpen(true);
   };
 
@@ -153,8 +159,25 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     }
   };
 
-  const handleUploadThumbnail = (e) => handleUploadImageField(e, setThumbnailUrl, 'Thumbnail carregada com sucesso!');
-  const handleUploadCoverImage = (e) => handleUploadImageField(e, setCoverImageUrl, 'Banner Hero carregado com sucesso!');
+  const handleUploadThumbnail = (e) =>
+    handleUploadImageField(
+      e,
+      (url) => {
+        setThumbnailUrl(url);
+        if (!coverImageUrl) setCoverImageUrl(url);
+      },
+      'Thumbnail carregada com sucesso!'
+    );
+
+  const handleUploadCoverImage = (e) =>
+    handleUploadImageField(
+      e,
+      (url) => {
+        setCoverImageUrl(url);
+        if (!thumbnailUrl) setThumbnailUrl(url);
+      },
+      'Banner Hero carregado com sucesso!'
+    );
 
   const handleSaveCourse = async (e) => {
     e.preventDefault();
@@ -172,6 +195,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       cover_image_url: coverImageUrl.trim() || null,
       sales_page_url: salesPageUrl.trim() || null,
       order_index: parseInt(orderIndex, 10) || 0,
+      agentflow_kb_id: agentflowKbId,
+      agentflow_kb_name: agentflowKbName,
       bg_color: activeBgColor
     };
 
@@ -407,6 +432,10 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         setSalesPageUrl={setSalesPageUrl}
         orderIndex={orderIndex}
         setOrderIndex={setOrderIndex}
+        agentflowKbId={agentflowKbId}
+        setAgentflowKbId={setAgentflowKbId}
+        agentflowKbName={agentflowKbName}
+        setAgentflowKbName={setAgentflowKbName}
         bgColor={activeBgColor}
         uploading={uploading}
         saving={saving}

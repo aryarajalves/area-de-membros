@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Upload, X, Image, Globe, ListOrdered } from 'lucide-react';
+import { Upload, X, Image, Globe, ListOrdered, Sparkles, Loader2 } from 'lucide-react';
 import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackModals';
 import ExpandableTextarea from '../common/ExpandableTextarea';
+import ConfirmGenerateAiMetadataModal from '../course-classroom/ConfirmGenerateAiMetadataModal';
+import AgentFlowKbSelector from './AgentFlowKbSelector';
+import { useToast } from '../../context/ToastContext';
 
 export function CourseFormModal({
   isOpen,
@@ -19,6 +22,10 @@ export function CourseFormModal({
   setSalesPageUrl,
   orderIndex = 0,
   setOrderIndex,
+  agentflowKbId = null,
+  setAgentflowKbId,
+  agentflowKbName = '',
+  setAgentflowKbName,
   bgColor = '#090d16',
   uploading,
   saving,
@@ -28,6 +35,42 @@ export function CourseFormModal({
 }) {
   const [showThumbnailDeleteConfirm, setShowThumbnailDeleteConfirm] = useState(false);
   const [showCoverDeleteConfirm, setShowCoverDeleteConfirm] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiConfirmModal, setShowAiConfirmModal] = useState(false);
+  const { addToast } = useToast();
+
+  const handleGenerateAiDescription = async () => {
+    if (!editingCourse?.id) return;
+    setAiLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/v1/courses/${editingCourse.id}/generate-ai-description`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Falha ao gerar descrição com IA.');
+      }
+
+      const data = await res.json();
+      if (data.description) {
+        setDescription(data.description);
+        addToast('Descrição gerada com IA a partir dos módulos com sucesso!', 'success');
+        setShowAiConfirmModal(false);
+      } else {
+        throw new Error('Nenhuma descrição foi retornada pela IA.');
+      }
+    } catch (err) {
+      addToast(err.message || 'Erro ao gerar descrição com IA.', 'error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -79,12 +122,50 @@ export function CourseFormModal({
             <ExpandableTextarea
               id="course-description"
               label="Descrição"
-              rows={3}
               placeholder="Descrição do conteúdo e objetivos do curso..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               testId="course-description-input"
               textColor={textColor}
+              extraActions={
+                editingCourse?.id ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAiConfirmModal(true)}
+                    disabled={aiLoading || saving}
+                    data-testid="generate-course-ai-description-btn"
+                    title="Analisar módulos do curso e gerar descrição automaticamente com IA"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(168, 85, 247, 0.22) 100%)',
+                      border: '1px solid rgba(168, 85, 247, 0.45)',
+                      color: '#c084fc',
+                      cursor: aiLoading || saving ? 'not-allowed' : 'pointer',
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                      opacity: aiLoading || saving ? 0.6 : 1
+                    }}
+                  >
+                    {aiLoading ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Gerando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={12} />
+                        <span>Gerar com IA</span>
+                      </>
+                    )}
+                  </button>
+                ) : null
+              }
             />
           </div>
 
@@ -218,6 +299,18 @@ export function CourseFormModal({
             />
           </div>
 
+          {/* Integração AgentFlow - Base de Conhecimento RAG */}
+          <AgentFlowKbSelector
+            selectedKbId={agentflowKbId}
+            selectedKbName={agentflowKbName}
+            onChangeKb={(id, name) => {
+              if (setAgentflowKbId) setAgentflowKbId(id);
+              if (setAgentflowKbName) setAgentflowKbName(name);
+            }}
+            courseTitle={title}
+            isLightBg={isLightBg}
+          />
+
           <div className="modal-actions">
             <button
               type="button"
@@ -268,6 +361,17 @@ export function CourseFormModal({
           setShowCoverDeleteConfirm(false);
         }}
         onCancel={() => setShowCoverDeleteConfirm(false)}
+      />
+
+      {/* Modal de Confirmação para Geração de Descrição com IA */}
+      <ConfirmGenerateAiMetadataModal
+        isOpen={showAiConfirmModal}
+        onClose={() => !aiLoading && setShowAiConfirmModal(false)}
+        onConfirm={handleGenerateAiDescription}
+        loading={aiLoading}
+        isLightBg={isLightBg}
+        title="Gerar Descrição do Curso com IA?"
+        message="A Inteligência Artificial analisará os títulos e descrições de todos os módulos e aulas deste curso para estruturar uma descrição pedagógica completa, clara e didática. A descrição atual será substituída. Deseja continuar?"
       />
     </div>
   );

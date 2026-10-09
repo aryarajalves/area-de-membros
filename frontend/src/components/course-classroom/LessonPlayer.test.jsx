@@ -7,7 +7,29 @@ vi.mock('../../context/ToastContext', () => ({
   useToast: () => ({ addToast: vi.fn() })
 }));
 
+vi.mock('./CustomVideoPlayer', () => ({
+  default: ({ src, poster, title }) => (
+    <video
+      data-testid="lesson-html5-video"
+      src={src}
+      poster={poster}
+      title={title}
+    />
+  )
+}));
+
+vi.mock('./LessonActionToolbar', () => ({
+  default: () => <div data-testid="lesson-action-toolbar" />
+}));
+
 describe('LessonPlayer Component', () => {
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({})
+    });
+  });
+
   const mockLesson = {
     id: 1,
     title: 'Aula de Teste com Poster',
@@ -87,7 +109,7 @@ describe('LessonPlayer Component', () => {
   it('renders "Minhas Anotações" tab button and allows switching to it', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ id: 1, content: 'Minhas notas' })
+      json: async () => []
     });
 
     render(
@@ -184,6 +206,33 @@ describe('LessonPlayer Component', () => {
 
     expect(screen.getByText('Selecione uma aula para assistir')).toBeInTheDocument();
     expect(screen.queryByText('Não possuímos aulas cadastradas nesse módulo')).not.toBeInTheDocument();
+  });
+
+  it('keeps tabs container with stable minHeight and preserves visited tabs without unmounting', async () => {
+    render(
+      <LessonPlayer
+        lesson={mockLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    const tabsContainer = screen.getByTestId('lesson-tabs-content-container');
+    expect(tabsContainer).toBeInTheDocument();
+    expect(tabsContainer).toHaveStyle({ minHeight: '280px' });
+
+    // Alterna para anotações
+    const notesTabBtn = screen.getByTestId('tab-lesson-notes');
+    fireEvent.click(notesTabBtn);
+    const notesContainer = await screen.findByTestId('lesson-notes-container');
+    expect(notesContainer).toBeInTheDocument();
+
+    // Volta para visão geral - anotações continuam no DOM preservadas
+    const overviewTabBtn = screen.getByTestId('tab-lesson-overview');
+    fireEvent.click(overviewTabBtn);
+    expect(notesContainer).toBeInTheDocument();
   });
 });
 

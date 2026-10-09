@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ExpandableTextarea from './ExpandableTextarea';
 
 describe('ExpandableTextarea Component', () => {
-  it('renders default compact textarea with label and maximize button', () => {
+  it('renders default expanded textarea with label, large rows and Tela Cheia button', () => {
     const handleChange = vi.fn();
     render(
       <ExpandableTextarea
@@ -13,51 +13,26 @@ describe('ExpandableTextarea Component', () => {
         onChange={handleChange}
         placeholder="Digite algo..."
         testId="test-desc-textarea"
-        toggleTestId="test-desc-toggle-btn"
+        fullscreenTestId="test-desc-fullscreen-btn"
       />
     );
 
     expect(screen.getByText('Descrição da Aula')).toBeInTheDocument();
-    const toggleBtn = screen.getByTestId('test-desc-toggle-btn');
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).toHaveTextContent('Maximizar');
+    
+    // Botão Tela Cheia presente
+    const fullscreenBtn = screen.getByTestId('test-desc-fullscreen-btn');
+    expect(fullscreenBtn).toBeInTheDocument();
+    expect(fullscreenBtn).toHaveTextContent('Tela Cheia');
+
+    // Não deve existir botão inline de maximizar / restaurar
+    expect(screen.queryByText('Maximizar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Restaurar')).not.toBeInTheDocument();
 
     const textarea = screen.getByTestId('test-desc-textarea');
     expect(textarea).toBeInTheDocument();
     expect(textarea).toHaveValue('Texto inicial');
-    expect(textarea).toHaveAttribute('rows', '2');
-    expect(textarea.style.minHeight).toBe('65px');
-  });
-
-  it('toggles expansion state when clicking maximize and restore', () => {
-    render(
-      <ExpandableTextarea
-        label="Descrição do Módulo"
-        value=""
-        onChange={() => {}}
-        testId="module-textarea"
-        toggleTestId="module-toggle-btn"
-      />
-    );
-
-    const toggleBtn = screen.getByTestId('module-toggle-btn');
-    const textarea = screen.getByTestId('module-textarea');
-
-    // Inicialmente compacto
-    expect(toggleBtn).toHaveTextContent('Maximizar');
-    expect(textarea).toHaveAttribute('rows', '2');
-
-    // Clica para maximizar
-    fireEvent.click(toggleBtn);
-    expect(toggleBtn).toHaveTextContent('Restaurar');
     expect(textarea).toHaveAttribute('rows', '8');
-    expect(textarea.style.minHeight).toBe('230px');
-
-    // Clica novamente para restaurar
-    fireEvent.click(toggleBtn);
-    expect(toggleBtn).toHaveTextContent('Maximizar');
-    expect(textarea).toHaveAttribute('rows', '2');
-    expect(textarea.style.minHeight).toBe('65px');
+    expect(textarea.style.minHeight).toBe('220px');
   });
 
   it('triggers onChange when user types in textarea', () => {

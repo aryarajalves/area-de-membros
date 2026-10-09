@@ -1,5 +1,6 @@
-import React from 'react';
-import { Mic, Copy, Trash2, Link as LinkIcon, Radio } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Mic, Copy, Trash2, Link as LinkIcon, Radio, Upload, Loader2, X, Music } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function FunnelNodeAudio({
   node,
@@ -12,16 +13,61 @@ export default function FunnelNodeAudio({
   isTargetActive = false,
 }) {
   const data = node.data || {};
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const { addToast } = useToast();
 
   const handleUpdate = (field, value) => {
     onUpdateData(node.id, { ...data, [field]: value });
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      addToast('O arquivo excede o limite máximo permitido de 50 MB.', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('media_type', 'audio');
+
+      const res = await fetch('/api/v1/funnels/upload-media', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Falha ao fazer upload do áudio.');
+      }
+
+      const resData = await res.json();
+      onUpdateData(node.id, {
+        ...data,
+        audio_url: resData.media_url,
+        audio_filename: resData.filename,
+      });
+      addToast('Áudio enviado com sucesso!', 'success');
+    } catch (err) {
+      addToast(err.message || 'Erro no envio do áudio.', 'error');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
     <div
       style={{
         position: 'relative',
-        width: '290px',
+        width: '300px',
         backgroundColor: '#0a1a14',
         border: isSelected ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.4)',
         borderRadius: '14px',
@@ -152,11 +198,122 @@ export default function FunnelNodeAudio({
         </div>
       </div>
 
-      {/* Campo URL do Áudio */}
+      {/* Seção de Upload de Áudio */}
       <div style={{ marginBottom: '10px' }}>
-        <div style={{ fontSize: '0.7rem', color: '#cbd5e1', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*,.mp3,.ogg,.wav,.m4a,.webm"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+          data-testid={`node-audio-file-input-${node.id}`}
+        />
+
+        {data.audio_url ? (
+          <div
+            style={{
+              padding: '8px',
+              backgroundColor: '#020617',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '8px',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Music size={12} color="#10b981" />
+                <span style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                  {data.audio_filename || 'Áudio Carregado'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleUpdate('audio_url', '')}
+                title="Remover áudio"
+                style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}
+                data-testid={`node-audio-remove-${node.id}`}
+              >
+                <X size={13} />
+              </button>
+            </div>
+
+            <audio
+              controls
+              src={data.audio_url}
+              style={{ width: '100%', height: '32px', marginBottom: '6px', borderRadius: '4px' }}
+              data-testid={`node-audio-player-${node.id}`}
+            />
+
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: '100%',
+                padding: '5px',
+                borderRadius: '5px',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                border: '1px dashed #10b981',
+                color: '#34d399',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+              }}
+              data-testid={`node-audio-reupload-btn-${node.id}`}
+            >
+              {uploading ? <Loader2 size={12} className="spin" /> : <Upload size={12} />}
+              <span>{uploading ? 'Enviando...' : 'Trocar Arquivo'}</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: '100%',
+              padding: '10px 8px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              border: '1px dashed rgba(16, 185, 129, 0.5)',
+              color: '#34d399',
+              fontSize: '0.74rem',
+              fontWeight: 600,
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease',
+              marginBottom: '8px',
+            }}
+            data-testid={`node-audio-upload-btn-${node.id}`}
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={20} className="spin" />
+                <span>Enviando áudio (máx 50MB)...</span>
+              </>
+            ) : (
+              <>
+                <Upload size={18} />
+                <span>Fazer Upload do Áudio (MP3 / OGG / WAV / WebM)</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Campo URL do Áudio (Alternativa) */}
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <LinkIcon size={11} />
-          <span>URL do Arquivo de Áudio (MP3 / WebM)</span>
+          <span>Ou cole a URL direta do áudio:</span>
         </div>
         <input
           type="text"
@@ -170,7 +327,7 @@ export default function FunnelNodeAudio({
             borderRadius: '6px',
             color: '#f8fafc',
             padding: '6px 8px',
-            fontSize: '0.75rem',
+            fontSize: '0.72rem',
             outline: 'none',
             boxSizing: 'border-box',
           }}

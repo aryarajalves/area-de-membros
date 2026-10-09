@@ -76,8 +76,8 @@ export default function CourseCard({
         style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
         title={hasAccess ? 'Clique para acessar o curso' : 'Produto fechado - Clique para ver mais informações'}
       >
-        {course.thumbnail_url ? (
-          <img src={course.thumbnail_url} alt={course.title} />
+        {course.thumbnail_url || course.cover_image_url ? (
+          <img src={course.thumbnail_url || course.cover_image_url} alt={course.title} />
         ) : (
           <div className="course-card-placeholder">
             <Layers size={40} style={{ margin: '0 auto 8px', opacity: 0.7 }} />
