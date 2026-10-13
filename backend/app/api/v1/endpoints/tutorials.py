@@ -366,7 +366,11 @@ async def generate_tutorial_ai_description(
                 detail=f"Falha na transcrição de áudio com OpenAI Whisper: {exc}"
             )
 
-        full_transcript = (whisper_result.get("full_transcript") or "").strip()
+        full_transcript = (
+            whisper_result.get("text")
+            or whisper_result.get("full_transcript")
+            or ""
+        ).strip()
         if not full_transcript or len(full_transcript) < 5:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

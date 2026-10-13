@@ -289,7 +289,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **500+ testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA (`HomeTutorials`, `TutorialModal`, `TutorialVideoPreview`), mural social Apresente-se com networking e vídeo IA (`IntroductionManagement`), gamificação RPG no Meu Perfil (`ProfileGamificationCard`), escada de 20 níveis (`GamificationRpgLadderModal`), módulos retráteis na sala de aula (`ModuleTimelineSidebar`), criação manual de usuários (`CreateUserManualModal`), validação de senhas com 12 caracteres, edição de capítulos com IA, editor de funis Bézier, chat broadcast, Favoritos unificados, fila de uploads em segundo plano e logs.
+> **500+ testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA (`HomeTutorials`, `TutorialModal`, `TutorialVideoInputSection`, `TutorialVideoPreview`), mural social Apresente-se com networking e vídeo IA (`IntroductionManagement`), player de vídeo modular (`CustomVideoPlayer`, `VideoPlayerOverlays`, `VideoControls`), gamificação RPG no Meu Perfil (`ProfileGamificationCard`), escada de 20 níveis (`GamificationRpgLadderModal`), módulos retráteis na sala de aula (`ModuleTimelineSidebar`), criação manual de usuários (`CreateUserManualModal`), validação de senhas com 12 caracteres, edição de capítulos com IA, editor de funis Bézier, chat broadcast, Favoritos unificados, fila de uploads em segundo plano e logs.
 
 ### Backend (Pytest)
 ```bash

@@ -112,3 +112,57 @@ def test_generate_ai_description_success_with_file(
     assert "Neste tutorial completo" in res_data["description"]
     assert res_data["full_transcript"].startswith("Olá pessoal")
     assert res_data["duration"] == "02:05"
+
+
+@patch("app.api.v1.endpoints.tutorials.get_openai_api_key", return_value="mock-key")
+@patch("app.api.v1.endpoints.tutorials.ai_transcription_service.extract_audio_from_video", new_callable=AsyncMock)
+@patch("app.api.v1.endpoints.tutorials._get_audio_duration_seconds", return_value=370.0)
+@patch("app.api.v1.endpoints.tutorials.ai_transcription_service.transcribe_audio_whisper", new_callable=AsyncMock)
+@patch("httpx.AsyncClient.post")
+def test_generate_ai_description_success_with_whisper_text_dict(
+    mock_httpx_post,
+    mock_transcribe,
+    mock_duration,
+    mock_extract,
+    mock_key,
+    superadmin_token
+):
+    # Simula resposta padrão do OpenAI Whisper retornando {"text": "...", "segments": []}
+    mock_transcribe.return_value = {
+        "text": "E aí galera, beleza? Hoje eu estou aqui para mostrar a ferramenta Agente Flow de automação com IA.",
+        "segments": []
+    }
+
+    from unittest.mock import MagicMock
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"generated_description": "Neste tutorial, o instrutor demonstra a plataforma Agente Flow e fluxos de automação."}'
+                }
+            }
+        ]
+    }
+    mock_httpx_post.return_value = mock_response
+
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+    data = {
+        "title": "Tutorial 02",
+        "video_url": "https://s3.us-west-004.backblazeb2.com/zap-voice/AreaDeMembros/tutorials/tutorial_669f7af9e7ae.mp4"
+    }
+
+    response = client.post(
+        "/api/v1/tutorials/generate-ai-description",
+        data=data,
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    res_data = response.json()
+    assert "description" in res_data
+    assert "Agente Flow" in res_data["description"]
+    assert "Agente Flow" in res_data["full_transcript"]
+    assert res_data["duration"] == "06:10"
+

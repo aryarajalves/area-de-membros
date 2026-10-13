@@ -286,11 +286,14 @@ class AITranscriptionService:
             segments = whisper_json.get("segments", [])
             return {
                 "text": full_text,
+                "full_transcript": full_text,
                 "segments": segments
             }
         except Exception:
+            raw_text = res.text.strip()
             return {
-                "text": res.text.strip(),
+                "text": raw_text,
+                "full_transcript": raw_text,
                 "segments": []
             }
 
