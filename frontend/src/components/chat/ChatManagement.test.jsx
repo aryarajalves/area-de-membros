@@ -266,4 +266,29 @@ describe('ChatManagement Component', () => {
     expect(messageEl).toHaveAttribute('data-highlighted', 'true');
     expect(scrollMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
   });
+
+  it('supports responsive mobile view switching between channels and active chat', async () => {
+    renderChat();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('channel-item-general')).toBeInTheDocument();
+    });
+
+    const chatView = screen.getByTestId('chat-management-view');
+    // Mobile inicia na lista de canais conforme solicitacao de UX
+    expect(chatView).toHaveClass('mobile-chat-view-channels');
+
+    // Ao tocar em um canal na lista, entra no chat
+    const generalChannelItem = screen.getByTestId('channel-item-general');
+    fireEvent.click(generalChannelItem);
+    expect(chatView).toHaveClass('mobile-chat-view-chat');
+
+    // Botão de voltar aos canais no header
+    const backToChannelsBtn = screen.getByTestId('chat-back-to-channels-btn');
+    expect(backToChannelsBtn).toBeInTheDocument();
+
+    // Clica para voltar aos canais
+    fireEvent.click(backToChannelsBtn);
+    expect(chatView).toHaveClass('mobile-chat-view-channels');
+  });
 });

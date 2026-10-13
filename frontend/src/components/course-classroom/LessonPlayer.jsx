@@ -10,6 +10,7 @@ import LessonActionToolbar from './LessonActionToolbar';
 import LessonNotes from './LessonNotes';
 import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
 import LessonOverviewTab from './LessonOverviewTab';
+import LessonTabsNavBar from './LessonTabsNavBar';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
@@ -312,12 +313,12 @@ export default function LessonPlayer({
         style={{ maxWidth: '1080px', margin: '0 auto', display: 'grid', gridTemplateColumns: rightSidebar ? 'minmax(0, 1fr) 300px' : '1fr', gap: '52px', alignItems: 'start' }}
       >
         {/* Coluna Esquerda: Título, Breadcrumb, Texto da Aula, Ações, Card de Próxima Aula e Abas */}
-        <div>
+        <div style={{ minWidth: 0, maxWidth: '100%' }}>
           {/* Cabeçalho da Aula + Duração */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-            <div>
+            <div style={{ minWidth: 0, maxWidth: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                <h2 style={{ fontSize: '26px', fontWeight: 700, color: textColor, margin: 0, letterSpacing: '-0.01em' }} data-testid="active-lesson-title">
+                <h2 style={{ fontSize: '26px', fontWeight: 700, color: textColor, margin: 0, letterSpacing: '-0.01em', wordBreak: 'break-word', overflowWrap: 'break-word' }} data-testid="active-lesson-title">
                   {currentTitle}
                 </h2>
                 {isComingSoon && (
@@ -383,47 +384,13 @@ export default function LessonPlayer({
           )}
 
           {/* Abas da Aula: Visão Geral vs Transcrição & Resumo IA vs Materiais Complementares vs Minhas Anotações vs Comentários */}
-          <div
-            className="no-scrollbar"
-            style={{
-              display: 'flex',
-              gap: '8px',
-              marginTop: '24px',
-              borderBottom: `1px solid ${borderColor}`,
-              paddingBottom: '0',
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
-            }}
-          >
-            {[
-              { id: 'overview', label: 'Visão Geral', icon: FileText, testId: 'tab-lesson-overview' },
-              { id: 'transcription', label: 'Transcrição & Resumo IA', icon: Sparkles, testId: 'tab-lesson-transcription' },
-              { id: 'attachments', label: 'Materiais Complementares', icon: Paperclip, testId: 'tab-lesson-attachments', count: lesson.attachments?.length || 0 },
-              { id: 'notes', label: 'Minhas Anotações', icon: BookOpen, testId: 'tab-lesson-notes' },
-              { id: 'comments', label: 'Comentários', icon: MessageSquare, testId: 'tab-lesson-comments' }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isTabActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabChange(tab.id)}
-                  style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: isTabActive ? '#eab308' : subTextColor, borderBottom: isTabActive ? '2px solid #eab308' : '2px solid transparent', whiteSpace: 'nowrap' }}
-                  data-testid={tab.testId}
-                >
-                  <Icon size={14} />
-                  <span>{tab.label}</span>
-                  {tab.count > 0 && (
-                    <span style={{ fontSize: '11px', backgroundColor: isTabActive ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.08)', color: isTabActive ? '#eab308' : subTextColor, padding: '1px 6px', borderRadius: '10px', fontWeight: 700 }}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <LessonTabsNavBar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            attachmentsCount={lesson.attachments?.length || 0}
+            borderColor={borderColor}
+            subTextColor={subTextColor}
+          />
 
           {/* Conteúdo das Abas: Altura mínima estável e preservação de componentes montados para eliminar layout shift / tela piscando */}
           <div style={{ minHeight: '280px', marginTop: '16px' }} data-testid="lesson-tabs-content-container">
@@ -483,7 +450,7 @@ export default function LessonPlayer({
         </div>
 
         {/* Coluna Direita: Timeline de Progresso, Módulos e Aulas */}
-        {rightSidebar && <div>{rightSidebar}</div>}
+        {rightSidebar && <div style={{ minWidth: 0, maxWidth: '100%' }}>{rightSidebar}</div>}
       </div>
     </div>
   );

@@ -251,4 +251,31 @@ describe('LogManagement Component', () => {
       expect(endTimeInput).toHaveValue('');
     });
   });
+
+  it('renders responsive log toolbar structure with compact search box and actions grid', async () => {
+    setupFetchMock();
+    render(
+      <ToastProvider>
+        <LogManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Servidor iniciado com sucesso/)).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByTestId('log-search-input');
+    expect(searchInput).toHaveClass('log-search-input');
+
+    const searchBox = searchInput.closest('.log-search-box');
+    expect(searchBox).toBeInTheDocument();
+
+    const tailSelect = screen.getByTestId('log-tail-select');
+    expect(tailSelect).toHaveClass('log-tail-select');
+
+    expect(screen.getByTestId('toggle-autorefresh-btn')).toHaveClass('log-action-btn');
+    expect(screen.getByTestId('refresh-logs-btn')).toHaveClass('log-action-btn');
+    expect(screen.getByTestId('copy-logs-btn')).toHaveClass('log-action-btn');
+    expect(screen.getByTestId('scroll-bottom-btn')).toHaveClass('log-action-btn');
+  });
 });

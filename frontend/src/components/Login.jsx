@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import loginBanner from '../assets/login-banner.jpg';
 import { useToast } from '../context/ToastContext';
@@ -9,7 +9,34 @@ export default function Login({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
+  const [bannerUrl, setBannerUrl] = useState(null);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchWhiteLabel = async () => {
+      try {
+        const res = await fetch('/api/v1/whitelabel');
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.platform_name) {
+            setPlatformName(data.platform_name);
+            localStorage.setItem('platform_name', data.platform_name);
+          }
+          if (data.login_banner_url) {
+            setBannerUrl(data.login_banner_url);
+          }
+        }
+      } catch {
+        // Silencioso em caso de offline
+      }
+    };
+    fetchWhiteLabel();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,7 +85,7 @@ export default function Login({ onLoginSuccess }) {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <h2>Área de Membros</h2>
+            <h2>{platformName || 'Área de Membros'}</h2>
             <p>Informe suas credenciais para acessar o painel</p>
           </div>
 
@@ -132,12 +159,13 @@ export default function Login({ onLoginSuccess }) {
       <div className="login-image-side">
         <div className="image-overlay-card">
           <img
-            src={loginBanner}
-            alt="Projeto Base Dashboard"
+            src={bannerUrl || loginBanner}
+            alt={platformName || 'Área de Membros'}
             className="login-feature-img"
             loading="eager"
             fetchPriority="high"
             decoding="async"
+            data-testid="login-banner-image"
           />
           <div className="image-caption">
             <h3>Gerenciamento Centralizado</h3>

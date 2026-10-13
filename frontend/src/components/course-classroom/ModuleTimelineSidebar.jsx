@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 function ProgressRing({ percent = 0, size = 24, strokeWidth = 2.5, activeColor = '#eab308', trackColor = 'rgba(255,255,255,0.14)' }) {
@@ -61,6 +61,32 @@ export default function ModuleTimelineSidebar({
     ? Number(((completedCount / totalLessonsCount) * 100).toFixed(1).replace(/\.0$/, ''))
     : 0;
 
+  // Controle de módulos expandidos/fechados (accordion/toggle)
+  const [expandedModuleIds, setExpandedModuleIds] = useState(() => {
+    return selectedModule?.id ? [selectedModule.id] : [];
+  });
+
+  // Mantém sincronizado se o módulo selecionado mudar externamente
+  useEffect(() => {
+    if (selectedModule?.id) {
+      setExpandedModuleIds((prev) => (prev.includes(selectedModule.id) ? prev : [...prev, selectedModule.id]));
+    }
+  }, [selectedModule?.id]);
+
+  const handleToggleModule = (mod) => {
+    const isCurrentlyExpanded = expandedModuleIds.includes(mod.id);
+    if (isCurrentlyExpanded) {
+      // Fecha o módulo
+      setExpandedModuleIds((prev) => prev.filter((id) => id !== mod.id));
+    } else {
+      // Abre o módulo e notifica seleção
+      setExpandedModuleIds((prev) => [...prev, mod.id]);
+      if (onSelectModule) {
+        onSelectModule(mod);
+      }
+    }
+  };
+
   return (
     <aside
       data-testid="module-timeline-sidebar"
@@ -97,6 +123,7 @@ export default function ModuleTimelineSidebar({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {modules.map((mod) => {
           const isSelected = selectedModule?.id === mod.id;
+          const isExpanded = expandedModuleIds.includes(mod.id);
           const modLessons = mod.lessons || [];
           const modCompleted = modLessons.filter((l) => completedLessonIds.includes(l.id)).length;
           const modPct = modLessons.length > 0 ? Math.round((modCompleted / modLessons.length) * 100) : 0;
@@ -107,18 +134,24 @@ export default function ModuleTimelineSidebar({
               data-testid={`module-item-${mod.id}`}
               style={{ display: 'flex', flexDirection: 'column' }}
             >
-              {/* Cabeçalho do Módulo */}
+              {/* Cabeçalho do Módulo (Clicável para Fechar / Abrir) */}
               <div
-                onClick={() => onSelectModule(mod)}
+                onClick={() => handleToggleModule(mod)}
+                data-testid={`module-toggle-btn-${mod.id}`}
+                title={isExpanded ? 'Clique para fechar o módulo' : 'Clique para abrir o módulo'}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   gap: '10px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  padding: '4px 2px',
+                  borderRadius: '6px',
+                  transition: 'background-color 0.15s ease',
+                  userSelect: 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0, flex: 1 }}>
                   <div style={{ marginTop: '1px' }}>
                     <ProgressRing
                       percent={isSelected && modPct === 0 ? 25 : modPct}
@@ -127,9 +160,13 @@ export default function ModuleTimelineSidebar({
                       trackColor={trackColor}
                     />
                   </div>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div
                       style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
                         fontSize: '14px',
                         fontWeight: isSelected ? 700 : 600,
                         color: isSelected ? textColor : subTextColor,
@@ -137,13 +174,28 @@ export default function ModuleTimelineSidebar({
                         transition: 'color 0.15s ease'
                       }}
                     >
-                      {mod.title}
+                      <span style={{ wordBreak: 'break-word' }}>{mod.title}</span>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isSelected ? (isLightBg ? '#0284c7' : '#38bdf8') : subTextColor,
+                          padding: '2px',
+                          borderRadius: '4px',
+                          backgroundColor: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                          flexShrink: 0,
+                          transition: 'all 0.2s ease'
+                        }}
+                        data-testid={`module-chevron-${mod.id}`}
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </span>
                     </div>
-                    {!isSelected && (
-                      <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.8, marginTop: '2px' }}>
-                        {modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}
-                      </div>
-                    )}
+                    <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
+                      {modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}
+                      {!isExpanded && ' • Fechado (clique para abrir)'}
+                    </div>
                   </div>
                 </div>
 
@@ -203,8 +255,8 @@ export default function ModuleTimelineSidebar({
                 )}
               </div>
 
-              {/* Aulas do Módulo Ativo (Linha Vertical de Timeline) */}
-              {isSelected && (
+              {/* Aulas do Módulo Expandido (Linha Vertical de Timeline) */}
+              {isExpanded && (
                 <div
                   style={{
                     marginLeft: '11.5px',

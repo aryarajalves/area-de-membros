@@ -24,7 +24,13 @@ def get_s3_client():
             endpoint_url=endpoint,
             aws_access_key_id=settings.B2_KEY_ID,
             aws_secret_access_key=settings.B2_APPLICATION_KEY,
-            config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "virtual"},
+                connect_timeout=5,
+                read_timeout=10,
+                retries={"max_attempts": 2}
+            ),
         )
     except Exception as e:
         logger.error(f"[B2 Storage] Erro ao inicializar cliente S3/B2: {e}")

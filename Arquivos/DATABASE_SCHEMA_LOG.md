@@ -4,6 +4,44 @@ Registro de migrações e atualizações estruturais do banco de dados (PostgreS
 
 ---
 
+### [13/10/2026] - Criação das Tabelas da Aba Apresente-se (Introductions)
+- **Tabelas Criadas:**
+  - `introduction_posts`: Armazena os posts de apresentação dos membros (`id`, `user_id`, `title`, `content`, `likes_count`, `comments_count`, `created_at`, `updated_at`).
+  - `introduction_comments`: Armazena os comentários e respostas nos posts de apresentação (`id`, `post_id`, `user_id`, `content`, `created_at`).
+  - `introduction_likes`: Armazena as curtidas dos usuários nos posts com restrição de unicidade (`id`, `post_id`, `user_id`, `created_at`).
+- **Constraint Unica:** `uq_introduction_post_like` em `(post_id, user_id)`.
+- **Script de Migração:** `backend/scripts/migrate_introductions.py`
+
+---
+
+### [13/10/2026] - Criação da Tabela de Tutoriais Iniciais de Navegação (Tutorials)
+- **Tabela Criada:** `tutorials`
+- **Colunas:**
+  - `id`: Chave primária inteira com sequence (`tutorials_id_seq`).
+  - `title`: Título do vídeo tutorial (`VARCHAR(255)`, não nulo).
+  - `description`: Descrição e orientações textuais do tutorial (`TEXT`, opcional).
+  - `video_url`: URL de acesso ao vídeo (`VARCHAR(1024)`, não nulo).
+  - `video_key`: Chave no armazenamento Backblaze B2 (`VARCHAR(512)`, opcional).
+  - `thumbnail_url`: Imagem de capa do tutorial (`VARCHAR(1024)`, opcional).
+  - `duration`: Duração formatada (`VARCHAR(50)`, opcional, ex: `05:30`).
+  - `order_index`: Índice de ordenação da playlist (`INTEGER`, default `0`).
+  - `is_active`: Status de ativação (`BOOLEAN`, default `TRUE`).
+  - `created_at`: Data e hora de criação (`TIMESTAMP WITH TIME ZONE`).
+  - `updated_at`: Data e hora da última atualização (`TIMESTAMP WITH TIME ZONE`).
+- **Script de Migração:** `backend/scripts/migrate_tutorials.py`
+
+---
+
+### [13/10/2026] - Sincronização de Sequences e Auto-incremento (ID Defaults)
+- **Tabelas Afetadas:** `users`, `webhooks`, `webhook_logs`
+- **Alterações:**
+  - `users.id`: Vinculação de `DEFAULT nextval('users_id_seq'::regclass)` e sincronização do valor atual com `MAX(id)`.
+  - `webhooks.id`: Vinculação de `DEFAULT nextval('webhooks_id_seq'::regclass)`.
+  - `webhook_logs.id`: Vinculação de `DEFAULT nextval('webhook_logs_id_seq'::regclass)`.
+- **Script de Migração:** `backend/scripts/fix_id_sequences.py`
+
+---
+
 ### [08/10/2026] - Integração com AgentFlow (Base de Conhecimento RAG e Sincronização de Transcrições)
 - **Tabelas Afetadas:** `courses`, `modules`, `lesson_transcriptions`
 - **Colunas Adicionadas:**

@@ -5,7 +5,7 @@ export function RegisterLoadingState({ bgColor = '#090d16', isLightBg = false })
   return (
     <div
       className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
-      style={{ backgroundColor: bgColor, minHeight: '100vh', width: '100%' }}
+      style={{ backgroundColor: bgColor, height: '100%', minHeight: '100%', maxHeight: '100dvh', overflowY: 'auto', width: '100%' }}
     >
       <div className="auth-card text-center">
         <p>Verificando convite...</p>
@@ -18,7 +18,7 @@ export function RegisterInviteErrorState({ inviteError, bgColor = '#090d16', isL
   return (
     <div
       className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
-      style={{ backgroundColor: bgColor, minHeight: '100vh', width: '100%' }}
+      style={{ backgroundColor: bgColor, height: '100%', minHeight: '100%', maxHeight: '100dvh', overflowY: 'auto', width: '100%' }}
     >
       <div className="auth-card text-center">
         <div className="auth-error-banner">
@@ -40,7 +40,7 @@ export function RegisterSuccessState({ inviteInfo, bgColor = '#090d16', isLightB
   return (
     <div
       className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
-      style={{ backgroundColor: bgColor, minHeight: '100vh', width: '100%' }}
+      style={{ backgroundColor: bgColor, height: '100%', minHeight: '100%', maxHeight: '100dvh', overflowY: 'auto', width: '100%' }}
     >
       <div className="auth-card text-center">
         <CheckCircle size={44} color="#10b981" style={{ margin: '0 auto 16px' }} />

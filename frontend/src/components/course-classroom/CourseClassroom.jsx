@@ -271,7 +271,7 @@ export default function CourseClassroom({
                   gap: '12px'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                   <span
                     style={{
                       fontSize: '11px',
@@ -280,12 +280,13 @@ export default function CourseClassroom({
                       color: '#0f172a',
                       padding: '3px 10px',
                       borderRadius: '999px',
-                      textTransform: 'uppercase'
+                      textTransform: 'uppercase',
+                      flexShrink: 0
                     }}
                   >
                     Módulo em Reprodução
                   </span>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: textColor }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: textColor, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     {selectedModule.title}
                   </span>
                 </div>

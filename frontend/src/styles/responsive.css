@@ -1,12 +1,6 @@
-/* Mobile Header (Hidden on Desktop) */
-.mobile-header {
-  display: none;
-}
-
-.sidebar-close-btn {
-  display: none;
-}
-
+/* Mobile Header and Drawer elements (Hidden on Desktop) */
+.mobile-header,
+.sidebar-close-btn,
 .sidebar-backdrop {
   display: none;
 }
@@ -166,29 +160,332 @@
     padding: 16px 14px !important;
   }
 
-  /* Tabelas com Scroll Horizontal Suave */
-  .table-card,
-  .table-container,
+  /* Gestão de Usuários - Padding e Cabeçalho Otimizado no Mobile */
+  .users-page {
+    padding: 24px 14px 40px !important;
+  }
+
+  .page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .page-header h2 {
+    font-size: 20px !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+  }
+
+  .page-header .primary-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 11px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+  }
+
+  /* Abas de Navegação em Segmented Grid Mobile Fluido */
+  .sub-tabs-container,
+  .backup-sub-tabs {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 16px !important;
+  }
+
+  .sub-tab-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    border-radius: 10px !important;
+  }
+
+  /* Tabelas com Scroll Horizontal Isolado (sem esticar o card principal) */
+  .table-card {
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  .users-table-wrapper,
   .users-table-container,
+  .table-container,
   .data-table-container {
+    position: relative !important;
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    width: 100% !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(59, 130, 246, 0.4) transparent !important;
+  }
+
+  .users-table-wrapper::-webkit-scrollbar,
+  .users-table-container::-webkit-scrollbar,
+  .table-container::-webkit-scrollbar { height: 5px !important; }
+
+  .users-table-wrapper::-webkit-scrollbar-thumb,
+  .users-table-container::-webkit-scrollbar-thumb,
+  .table-container::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.35) !important;
+    border-radius: 999px !important;
   }
 
   .users-table,
   .students-table,
   .data-table {
-    min-width: 620px;
+    min-width: 680px;
+    width: max-content !important;
   }
 
-  /* Modais de Filtro e Barras de Busca */
+  .users-table th,
+  .users-table td {
+    white-space: nowrap !important;
+  }
+
+  /* Toolbar de Filtros e Ações em Massa */
   .table-toolbar,
   .student-filter-bar {
-    flex-direction: column;
+    flex-direction: column !important;
     align-items: stretch !important;
-    gap: 12px !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .table-filter-group {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .table-filter-group select {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 13px !important;
+  }
+
+  .bulk-actions-group {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .bulk-actions-group .btn-danger {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Coluna de Ações sem Sticky no Mobile para não sobrepor outras colunas */
+  .users-table th.table-actions-header,
+  .users-table td.table-actions-cell {
+    position: static !important;
+    right: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Botões de Ação na Tabela - Toque Confortável no Celular */
+  .table-actions-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .table-action-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    min-height: 32px !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+  }
+
+  /* Rodapé com Paginação Centralizada e Confortável */
+  .table-pagination-footer {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+    text-align: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .pagination-controls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .pagination-btn {
+    flex: 1 !important;
+    max-width: 110px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* ========================================================
+     RESPONSIVIDADE DO CHAT DA COMUNIDADE (MOBILE)
+     ======================================================== */
+  .chat-management-view {
+    position: relative !important;
+    width: 100% !important;
+    height: calc(100vh - 60px) !important;
+    overflow: hidden !important;
+  }
+
+  /* Quando visualizando a conversa (chat ativo no celular) */
+  .chat-management-view.mobile-chat-view-chat .chat-sidebar {
+    display: none !important;
+  }
+
+  .chat-management-view.mobile-chat-view-chat .chat-conversation-panel {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  /* Quando visualizando a lista de canais (mobile) */
+  .chat-management-view.mobile-chat-view-channels .chat-sidebar {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .chat-management-view.mobile-chat-view-channels .chat-conversation-panel {
+    display: none !important;
+  }
+
+  /* Botão Voltar para Canais no Header */
+  .chat-mobile-back-channels-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 6px 10px !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 8px !important;
+    color: #f8fafc !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Chat Header no Mobile */
+  .chat-header {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .chat-header-icon-box {
+    display: none !important;
+  }
+
+  .chat-header-btn-text {
+    display: none !important;
+  }
+
+  .chat-header [data-testid="chat-header-desc"] {
+    display: none !important;
+  }
+
+  .chat-header [data-testid="chat-header-title"] {
+    font-size: 0.95rem !important;
+  }
+
+  /* Input do Chat no Mobile */
+  .chat-input-keyboard-hint {
+    display: none !important;
+  }
+
+  /* Configurações da Área de Membros no Mobile (Grid 2x2 para não cortar abas) */
+  .platform-settings-page {
+    padding: 16px 14px !important;
+  }
+
+  .platform-settings-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 18px !important;
+  }
+
+  .platform-settings-tab-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
   }
 }
 
+/* Chat Helpers para Desktop e Geral */
+.chat-mobile-back-channels-btn { display: none; }
+.chat-header-btn-text { display: inline; }
 
+@media (min-width: 769px) {
+  .chat-mobile-back-channels-btn {
+    display: none !important;
+  }
+
+  .chat-management-view .chat-sidebar {
+    display: flex !important;
+    width: 300px !important;
+    min-width: 280px !important;
+  }
+
+  .chat-management-view .chat-conversation-panel {
+    display: flex !important;
+    flex: 1 !important;
+  }
+}
+
+/* Otimização da Barra Superior em Telas Menores (<= 640px) */
+.topbar-btn-text { display: inline; }
+
+@media (max-width: 640px) {
+  .global-top-navbar {
+    padding: 0 10px !important;
+  }
+
+  .topbar-right-group {
+    gap: 8px !important;
+  }
+
+  .topbar-btn-text {
+    display: none !important;
+  }
+
+  .topbar-action-btn {
+    padding: 7px 9px !important;
+    gap: 0 !important;
+  }
+}

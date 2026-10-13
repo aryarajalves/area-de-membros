@@ -18,6 +18,19 @@ export default function TopNavbar({
   const [unreadDmCount, setUnreadDmCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
+
+  useEffect(() => {
+    const handleWhiteLabelUpdated = (e) => {
+      if (e?.detail?.platform_name) {
+        setPlatformName(e.detail.platform_name);
+      }
+    };
+    window.addEventListener('whitelabel_updated', handleWhiteLabelUpdated);
+    return () => {
+      window.removeEventListener('whitelabel_updated', handleWhiteLabelUpdated);
+    };
+  }, []);
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 
@@ -184,19 +197,20 @@ export default function TopNavbar({
           </button>
         )}
         <div className="mobile-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }}>
-            Área de Membros
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }} data-testid="topnavbar-brand-name">
+            {platformName || 'Área de Membros'}
           </span>
         </div>
       </div>
 
       {/* Lado Direito: Botão Favoritos, Dropdown e Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
+      <div className="topbar-right-group" style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
         <button
           type="button"
           onClick={() => setIsFavoritesOpen((prev) => !prev)}
           data-testid="global-favorites-btn"
           title="Favoritos"
+          className="topbar-action-btn"
           style={{
             position: 'relative',
             display: 'inline-flex',
@@ -214,7 +228,7 @@ export default function TopNavbar({
           }}
         >
           <Bookmark size={16} fill={isFavoritesOpen || totalCount > 0 ? '#38bdf8' : 'none'} color="#38bdf8" />
-          <span className="hidden sm:inline">Favoritos</span>
+          <span className="topbar-btn-text">Favoritos</span>
 
           {totalCount > 0 && (
             <span
@@ -247,6 +261,7 @@ export default function TopNavbar({
           onClick={() => setIsDmOpen(true)}
           data-testid="global-dm-btn"
           title="Mensagens Diretas (DMs)"
+          className="topbar-action-btn"
           style={{
             position: 'relative',
             display: 'inline-flex',
@@ -264,7 +279,7 @@ export default function TopNavbar({
           }}
         >
           <MessageSquare size={16} color="#38bdf8" />
-          <span className="hidden sm:inline">DMs</span>
+          <span className="topbar-btn-text">DMs</span>
 
           {unreadDmCount > 0 && (
             <span

@@ -20,7 +20,12 @@ export default function RegisterOtpStep({
       className={`auth-page-container ${!isLightBg ? 'auth-dark-theme' : ''}`}
       style={{
         backgroundColor: bgColor,
-        minHeight: '100vh',
+        height: '100%',
+        minHeight: '100%',
+        maxHeight: '100dvh',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
         width: '100%',
         transition: 'background-color 0.3s ease'
       }}

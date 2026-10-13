@@ -3,7 +3,8 @@ from app.api.v1.endpoints import (
     users, backups, logs, lesson_interactions, courses, students,
     integrations, support, quiz, api_tokens, media_uploads, chat,
     profile, testimonials, gamification, lesson_transcriptions, platform_links,
-    favorites, student_tags, chat_broadcast, funnels, agentflow
+    favorites, student_tags, chat_broadcast, funnels, agentflow, tutorials,
+    whitelabel, introductions
 )
 
 api_router = APIRouter()
@@ -30,6 +31,9 @@ api_router.include_router(gamification.router, prefix="/gamification", tags=["ga
 api_router.include_router(platform_links.router, prefix="/platform-links", tags=["platform-links"])
 api_router.include_router(favorites.router)
 api_router.include_router(agentflow.router)
+api_router.include_router(tutorials.router, prefix="/tutorials", tags=["tutorials"])
+api_router.include_router(whitelabel.router, prefix="/whitelabel", tags=["whitelabel"])
+api_router.include_router(introductions.router, prefix="/introductions", tags=["introductions"])
 
 
 

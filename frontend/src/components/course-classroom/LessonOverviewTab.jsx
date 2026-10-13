@@ -143,7 +143,10 @@ export default function LessonOverviewTab({
             fontSize: '14.5px',
             color: subTextColor,
             lineHeight: '1.75',
-            whiteSpace: 'pre-wrap'
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+            maxWidth: '100%'
           }}
           data-testid="active-lesson-description"
         >

@@ -256,6 +256,43 @@ describe('App Component', () => {
     expect(screen.getByText('Configurações da Área de Membros')).toBeInTheDocument();
     expect(localStorage.getItem('active_tab')).toBe('settings');
   });
+
+  it('closes mobile sidebar drawer when triggering logout prompt from sidebar', () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 1,
+        name: 'Super Admin',
+        email: 'admin@test.com',
+        role: 'superadmin',
+      })
+    );
+
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    const aside = screen.getByRole('complementary', { name: /menu lateral/i });
+    const mobileToggleBtn = screen.getByTestId('mobile-menu-toggle-btn');
+
+    // Abre a sidebar no mobile
+    fireEvent.click(mobileToggleBtn);
+    expect(aside).toHaveClass('mobile-open');
+
+    // Clica no botão de logout dentro da sidebar
+    const logoutBtn = screen.getByTestId('logout-btn');
+    fireEvent.click(logoutBtn);
+
+    // Sidebar drawer mobile deve ter sido fechada imediatamente
+    expect(aside).not.toHaveClass('mobile-open');
+
+    // Modal de confirmação de logout deve estar aberto na frente
+    expect(screen.getByTestId('logout-modal-content')).toBeInTheDocument();
+    expect(screen.getByTestId('logout-modal-overlay')).toHaveStyle({ zIndex: '2000' });
+  });
 });
 
 

@@ -19,6 +19,10 @@ if os.path.exists(TEST_DB_FILE):
         pass
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_FILE}"
+settings.DATABASE_URL = SQLALCHEMY_DATABASE_URL
+settings.B2_KEY_ID = ""
+settings.B2_APPLICATION_KEY = ""
+settings.B2_ENDPOINT_URL = ""
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,

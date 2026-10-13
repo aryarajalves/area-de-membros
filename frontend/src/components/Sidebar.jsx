@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle,
   Settings, UserCheck, Webhook, HelpCircle, X, MessagesSquare,
-  MessageSquareQuote, Trophy, ExternalLink, GitBranch
+  MessageSquareQuote, Trophy, ExternalLink, GitBranch, Home, Handshake
 } from 'lucide-react';
 import { getLinkIcon, getLinkColor } from './platform-settings/linkIcons';
 
@@ -18,6 +18,7 @@ export default function Sidebar({
   onCloseMobile
 }) {
   const [platformLinks, setPlatformLinks] = useState([]);
+  const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
@@ -47,17 +48,25 @@ export default function Sidebar({
     const handleLinksUpdated = () => {
       fetchLinks();
     };
+    const handleWhiteLabelUpdated = (e) => {
+      if (e?.detail?.platform_name) {
+        setPlatformName(e.detail.platform_name);
+      }
+    };
+
     window.addEventListener('platform_links_updated', handleLinksUpdated);
+    window.addEventListener('whitelabel_updated', handleWhiteLabelUpdated);
 
     return () => {
       isMounted = false;
       window.removeEventListener('platform_links_updated', handleLinksUpdated);
+      window.removeEventListener('whitelabel_updated', handleWhiteLabelUpdated);
     };
   }, []);
 
 
   // Proposta 2: 3 Categorias Modernas (Mais compacta)
-  // 1. ÁREA PEDAGÓGICA (ou MEU APRENDIZADO): Cursos, Alunos, Suporte, Relatos de Aulas
+  // 1. ÁREA PEDAGÓGICA (ou MEU APRENDIZADO): Início, Cursos, Alunos, Suporte, Relatos de Aulas
   // 2. COMUNIDADE & SOCIAL: Chat da Comunidade, Ranking & Conquistas, Depoimentos
   // 3. SISTEMA & CONFIGURAÇÕES: Configurações, Integrações, Gestão de Usuários, Backup Automático, Logs do Sistema
   const categories = [
@@ -65,6 +74,9 @@ export default function Sidebar({
       id: 'pedagogica',
       title: isAluno ? 'Meu Aprendizado' : 'Área Pedagógica',
       items: [
+        ...(isSuperAdmin || isAdmin || isAluno
+          ? [{ id: 'home', label: 'Início', icon: Home }]
+          : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'courses', label: 'Cursos', icon: GraduationCap }]
           : []),
@@ -93,6 +105,9 @@ export default function Sidebar({
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'testimonials', label: 'Depoimentos', icon: MessageSquareQuote }]
+          : []),
+        ...(isSuperAdmin || isAdmin || isAluno
+          ? [{ id: 'introductions', label: 'Apresente-se', icon: Handshake }]
           : []),
         ...(isSuperAdmin || isAdmin
           ? [{ id: 'funnels', label: 'Funis de Mensagens', icon: GitBranch }]
@@ -164,8 +179,8 @@ export default function Sidebar({
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="logo-text" style={{ color: isLightBg ? '#0b192c' : '#ffffff' }}>
-              Área de Membros
+            <span className="logo-text" style={{ color: isLightBg ? '#0b192c' : '#ffffff' }} data-testid="sidebar-logo-text">
+              {platformName || 'Área de Membros'}
             </span>
             {onCloseMobile && (
               <button

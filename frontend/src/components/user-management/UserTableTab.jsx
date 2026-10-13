@@ -75,144 +75,146 @@ export default function UserTableTab({
         </div>
       </div>
 
-      <table className="users-table">
-        <thead>
-          <tr>
-            <th style={{ width: '40px', textAlign: 'center' }}>
-              <input
-                type="checkbox"
-                className="table-checkbox"
-                checked={isAllUsersSelected}
-                onChange={toggleSelectAllUsers}
-                disabled={selectableUserIds.length === 0}
-                title="Selecionar todos os usuários da página"
-                data-testid="select-all-users-checkbox"
-              />
-            </th>
-            <th>Nome</th>
-            <th>E-mail</th>
-            <th>WhatsApp</th>
-            <th>Perfil</th>
-            <th>Status</th>
-            <th>Cadastrado em</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedUsers.length === 0 ? (
+      <div className="users-table-wrapper">
+        <table className="users-table">
+          <thead>
             <tr>
-              <td colSpan={8} className="empty-table-state">
-                Nenhum usuário encontrado com os filtros selecionados.
-              </td>
+              <th style={{ width: '40px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  className="table-checkbox"
+                  checked={isAllUsersSelected}
+                  onChange={toggleSelectAllUsers}
+                  disabled={selectableUserIds.length === 0}
+                  title="Selecionar todos os usuários da página"
+                  data-testid="select-all-users-checkbox"
+                />
+              </th>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>WhatsApp</th>
+              <th>Perfil</th>
+              <th>Status</th>
+              <th>Cadastrado em</th>
+              <th className="table-actions-header">Ações</th>
             </tr>
-          ) : (
-            paginatedUsers.map((u) => {
-              const isSuperAdmin = u.role === 'superadmin';
-              const isSelf = currentUser?.id === u.id;
-              const isSelected = selectedUserIds.includes(u.id);
+          </thead>
+          <tbody>
+            {paginatedUsers.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="empty-table-state">
+                  Nenhum usuário encontrado com os filtros selecionados.
+                </td>
+              </tr>
+            ) : (
+              paginatedUsers.map((u) => {
+                const isSuperAdmin = u.role === 'superadmin';
+                const isSelf = currentUser?.id === u.id;
+                const isSelected = selectedUserIds.includes(u.id);
 
-              return (
-                <tr key={u.id} data-testid={`user-row-${u.id}`}>
-                  <td style={{ textAlign: 'center' }}>
-                    {!isSuperAdmin && !isSelf && (
-                      <input
-                        type="checkbox"
-                        className="table-checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectUser(u.id)}
-                        data-testid={`select-user-checkbox-${u.id}`}
-                      />
-                    )}
-                  </td>
-                  <td className="font-semibold">{u.name}</td>
-                  <td className="text-secondary">{u.email}</td>
-                  <td>
-                    {u.phone ? (
-                      <a
-                        href={getWhatsAppUrl(u.phone)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          color: '#22c55e',
-                          textDecoration: 'none',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                        }}
-                        title="Abrir conversa no WhatsApp"
-                        data-testid={`user-whatsapp-link-${u.id}`}
-                      >
-                        <MessageCircle size={14} style={{ flexShrink: 0 }} />
-                        <span>{u.phone}</span>
-                      </a>
-                    ) : (
-                      <span className="text-muted" style={{ fontSize: '13px' }} data-testid={`user-no-whatsapp-${u.id}`}>
-                        —
+                return (
+                  <tr key={u.id} data-testid={`user-row-${u.id}`}>
+                    <td style={{ textAlign: 'center' }}>
+                      {!isSuperAdmin && !isSelf && (
+                        <input
+                          type="checkbox"
+                          className="table-checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectUser(u.id)}
+                          data-testid={`select-user-checkbox-${u.id}`}
+                        />
+                      )}
+                    </td>
+                    <td className="font-semibold">{u.name}</td>
+                    <td className="text-secondary">{u.email}</td>
+                    <td>
+                      {u.phone ? (
+                        <a
+                          href={getWhatsAppUrl(u.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: '#22c55e',
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                          }}
+                          title="Abrir conversa no WhatsApp"
+                          data-testid={`user-whatsapp-link-${u.id}`}
+                        >
+                          <MessageCircle size={14} style={{ flexShrink: 0 }} />
+                          <span>{u.phone}</span>
+                        </a>
+                      ) : (
+                        <span className="text-muted" style={{ fontSize: '13px' }} data-testid={`user-no-whatsapp-${u.id}`}>
+                          —
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge badge-${u.role}`} data-testid={`badge-role-${u.id}`}>
+                        {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'aluno' ? 'Aluno' : 'Usuário'}
                       </span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge badge-${u.role}`} data-testid={`badge-role-${u.id}`}>
-                      {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'aluno' ? 'Aluno' : 'Usuário'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="status-indicator">
-                      <span className="dot dot-active"></span>
-                      Ativo
-                    </span>
-                  </td>
-                  <td className="text-secondary">
-                    {new Date(u.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td>
-                    {isSuperAdmin ? (
-                      <span className="text-muted" title="O Super Admin é protegido de edição">Protegido</span>
-                    ) : (
-                      <div className="table-actions-group">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(u)}
-                          className="table-action-btn btn-secondary"
-                          title="Alterar perfil"
-                          data-testid={`edit-user-btn-${u.id}`}
-                        >
-                          <Edit2 size={13} />
-                          <span>Editar</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRequestPasswordReset(u)}
-                          className="table-action-btn btn-reset"
-                          title="Redefinir senha"
-                          data-testid={`reset-pass-btn-${u.id}`}
-                        >
-                          <KeyRound size={13} />
-                          <span>Redefinir Senha</span>
-                        </button>
-                        {!isSelf && (
+                    </td>
+                    <td>
+                      <span className="status-indicator">
+                        <span className="dot dot-active"></span>
+                        Ativo
+                      </span>
+                    </td>
+                    <td className="text-secondary">
+                      {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="table-actions-cell">
+                      {isSuperAdmin ? (
+                        <span className="text-muted" title="O Super Admin é protegido de edição">Protegido</span>
+                      ) : (
+                        <div className="table-actions-group">
                           <button
                             type="button"
-                            onClick={() => handleDeleteUser(u.id, u.name)}
-                            className="table-action-btn btn-danger"
-                            title="Excluir usuário"
-                            data-testid={`delete-user-btn-${u.id}`}
+                            onClick={() => handleOpenEdit(u)}
+                            className="table-action-btn btn-secondary"
+                            title="Alterar perfil"
+                            data-testid={`edit-user-btn-${u.id}`}
                           >
-                            <Trash2 size={13} />
-                            <span>Excluir</span>
+                            <Edit2 size={13} />
+                            <span>Editar</span>
                           </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                          <button
+                            type="button"
+                            onClick={() => handleRequestPasswordReset(u)}
+                            className="table-action-btn btn-reset"
+                            title="Redefinir senha"
+                            data-testid={`reset-pass-btn-${u.id}`}
+                          >
+                            <KeyRound size={13} />
+                            <span>Redefinir Senha</span>
+                          </button>
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              className="table-action-btn btn-danger"
+                              title="Excluir usuário"
+                              data-testid={`delete-user-btn-${u.id}`}
+                            >
+                              <Trash2 size={13} />
+                              <span>Excluir</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Rodapé com Paginação de Usuários (20 por página) */}
       <div className="table-pagination-footer" data-testid="users-pagination">

@@ -92,6 +92,7 @@ describe('PlatformSettings Component', () => {
     expect(screen.getByTestId('tab-appearance-btn')).toBeInTheDocument();
     expect(screen.getByTestId('tab-profile-btn')).toBeInTheDocument();
     expect(screen.queryByTestId('tab-api-tokens-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-whitelabel-btn')).not.toBeInTheDocument();
   });
 
   it('exibe a aba Tokens de API e Links da Plataforma para administradores e permite alternar para Links', async () => {
@@ -145,6 +146,70 @@ describe('PlatformSettings Component', () => {
     );
 
     expect(screen.queryByTestId('tab-platform-links-btn')).not.toBeInTheDocument();
+  });
+
+  it('renders responsive tabs with platform-settings-tabs and platform-settings-tab-btn classes', () => {
+    const adminUser = {
+      id: 1,
+      name: 'Aryaraj Super',
+      email: 'aryaraj@test.com',
+      role: 'superadmin',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={adminUser}
+        />
+      </ToastProvider>
+    );
+
+    const tabsContainer = screen.getByTestId('platform-settings-tabs');
+    expect(tabsContainer).toHaveClass('platform-settings-tabs');
+
+    const appearanceBtn = screen.getByTestId('tab-appearance-btn');
+    const profileBtn = screen.getByTestId('tab-profile-btn');
+    const apiTokensBtn = screen.getByTestId('tab-api-tokens-btn');
+    const linksBtn = screen.getByTestId('tab-platform-links-btn');
+    const whitelabelBtn = screen.getByTestId('tab-whitelabel-btn');
+
+    expect(appearanceBtn).toHaveClass('platform-settings-tab-btn');
+    expect(profileBtn).toHaveClass('platform-settings-tab-btn');
+    expect(apiTokensBtn).toHaveClass('platform-settings-tab-btn');
+    expect(linksBtn).toHaveClass('platform-settings-tab-btn');
+    expect(whitelabelBtn).toHaveClass('platform-settings-tab-btn');
+  });
+
+  it('exibe a aba WhiteLabel para administradores e permite alternar para ela', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null }),
+    });
+
+    const adminUser = {
+      id: 1,
+      name: 'Admin Teste',
+      email: 'admin@test.com',
+      role: 'admin',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={adminUser}
+        />
+      </ToastProvider>
+    );
+
+    const whitelabelBtn = screen.getByTestId('tab-whitelabel-btn');
+    expect(whitelabelBtn).toBeInTheDocument();
+
+    fireEvent.click(whitelabelBtn);
+
+    expect(await screen.findByTestId('platform-whitelabel-tab')).toBeInTheDocument();
+    expect(screen.getByText('Nome da Plataforma (Marca / WhiteLabel)')).toBeInTheDocument();
   });
 });
 

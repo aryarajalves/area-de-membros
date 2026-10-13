@@ -447,6 +447,33 @@ describe('UserManagement Component Tabs', () => {
       expect(screen.getByText(/Indefinido \(não expira\)/i)).toBeInTheDocument();
     });
   });
+
+  it('opens CreateUserManualModal when "Criar Usuário" button is clicked', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/users')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 1, name: 'Admin', email: 'admin@test.com', role: 'superadmin', is_active: true, created_at: new Date().toISOString() },
+          ],
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <UserManagement currentUser={{ id: 1, role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    const openCreateBtn = await screen.findByTestId('open-create-user-modal-btn');
+    expect(openCreateBtn).toBeInTheDocument();
+    fireEvent.click(openCreateBtn);
+
+    expect(screen.getByTestId('create-user-manual-modal')).toBeInTheDocument();
+    expect(screen.getByText('Criar Novo Usuário')).toBeInTheDocument();
+  });
 });
 
 

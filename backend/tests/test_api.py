@@ -471,24 +471,32 @@ def test_backup_system_full_flow():
     assert restore_res.status_code == 200
     assert "restaurado com sucesso" in restore_res.json()["message"]
 
-    # 7. Importar backup externo
+    # 7. Importar backups externos para teste de exclusão
     import io
-    fake_dump_file = io.BytesIO(b"-- Fake pg dump sql\nCREATE TABLE test_import();")
-    import_res = client.post(
+    fake_dump_file1 = io.BytesIO(b"-- Fake pg dump sql 1\nCREATE TABLE test_import1();")
+    import_res1 = client.post(
         "/api/v1/backups/import",
-        files={"file": ("externo_backup.dump.gz", fake_dump_file, "application/gzip")},
+        files={"file": ("externo_backup_1.dump.gz", fake_dump_file1, "application/gzip")},
         headers=headers
     )
-    assert import_res.status_code == 201
-    imported_bkp = import_res.json()
-    assert imported_bkp["backup_type"] == "imported"
+    assert import_res1.status_code == 201
+    imported_bkp1 = import_res1.json()
+
+    fake_dump_file2 = io.BytesIO(b"-- Fake pg dump sql 2\nCREATE TABLE test_import2();")
+    import_res2 = client.post(
+        "/api/v1/backups/import",
+        files={"file": ("externo_backup_2.dump.gz", fake_dump_file2, "application/gzip")},
+        headers=headers
+    )
+    assert import_res2.status_code == 201
+    imported_bkp2 = import_res2.json()
 
     # 8. Exclusão individual
-    del_res = client.delete(f"/api/v1/backups/{backup_id}", headers=headers)
+    del_res = client.delete(f"/api/v1/backups/{imported_bkp1['id']}", headers=headers)
     assert del_res.status_code == 200
 
     # 9. Exclusão em lote
-    bulk_res = client.post("/api/v1/backups/bulk-delete", json={"ids": [imported_bkp["id"]]}, headers=headers)
+    bulk_res = client.post("/api/v1/backups/bulk-delete", json={"ids": [imported_bkp2["id"]]}, headers=headers)
     assert bulk_res.status_code == 200
     assert bulk_res.json()["deleted_count"] == 1
 

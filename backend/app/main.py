@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.logger import logger
 from app.core.database import engine, Base, SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User
@@ -54,6 +56,9 @@ async def lifespan(app: FastAPI):
         try:
             conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS used_by_email VARCHAR;"))
             conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS allowed_course_ids VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq');"))
+            conn.execute(text("ALTER TABLE webhooks ALTER COLUMN id SET DEFAULT nextval('webhooks_id_seq');"))
+            conn.execute(text("ALTER TABLE webhook_logs ALTER COLUMN id SET DEFAULT nextval('webhook_logs_id_seq');"))
             conn.commit()
         except Exception:
             pass
@@ -128,3 +133,12 @@ def health_check():
 @app.get("/", include_in_schema=False)
 def root():
     return {"message": f"Bem-vindo ao {settings.PROJECT_NAME}"}
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Erro inesperado em {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno do servidor. Tente novamente mais tarde."}
+    )
+

@@ -46,9 +46,12 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Documento HTML Inteligente:** Documento HTML5 autônomo com estilos modernos e suporte nativo a impressão/PDF (`@media print`), acessível diretamente pelo botão "Abrir Documento HTML" em nova aba.
   - **Tratamento Amigável de Quotas:** Detecção e mensagem explicativa em português caso a chave OpenAI esteja sem créditos.
   - **Interface Interativa:** Aba "Transcrição & Resumo IA" no player da aula com busca instantânea de termos, botão de cópia com feedback e re-geração para administradores.
+- **Recolhimento e Expansão de Módulos (Módulos Retráteis):**
+  - Toggle interativo de abertura/fechamento por módulo na barra lateral da sala de aula com indicador animado Chevron (`ChevronDown` / `ChevronRight`) e contagem dinâmica de aulas.
+  - Preservação da integridade de ações administrativas (`stopPropagation`) nos botões de gerenciar aulas, novo módulo e exclusão.
 - **Navegação Moderna em 3 Categorias (Sidebar):**
-  - 🎓 **Área Pedagógica** (ou *Meu Aprendizado*): Cursos, Alunos, Suporte, Relatos de Aulas (com visualização permitida para Alunos em modo leitura).
-  - 🚀 **Comunidade & Social**: Chat da Comunidade, Ranking & Conquistas, Depoimentos.
+  - 🎓 **Área Pedagógica** (ou *Meu Aprendizado*): Início (Tutoriais), Cursos, Alunos, Suporte, Relatos de Aulas (com visualização permitida para Alunos em modo leitura).
+  - 🚀 **Comunidade & Social**: Apresente-se (Networking), Chat da Comunidade, Ranking & Conquistas, Depoimentos.
   - ⚙️ **Sistema & Configurações**: Configurações (com acesso para Alunos restrito à Cor de Fundo e Meu Perfil), Integrações, Gestão de Usuários, Backup Automático, Logs do Sistema.
 
 ---
@@ -172,13 +175,44 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Progressão balanceada por fórmula exponencial de XP.
 - **Escada de Níveis RPG (`GamificationRpgLadderModal`):**
   - Modal interativo com visualização da trilha completa de elos, ícones neon temáticos, requisitos de pontuação e indicador de nível atual do aluno.
+  - Layout resiliente com scroll independente e flexbox estruturado para visualização perfeita dos 20 níveis.
   - Badges dinâmicos integrados nos cards de alunos e rankings.
+- **Painel de Nível e Ranking no Meu Perfil (`ProfileGamificationCard`):**
+  - Card dedicado na aba Meu Perfil exibindo o Elo atual, badge temático, pontuação acumulada, barra de progresso para o próximo nível e posição no ranking em tempo real.
+  - Botão de acesso rápido para inspecionar a escada completa de 20 níveis.
 
 ### 📢 12. Disparos em Massa no Chat (Chat Broadcast) & Tags de Alunos
 - **Campanhas de Mensagens:**
   - Disparos em massa para canais ou DMs com segmentação por tags personalizadas de alunos.
   - Botões de chamada para ação (CTA) configuráveis com links interativos.
   - Histórico de campanhas com estatísticas de entrega e status.
+
+### 🎨 13. WhiteLabel e Identidade Visual Personalizada (`/settings`)
+- **Customização Completa de Marca (`PlatformWhiteLabelTab` & `/api/v1/whitelabel`):**
+  - Configuração de nome da plataforma, logo oficial, ícone/favicon e paleta de cores primárias.
+  - Banner customizado na tela de login/boas-vindas com upload direto.
+  - Aplicação reativa e persistente no TopNavbar, Sidebar e aba do navegador.
+
+### 🧭 14. Central de Início e Tutoriais Interativos com IA (`/tutorials`)
+- **Guia de Primeiros Passos e Onboarding:**
+  - Vitrine de tutoriais para novos alunos com barra de progresso individual (`HomeTutorials`).
+  - Geração automática de roteiros e etapas de tutorial utilizando inteligência artificial (`/api/v1/tutorials/ai-generate`).
+  - Suporte a vídeos demonstrativos, links externos e checklist de passos concluídos pelo aluno.
+
+### 🤝 15. Mural "Apresente-se" e Networking de Alunos (`/introductions`)
+- **Comunidade Social de Apresentações:**
+  - Feed interativo de networking onde alunos publicam biografia, foto de perfil, links sociais e vídeo de introdução (`IntroductionManagement`).
+  - **Transcrição e Descrição com IA:** Upload de vídeo com transcrição automática via Whisper e síntese inteligente do perfil em texto.
+  - Curtidas e comentários em tempo real com contadores dinâmicos.
+  - Modais de exclusão e edição com confirmação segura e layout responsivo.
+
+### 🔐 16. Criação Manual de Usuários, Senha Forte e Resiliência
+- **Criação Manual de Alunos/Admins (`CreateUserManualModal`):**
+  - Formulário completo para administradores cadastrarem usuários diretamente pelo painel com definição de perfil (`student` ou `admin`), cursos vinculados e data de expiração.
+- **Validação Rigorosa de Senha (12 Caracteres):**
+  - Requisito de senha com no mínimo 12 caracteres contendo letras maiúsculas, minúsculas, números e caracteres especiais em todas as telas (Registro, Perfil, Criação Manual e Redefinição).
+- **Handler Global de Exceções no FastAPI:**
+  - Captura padronizada de erros inesperados retornando JSON `{"detail": "..."}` com status HTTP 500 e log estruturado, prevenindo vazamento de stack traces.
 
 ---
 
@@ -188,12 +222,12 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 Area de Membros - Alunos/
 ├── backend/                       # API Python com FastAPI
 │   ├── app/
-│   │   ├── api/v1/endpoints/      # Rotas (courses, students, funnels, chat_broadcast, student_tags, integrations, users, api_tokens, support, quiz, backups, logs)
+│   │   ├── api/v1/endpoints/      # Rotas (courses, students, funnels, chat_broadcast, student_tags, integrations, users, api_tokens, support, quiz, backups, logs, tutorials, introductions, whitelabel)
 │   │   ├── core/                  # Configurações, segurança, database e logger
-│   │   ├── models/                # Modelos SQLAlchemy (user, course, funnel, chat_broadcast, student_tag, webhook, api_token, support)
+│   │   ├── models/                # Modelos SQLAlchemy (user, course, funnel, chat_broadcast, student_tag, webhook, api_token, support, tutorial, introduction)
 │   │   ├── schemas/               # Schemas Pydantic v2
-│   │   ├── services/              # Serviços de negócio (funnel, chat_broadcast, gamification, storage, webhooks, import/export, backup)
-│   │   └── main.py                # Entrypoint da aplicação FastAPI
+│   │   ├── services/              # Serviços de negócio (funnel, chat_broadcast, gamification, storage, webhooks, import/export, backup, ai_transcription)
+│   │   └── main.py                # Entrypoint da aplicação FastAPI com Global Exception Handler
 │   ├── scripts/                   # Scripts de migração SQL rastreados
 │   ├── tests/                     # Testes unitários com pytest
 │   ├── Dockerfile
@@ -203,15 +237,17 @@ Area de Membros - Alunos/
 │   ├── src/
 │   │   ├── components/            # Componentes modulares (< 500 linhas)
 │   │   │   ├── funnels/           # Editor visual de funis, canvas, nós e conexões
-│   │   │   ├── course-classroom/  # Sala de aula, player, artigos, quiz, comentários, anexos
+│   │   │   ├── course-classroom/  # Sala de aula, player, módulos retráteis, artigos, quiz, comentários, anexos
 │   │   │   ├── course-management/ # Vitrine de cursos e modais
 │   │   │   ├── student-management/# Painel de alunos, tags, broadcast, linha do tempo, histórico, import/export
 │   │   │   ├── gamification/      # Ranking, escada de níveis RPG, regras e pódios
 │   │   │   ├── support-management/# Fórum de dúvidas, solução oficial, lightbox
-│   │   │   ├── platform-settings/ # Aparência, cores e gestão de Chaves de API
+│   │   │   ├── platform-settings/ # Aparência, cores, WhiteLabel, Meu Perfil com RPG e gestão de Chaves de API
+│   │   │   ├── home-tutorials/    # Central de tutoriais de início com IA
+│   │   │   ├── introductions/     # Mural Apresente-se e networking com vídeo IA
 │   │   │   ├── integration-management/ # Webhooks, eventos de marcos, logs de disparo
 │   │   │   ├── automated-backup/  # Gerenciamento de backups
-│   │   │   ├── user-management/   # Gestão de convites e usuários (com WhatsApp e fuso Brasília)
+│   │   │   ├── user-management/   # Gestão de convites, criação manual de usuários (com WhatsApp e fuso Brasília)
 │   │   │   ├── LogManagement.jsx  # Logs de contêineres Docker
 │   │   │   └── Sidebar.jsx        # Menu de navegação lateral por categorias
 │   │   ├── context/               # ToastContext (z-index 999999) e autenticação
@@ -253,7 +289,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **480 testes unitários passando (100% de aprovação em 102 arquivos de teste)** cobrindo edição e visualização de capítulos gerados por IA (LessonChaptersCard e EditLessonChaptersModal), editor visual de funis (FunnelCanvasPage, nós de conteúdo, cálculo geométrico de conexões Bézier e drag-and-drop bidirecional), sistema de gamificação RPG com 20 níveis e modal de escada, campanhas de chat broadcast com botões interativos e segmentação por tags de alunos, sistema de Favoritos unificado (Aulas, Dúvidas de Suporte e Mensagens do Chat), Links Rápidos da Plataforma, modularização completa de estilos (App.css dividido em 10 módulos) e quiz (LessonQuizViewer decomposto em componentes dedicados), feedback visual de carregamento/buffer do player com transição de poster suave e modularização de controles (VideoControls), campos de descrição expansíveis (Maximizar/Restaurar), fila de uploads em segundo plano com painel flutuante, upload direto S3/Backblaze B2 com progresso em tempo real, sala de aula, player, artigos, quizes, suporte/comunidade, tokens de API, histórico de alunos, convites com fuso de Brasília, WhatsApp, responsividade mobile e logs.
+> **500+ testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA (`HomeTutorials`, `TutorialModal`, `TutorialVideoPreview`), mural social Apresente-se com networking e vídeo IA (`IntroductionManagement`), gamificação RPG no Meu Perfil (`ProfileGamificationCard`), escada de 20 níveis (`GamificationRpgLadderModal`), módulos retráteis na sala de aula (`ModuleTimelineSidebar`), criação manual de usuários (`CreateUserManualModal`), validação de senhas com 12 caracteres, edição de capítulos com IA, editor de funis Bézier, chat broadcast, Favoritos unificados, fila de uploads em segundo plano e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -262,7 +298,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **149 testes unitários passando (100% de aprovação)** cobrindo edição de capítulos e minutagens IA (`/api/v1/courses/.../transcription/chapters`), sincronização com base de conhecimento AgentFlow, endpoints de funis (`/api/v1/funnels`), campanhas de chat broadcast, tags de alunos, níveis de gamificação RPG, Favoritos (aulas, dúvidas e mensagens de chat), Links Rápidos da Plataforma, custos de transcrição IA, fixação e favoritos de suporte, geração de URLs pré-assinadas S3/Backblaze B2, derivação resiliente de endpoint B2, validação de uploads diretos, autenticação JWT e API Token (Bearer / X-API-Key), cursos, marcos de progresso, rotas de convites, quizes, suporte, worker e monitoramento de logs.
+> **174 testes unitários passando (100% de aprovação)** cobrindo endpoints de WhiteLabel (`/api/v1/whitelabel`), tutoriais e geração por IA (`/api/v1/tutorials`), mural de apresentações com vídeo e comentários (`/api/v1/introductions`), criação manual de usuários e senha forte de 12 caracteres (`/api/v1/users`), handler global de exceções HTTP 500, capítulos de transcrição IA, funis de automação, chat broadcast, tags de alunos, gamificação RPG, Favoritos, tokens de API, uploads S3/Backblaze B2, autenticação JWT, marcos de progresso e rotas de convites.
 
 ---
 

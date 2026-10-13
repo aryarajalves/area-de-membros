@@ -76,4 +76,41 @@ describe('UserTableTab Component', () => {
     const noZap3 = screen.getByTestId('user-no-whatsapp-3');
     expect(noZap3).toHaveTextContent('—');
   });
+
+  it('renders table within users-table-wrapper and contains responsive action classes', () => {
+    const { container } = render(
+      <UserTableTab
+        currentUser={{ id: 1, role: 'superadmin' }}
+        filteredUsers={mockUsers}
+        paginatedUsers={mockUsers}
+        userRoleFilter="all"
+        setUserRoleFilter={vi.fn()}
+        selectedUserIds={[]}
+        setSelectedUserIds={vi.fn()}
+        selectableUserIds={[2, 3]}
+        isAllUsersSelected={false}
+        toggleSelectAllUsers={vi.fn()}
+        toggleSelectUser={vi.fn()}
+        handleBulkDeleteUsers={vi.fn()}
+        handleOpenEdit={vi.fn()}
+        handleRequestPasswordReset={vi.fn()}
+        handleDeleteUser={vi.fn()}
+        usersPage={1}
+        setUsersPage={vi.fn()}
+        totalUserPages={1}
+        pageSize={20}
+      />
+    );
+
+    const wrapper = container.querySelector('.users-table-wrapper');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper.querySelector('.users-table')).toBeInTheDocument();
+
+    const actionsHeader = container.querySelector('.table-actions-header');
+    expect(actionsHeader).toBeInTheDocument();
+    expect(actionsHeader).toHaveTextContent('Ações');
+
+    const actionCells = container.querySelectorAll('.table-actions-cell');
+    expect(actionCells.length).toBeGreaterThan(0);
+  });
 });

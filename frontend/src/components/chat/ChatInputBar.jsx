@@ -450,6 +450,7 @@ export default function ChatInputBar({
         </div>
       </div>
       <div
+        className="chat-input-keyboard-hint"
         style={{
           marginTop: '6px',
           display: 'flex',

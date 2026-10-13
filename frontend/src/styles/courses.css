@@ -277,3 +277,68 @@
   background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
+/* Otimização da Barra de Pesquisa e Página de Cursos no Mobile */
+.courses-management-page {
+  padding: 24px 32px;
+}
+
+.course-search-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.course-search-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.course-search-input-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.course-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.course-search-count {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .courses-management-page {
+    padding: 16px 14px !important;
+  }
+
+  .course-search-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .course-search-input-box {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+
+  .course-search-count {
+    text-align: right !important;
+    font-size: 12px !important;
+  }
+}
+
+

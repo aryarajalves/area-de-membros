@@ -77,4 +77,17 @@ describe('TopNavbar Component', () => {
     fireEvent.click(notifBtn);
     expect(screen.getByTestId('notifications-modal')).toBeInTheDocument();
   });
+
+  it('applies responsive mobile classes to favorites and dm buttons and labels', () => {
+    render(<TopNavbar user={mockUser} />);
+
+    const favBtn = screen.getByTestId('global-favorites-btn');
+    expect(favBtn).toHaveClass('topbar-action-btn');
+
+    const dmBtn = screen.getByTestId('global-dm-btn');
+    expect(dmBtn).toHaveClass('topbar-action-btn');
+
+    expect(favBtn.querySelector('.topbar-btn-text')).toHaveTextContent('Favoritos');
+    expect(dmBtn.querySelector('.topbar-btn-text')).toHaveTextContent('DMs');
+  });
 });

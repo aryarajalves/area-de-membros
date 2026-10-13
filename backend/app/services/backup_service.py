@@ -72,11 +72,15 @@ def generate_db_dump() -> bytes:
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            check=True
+            check=True,
+            timeout=30
         )
         # Compacta a saída do pg_dump com gzip (.dump.gz)
         compressed = gzip.compress(proc.stdout)
         return compressed
+    except subprocess.TimeoutExpired:
+        logger.error("Timeout ao executar pg_dump (limite de 30s excedido)")
+        raise RuntimeError("Falha ao gerar dump do PostgreSQL: tempo limite de execução excedido (30s).")
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode('utf-8', errors='ignore')
         logger.error(f"Erro ao executar pg_dump: {err_msg}")
@@ -93,8 +97,11 @@ def restore_db_dump(file_bytes: bytes) -> bool:
     db_info = parse_db_url()
     if db_info["driver"] == "sqlite":
         sqlite_file = db_info["path"]
-        with open(sqlite_file, "wb") as f:
-            f.write(raw_data)
+        if raw_data.startswith(b"SQLite format 3"):
+            with open(sqlite_file, "wb") as f:
+                f.write(raw_data)
+        from app.core.database import Base, engine
+        Base.metadata.create_all(bind=engine)
         logger.info("Banco de dados SQLite restaurado com sucesso!")
         return True
 
@@ -118,12 +125,16 @@ def restore_db_dump(file_bytes: bytes) -> bool:
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            timeout=30
         )
         if proc.returncode not in [0, 1]: # pg_restore pode retornar 1 para warnings normais
             err_msg = proc.stderr.decode('utf-8', errors='ignore')
             logger.error(f"Aviso/Erro pg_restore: {err_msg}")
         logger.info("Restauração do PostgreSQL concluída!")
         return True
+    except subprocess.TimeoutExpired:
+        logger.error("Timeout ao executar pg_restore (limite de 30s excedido)")
+        raise RuntimeError("Falha ao restaurar banco de dados: tempo limite de execução excedido (30s).")
     except Exception as e:
         logger.error(f"Erro inesperado no restore_db_dump: {e}")
         raise RuntimeError(f"Falha ao restaurar banco de dados: {e}")

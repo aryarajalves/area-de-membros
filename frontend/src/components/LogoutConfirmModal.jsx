@@ -11,8 +11,9 @@ export default function LogoutConfirmModal({
 
   return (
     <div
-      className="modal-overlay"
+      className="modal-overlay logout-modal-overlay"
       data-testid="logout-modal-overlay"
+      style={{ zIndex: 2000 }}
       onClick={(e) => {
         // Regra obrigatória: NÃO deve fechar ao clicar fora do painel central
         e.stopPropagation();

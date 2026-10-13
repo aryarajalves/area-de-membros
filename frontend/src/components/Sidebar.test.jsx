@@ -10,22 +10,26 @@ describe('Sidebar Component', () => {
   });
 
   it('renders "Cursos" button for superadmin and aluno, and superadmin-only buttons', () => {
-    // Superadmin vê Cursos, Backup, Logs e Gestão
+    // Superadmin vê Início, Cursos, Backup, Logs e Gestão
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
+    expect(screen.getByText('Início')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
+    expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
     expect(screen.getByText('Backup Automático')).toBeInTheDocument();
     expect(screen.getByText('Logs do Sistema')).toBeInTheDocument();
     expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê Cursos, Depoimentos e Ranking, mas NÃO vê Backup, Logs e Gestão de Usuários
+    // Aluno vê Início, Cursos, Depoimentos, Apresente-se e Ranking, mas NÃO vê Backup, Logs e Gestão de Usuários
     const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
+    expect(screen.getByText('Início')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
+    expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
     expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
     expect(screen.queryByText('Logs do Sistema')).not.toBeInTheDocument();
@@ -294,6 +298,12 @@ describe('Sidebar Component', () => {
     render(<Sidebar user={alunoUser} chatUnreadCount={0} />);
     const chatBtnZero = screen.getByTestId('nav-item-chat');
     expect(chatBtnZero).not.toHaveTextContent('0');
+  });
+
+  it('exibe nome customizado da plataforma quando configurado no WhiteLabel', () => {
+    localStorage.setItem('platform_name', 'Academia de Mestres');
+    render(<Sidebar />);
+    expect(screen.getByText('Academia de Mestres')).toBeInTheDocument();
   });
 });
 

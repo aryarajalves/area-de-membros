@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ProfileAvatarSection from './ProfileAvatarSection';
+import ProfileGamificationCard from './ProfileGamificationCard';
 
 export default function PlatformProfileTab({
   currentUser,
@@ -10,7 +11,8 @@ export default function PlatformProfileTab({
   cardBorder,
   textColor,
   subTextColor,
-  isLightBg
+  isLightBg,
+  onNavigateTab
 }) {
   const { addToast } = useToast();
 
@@ -148,6 +150,14 @@ export default function PlatformProfileTab({
           Atualize seus dados cadastrais, informações de contato e a sua foto de perfil exibida no sistema.
         </p>
       </div>
+
+      {/* Bloco de Nível RPG e Ranking Atual do Usuário */}
+      <ProfileGamificationCard
+        currentUser={currentUser}
+        cardBorder={cardBorder}
+        isLightBg={isLightBg}
+        onNavigateTab={onNavigateTab}
+      />
 
       {isSuperAdmin && (
         <div

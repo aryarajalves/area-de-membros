@@ -94,4 +94,39 @@ describe('InviteTableTab Component', () => {
     expect(handleFilterChange).toHaveBeenCalledWith('pending');
     expect(handleSetPage).toHaveBeenCalledWith(1);
   });
+
+  it('renders table within users-table-wrapper and contains responsive action classes', () => {
+    const { container } = render(
+      <InviteTableTab
+        filteredInvites={mockInvites}
+        paginatedInvites={mockInvites}
+        inviteStatusFilter="all"
+        setInviteStatusFilter={vi.fn()}
+        selectedInviteIds={[]}
+        setSelectedInviteIds={vi.fn()}
+        paginatedInviteIds={[1, 2]}
+        isAllInvitesSelected={false}
+        toggleSelectAllInvites={vi.fn()}
+        toggleSelectInvite={vi.fn()}
+        handleBulkDeleteInvites={vi.fn()}
+        handleDeleteInvite={vi.fn()}
+        copyToClipboard={vi.fn()}
+        invitesPage={1}
+        setInvitesPage={vi.fn()}
+        totalInvitePages={1}
+        pageSize={20}
+      />
+    );
+
+    const wrapper = container.querySelector('.users-table-wrapper');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper.querySelector('.users-table')).toBeInTheDocument();
+
+    const actionsHeader = container.querySelector('.table-actions-header');
+    expect(actionsHeader).toBeInTheDocument();
+    expect(actionsHeader).toHaveTextContent('Ações');
+
+    const actionCells = container.querySelectorAll('.table-actions-cell');
+    expect(actionCells.length).toBeGreaterThan(0);
+  });
 });

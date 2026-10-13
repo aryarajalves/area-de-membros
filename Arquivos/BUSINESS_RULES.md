@@ -4,6 +4,35 @@ Este documento registra as decisões de regras de negócio da plataforma para co
 
 ---
 
+## 0. Tela de Início e Tutoriais da Plataforma (Onboarding)
+- **Botão "Início" na Barra Lateral (`Sidebar`):**
+  - Posicionado como o primeiro item da categoria pedagógica (*"Meu Aprendizado"* para alunos e *"Área Pedagógica"* para administradores), com ícone `Home`.
+  - Visível e acessível para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
+- **Comportamento de Entrada e Redirecionamento Automático:**
+  - **Com Tutoriais Publicados:** Se houver ao menos 1 vídeo tutorial cadastrado no sistema, tanto alunos quanto administradores caem automaticamente na tela **Início** ao acessar a Área de Membros.
+  - **Sem Tutoriais Publicados:** Caso ainda não exista nenhum vídeo tutorial cadastrado no banco de dados, o usuário é direcionado automaticamente e de forma transparente para a tela de **Cursos** (`courses`).
+- **Estrutura Visual da Tela:**
+  - **Player em Destaque:** Exibe o vídeo ativo em proporção widescreen 16:9, suportando tanto arquivos hospedados em nuvem (Backblaze B2 / MP4) quanto links externos (YouTube e Vimeo via embed responsivo).
+  - **Card de Informações:** Título da aula de tutorial em destaque, duração estimada (`MM:SS`) e descrição detalhada com tópicos abordados.
+  - **Playlist Lateral Interativa:** Lista numerada de todas as aulas de tutorial cadastradas, permitindo alternar de aula instantaneamente com um clique.
+- **Permissões de Gestão e Upload de Tutoriais:**
+  - **Alunos:** Têm acesso estritamente de visualização e aprendizado (sem botões de adicionar, editar ou excluir).
+  - **Administradores e Super Admins:** Possuem acesso completo de gestão através do botão **`+ Nova Aula de Tutorial`** no topo, além de botões para **Editar** e **Excluir** diretamente em cada item da playlist.
+  - **Exclusão Segura:** Toda exclusão de tutorial exige confirmação obrigatória em popup modal centralizado com fundo escuro (`DeleteTutorialConfirmModal`), removendo o registro e limpando a mídia do Backblaze B2 quando aplicável.
+- **Renderização e Pré-visualização do Vídeo no Modal (`TutorialVideoPreview`):**
+  - Ao selecionar um arquivo de vídeo do computador para upload, o modal exibe imediatamente um player nativo HTML5 renderizando o vídeo com controles de reprodução, facilitando a conferência do arquivo antes de salvar.
+  - Para links externos (YouTube/Vimeo) ou edição de tutoriais existentes, o componente renderiza o respectivo embed ou player nativo responsivo no padrão glassmorphism.
+- **Transcrição e Geração de Descrição Detalhada com IA (`generateTutorialAiDescriptionApi`):**
+  - No modal de tutorial, junto ao campo *"Descrição / O que você vai aprender"*, há o botão em destaque **"Gerar com IA"** (`Sparkles`).
+  - Ao ser acionado com um vídeo selecionado ou informado, o backend extrai o áudio via FFmpeg, realiza a transcrição completa utilizando a API OpenAI Whisper (`whisper-1`) e, em seguida, gera via GPT (`gpt-4o-mini`) uma descrição pedagógica detalhada citando todos os passos, telas, orientações e tópicos que o instrutor fala no vídeo.
+  - O texto gerado e a duração estimada em formato cronômetro (`MM:SS`) são automaticamente preenchidos nos respectivos campos do formulário para revisão do gestor.
+- **Layout Responsivo e Adaptação Mobile (`home-tutorials.css`):**
+  - Em smartphones e tablets (`<= 1024px` e `<= 768px`), o layout de grade de duas colunas colapsa automaticamente para coluna única vertical sem quebras.
+  - O Player 16:9 se ajusta à largura total da tela, com as informações da aula logo abaixo e a Playlist de tutoriais posicionada na sequência inferior com rolagem fluida, eliminando completamente sobreposições visuais entre os cards.
+  - O cabeçalho se organiza em fluxo vertical com botão de criação expandido e toque acessível.
+
+---
+
 ## 1. Gestão de Cursos e Controle de Acesso por Aluno
 - **Visibilidade de Cursos:** A visibilidade de um curso **NÃO** é definida globalmente no curso para todos os alunos. Cada aluno tem sua própria lista de cursos aos quais possui acesso liberado e seu respectivo prazo de validade individual por produto.
 - **Perfis de Acesso na Interface:**
@@ -55,6 +84,11 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema exibe um popup modal centralizado com backdrop preto translúcido (não fechável por clique externo) informando que a IA analisará as transcrições e conteúdos de todas as aulas daquele módulo para formular um título atrativo (preservando identificadores numéricos como 'Módulo 2') e uma descrição pedagógica didática de 2 a 3 parágrafos curtos.
     - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/generate-ai-overview`, preenche os campos do formulário no modal em tempo real e atualiza a interface, permitindo ao gestor revisar e salvar as alterações.
   - A exclusão de um módulo apaga em cascata todas as aulas associadas após confirmação em popup modal preto.
+  - **Recolhimento e Expansão de Módulos na Playlist Lateral (ModuleTimelineSidebar):**
+    - O cabeçalho de cada módulo na barra lateral da sala de aula funciona como um controle retrátil (*accordion/collapsible*).
+    - **Fechar o Módulo:** Ao clicar sobre o título ou cabeçalho de um módulo aberto, ele recolhe imediatamente a sua lista de aulas, mantendo a visualização limpa e compacta, exibindo indicador em chevron (ChevronRight) e o número de aulas do módulo.
+    - **Abrir o Módulo:** Ao clicar novamente sobre o módulo fechado, ele expande sua timeline vertical exibindo todas as aulas numeradas, minutagens e status com chevron voltado para baixo (ChevronDown).
+    - **Ações de Gestão:** Os botões de adicionar aula (+), editar e excluir módulo continuam protegidos com isolamento de clique (stopPropagation), permitindo a gestão sem fechar ou reabrir acidentalmente o módulo.
 - **Gestão de Aulas (Lessons):**
   - Cada aula pertence a um módulo e contém:
     - **Nome/Título da Aula** (obrigatório).
@@ -423,6 +457,16 @@ Este documento registra as decisões de regras de negócio da plataforma para co
   - O número é persistido na coluna `phone` das tabelas `registration_verifications` e `users`.
   - No painel de acompanhamento de alunos (`/students`) e na tabela de **"Usuários Criados"** (`/users`), é exibida a coluna dedicada **WhatsApp** com link direto verde (`https://wa.me/...`) considerando automaticamente o DDI internacional ou fallback nacional para números legados, e traço (`—`) discreto caso o usuário não possua número cadastrado.
   - As exportações de alunos em CSV e Excel (XLSX) incluem a coluna dedicada **`WhatsApp/Telefone`**.
+- **Criação Manual Direta de Usuários pelo Administrador (`/users`):**
+  - O cabeçalho da Gestão de Usuários conta com o botão principal em destaque **`+ Criar Usuário`** (para cadastro imediato direto) e o botão secundário **`Gerar Convite`** (para criar links com tempo de expiração).
+  - **Sem Necessidade de Validação de E-mail (Sem OTP):** Ao criar manualmente pelo painel, a conta do usuário é criada imediatamente ativa (`is_active = True`), dispensando o envio e confirmação de código de 6 dígitos no e-mail.
+  - **Validação de E-mail Duplicado:** O sistema realiza a verificação estrita de unicidade do e-mail. Caso o e-mail já pertença a outro usuário, a criação é bloqueada com mensagem clara de erro (`Este e-mail já está cadastrado no sistema`).
+  - **Definição de Credenciais e Perfil:**
+    - O administrador preenche diretamente o **Nome Completo**, **E-mail**, **WhatsApp/Telefone** (com suporte ao seletor internacional de DDI), **Senha de Acesso** (com botão interativo de alternar visibilidade / ocultar senha, checklist em tempo real e validação estrita de requisitos: **no mínimo 12 caracteres, pelo menos 1 letra maiúscula, 1 minúscula, 1 número e 1 caractere especial**) e o **Tipo de Usuário** (`aluno` ou `admin`).
+    - Senhas são validadas estritamente no frontend e backend e criptografadas com segurança máxima utilizando o algoritmo padrão da plataforma (Argon2id).
+  - **Liberação Imediata de Cursos e Tempo de Acesso:**
+    - Ao selecionar o tipo `aluno`, o administrador pode selecionar os produtos/cursos aos quais o novo aluno terá acesso imediato e definir o período individual de vigência (`Vitalício`, `1 mês`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`).
+    - As datas de expiração (`expires_at`) em `user_courses` são calculadas e persistidas no ato da criação com base no momento do cadastro.
 
 ---
 
@@ -766,8 +810,12 @@ Este documento registra as decisões de regras de negócio da plataforma para co
      - **Depoimentos** (`testimonials`): Avaliações em estrelas e relatos aprovados sobre os cursos (Todos).
   3. ⚙️ **Sistema & Configurações**:
      - **Configurações** (`settings`):
-       - **Alunos:** Visualizam exclusivamente as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual e dados de cadastro/avatar. As abas "Tokens de API" e "Links da Plataforma" ficam ocultas.
-       - **Admin e Super Admin:** Visualizam as 4 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"**, **"Tokens de API"** e **"Links da Plataforma"**).
+       - **Alunos:** Visualizam as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual, foto/avatar e dados de cadastro. As abas "Tokens de API", "Links da Plataforma" e "WhiteLabel" ficam ocultas.
+       - **Admin e Super Admin:** Visualizam as 5 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"**, **"Tokens de API"**, **"Links da Plataforma"** e **"WhiteLabel"**).
+       - **Exibição de Nível RPG e Ranking no Meu Perfil (`ProfileGamificationCard`):**
+         - Localizado no topo da aba **"Meu Perfil"**, exibe em tempo real o status de gamificação do usuário:
+         - **Para Alunos:** Mostra o badge e escudo do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), número do nível (1 ao 20), divisão, patente, barra de progresso animada de XP com porcentagem e pontos restantes para subir de nível, além da posição ordinal no ranking mensal (`#X`), insígnia conquistada, total de pontos e atalhos rápidos para "Ver 20 Níveis" (`GamificationRpgLadderModal`) e "Ver Ranking" da comunidade.
+         - **Para Administradores e Super Admins:** Exibe o selo distintivo de gestão (`Super Administrador Mestre` ou `Administrador da Plataforma`), indicando atuação como supervisor da comunidade (fora da disputa direta de alunos) e métricas gerais da disputa ativa da comunidade com atalhos diretos para inspecionar os níveis e o ranking completo.
      - **Integrações** (`integrations`): Webhooks de checkout Kiwify/Hotmart (Admin/Super Admin).
      - **Gestão de Usuários** (`users`): Gestão de administradores e convites (Super Admin).
      - **Backup Automático** (`backup`): Snapshots de banco e uploads em nuvem Backblaze B2 (Super Admin).
@@ -986,6 +1034,46 @@ Este documento registra as decisões de regras de negócio da plataforma para co
     - **Overlay de Contexto:** Cada trecho salvo na base de conhecimento do AgentFlow recebe obrigatoriamente no corpo do texto um cabeçalho explícito: `[Contexto da Aula: Curso: "{curso}" | Módulo: "{modulo}" | Aula: "{aula}"]`. Isso garante que as buscas semânticas vetoriais no RAG recuperem trechos que já contenham o contexto completo da origem.
     - **Overlap Real sem Quebra de Palavras:** Os trechos possuem tamanho máximo de ~1.100 caracteres com overlap de ~180 caracteres, quebrando estritamente em finais de frase (`. `, `! `, `? `) ou fronteiras de palavras (` `), impedindo cortes no meio de palavras (como "deal" em vez de "ideal").
     - **Envio Unificado de Perguntas & Respostas:** O backend gera perguntas e respostas didáticas formuladas com base no conteúdo da aula com variações de dúvidas de alunos (`question_variations`), enviando simultaneamente as P&R didáticas, os trechos contextuais e os resumos oficiais da aula e do módulo.
+
+---
+
+## 29. Configurações de WhiteLabel e Identidade Visual da Plataforma
+- **Localização e Permissões:**
+  - Disponível em **Configurações da Área de Membros** (`PlatformSettings.jsx`) na aba dedicada **"WhiteLabel"** (`Tag`), posicionada ao lado de *Links da Plataforma*.
+  - Acesso estritamente restrito a **Administradores (`admin`)** e **Super Admins (`superadmin`)**. Usuários com perfil `aluno` têm a aba totalmente oculta.
+- **Nome da Plataforma (Marca / WhiteLabel):**
+  - Permite aos administradores personalizar o nome exibido de "Área de Membros" para a marca de seu infoproduto ou comunidade (ex: "Academia VIP", "Clube dos Criadores").
+  - **Sincronização em Tempo Real:** O nome é persistido no backend em `uploads/platform_theme.json` e servido publicamente via `GET /api/v1/whitelabel`. Ao ser salvo, dispara o evento customizado `whitelabel_updated` e atualiza instantaneamente o `document.title`, o topo da barra lateral (`Sidebar`), a barra superior mobile (`TopNavbar`) e a tela de autenticação (`Login`).
+  - **Restaurar Padrão:** O formulário disponibiliza um botão para restaurar rapidamente o nome oficial "Área de Membros".
+- **Banner Lateral da Tela de Login:**
+  - Permite aos administradores substituir a imagem padrão da lateral da tela de login por uma imagem personalizada.
+  - **Upload do Computador:** Suporta formatos de imagem em alta resolução (JPG, PNG, WEBP, SVG), com pré-visualização instantânea no card antes de confirmar o envio.
+  - **Armazenamento Seguro:** Persistido com segurança no Backblaze B2 (com fallback para armazenamento local em modo desenvolvimento) e URL vinculada a `platform_theme.json`.
+  - **Restauração do Banner Oficial:** Quando uma imagem personalizada está ativa, o painel exibe o botão **"Restaurar Imagem Padrão"** (`RotateCcw`), permitindo remover a imagem customizada e voltar imediatamente para o banner oficial do sistema.
+
+---
+
+## 30. Aba Apresente-se (Comunidade & Social)
+- **Localização e Navegação:**
+  - Localizada no menu lateral (`Sidebar`) dentro da seção **Comunidade & Social**, com ícone `Handshake` e identificador `introductions`.
+  - Visível e acessível para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
+- **Banner Superior (Hero de Boas-Vindas):**
+  - Card estilizado em Dark Glassmorphism com iluminação âmbar/dourada, badge "Boas-vindas", título "Apresente-se", subtítulo explicativo e checklist de tópicos (quem você é, interesses, outros membros, conexões).
+  - Botão de ação rápida **"Quero me apresentar"** (`Handshake`) que abre o modal de criação de nova apresentação.
+  - Cards ilustrativos na lateral direita destacando "Primeira conexão", "Sua apresentação" e "Bem-vindo".
+- **Listagem Sequencial de Apresentações:**
+  - Exibe os posts criados pelos membros em sequência cronológica do mais recente para o mais antigo.
+  - Cada item apresenta o avatar do autor, título da apresentação, autor ou última resposta com tempo relativo, e contadores de curtidas (👍) e comentários (💬).
+  - **Curtida Direta na Linha:** O contador de curtidas funciona como um botão interativo (`intro-stat-like-btn`), permitindo ao usuário curtir ou descurtir a publicação diretamente da listagem com feedback imediato, sem necessidade de abrir o modal de detalhes da apresentação (`e.stopPropagation()`).
+  - **Estado Vazio Harmonioso:** Quando ainda não houver apresentações, exibe ilustração de brilho (`Sparkles`), mensagem de incentivo e botão de ação rápida para criar a primeira apresentação com espaçamento e respiro visual adequados.
+  - Botão destacado **"Novo post"** (`intro-new-post-btn`) no topo da seção para criar novas publicações.
+- **Visualização e Interação (Modal do Post):**
+  - Ao clicar em qualquer apresentação, abre o modal centralizado com fundo escuro e *backdrop blur*, protegido contra fechamento por clique fora do painel.
+  - Exibe o cabeçalho completo do autor com avatar, nome, selo do perfil (`Super Admin`, `Admin` ou `Aluno`) e data formatada.
+  - Exibe o texto integral da apresentação com preservação de formatação e quebra de linhas.
+  - **Sistema de Curtidas (Likes):** Permite curtir/descurtir (toggle) com atualização instantânea do contador e destaque visual do botão.
+  - **Comentários de Boas-Vindas:** Lista de respostas com dados do autor e data, acompanhada de formulário no rodapé para envio rápido de novas mensagens.
+  - **Exclusão Segura e Popup Premium:** Autores de posts e comentários podem excluir suas próprias publicações; administradores e superadmins possuem autorização para moderação de qualquer publicação. Toda exclusão exige confirmação em popup dedicado com backdrop preto translúcido, ícone de alerta em vermelho suave com efeito glow, botão secundário de cancelar e botão perigoso de exclusão estilizado em degradê vermelho.
 
 
 

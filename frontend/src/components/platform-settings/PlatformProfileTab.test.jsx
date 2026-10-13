@@ -22,12 +22,81 @@ const mockAdmin = {
   avatar_url: '',
 };
 
-function renderProfileTab(currentUser, onUserUpdated = vi.fn()) {
+const mockAluno = {
+  id: 3,
+  name: 'Mariana Aluna',
+  email: 'mariana@aluno.com',
+  phone: '11977776666',
+  role: 'aluno',
+  avatar_url: '',
+};
+
+const mockRankingResponseAluno = {
+  period: 'monthly',
+  month_name: 'Outubro/2026',
+  ranking: [
+    {
+      rank: 1,
+      user_id: 3,
+      name: 'Mariana Aluna',
+      points: 275,
+      solutions_count: 3,
+      lessons_completed_count: 12,
+      badge: '🥇 Mestre da Comunidade',
+      level: 6,
+      level_title: 'Prata II',
+      level_badge: '⚔️ Prata II',
+      level_tier: 'Prata',
+      level_color: '#94a3b8',
+      level_progress_percent: 5,
+      points_to_next_level: 105,
+      is_max_level: false,
+      is_current_user: true,
+    },
+  ],
+  my_position: {
+    rank: 1,
+    user_id: 3,
+    name: 'Mariana Aluna',
+    points: 275,
+    solutions_count: 3,
+    lessons_completed_count: 12,
+    badge: '🥇 Mestre da Comunidade',
+    level: 6,
+    level_title: 'Prata II',
+    level_badge: '⚔️ Prata II',
+    level_tier: 'Prata',
+    level_color: '#94a3b8',
+    level_progress_percent: 5,
+    points_to_next_level: 105,
+    is_max_level: false,
+    is_current_user: true,
+  },
+  total_participants: 18,
+};
+
+const mockRankingResponseAdmin = {
+  period: 'monthly',
+  month_name: 'Outubro/2026',
+  ranking: [
+    {
+      rank: 1,
+      user_id: 3,
+      name: 'Mariana Aluna',
+      points: 275,
+    },
+  ],
+  my_position: null,
+  total_participants: 18,
+};
+
+function renderProfileTab(currentUser, onUserUpdated = vi.fn(), onNavigateTab = vi.fn()) {
   return render(
     <ToastProvider>
       <PlatformProfileTab
         currentUser={currentUser}
         onUserUpdated={onUserUpdated}
+        onNavigateTab={onNavigateTab}
         cardBg="#1e293b"
         cardBorder="1px solid rgba(255,255,255,0.1)"
         textColor="#ffffff"
@@ -42,9 +111,20 @@ describe('PlatformProfileTab Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('auth_token', 'mock_profile_token');
+
+    global.fetch = vi.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAdmin),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
   });
 
-  it('renders Super Admin profile with locked name/email/password and enabled avatar upload', () => {
+  it('renders Super Admin profile with locked name/email/password and enabled avatar upload', async () => {
     renderProfileTab(mockSuperAdmin);
 
     // Banner de Super Admin exibido
@@ -67,13 +147,21 @@ describe('PlatformProfileTab Component', () => {
     expect(screen.getByTestId('profile-avatar-img')).toHaveAttribute('src', 'https://cdn.test.com/sa_avatar.png');
     expect(screen.getByTestId('btn-upload-avatar')).toBeEnabled();
     expect(screen.getByTestId('btn-remove-avatar')).toBeInTheDocument();
+
+    // Card de gamificação renderizado em modo administrativo
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-gamification-card')).toBeInTheDocument();
+      expect(screen.getByTestId('profile-admin-gamification-info')).toBeInTheDocument();
+      expect(screen.getByText(/Supervisor da Comunidade/i)).toBeInTheDocument();
+    });
   });
 
   it('renders regular Admin profile with editable fields and password inputs', async () => {
     const onUserUpdated = vi.fn();
 
     global.fetch = vi.fn().mockImplementation((url, options = {}) => {
-      if (url.includes('/api/v1/auth/me') && options.method === 'PATCH') {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/auth/me') && options.method === 'PATCH') {
         const body = JSON.parse(options.body);
         return Promise.resolve({
           ok: true,
@@ -83,6 +171,12 @@ describe('PlatformProfileTab Component', () => {
               name: body.name,
               phone: body.phone,
             }),
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAdmin),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -121,7 +215,8 @@ describe('PlatformProfileTab Component', () => {
     const onUserUpdated = vi.fn();
 
     global.fetch = vi.fn().mockImplementation((url, options = {}) => {
-      if (url.includes('/api/v1/auth/me') && options.method === 'PATCH') {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/auth/me') && options.method === 'PATCH') {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -129,6 +224,12 @@ describe('PlatformProfileTab Component', () => {
               ...mockSuperAdmin,
               avatar_url: '',
             }),
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAdmin),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -142,5 +243,46 @@ describe('PlatformProfileTab Component', () => {
     await waitFor(() => {
       expect(onUserUpdated).toHaveBeenCalledWith(expect.objectContaining({ avatar_url: '' }));
     });
+  });
+
+  it('renders student profile with real-time level, ranking and points', async () => {
+    const onNavigateTab = vi.fn();
+
+    global.fetch = vi.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAluno),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderProfileTab(mockAluno, vi.fn(), onNavigateTab);
+
+    // Espera os dados do ranking carregarem
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-gamification-card')).toBeInTheDocument();
+      expect(screen.getByTestId('profile-level-title')).toHaveTextContent(/Nível 6 • Prata II/i);
+    });
+
+    // Posição no ranking e pontuação exibidas
+    expect(screen.getByTestId('stat-my-rank')).toHaveTextContent('#1');
+    expect(screen.getByTestId('stat-my-points')).toHaveTextContent('275 pts');
+    expect(screen.getByTestId('stat-my-activities')).toHaveTextContent(/12 aulas • 3 soluções/i);
+
+    // Barra de progresso visível
+    expect(screen.getByTestId('profile-xp-progress-track')).toBeInTheDocument();
+
+    // Botão de ver ranking aciona a navegação
+    const viewRankingBtn = screen.getByTestId('btn-view-full-ranking');
+    fireEvent.click(viewRankingBtn);
+    expect(onNavigateTab).toHaveBeenCalledWith('ranking');
+
+    // Botão de ver escada abre o modal dos 20 níveis
+    const viewLadderBtn = screen.getByTestId('btn-view-rpg-ladder');
+    fireEvent.click(viewLadderBtn);
+    expect(screen.getByTestId('rpg-ladder-modal')).toBeInTheDocument();
   });
 });

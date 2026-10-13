@@ -32,6 +32,8 @@ from app.models.platform_link import PlatformLink
 from app.models.student_tag import StudentTag, StudentTagAssignment
 from app.models.chat_broadcast import ChatBroadcastCampaign, ChatBroadcastRecipient
 from app.models.funnel import Funnel, FunnelExecution
+from app.models.tutorial import Tutorial
+from app.models.introduction import IntroductionPost, IntroductionComment, IntroductionLike
 
 __all__ = [
     "User",
@@ -72,4 +74,8 @@ __all__ = [
     "ChatBroadcastRecipient",
     "Funnel",
     "FunnelExecution",
+    "Tutorial",
+    "IntroductionPost",
+    "IntroductionComment",
+    "IntroductionLike",
 ]

@@ -21,10 +21,12 @@ import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import TopNavbar from './components/navigation/TopNavbar';
 import FunnelManagement from './components/funnels/FunnelManagement';
+import { HomeTutorials } from './components/home-tutorials';
+import { IntroductionManagement } from './components/introductions';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 
-const ALUNO_ALLOWED_TABS = ['courses', 'support', 'chat', 'testimonials', 'ranking', 'lesson-reports', 'settings'];
+const ALUNO_ALLOWED_TABS = ['home', 'courses', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
 
 function App() {
   const [user, setUser] = useState(null);
@@ -104,23 +106,55 @@ function App() {
     };
   }, [addToast]);
 
-  const fetchPlatformTheme = useCallback(async () => {
+  useEffect(() => {
     const currentToken = token || localStorage.getItem('auth_token');
     if (!currentToken) return;
+
+    const checkInitialTutorials = async () => {
+      try {
+        const res = await fetch('/api/v1/tutorials', {
+          headers: { Authorization: `Bearer ${currentToken}` }
+        });
+        if (res.ok) {
+          const tutorials = await res.json();
+          const savedTab = localStorage.getItem('active_tab');
+          if (tutorials && tutorials.length > 0) {
+            if (!savedTab || savedTab === 'home' || savedTab === 'courses') {
+              setActiveTab('home');
+              localStorage.setItem('active_tab', 'home');
+            }
+          } else {
+            if (!savedTab || savedTab === 'home') {
+              setActiveTab('courses');
+              localStorage.setItem('active_tab', 'courses');
+            }
+          }
+        }
+      } catch {
+        // Ignora silenciosamente
+      }
+    };
+
+    checkInitialTutorials();
+  }, [token]);
+
+  const fetchPlatformTheme = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/courses/platform-theme', {
-        headers: { Authorization: `Bearer ${currentToken}` }
-      });
+      const res = await fetch('/api/v1/whitelabel');
       if (res.ok) {
         const data = await res.json();
         if (data?.bg_color) {
           handleThemeColorChange(data.bg_color);
         }
+        if (data?.platform_name) {
+          localStorage.setItem('platform_name', data.platform_name);
+          document.title = data.platform_name;
+        }
       }
     } catch {
       // Ignora erro silenciosamente
     }
-  }, [token, handleThemeColorChange]);
+  }, [handleThemeColorChange]);
 
   const fetchReportsSummary = useCallback(async () => {
     const currentToken = token || localStorage.getItem('auth_token');
@@ -201,6 +235,7 @@ function App() {
   };
 
   const handlePromptLogout = () => {
+    setIsMobileMenuOpen(false);
     setShowLogoutModal(true);
   };
 
@@ -269,13 +304,14 @@ function App() {
         />
       )}
       <main
-        className="main-content"
+        className={`main-content ${isFullView ? 'main-content-fullview' : ''}`}
         aria-label="Conteúdo Principal"
         style={{
           backgroundColor: memberAreaBgColor,
           ...(isFullView || activeTab === 'courses' || activeTab === 'settings'
             ? { padding: 0, width: '100%', maxWidth: '100%' }
-            : {})
+            : {}),
+          ...(isFullView ? { height: '100%', minHeight: '100%' } : {})
         }}
       >
         {!isFullView && (
@@ -284,6 +320,13 @@ function App() {
             onNavigateTab={handleSelectTab}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'home' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <HomeTutorials
+            currentUser={user}
+            addToast={addToast}
+            onGoToCourses={() => handleSelectTab('courses')}
           />
         )}
         {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
@@ -310,6 +353,12 @@ function App() {
         )}
         {activeTab === 'testimonials' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <TestimonialsManagement
+            user={user}
+            bgColor={memberAreaBgColor}
+          />
+        )}
+        {activeTab === 'introductions' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <IntroductionManagement
             user={user}
             bgColor={memberAreaBgColor}
           />
@@ -345,6 +394,7 @@ function App() {
               setUser(updatedUser);
               localStorage.setItem('auth_user', JSON.stringify(updatedUser));
             }}
+            onNavigateTab={handleSelectTab}
           />
         )}
         {isSuperAdmin && (
@@ -355,10 +405,12 @@ function App() {
           </>
         )}
         {!isSuperAdmin && !(
+          (activeTab === 'home' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'courses' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'support' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'chat' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'testimonials' && ['admin', 'aluno'].includes(user?.role)) ||
+          (activeTab === 'introductions' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'ranking' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'lesson-reports' && ['admin', 'aluno'].includes(user?.role)) ||
           (activeTab === 'students' && user?.role === 'admin') ||

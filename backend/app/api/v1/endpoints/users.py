@@ -24,6 +24,7 @@ from app.schemas.user import (
     CourseAccessItem,
     UserResponse,
     UserUpdate,
+    UserManualCreate,
     UserProfileUpdate,
     BulkDeleteRequest,
     InviteCreate,
@@ -35,7 +36,8 @@ from app.schemas.user import (
     ResendCodeRequest,
     PasswordResetRequestResponse,
     PasswordResetConfirm,
-    PasswordResetValidateResponse
+    PasswordResetValidateResponse,
+    validate_password_strength_func
 )
 
 router = APIRouter(prefix="/auth", tags=["Autenticação e Usuários"])
@@ -225,6 +227,99 @@ def list_users(
         res.course_access = access_map.get(u.id, [])
         results.append(res)
     return results
+
+@router.post(
+    "/users",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar Usuário Manualmente",
+    description="Cadastra um novo usuário diretamente com senha definida e cursos liberados, sem necessidade de confirmação por e-mail. Exige perfil de Superadmin."
+)
+def create_user_manual(
+    user_in: UserManualCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin)
+):
+    # 1. Verifica se já existe usuário com este e-mail
+    existing = db.query(User).filter(User.email == user_in.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este e-mail já está cadastrado no sistema."
+        )
+
+    # 2. Valida tipo de usuário
+    if user_in.role not in ["admin", "aluno"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Perfil inválido. Permitido apenas 'aluno' ou 'admin'."
+        )
+
+    # 3. Valida requisitos da senha (mínimo 12 caracteres, maiúscula, minúscula, número e símbolo especial)
+    try:
+        validate_password_strength_func(user_in.password.strip() if user_in.password else "")
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err)
+        )
+
+    # 4. Hash da senha com Argon2id + Pepper
+    hashed_pwd = get_password_hash(user_in.password.strip())
+
+    # 5. Criação do usuário
+    new_user = User(
+        email=user_in.email.strip().lower(),
+        name=user_in.name.strip(),
+        phone=user_in.phone.strip() if user_in.phone else None,
+        hashed_password=hashed_pwd,
+        role=user_in.role,
+        is_active=True
+    )
+    db.add(new_user)
+    db.flush()
+
+    now = datetime.now(timezone.utc)
+    # 6. Se for aluno e tiver cursos selecionados, vincula
+    if user_in.role == "aluno":
+        access_items = []
+        if user_in.course_access is not None:
+            access_items = user_in.course_access
+        elif user_in.course_ids is not None:
+            access_items = [
+                CourseAccessItem(course_id=cid, access_duration="lifetime")
+                for cid in user_in.course_ids
+            ]
+
+        seen_cids = set()
+        for item in access_items:
+            if item.course_id in seen_cids:
+                continue
+            seen_cids.add(item.course_id)
+            dur = item.access_duration or "lifetime"
+            exp = calculate_course_expiration(dur, now)
+            db.add(UserCourse(
+                user_id=new_user.id,
+                course_id=item.course_id,
+                access_duration=dur,
+                expires_at=exp
+            ))
+
+    db.commit()
+    db.refresh(new_user)
+
+    assigned_ucs = db.query(UserCourse).filter(UserCourse.user_id == new_user.id).all()
+    res = UserResponse.model_validate(new_user)
+    res.course_ids = [uc.course_id for uc in assigned_ucs]
+    res.course_access = [
+        CourseAccessItem(
+            course_id=uc.course_id,
+            access_duration=uc.access_duration or "lifetime",
+            expires_at=uc.expires_at
+        )
+        for uc in assigned_ucs
+    ]
+    return res
 
 @router.patch(
     "/users/{user_id}",

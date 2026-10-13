@@ -67,127 +67,129 @@ export default function InviteTableTab({
         </div>
       </div>
 
-      <table className="users-table">
-        <thead>
-          <tr>
-            <th style={{ width: '40px', textAlign: 'center' }}>
-              <input
-                type="checkbox"
-                className="table-checkbox"
-                checked={isAllInvitesSelected}
-                onChange={toggleSelectAllInvites}
-                disabled={paginatedInviteIds.length === 0}
-                title="Selecionar todos os convites da página"
-                data-testid="select-all-invites-checkbox"
-              />
-            </th>
-            <th>Perfil Convidado</th>
-            <th>Status do Convite</th>
-            <th>Tempo Restante</th>
-            <th>Usado Por</th>
-            <th>Criado Em</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedInvites.length === 0 ? (
+      <div className="users-table-wrapper">
+        <table className="users-table">
+          <thead>
             <tr>
-              <td colSpan={7} className="empty-table-state">
-                Nenhum convite encontrado com os filtros selecionados.
-              </td>
+              <th style={{ width: '40px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  className="table-checkbox"
+                  checked={isAllInvitesSelected}
+                  onChange={toggleSelectAllInvites}
+                  disabled={paginatedInviteIds.length === 0}
+                  title="Selecionar todos os convites da página"
+                  data-testid="select-all-invites-checkbox"
+                />
+              </th>
+              <th>Perfil Convidado</th>
+              <th>Status do Convite</th>
+              <th>Tempo Restante</th>
+              <th>Usado Por</th>
+              <th>Criado Em</th>
+              <th className="table-actions-header">Ações</th>
             </tr>
-          ) : (
-            paginatedInvites.map((inv) => {
-              const inviteUrl = `${window.location.origin}/register?token=${inv.token}`;
-              const isSelected = selectedInviteIds.includes(inv.id);
+          </thead>
+          <tbody>
+            {paginatedInvites.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="empty-table-state">
+                  Nenhum convite encontrado com os filtros selecionados.
+                </td>
+              </tr>
+            ) : (
+              paginatedInvites.map((inv) => {
+                const inviteUrl = `${window.location.origin}/register?token=${inv.token}`;
+                const isSelected = selectedInviteIds.includes(inv.id);
 
-              return (
-                <tr key={inv.id} data-testid={`invite-row-${inv.id}`}>
-                  <td style={{ textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      className="table-checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelectInvite(inv.id)}
-                      data-testid={`select-invite-checkbox-${inv.id}`}
-                    />
-                  </td>
-                  <td>
-                    <span className={`badge badge-${inv.role}`}>
-                      {inv.role === 'admin' ? 'Admin' : inv.role === 'aluno' ? 'Aluno' : 'Usuário'}
-                    </span>
-                  </td>
-                  <td>
-                    {inv.is_used ? (
-                      <span className="badge badge-success">
-                        <CheckCircle2 size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Conta Criada
+                return (
+                  <tr key={inv.id} data-testid={`invite-row-${inv.id}`}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        className="table-checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectInvite(inv.id)}
+                        data-testid={`select-invite-checkbox-${inv.id}`}
+                      />
+                    </td>
+                    <td>
+                      <span className={`badge badge-${inv.role}`}>
+                        {inv.role === 'admin' ? 'Admin' : inv.role === 'aluno' ? 'Aluno' : 'Usuário'}
                       </span>
-                    ) : inv.is_expired ? (
-                      <span className="badge badge-expired">
-                        <AlertTriangle size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Expirado
-                      </span>
-                    ) : (
-                      <span className="badge badge-pending">
-                        <Clock size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Pendente
-                      </span>
-                    )}
-                  </td>
-                  <td className="text-secondary">
-                    {inv.time_remaining === 'Indefinido' ? (
-                      <span className="badge badge-indefinite" style={{ fontSize: '0.78rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                        Não expira
-                      </span>
-                    ) : (
-                      <span className={inv.is_expired ? 'text-danger' : ''}>
-                        {inv.time_remaining || '—'}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    {inv.is_used ? (
-                      <span className="font-semibold text-primary">{inv.used_by_email || 'Usuário registrado'}</span>
-                    ) : (
-                      <span className="text-muted">Ainda não utilizado</span>
-                    )}
-                  </td>
-                  <td className="text-secondary" data-testid={`invite-created-at-${inv.id}`}>
-                    {formatBrasiliaDateTime(inv.created_at)}
-                  </td>
-                  <td>
-                    <div className="table-actions-group">
-                      {!inv.is_used && !inv.is_expired && (
+                    </td>
+                    <td>
+                      {inv.is_used ? (
+                        <span className="badge badge-success">
+                          <CheckCircle2 size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                          Conta Criada
+                        </span>
+                      ) : inv.is_expired ? (
+                        <span className="badge badge-expired">
+                          <AlertTriangle size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                          Expirado
+                        </span>
+                      ) : (
+                        <span className="badge badge-pending">
+                          <Clock size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                          Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-secondary">
+                      {inv.time_remaining === 'Indefinido' ? (
+                        <span className="badge badge-indefinite" style={{ fontSize: '0.78rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                          Não expira
+                        </span>
+                      ) : (
+                        <span className={inv.is_expired ? 'text-danger' : ''}>
+                          {inv.time_remaining || '—'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {inv.is_used ? (
+                        <span className="font-semibold text-primary">{inv.used_by_email || 'Usuário registrado'}</span>
+                      ) : (
+                        <span className="text-muted">Ainda não utilizado</span>
+                      )}
+                    </td>
+                    <td className="text-secondary" data-testid={`invite-created-at-${inv.id}`}>
+                      {formatBrasiliaDateTime(inv.created_at)}
+                    </td>
+                    <td className="table-actions-cell">
+                      <div className="table-actions-group">
+                        {!inv.is_used && !inv.is_expired && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(inviteUrl)}
+                            className="table-action-btn"
+                            title="Copiar link do convite"
+                            data-testid={`copy-row-invite-${inv.id}`}
+                          >
+                            <Copy size={14} />
+                            <span>Copiar Link</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(inviteUrl)}
-                          className="table-action-btn"
-                          title="Copiar link do convite"
-                          data-testid={`copy-row-invite-${inv.id}`}
+                          onClick={() => handleDeleteInvite(inv.id)}
+                          className="table-action-btn btn-danger"
+                          title="Excluir convite"
+                          data-testid={`delete-invite-btn-${inv.id}`}
                         >
-                          <Copy size={14} />
-                          <span>Copiar Link</span>
+                          <Trash2 size={13} />
+                          <span>Excluir</span>
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteInvite(inv.id)}
-                        className="table-action-btn btn-danger"
-                        title="Excluir convite"
-                        data-testid={`delete-invite-btn-${inv.id}`}
-                      >
-                        <Trash2 size={13} />
-                        <span>Excluir</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Rodapé com Paginação de Convites (20 por página) */}
       <div className="table-pagination-footer" data-testid="invites-pagination">

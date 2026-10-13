@@ -156,7 +156,12 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
         }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        data = { detail: res.ok ? '' : 'Erro inesperado no servidor. Tente novamente mais tarde.' };
+      }
       if (!res.ok) {
         const errMsg = data.detail || 'Erro ao realizar cadastro.';
         addToast(errMsg, 'error');
@@ -195,7 +200,12 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
         }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        data = { detail: res.ok ? '' : 'Erro inesperado no servidor. Tente novamente mais tarde.' };
+      }
       if (!res.ok) {
         const errMsg = data.detail || 'Código inválido ou expirado.';
         addToast(errMsg, 'error');
@@ -231,7 +241,12 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
         }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        data = { detail: res.ok ? '' : 'Erro inesperado no servidor. Tente novamente mais tarde.' };
+      }
       if (!res.ok) {
         throw new Error(data.detail || 'Erro ao reenviar código.');
       }

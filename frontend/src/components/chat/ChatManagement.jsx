@@ -16,6 +16,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
   const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
   const [isDmModalOpen, setIsDmModalOpen] = useState(false);
   const [activeThreadMessage, setActiveThreadMessage] = useState(null);
+  const [mobileTab, setMobileTab] = useState('channels');
 
   const {
     channels,
@@ -54,11 +55,12 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
 
   return (
     <div
-      className="chat-management-view"
+      className={`chat-management-view mobile-chat-view-${mobileTab}`}
       data-testid="chat-management-view"
       style={{
         display: 'flex',
-        height: '100vh',
+        height: '100%',
+        minHeight: '100%',
         width: '100%',
         backgroundColor: '#070b13',
         borderRadius: 0,
@@ -72,19 +74,24 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
       <ChatSidebar
         channels={channels}
         selectedChannel={selectedChannel}
-        onSelectChannel={setSelectedChannel}
+        onSelectChannel={(ch) => {
+          setSelectedChannel(ch);
+          setMobileTab('chat');
+        }}
         loading={loadingChannels}
         onBack={onBack}
       />
 
       {/* Painel Central da Conversa */}
       <section
+        className="chat-conversation-panel"
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#0a0f1d',
           minWidth: 0,
+          height: '100%',
         }}
       >
         <ChatHeader
@@ -99,6 +106,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onUnpinMessage={togglePin}
           onBack={onBack}
           onJumpToMessage={handleJumpToMessage}
+          onBackToChannels={() => setMobileTab('channels')}
         />
 
         <ChatMessagesList

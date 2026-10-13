@@ -9,16 +9,16 @@ const mockModules = [
     title: 'Módulo 1: Fundamentos',
     lessons: [
       { id: 101, title: 'Introdução ao Curso', duration: 300 },
-      { id: 102, title: 'Configuração Inicial', duration: 420 }
-    ]
+      { id: 102, title: 'Configuração Inicial', duration: 420 },
+    ],
   },
   {
     id: 2,
     title: 'Módulo 2: Avançado',
     lessons: [
-      { id: 201, title: 'Estratégia Prática', duration: 600 }
-    ]
-  }
+      { id: 201, title: 'Estratégia Prática', duration: 600 },
+    ],
+  },
 ];
 
 describe('ModuleTimelineSidebar', () => {
@@ -69,10 +69,78 @@ describe('ModuleTimelineSidebar', () => {
     );
 
     // Clicar no módulo 2
-    fireEvent.click(screen.getByText('Módulo 2: Avançado'));
+    fireEvent.click(screen.getByTestId('module-toggle-btn-2'));
     expect(onSelectModule).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2, title: 'Módulo 2: Avançado' })
     );
+  });
+
+  it('permite apertar em cima do módulo para fechar e reabrir as aulas para melhorar a visualização', () => {
+    const onSelectModule = vi.fn();
+
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        totalLessonsCount={3}
+        onSelectModule={onSelectModule}
+        onSelectLesson={vi.fn()}
+      />
+    );
+
+    const toggleBtnMod1 = screen.getByTestId('module-toggle-btn-1');
+
+    // Inicialmente o módulo 1 está aberto
+    expect(screen.getByText(/1\. Introdução ao Curso/i)).toBeInTheDocument();
+    expect(toggleBtnMod1).toHaveAttribute('title', 'Clique para fechar o módulo');
+
+    // 1º Clique: Fecha o módulo 1
+    fireEvent.click(toggleBtnMod1);
+
+    // As aulas do módulo 1 são ocultadas da visualização
+    expect(screen.queryByText(/1\. Introdução ao Curso/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/2\. Configuração Inicial/i)).not.toBeInTheDocument();
+    expect(toggleBtnMod1).toHaveAttribute('title', 'Clique para abrir o módulo');
+    expect(toggleBtnMod1).toHaveTextContent(/Fechado \(clique para abrir\)/i);
+
+    // 2º Clique: Reabre o módulo 1
+    fireEvent.click(toggleBtnMod1);
+
+    // As aulas reaparecem
+    expect(screen.getByText(/1\. Introdução ao Curso/i)).toBeInTheDocument();
+    expect(toggleBtnMod1).toHaveAttribute('title', 'Clique para fechar o módulo');
+  });
+
+  it('não fecha o módulo ao clicar nos botões administrativos de gestão', () => {
+    const onOpenCreateLesson = vi.fn();
+    const onOpenEditModule = vi.fn();
+    const onPromptDeleteModule = vi.fn();
+
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        totalLessonsCount={3}
+        isManager={true}
+        onSelectModule={vi.fn()}
+        onSelectLesson={vi.fn()}
+        onOpenCreateLesson={onOpenCreateLesson}
+        onOpenEditModule={onOpenEditModule}
+        onPromptDeleteModule={onPromptDeleteModule}
+      />
+    );
+
+    // Clica no botão de adicionar aula
+    const addBtn = screen.getByTestId('timeline-add-lesson-btn-1');
+    fireEvent.click(addBtn);
+    expect(onOpenCreateLesson).toHaveBeenCalled();
+
+    // Módulo continua aberto mesmo após clicar no botão interno
+    expect(screen.getByText(/1\. Introdução ao Curso/i)).toBeInTheDocument();
   });
 
   it('aplica line-clamp de 2 linhas e atributo title no título para evitar poluição visual com nomes longos', () => {
@@ -82,9 +150,9 @@ describe('ModuleTimelineSidebar', () => {
       lessons: [
         {
           id: 999,
-          title: 'Aula 01 - Introdução à Bússola Astrológica: Como Funcionam os Trânsitos e o Guia de Previsões Detalhado'
-        }
-      ]
+          title: 'Aula 01 - Introdução à Bússola Astrológica: Como Funcionam os Trânsitos e o Guia de Previsões Detalhado',
+        },
+      ],
     };
 
     render(

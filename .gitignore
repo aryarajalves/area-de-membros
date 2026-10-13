@@ -65,4 +65,7 @@ Thumbs.db
 backend/app/uploads/thumbnails/
 backend/app/uploads/videos/
 backend/app/uploads/attachments/
+backend/app/uploads/avatars/
 backend/app/uploads/*.json
+backend/uploads/
+

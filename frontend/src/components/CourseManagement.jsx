@@ -289,9 +289,9 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
 
   return (
     <div
-      className={`backup-page-container ${!isLightBg ? 'classroom-dark-theme' : ''}`}
+      className={`backup-page-container courses-management-page ${!isLightBg ? 'classroom-dark-theme' : ''}`}
       data-testid="courses-page"
-      style={{ backgroundColor: activeBgColor, color: textColor, minHeight: '100vh', width: '100%', maxWidth: '100%', margin: 0, padding: '28px 32px', boxSizing: 'border-box', transition: 'background-color 0.3s ease' }}
+      style={{ backgroundColor: activeBgColor, color: textColor, minHeight: '100vh', width: '100%', maxWidth: '100%', margin: 0, boxSizing: 'border-box', transition: 'background-color 0.3s ease' }}
     >
       {/* Cabeçalho com o botão de Criar Curso à direita */}
       <div className="backup-page-header courses-header-box" style={{ backgroundColor: cardBg, border: cardBorder }}>
@@ -319,22 +319,22 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         )}
       </div>
 
-      {/* Barra de Filtro / Busca */}
-      <div className="table-card" style={{ marginBottom: '20px', backgroundColor: cardBg, border: cardBorder }}>
-        <div className="table-toolbar" style={{ flexWrap: 'wrap', gap: '12px', backgroundColor: 'transparent', borderBottom: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 300px' }}>
+      {/* Barra de Filtro / Busca Otimizada e Compacta */}
+      <div className="course-search-card" style={{ marginBottom: '16px', backgroundColor: cardBg, border: cardBorder }}>
+        <div className="course-search-toolbar">
+          <div className="course-search-input-box">
             <Search size={16} color={subTextColor} />
             <input
               type="text"
               placeholder="Buscar curso por título ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="form-control-modern"
-              style={{ padding: '8px 12px', fontSize: '13px', backgroundColor: isLightBg ? '#fff' : 'rgba(15, 23, 42, 0.65)', color: textColor, border: cardBorder }}
+              className="form-control-modern course-search-input"
+              style={{ backgroundColor: isLightBg ? '#fff' : 'rgba(15, 23, 42, 0.65)', color: textColor, border: cardBorder }}
               data-testid="search-courses-input"
             />
           </div>
-          <span style={{ fontSize: '13px', color: subTextColor }}>
+          <span className="course-search-count" style={{ fontSize: '13px', color: subTextColor }}>
             {filteredCourses.length} curso(s) cadastrado(s)
           </span>
         </div>

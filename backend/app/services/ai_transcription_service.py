@@ -89,7 +89,7 @@ def _execute_ffmpeg_cmd(input_video_path: str, output_audio_path: str) -> str:
         "-vn",                 # Sem faixa de vídeo
         "-ar", "16000",        # Sample rate ideal para Whisper
         "-ac", "1",            # Mono
-        "-b:a", "48k",         # Bitrate compacto
+        "-b:a", "32k",         # Bitrate compacto ideal para fala humana no Whisper
         "-f", "mp3",
         output_audio_path
     ])
@@ -102,6 +102,19 @@ def _execute_ffmpeg_cmd(input_video_path: str, output_audio_path: str) -> str:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Falha ao extrair áudio do vídeo via FFmpeg: {err_msg[-200:]}"
         )
+
+    # Se o áudio ainda exceder 24.5 MB (vídeos muito longos > 1h30), re-comprime com 20k
+    if os.path.exists(output_audio_path) and os.path.getsize(output_audio_path) > 24.5 * 1024 * 1024:
+        logger.info("[AI Transcription] Áudio extraído > 24.5 MB. Re-comprimindo com 20k para caber no limite da OpenAI...")
+        fallback_cmd = [
+            "ffmpeg", "-y", "-i", output_audio_path,
+            "-vn", "-ar", "16000", "-ac", "1", "-b:a", "20k", "-f", "mp3",
+            output_audio_path + ".compressed.mp3"
+        ]
+        fb_res = subprocess.run(fallback_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if fb_res.returncode == 0 and os.path.exists(output_audio_path + ".compressed.mp3"):
+            os.replace(output_audio_path + ".compressed.mp3", output_audio_path)
+
     return output_audio_path
 
 

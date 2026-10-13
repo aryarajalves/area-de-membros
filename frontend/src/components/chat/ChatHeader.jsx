@@ -13,6 +13,7 @@ export default function ChatHeader({
   onUnpinMessage,
   onBack,
   onJumpToMessage,
+  onBackToChannels,
 }) {
   if (!selectedChannel) return null;
 
@@ -34,8 +35,22 @@ export default function ChatHeader({
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {onBackToChannels && (
+            <button
+              type="button"
+              onClick={onBackToChannels}
+              className="chat-mobile-back-channels-btn"
+              data-testid="chat-back-to-channels-btn"
+              title="Voltar para a lista de canais"
+            >
+              <ArrowLeft size={16} />
+              <span>Canais</span>
+            </button>
+          )}
+
           <div
+            className="chat-header-icon-box"
             style={{
               width: '40px',
               height: '40px',
@@ -97,7 +112,7 @@ export default function ChatHeader({
         </div>
 
         {/* Controles da Direita: Filtro de Favoritas e Indicador Ao Vivo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Botão de Alternar Filtro de Favoritas */}
           <button
             type="button"
@@ -120,7 +135,7 @@ export default function ChatHeader({
             }}
           >
             <Star size={13} fill={favoritesOnly ? '#fbbf24' : 'none'} />
-            <span>Favoritas</span>
+            <span className="chat-header-btn-text">Favoritas</span>
           </button>
 
           {/* Botão para Abrir Galeria de Mídias e Documentos */}
@@ -145,7 +160,7 @@ export default function ChatHeader({
             }}
           >
             <FolderOpen size={13} />
-            <span>Mídias & Arquivos</span>
+            <span className="chat-header-btn-text">Mídias & Arquivos</span>
           </button>
 
           {/* Botão para Abrir Notificações de Menções */}
@@ -171,7 +186,7 @@ export default function ChatHeader({
               }}
             >
               <AtSign size={13} />
-              <span>Menções</span>
+              <span className="chat-header-btn-text">Menções</span>
             </button>
           )}
 
@@ -198,7 +213,7 @@ export default function ChatHeader({
               }}
             >
               <Mail size={13} />
-              <span>DMs</span>
+              <span className="chat-header-btn-text">DMs</span>
             </button>
           )}
 

@@ -12,7 +12,7 @@ export const COURSE_ACCESS_DURATION_OPTIONS = [
   { value: '3_years', label: '3 anos' },
 ];
 
-function CourseSelectionList({
+export function CourseSelectionList({
   prefix,
   courses,
   selectedCourseIds,

@@ -64,6 +64,7 @@ export default function GamificationRpgLadderModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <div>
@@ -122,6 +123,7 @@ export default function GamificationRpgLadderModal({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '12px',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -145,12 +147,15 @@ export default function GamificationRpgLadderModal({
         {/* Conteúdo com scroll */}
         <div
           style={{
-            padding: '20px 24px',
+            flex: '1 1 auto',
+            minHeight: 0,
             overflowY: 'auto',
+            padding: '20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
+            gap: '18px',
           }}
+          data-testid="rpg-ladder-scroll-content"
         >
           {tiers.map((tierName) => {
             const TierIcon = TIER_ICONS[tierName] || Shield;
@@ -161,6 +166,7 @@ export default function GamificationRpgLadderModal({
               <div
                 key={tierName}
                 style={{
+                  flexShrink: 0,
                   borderRadius: '12px',
                   backgroundColor: isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
                   border: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.07)',
@@ -176,6 +182,7 @@ export default function GamificationRpgLadderModal({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
+                    flexShrink: 0,
                   }}
                 >
                   <TierIcon size={16} color={tierStyle.color} />
@@ -185,7 +192,7 @@ export default function GamificationRpgLadderModal({
                 </div>
 
                 {/* Grade de Níveis */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '8px', padding: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '10px', padding: '14px' }}>
                   {tierLevels.map((lvl) => {
                     const isCurrent = currentLevelInfo.level === lvl.level;
                     const isUnlocked = currentPoints >= lvl.min_points;
@@ -194,7 +201,9 @@ export default function GamificationRpgLadderModal({
                       <div
                         key={lvl.level}
                         style={{
-                          padding: '10px 14px',
+                          padding: '12px 14px',
+                          minHeight: '56px',
+                          boxSizing: 'border-box',
                           borderRadius: '10px',
                           backgroundColor: isCurrent
                             ? isLightBg ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.12)'
@@ -205,6 +214,7 @@ export default function GamificationRpgLadderModal({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
+                          gap: '12px',
                           boxShadow: isCurrent ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
                         }}
                         data-testid={`rpg-ladder-level-${lvl.level}`}

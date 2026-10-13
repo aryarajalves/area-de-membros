@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserPlus, Users, Mail } from 'lucide-react';
 import {
   ConfirmDeleteModal,
   UserTableTab,
   InviteTableTab,
   CreateInviteModal,
+  CreateUserManualModal,
   EditUserRoleModal,
   ResetPasswordModal,
   useUserManagement,
 } from './user-management';
 
 export default function UserManagement({ currentUser }) {
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const {
     activeSubTab,
     handleSelectSubTab,
@@ -94,20 +96,43 @@ export default function UserManagement({ currentUser }) {
           <p>Gerencie o acesso da equipe e acompanhe os convites gerados.</p>
         </div>
         {canCreate && (
-          <button
-            onClick={() => {
-              setModalOpen(true);
-              setGeneratedInvite(null);
-              setError('');
-              setSelectedCourseIds([]);
-              setCourseAccessMap({});
-            }}
-            className="primary-btn"
-            data-testid="open-invite-modal-btn"
-          >
-            <UserPlus size={18} />
-            <span>Convidar Usuário</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setModalOpen(true);
+                setGeneratedInvite(null);
+                setError('');
+                setSelectedCourseIds([]);
+                setCourseAccessMap({});
+              }}
+              className="btn-secondary"
+              data-testid="open-invite-modal-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Mail size={16} />
+              <span>Gerar Convite</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsCreateUserModalOpen(true)}
+              className="primary-btn"
+              data-testid="open-create-user-modal-btn"
+            >
+              <UserPlus size={18} />
+              <span>Criar Usuário</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -232,6 +257,17 @@ export default function UserManagement({ currentUser }) {
         resetCopied={resetCopied}
         onCopyResetLink={copyResetLink}
         onRedirect={() => addToast('Abrindo tela de redefinição de senha...', 'info')}
+      />
+
+      <CreateUserManualModal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => setIsCreateUserModalOpen(false)}
+        onSuccess={() => {
+          fetchUsers();
+          handleSelectSubTab('users');
+        }}
+        courses={courses}
+        addToast={addToast}
       />
 
       <ConfirmDeleteModal

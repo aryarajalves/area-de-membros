@@ -20,11 +20,24 @@ describe('GamificationRpgLadderModal Component', () => {
     expect(screen.getAllByText(/ELO DIAMANTE/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/ELO LENDA/i)[0]).toBeInTheDocument();
 
-    // Mariana com 25 pts: Nível 2 destacado como ATUAL
+    // Com 25 pts: Nível 2 destacado como ATUAL
     expect(screen.getByText('ATUAL')).toBeInTheDocument();
 
     const closeBtn = screen.getByTestId('close-rpg-ladder-modal-btn');
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('configures scrollable content container with flex and minHeight to prevent card clipping', () => {
+    render(<GamificationRpgLadderModal isOpen={true} onClose={() => {}} currentPoints={0} />);
+
+    const scrollContainer = screen.getByTestId('rpg-ladder-scroll-content');
+    expect(scrollContainer).toBeInTheDocument();
+    expect(scrollContainer.style.overflowY).toBe('auto');
+    expect(scrollContainer.style.minHeight).toBe('0px');
+
+    // Nível 1 e Nível 20 estão presentes
+    expect(screen.getByTestId('rpg-ladder-level-1')).toBeInTheDocument();
+    expect(screen.getByTestId('rpg-ladder-level-20')).toBeInTheDocument();
   });
 });

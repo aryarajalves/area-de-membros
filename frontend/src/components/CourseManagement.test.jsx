@@ -270,5 +270,22 @@ describe('CourseManagement Component', () => {
     fireEvent.click(screen.getByTestId('more-info-course-btn-2'));
     expect(windowOpenSpy).toHaveBeenCalledWith('https://vendas.com/curso-vitrine', '_blank', 'noopener,noreferrer');
   });
+
+  it('renders search input within compact responsive course-search-card', async () => {
+    const { container } = render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'superadmin' }} />
+      </ToastProvider>
+    );
+
+    const searchCard = container.querySelector('.course-search-card');
+    expect(searchCard).toBeInTheDocument();
+
+    const searchToolbar = container.querySelector('.course-search-toolbar');
+    expect(searchToolbar).toBeInTheDocument();
+
+    const searchInput = screen.getByTestId('search-courses-input');
+    expect(searchInput).toBeInTheDocument();
+  });
 });
 

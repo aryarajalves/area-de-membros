@@ -52,12 +52,20 @@ describe('Login Component', () => {
   });
 
   it('sets active_tab to courses in localStorage when logged in user is aluno', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        access_token: 'fake-token-aluno',
-        user: { id: 10, name: 'Aluno Teste', email: 'aluno@teste.com', role: 'aluno' },
-      }),
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/v1/auth/login') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            access_token: 'fake-token-aluno',
+            user: { id: 10, name: 'Aluno Teste', email: 'aluno@teste.com', role: 'aluno' },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null }),
+      });
     });
 
     const onLoginSuccess = vi.fn();
@@ -81,5 +89,33 @@ describe('Login Component', () => {
     });
 
     expect(localStorage.getItem('active_tab')).toBe('courses');
+  });
+
+  it('carrega nome e banner customizados da API de WhiteLabel', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/v1/whitelabel') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            platform_name: 'Escola de Elite',
+            login_banner_url: 'https://exemplo.com/banner-elite.jpg',
+          }),
+        });
+      }
+      return Promise.reject(new Error('URL não mapeada'));
+    });
+
+    render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Escola de Elite')).toBeInTheDocument();
+      const bannerImg = screen.getByTestId('login-banner-image');
+      expect(bannerImg).toHaveAttribute('src', 'https://exemplo.com/banner-elite.jpg');
+      expect(bannerImg).toHaveAttribute('alt', 'Escola de Elite');
+    });
   });
 });

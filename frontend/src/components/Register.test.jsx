@@ -226,4 +226,92 @@ describe('Register Component', () => {
     expect(capturedBody).not.toBeNull();
     expect(capturedBody.phone).toContain('+351');
   });
+
+  it('ensures register page container has vertical scroll enabled (overflow-y auto) to access all fields and submit button', async () => {
+    const { container } = render(
+      <ToastProvider>
+        <Register token="valid-test-token" />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText('Criar Conta')).toBeInTheDocument();
+
+    const authContainer = container.querySelector('.auth-page-container');
+    expect(authContainer).toBeInTheDocument();
+    expect(authContainer).toHaveStyle({
+      overflowY: 'auto',
+      maxHeight: '100dvh',
+      height: '100%'
+    });
+
+    // Garante que o botão de submissão e os campos finais estão renderizados e acessíveis
+    expect(screen.getByTestId('register-submit-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('reg-password-confirm-input')).toBeInTheDocument();
+  });
+
+  it('handles non-JSON error response gracefully during verify step without crashing with SyntaxError', async () => {
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ bg_color: '#090d16' }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ valid: true, role: 'admin' }),
+        });
+      }
+      if (url === '/api/v1/auth/register') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            message: 'Código de verificação enviado para o seu e-mail.',
+            email: 'novouser@teste.com',
+            requires_verification: true,
+          }),
+        });
+      }
+      if (url === '/api/v1/auth/register/verify') {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => {
+            throw new SyntaxError("Unexpected token 'I', \"Internal S\"... is not valid JSON");
+          },
+        });
+      }
+      return Promise.reject(new Error('Unknown url: ' + url));
+    });
+
+    render(
+      <ToastProvider>
+        <Register token="valid-test-token" />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText('Criar Conta')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('reg-name-input'), { target: { value: 'Novo Usuário' } });
+    fireEvent.change(screen.getByTestId('reg-email-input'), { target: { value: 'novouser@teste.com' } });
+    fireEvent.change(screen.getByTestId('reg-phone-input'), { target: { value: '11988887777' } });
+    fireEvent.change(screen.getByTestId('reg-password-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+    fireEvent.change(screen.getByTestId('reg-password-confirm-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+
+    fireEvent.click(screen.getByTestId('register-submit-btn'));
+
+    expect(await screen.findByText('Validar E-mail')).toBeInTheDocument();
+
+    const otpInput = screen.getByTestId('reg-otp-input');
+    fireEvent.change(otpInput, { target: { value: '451210' } });
+
+    const confirmOtpBtn = screen.getByTestId('verify-submit-btn');
+    fireEvent.click(confirmOtpBtn);
+
+    const errorBanner = await screen.findByTestId('verify-error');
+    expect(errorBanner).toHaveTextContent('Erro inesperado no servidor. Tente novamente mais tarde.');
+  });
 });
+
+

@@ -40,6 +40,33 @@ class UserUpdate(BaseModel):
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
 
+def validate_password_strength_func(v: str) -> str:
+    if len(v) < 12:
+        raise ValueError("A senha deve ter no mínimo 12 caracteres.")
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("A senha deve conter ao menos 1 letra maiúscula.")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("A senha deve conter ao menos 1 letra minúscula.")
+    if not re.search(r"\d", v):
+        raise ValueError("A senha deve conter ao menos 1 número.")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\/`~]", v):
+        raise ValueError("A senha deve conter ao menos 1 caractere especial.")
+    return v
+
+class UserManualCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+    role: Literal["admin", "aluno"] = "aluno"
+    course_ids: Optional[List[int]] = None
+    course_access: Optional[List[CourseAccessItem]] = None
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        return validate_password_strength_func(v)
+
 class BulkDeleteRequest(BaseModel):
     ids: List[int]
 
@@ -90,19 +117,6 @@ class InviteValidateResponse(BaseModel):
     valid: bool
     role: Optional[str] = None
     detail: Optional[str] = None
-
-def validate_password_strength_func(v: str) -> str:
-    if len(v) < 12:
-        raise ValueError("A senha deve ter no mínimo 12 caracteres.")
-    if not re.search(r"[A-Z]", v):
-        raise ValueError("A senha deve conter ao menos 1 letra maiúscula.")
-    if not re.search(r"[a-z]", v):
-        raise ValueError("A senha deve conter ao menos 1 letra minúscula.")
-    if not re.search(r"\d", v):
-        raise ValueError("A senha deve conter ao menos 1 número.")
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\/`~]", v):
-        raise ValueError("A senha deve conter ao menos 1 caractere especial.")
-    return v
 
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
