@@ -110,6 +110,9 @@ def start_worker():
     # Configura os jobs periódicos
     setup_worker_jobs(worker_scheduler)
 
+    # Aguarda 3 segundos para permitir inicialização prioritária da API backend se iniciados em paralelo
+    time.sleep(3)
+
     # Executa uma checagem inicial de renovações na inicialização do worker
     try:
         logger.info("[WORKER] Executando checagem inicial de renovações no startup...")

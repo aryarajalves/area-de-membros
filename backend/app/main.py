@@ -48,24 +48,68 @@ def init_superadmin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    # Ensure columns exist on already created tables
-    with engine.connect() as conn:
-        from sqlalchemy import text
-        try:
-            conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS used_by_email VARCHAR;"))
-            conn.execute(text("ALTER TABLE invites ADD COLUMN IF NOT EXISTS allowed_course_ids VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq');"))
-            conn.execute(text("ALTER TABLE webhooks ALTER COLUMN id SET DEFAULT nextval('webhooks_id_seq');"))
-            conn.execute(text("ALTER TABLE webhook_logs ALTER COLUMN id SET DEFAULT nextval('webhook_logs_id_seq');"))
-            conn.commit()
-        except Exception:
-            pass
-    # Seed initial superadmin from env
-    init_superadmin()
-    # Reset de transcrições órfãs interrompidas por reinício do servidor
+    logger.info("[MAIN] >>> Iniciando ciclo de vida da API (lifespan)...")
+
+    # 1. Criação/Verificação das tabelas
     try:
+        logger.info("[MAIN] Verificando e criando tabelas do banco de dados...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("[MAIN] Tabelas verificadas com sucesso.")
+    except Exception as e:
+        logger.error(f"[MAIN] Aviso ao criar tabelas no startup: {e}")
+
+    # 2. Migrações DDL de compatibilidade com timeout restrito para evitar deadlocks
+    try:
+        logger.info("[MAIN] Executando verificações DDL de compatibilidade...")
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            is_postgres = "postgresql" in engine.dialect.name
+            if is_postgres:
+                try:
+                    conn.execute(text("SET lock_timeout = '2000ms';"))
+                except Exception:
+                    pass
+
+            # Inclusão segura de colunas
+            columns_to_add = [
+                ("invites", "used_by_email", "VARCHAR"),
+                ("invites", "allowed_course_ids", "VARCHAR"),
+            ]
+            for table, col, col_type in columns_to_add:
+                try:
+                    if is_postgres:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type};"))
+                    else:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type};"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+
+            # Sincronização de sequences no PostgreSQL (isolada e protegida com timeout)
+            if is_postgres:
+                seq_tables = ["users", "webhooks", "webhook_logs"]
+                for tbl in seq_tables:
+                    try:
+                        conn.execute(text(f"ALTER TABLE {tbl} ALTER COLUMN id SET DEFAULT nextval('{tbl}_id_seq');"))
+                        conn.commit()
+                    except Exception as seq_err:
+                        conn.rollback()
+                        logger.warning(f"[MAIN] Aviso não impeditivo ao verificar sequence de {tbl}: {seq_err}")
+        logger.info("[MAIN] Verificações DDL concluídas com sucesso.")
+    except Exception as e:
+        logger.warning(f"[MAIN] Aviso nas migrações DDL de startup: {e}")
+
+    # 3. Sincronização de credenciais do superadministrador
+    try:
+        logger.info("[MAIN] Sincronizando credenciais do superadministrador...")
+        init_superadmin()
+        logger.info("[MAIN] Superadministrador verificado com sucesso.")
+    except Exception as e:
+        logger.error(f"[MAIN] Erro ao sincronizar superadmin no startup: {e}")
+
+    # 4. Redefinição de transcrições de áudio interrompidas
+    try:
+        logger.info("[MAIN] Verificando transcrições de áudio pendentes...")
         from app.models.course import LessonTranscription
         with SessionLocal() as db:
             orphaned = db.query(LessonTranscription).filter(LessonTranscription.status == "processing").all()
@@ -74,19 +118,23 @@ async def lifespan(app: FastAPI):
                 t.error_message = "O processamento foi interrompido por um reinício do servidor. Por favor, clique em Tentar Novamente."
             if orphaned:
                 db.commit()
+                logger.info(f"[MAIN] {len(orphaned)} transcrições órfãs redefinidas para status failed.")
     except Exception as e:
-        from app.core.logger import logger
         logger.error(f"[MAIN] Erro ao recuperar transcrições órfãs no startup: {e}")
-    # Inicializa agendador de backup automático em background apenas se configurado
+
+    # 5. Agendador em background
     if settings.ENABLE_INTERNAL_SCHEDULER:
         setup_scheduler()
     else:
-        from app.core.logger import logger
         logger.info("[MAIN] Scheduler interno desativado no processo web. As rotinas periódicas são executadas pelo serviço Worker dedicado.")
+
+    logger.info("[MAIN] <<< Inicialização concluída com sucesso! Servidor pronto para responder requisições.")
     yield
+
     # Finaliza scheduler se estiver rodando
     if scheduler.running:
         scheduler.shutdown()
+    logger.info("[MAIN] Servidor finalizado.")
 
 tags_metadata = [
     {"name": "Autenticação e Usuários", "description": "Endpoints para login, cadastro, convites, gestão de usuários e redefinição de senhas."},
