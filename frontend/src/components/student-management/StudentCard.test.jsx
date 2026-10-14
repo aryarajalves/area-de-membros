@@ -104,4 +104,22 @@ describe('StudentCard Component', () => {
     fireEvent.click(screen.getByTestId('edit-student-tags-btn-42'));
     expect(screen.getByText('Etiquetas do Aluno')).toBeInTheDocument();
   });
+
+  it('renders student avatar with flexShrink 0 and minWidth 48px to prevent distortion on mobile', () => {
+    renderWithToast(<StudentCard student={mockStudent} isLightBg={false} />);
+
+    const card = screen.getByTestId('student-card-42');
+    expect(card).toHaveClass('student-card');
+
+    const avatarInitial = screen.getByText('M'); // 'M' de Mariana
+    expect(avatarInitial).toBeInTheDocument();
+    expect(avatarInitial).toHaveStyle({
+      width: '48px',
+      height: '48px',
+      minWidth: '48px',
+      minHeight: '48px',
+      flexShrink: '0',
+      borderRadius: '50%',
+    });
+  });
 });

@@ -180,3 +180,31 @@ export function isLessonComingSoon(lesson) {
   const hasMainVideoUrl = Boolean(lesson.video_url && String(lesson.video_url).trim());
   return !hasVideosArray && !hasMainVideoUrl;
 }
+
+/**
+ * Rola a tela suavemente até o container do módulo ou aula selecionada.
+ * Especialmente benéfico no mobile onde a seção fica abaixo do banner/carrossel.
+ *
+ * @param {string} [elementId='selected-module-classroom-section']
+ * @param {number} [delay=80]
+ */
+export function scrollToClassroomSection(elementId = 'selected-module-classroom-section', delay = 80) {
+  if (typeof window === 'undefined') return;
+
+  const performScroll = () => {
+    const el = document.getElementById(elementId)
+      || document.querySelector(`[data-testid="${elementId}"]`)
+      || document.querySelector('[data-testid="selected-module-section"]');
+
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  if (delay > 0) {
+    setTimeout(performScroll, delay);
+  } else {
+    performScroll();
+  }
+}
+

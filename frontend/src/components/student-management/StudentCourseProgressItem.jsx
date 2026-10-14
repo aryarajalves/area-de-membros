@@ -51,8 +51,17 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
       data-testid={`student-course-${course.course_id}`}
     >
       {/* Topo do Curso: Capa, Título, Ações e Badges */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div
+        className="student-course-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 180px', minWidth: 0 }}>
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -60,6 +69,11 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
               style={{
                 width: '44px',
                 height: '44px',
+                minWidth: '44px',
+                minHeight: '44px',
+                maxWidth: '44px',
+                maxHeight: '44px',
+                flexShrink: 0,
                 borderRadius: '8px',
                 objectFit: 'cover',
                 border: '1px solid rgba(255,255,255,0.1)',
@@ -70,6 +84,11 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
               style={{
                 width: '44px',
                 height: '44px',
+                minWidth: '44px',
+                minHeight: '44px',
+                maxWidth: '44px',
+                maxHeight: '44px',
+                flexShrink: 0,
                 borderRadius: '8px',
                 backgroundColor: 'rgba(59, 130, 246, 0.15)',
                 display: 'flex',
@@ -82,18 +101,18 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
             </div>
           )}
 
-          <div>
-            <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 600, color: textTitle }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 600, color: textTitle, wordBreak: 'break-word' }}>
               {course.course_title}
             </h4>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: textMuted, marginTop: '2px', flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <Calendar size={13} />
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                <Calendar size={13} style={{ flexShrink: 0 }} />
                 {!course.expires_at ? 'Acesso Vitalício' : `Expira em ${formatDateOnly(course.expires_at)}`}
               </span>
               {course.is_expired && (
-                <span style={{ color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                  <AlertCircle size={12} /> Acesso Expirado
+                <span style={{ color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
+                  <AlertCircle size={12} style={{ flexShrink: 0 }} /> Acesso Expirado
                 </span>
               )}
             </div>
@@ -101,7 +120,15 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
         </div>
 
         {/* Botão de Histórico, Disparar Webhook e Badge de Conclusão */}
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <div
+          className="student-course-actions"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
           {onOpenTriggerWebhook && (
             <button
               type="button"
@@ -119,6 +146,7 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
                 alignItems: 'center',
                 gap: '5px',
                 transition: 'all 0.15s ease',
+                flexShrink: 0,
               }}
               title="Disparar manualmente um evento de webhook/integração para este aluno e curso"
               data-testid={`trigger-webhook-btn-${course.course_id}`}
@@ -145,6 +173,7 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
                 alignItems: 'center',
                 gap: '5px',
                 transition: 'all 0.15s ease',
+                flexShrink: 0,
               }}
               title="Ver histórico de aulas assistidas"
               data-testid={`view-course-history-btn-${course.course_id}`}

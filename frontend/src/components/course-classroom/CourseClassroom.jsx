@@ -8,6 +8,7 @@ import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
 import BatchCourseImportModal from './BatchCourseImportModal';
+import { scrollToClassroomSection } from './lessonUtils';
 
 export default function CourseClassroom({
   course: initialCourse,
@@ -18,24 +19,10 @@ export default function CourseClassroom({
 }) {
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
   const {
-    course,
-    modules,
-    activeLesson,
-    setActiveLesson,
-    loading,
-    actionLoading,
-    completedLessonIds,
-    handleToggleLessonComplete,
-    fetchCourseData,
-    handleSaveModule,
-    handleDeleteModule,
-    handleSaveLesson,
-    handleDeleteLesson,
-    uploadLessonVideo,
-    uploadLessonThumbnail,
-    prevLesson,
-    nextLesson,
-    totalLessonsCount
+    course, modules, activeLesson, setActiveLesson, loading, actionLoading,
+    completedLessonIds, handleToggleLessonComplete, fetchCourseData,
+    handleSaveModule, handleDeleteModule, handleSaveLesson, handleDeleteLesson,
+    uploadLessonVideo, uploadLessonThumbnail, prevLesson, nextLesson, totalLessonsCount
   } = useCourseContent(initialCourse.id);
 
   const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
@@ -98,6 +85,7 @@ export default function CourseClassroom({
     } else {
       setActiveLesson(null);
     }
+    scrollToClassroomSection();
   };
 
   const handleStartCourse = () => {
@@ -105,6 +93,7 @@ export default function CourseClassroom({
     if (firstModWithLessons) {
       setSelectedModuleId(firstModWithLessons.id);
       if (firstModWithLessons.lessons?.length > 0) setActiveLesson(firstModWithLessons.lessons[0]);
+      scrollToClassroomSection();
     }
   };
 
@@ -116,6 +105,7 @@ export default function CourseClassroom({
       const parentMod = modules.find((m) => m.lessons?.some((l) => l.id === lesson?.id));
       if (parentMod) setSelectedModuleId(parentMod.id);
     }
+    scrollToClassroomSection();
   };
 
   // Handlers Módulos
@@ -252,9 +242,11 @@ export default function CourseClassroom({
           {/* Seção Inferior: Aparece quando o usuário aperta em um módulo escolhido */}
           {selectedModule && (
             <div
+              id="selected-module-classroom-section"
               style={{
                 marginTop: '32px',
                 paddingTop: '28px',
+                scrollMarginTop: '20px',
                 borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)'
               }}
               data-testid="selected-module-section"
@@ -353,7 +345,7 @@ export default function CourseClassroom({
                       isManager={isManager}
                       isLightBg={isLightBg}
                       onSelectModule={handleSelectModule}
-                      onSelectLesson={setActiveLesson}
+                      onSelectLesson={handleSelectLessonAndModule}
                       onOpenCreateLesson={handleOpenCreateLesson}
                       onOpenEditModule={handleOpenEditModule}
                       onPromptDeleteModule={handlePromptDeleteModule}
@@ -388,7 +380,7 @@ export default function CourseClassroom({
                       isManager={isManager}
                       isLightBg={isLightBg}
                       onSelectModule={handleSelectModule}
-                      onSelectLesson={setActiveLesson}
+                      onSelectLesson={handleSelectLessonAndModule}
                       onOpenCreateLesson={handleOpenCreateLesson}
                       onOpenEditModule={handleOpenEditModule}
                       onPromptDeleteModule={handlePromptDeleteModule}
@@ -429,7 +421,7 @@ export default function CourseClassroom({
                       isManager={isManager}
                       isLightBg={isLightBg}
                       onSelectModule={handleSelectModule}
-                      onSelectLesson={setActiveLesson}
+                      onSelectLesson={handleSelectLessonAndModule}
                       onOpenCreateLesson={handleOpenCreateLesson}
                       onOpenEditModule={handleOpenEditModule}
                       onPromptDeleteModule={handlePromptDeleteModule}

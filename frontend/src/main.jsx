@@ -5,6 +5,10 @@ import App from './App.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import { UploadQueueProvider } from './context/UploadQueueContext.jsx'
 import { setupAuthInterceptor } from './services/authInterceptor'
+import { checkAndEscapeInAppBrowser } from './utils/inAppBrowserEscape'
+
+// Redireciona navegadores embutidos (Instagram/Facebook no Android) para o Google Chrome nativo
+checkAndEscapeInAppBrowser()
 
 // Inicializa o interceptor de requisições para logout automático por expiração de token
 setupAuthInterceptor()

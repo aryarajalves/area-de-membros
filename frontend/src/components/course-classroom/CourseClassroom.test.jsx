@@ -3,6 +3,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CourseClassroom from './CourseClassroom';
 import { ToastProvider } from '../../context/ToastContext';
 
+vi.mock('./CustomVideoPlayer', () => ({
+  default: ({ src, poster, title }) => (
+    <video
+      data-testid="lesson-html5-video"
+      src={src}
+      poster={poster}
+      title={title}
+    />
+  )
+}));
+
 describe('CourseClassroom Component', () => {
   beforeEach(() => {
     localStorage.clear();

@@ -6,10 +6,9 @@ import CustomVideoPlayer from './CustomVideoPlayer';
 describe('CustomVideoPlayer Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-
-    // Mock métodos HTMLMediaElement que jsdom não implementa
     window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue();
     window.HTMLMediaElement.prototype.pause = vi.fn();
+    window.HTMLMediaElement.prototype.load = vi.fn();
   });
 
   it('renders video element, controls, and initial time with fallback duration', () => {
@@ -211,5 +210,23 @@ describe('CustomVideoPlayer Component', () => {
     // Simula retomada da reprodução após bufferizar
     fireEvent.playing(video);
     expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
+  });
+
+  it('hides loading spinner and reveals big play button as soon as loadedmetadata fires', () => {
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula 01"
+        lessonDuration="10 min"
+      />
+    );
+
+    const video = screen.getByTestId('lesson-html5-video');
+    expect(screen.getByTestId('video-loading-spinner')).toBeInTheDocument();
+
+    // Dispara loadedmetadata (cabeçalhos iniciais do vídeo recebidos)
+    fireEvent.loadedMetadata(video);
+    expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('video-big-play-btn')).toBeInTheDocument();
   });
 });

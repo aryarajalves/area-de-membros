@@ -35,7 +35,7 @@ export default function ChatHeader({
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="chat-header-left" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           {onBackToChannels && (
             <button
               type="button"
@@ -68,8 +68,8 @@ export default function ChatHeader({
             <Icon size={20} />
           </div>
 
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="chat-header-title-container" style={{ minWidth: 0 }}>
+            <div className="chat-header-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
               <h1
                 data-testid="chat-header-title"
                 style={{
@@ -84,6 +84,7 @@ export default function ChatHeader({
               </h1>
               {isGeneral && (
                 <span
+                  className="chat-header-badge"
                   style={{
                     fontSize: '0.6875rem',
                     padding: '2px 8px',
@@ -111,12 +112,13 @@ export default function ChatHeader({
           </div>
         </div>
 
-        {/* Controles da Direita: Filtro de Favoritas e Indicador Ao Vivo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Controles da Direita: Filtro de Favoritas, Mídias, Menções, DMs e Indicador Ao Vivo */}
+        <div className="chat-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {/* Botão de Alternar Filtro de Favoritas */}
           <button
             type="button"
             onClick={onToggleFavoritesOnly}
+            className="chat-header-action-btn"
             data-testid="chat-filter-favorites-btn"
             title={favoritesOnly ? 'Ver todas as mensagens' : 'Ver apenas mensagens favoritas'}
             style={{
@@ -142,6 +144,7 @@ export default function ChatHeader({
           <button
             type="button"
             onClick={onOpenMediaGallery}
+            className="chat-header-action-btn"
             data-testid="chat-open-media-gallery-btn"
             title="Abrir galeria de fotos, vídeos, áudios e documentos do canal"
             style={{
@@ -168,6 +171,7 @@ export default function ChatHeader({
             <button
               type="button"
               onClick={onOpenMentions}
+              className="chat-header-action-btn"
               data-testid="chat-open-mentions-btn"
               title="Ver mensagens onde fui marcado"
               style={{
@@ -195,6 +199,7 @@ export default function ChatHeader({
             <button
               type="button"
               onClick={onOpenDm}
+              className="chat-header-action-btn"
               data-testid="chat-open-dm-btn"
               title="Ver Mensagens Diretas (DMs / Inbox)"
               style={{
@@ -219,6 +224,7 @@ export default function ChatHeader({
 
           {/* Indicador Ao Vivo */}
           <div
+            className="chat-header-live-indicator"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -237,9 +243,11 @@ export default function ChatHeader({
                 backgroundColor: '#10b981',
                 boxShadow: '0 0 8px #10b981',
                 display: 'inline-block',
+                flexShrink: 0,
               }}
             />
             <span
+              className="chat-header-live-text"
               style={{
                 fontSize: '0.75rem',
                 fontWeight: 600,

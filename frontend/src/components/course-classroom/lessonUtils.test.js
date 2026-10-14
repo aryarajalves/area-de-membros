@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   formatLessonDuration,
   normalizeLessonDuration,
   parseDurationToSeconds,
   formatSecondsToTimer,
-  formatSecondsToClock
+  formatSecondsToClock,
+  scrollToClassroomSection
 } from './lessonUtils';
 
 describe('lessonUtils - formatLessonDuration & normalizeLessonDuration', () => {
@@ -67,4 +68,47 @@ describe('lessonUtils - formatSecondsToClock', () => {
     expect(formatSecondsToClock(null)).toBe('00:00');
   });
 });
+
+describe('lessonUtils - scrollToClassroomSection', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('rola a tela suavemente para o elemento encontrado por id após o delay', () => {
+    const el = document.createElement('div');
+    el.id = 'selected-module-classroom-section';
+    el.scrollIntoView = vi.fn();
+    document.body.appendChild(el);
+
+    scrollToClassroomSection('selected-module-classroom-section', 50);
+
+    expect(el.scrollIntoView).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(el.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+  });
+
+  it('faz fallback para data-testid caso o id direto não exista', () => {
+    const el = document.createElement('div');
+    el.setAttribute('data-testid', 'selected-module-section');
+    el.scrollIntoView = vi.fn();
+    document.body.appendChild(el);
+
+    scrollToClassroomSection('custom-non-existent-id', 0);
+
+    expect(el.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+  });
+
+  it('não dispara erro se o elemento não for encontrado no DOM', () => {
+    expect(() => {
+      scrollToClassroomSection('inexistent', 0);
+    }).not.toThrow();
+  });
+});
+
 

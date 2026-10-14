@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Send, Loader2, ExternalLink } from 'lucide-react';
 import { resolveButtonUrl } from './chatMentionUtils';
+import ChatDateSeparator from './ChatDateSeparator';
+import { isSameDay } from './chatDateUtils';
 
 export default function ChatDmConversationView({
   selectedContact,
@@ -52,17 +54,20 @@ export default function ChatDmConversationView({
             <p style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>Envie a primeira mensagem para começar!</p>
           </div>
         ) : (
-          messages.map((m) => {
+          messages.map((m, idx) => {
+            const prevM = idx > 0 ? messages[idx - 1] : null;
+            const showSep = !prevM || !isSameDay(prevM.created_at, m.created_at);
             const isMine = m.user.id === currentUser?.id;
             return (
-              <div
-                key={m.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: isMine ? 'flex-end' : 'flex-start',
-                }}
-              >
+              <React.Fragment key={m.id}>
+                {showSep && <ChatDateSeparator date={m.created_at} />}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isMine ? 'flex-end' : 'flex-start',
+                  }}
+                >
                 <div
                   style={{
                     maxWidth: '75%',
@@ -137,7 +142,8 @@ export default function ChatDmConversationView({
                   {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-            );
+            </React.Fragment>
+          );
           })
         )}
       </div>

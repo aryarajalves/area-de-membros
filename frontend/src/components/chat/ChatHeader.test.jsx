@@ -126,4 +126,49 @@ describe('ChatHeader Component', () => {
     fireEvent.click(mediaBtn);
     expect(handleOpenGallery).toHaveBeenCalledTimes(1);
   });
+
+  it('renders all action buttons with responsive action classes and triggers mentions and DM callbacks', () => {
+    const handleOpenMentions = vi.fn();
+    const handleOpenDm = vi.fn();
+    const handleBackToChannels = vi.fn();
+
+    const { container } = render(
+      <ChatHeader
+        selectedChannel={mockChannel}
+        onOpenMediaGallery={vi.fn()}
+        onOpenMentions={handleOpenMentions}
+        onOpenDm={handleOpenDm}
+        onBackToChannels={handleBackToChannels}
+      />
+    );
+
+    // Valida container de ações responsivo
+    const actionsContainer = container.querySelector('.chat-header-actions');
+    expect(actionsContainer).toBeInTheDocument();
+
+    // Valida botão de voltar para canais
+    const backChannelsBtn = screen.getByTestId('chat-back-to-channels-btn');
+    expect(backChannelsBtn).toBeInTheDocument();
+    fireEvent.click(backChannelsBtn);
+    expect(handleBackToChannels).toHaveBeenCalledTimes(1);
+
+    // Valida botão de menções
+    const mentionsBtn = screen.getByTestId('chat-open-mentions-btn');
+    expect(mentionsBtn).toBeInTheDocument();
+    expect(mentionsBtn).toHaveClass('chat-header-action-btn');
+    fireEvent.click(mentionsBtn);
+    expect(handleOpenMentions).toHaveBeenCalledTimes(1);
+
+    // Valida botão de DMs
+    const dmBtn = screen.getByTestId('chat-open-dm-btn');
+    expect(dmBtn).toBeInTheDocument();
+    expect(dmBtn).toHaveClass('chat-header-action-btn');
+    fireEvent.click(dmBtn);
+    expect(handleOpenDm).toHaveBeenCalledTimes(1);
+
+    // Valida indicador ao vivo com classe semântica
+    const liveIndicator = container.querySelector('.chat-header-live-indicator');
+    expect(liveIndicator).toBeInTheDocument();
+  });
 });
+

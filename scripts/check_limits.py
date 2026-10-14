@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Garante suporte a UTF-8 em terminais Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 def check_files():
     frontend_files = []
@@ -33,12 +41,18 @@ def check_files():
                     pass
 
     print("=== ARQUIVOS FRONTEND ACIMA DE 500 LINHAS ===")
-    for count, path in sorted(frontend_files, key=lambda x: x[0], reverse=True):
-        print(f"{count:4d} linhas -> {path}")
+    if not frontend_files:
+        print("[OK] Nenhum arquivo do Frontend ultrapassou 500 linhas.")
+    else:
+        for count, path in sorted(frontend_files, key=lambda x: x[0], reverse=True):
+            print(f"[EXCEDEU] {count:4d} linhas -> {path}")
 
     print("\n=== ARQUIVOS BACKEND ACIMA DE 1000 LINHAS ===")
-    for count, path in sorted(backend_files, key=lambda x: x[0], reverse=True):
-        print(f"{count:4d} linhas -> {path}")
+    if not backend_files:
+        print("[OK] Nenhum arquivo do Backend ultrapassou 1.000 linhas.")
+    else:
+        for count, path in sorted(backend_files, key=lambda x: x[0], reverse=True):
+            print(f"[EXCEDEU] {count:4d} linhas -> {path}")
 
 if __name__ == "__main__":
     check_files()

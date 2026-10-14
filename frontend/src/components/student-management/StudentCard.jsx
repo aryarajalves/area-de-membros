@@ -48,12 +48,26 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
       data-testid={`student-card-${student.id}`}
     >
       {/* Cabeçalho do Aluno: Avatar, Nome, E-mail, Status e Progresso Geral */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div
+        className="student-card-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: '1 1 280px', minWidth: 0 }}>
           <div
             style={{
               width: '48px',
               height: '48px',
+              minWidth: '48px',
+              minHeight: '48px',
+              maxWidth: '48px',
+              maxHeight: '48px',
+              flexShrink: 0,
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
               color: '#ffffff',
@@ -68,9 +82,9 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             {initial}
           </div>
 
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: textTitle }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: textTitle, wordBreak: 'break-word' }}>
                 {student.name}
               </h3>
               <span
@@ -85,6 +99,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
                   backgroundColor: student.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                   color: student.is_active ? '#34d399' : '#f87171',
                   border: `1px solid ${student.is_active ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                  flexShrink: 0,
                 }}
               >
                 <UserCheck size={11} />
@@ -93,8 +108,8 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '4px', fontSize: '0.82rem', color: textMuted }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <Mail size={13} /> {student.email}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', wordBreak: 'break-all' }}>
+                <Mail size={13} style={{ flexShrink: 0 }} /> {student.email}
               </span>
               {student.phone && (
                 <a
@@ -108,19 +123,20 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
                     color: '#22c55e',
                     textDecoration: 'none',
                     fontWeight: 500,
+                    whiteSpace: 'nowrap',
                   }}
                   title="Conversar no WhatsApp"
                   data-testid={`student-phone-${student.id}`}
                 >
-                  <MessageCircle size={13} /> {student.phone}
+                  <MessageCircle size={13} style={{ flexShrink: 0 }} /> {student.phone}
                 </a>
               )}
               <span
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
                 title="Data e horário em que virou aluno"
                 data-testid={`student-created-at-${student.id}`}
               >
-                <Clock size={13} /> Aluno desde: {formatDateTime(student.created_at)}
+                <Clock size={13} style={{ flexShrink: 0 }} /> Aluno desde: {formatDateTime(student.created_at)}
               </span>
             </div>
 
@@ -140,6 +156,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
                     backgroundColor: `${t.color || '#3b82f6'}1a`,
                     color: t.color || '#3b82f6',
                     border: `1px solid ${t.color || '#3b82f6'}40`,
+                    flexShrink: 0,
                   }}
                   data-testid={`student-tag-${student.id}-${t.id}`}
                 >
@@ -163,6 +180,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
                   color: isLightBg ? '#7c3aed' : '#c4b5fd',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
+                  flexShrink: 0,
                 }}
                 title="Atribuir ou criar etiquetas manualmente para este aluno"
                 data-testid={`edit-student-tags-btn-${student.id}`}
@@ -175,7 +193,15 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
         </div>
 
         {/* Resumo do Progresso Geral do Aluno e Conquistas */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <div
+          className="student-card-metrics"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
           {/* Badge de Pontos no Ranking de Conquistas */}
           <StudentRpgLevelBadge
             totalPoints={student.total_points ?? 0}
@@ -200,7 +226,8 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: '0 0 10px rgba(234, 179, 8, 0.15)'
+              boxShadow: '0 0 10px rgba(234, 179, 8, 0.15)',
+              flexShrink: 0,
             }}
             title="Clique para ver o histórico completo de pontos e conquistas no ranking"
             data-testid={`student-gamification-points-btn-${student.id}`}
@@ -225,6 +252,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
               fontSize: '0.82rem',
               fontWeight: 600,
               transition: 'all 0.2s ease',
+              flexShrink: 0,
             }}
             title="Abrir histórico de pontos do ranking de conquistas"
             data-testid={`open-gamification-history-btn-${student.id}`}
@@ -233,7 +261,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             <span>Pontos & Conquistas</span>
           </button>
 
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: '0.78rem', color: textMuted }}>Progresso Geral</div>
             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#38bdf8' }}>
               {student.overall_progress_percent}%
@@ -255,6 +283,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
               color: textMuted,
               fontSize: '0.82rem',
               transition: 'all 0.2s ease',
+              flexShrink: 0,
             }}
             data-testid={`toggle-courses-btn-${student.id}`}
           >

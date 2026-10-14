@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { MessageSquare, Sparkles, Loader2 } from 'lucide-react';
 import ChatMessageItem from './ChatMessageItem';
+import ChatDateSeparator from './ChatDateSeparator';
+import { isSameDay } from './chatDateUtils';
 
 export default function ChatMessagesList({
   messages = [],
@@ -111,19 +113,26 @@ export default function ChatMessagesList({
         flexDirection: 'column',
       }}
     >
-      {messages.map((msg) => (
-        <ChatMessageItem
-          key={msg.id}
-          message={msg}
-          currentUser={currentUser}
-          onDeleteMessage={onDeleteMessage}
-          onToggleLike={onToggleLike}
-          onToggleFavorite={onToggleFavorite}
-          onTogglePin={onTogglePin}
-          onOpenThread={onOpenThread}
-          isHighlighted={msg.id === highlightedMessageId}
-        />
-      ))}
+      {messages.map((msg, idx) => {
+        const prevMsg = idx > 0 ? messages[idx - 1] : null;
+        const showSeparator = !prevMsg || !isSameDay(prevMsg.created_at, msg.created_at);
+
+        return (
+          <React.Fragment key={msg.id}>
+            {showSeparator && <ChatDateSeparator date={msg.created_at} />}
+            <ChatMessageItem
+              message={msg}
+              currentUser={currentUser}
+              onDeleteMessage={onDeleteMessage}
+              onToggleLike={onToggleLike}
+              onToggleFavorite={onToggleFavorite}
+              onTogglePin={onTogglePin}
+              onOpenThread={onOpenThread}
+              isHighlighted={msg.id === highlightedMessageId}
+            />
+          </React.Fragment>
+        );
+      })}
       <div ref={bottomRef} style={{ height: '4px' }} />
     </div>
   );

@@ -289,7 +289,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **500+ testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA (`HomeTutorials`, `TutorialModal`, `TutorialVideoInputSection`, `TutorialVideoPreview`), mural social Apresente-se com networking e vídeo IA (`IntroductionManagement`), player de vídeo modular (`CustomVideoPlayer`, `VideoPlayerOverlays`, `VideoControls`), gamificação RPG no Meu Perfil (`ProfileGamificationCard`), escada de 20 níveis (`GamificationRpgLadderModal`), módulos retráteis na sala de aula (`ModuleTimelineSidebar`), criação manual de usuários (`CreateUserManualModal`), validação de senhas com 12 caracteres, edição de capítulos com IA, editor de funis Bézier, chat broadcast, Favoritos unificados, fila de uploads em segundo plano e logs.
+> **500+ testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, separadores de datas inteligentes no chat da comunidade (`ChatDateSeparator`), rolagem horizontal e filtros responsivos de suporte (`SupportFilterPills`), proporção e layout mobile do card de alunos (`StudentCard`), reprodutor de vídeo ultrarrápido com streaming leve sob demanda (`CustomVideoPlayer`, `VideoPlayerOverlays`, `VideoControls`), gamificação RPG no Meu Perfil, módulos retráteis na sala de aula, mural social, editor de funis Bézier, chat broadcast, Favoritos unificados e logs.
 
 ### Backend (Pytest)
 ```bash
@@ -298,7 +298,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **174 testes unitários passando (100% de aprovação)** cobrindo endpoints de WhiteLabel (`/api/v1/whitelabel`), tutoriais e geração por IA (`/api/v1/tutorials`), mural de apresentações com vídeo e comentários (`/api/v1/introductions`), criação manual de usuários e senha forte de 12 caracteres (`/api/v1/users`), handler global de exceções HTTP 500, capítulos de transcrição IA, funis de automação, chat broadcast, tags de alunos, gamificação RPG, Favoritos, tokens de API, uploads S3/Backblaze B2, autenticação JWT, marcos de progresso e rotas de convites.
+> **175 testes unitários passando (100% de aprovação)** cobrindo endpoints de WhiteLabel (`/api/v1/whitelabel`), tutoriais e geração por IA (`/api/v1/tutorials`), mural de apresentações com vídeo e comentários (`/api/v1/introductions`), criação manual de usuários e senha forte de 12 caracteres (`/api/v1/users`), handler global de exceções HTTP 500, capítulos de transcrição IA, funis de automação, chat broadcast, tags de alunos, gamificação RPG, Favoritos, tokens de API, uploads S3/Backblaze B2, autenticação JWT, marcos de progresso e rotas de convites.
 
 ---
 

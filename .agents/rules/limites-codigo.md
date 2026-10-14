@@ -17,6 +17,7 @@ Para garantir que o projeto permaneça manutenível e que o agente consiga proce
    - Se uma nova funcionalidade for fazer um arquivo ultrapassar esses limites (ou se o arquivo já estiver acima do limite), você **DEVE obrigatoriamente alertar o usuário e perguntar antes** se ele deseja realizar a modularização (quebra do arquivo) antes de prosseguir com a implementação.
    - Ao propor a modularização, priorize a extração de componentes (frontend) e serviços/utilitários (backend) para arquivos separados.
    - Aguarde a confirmação do usuário antes de realizar a quebra estrutural.
+4. **Exibição Obrigatória em Todas as Entregas:** Toda vez que terminar de atualizar ou criar qualquer código no sistema, o agente DEVE obrigatoriamente executar `python scripts/check_limits.py` e reportar na resposta os arquivos que ultrapassaram os limites (ou confirmar expressamente se nenhum arquivo ultrapassou).
 
 Isso evita a criação de "Arquivos Monolíticos", protege o código contra perdas através de backups preventivos e mantém o progresso das refatorações 100% transparente.
 

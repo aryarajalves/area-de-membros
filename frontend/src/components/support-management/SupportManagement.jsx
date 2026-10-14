@@ -188,6 +188,7 @@ export default function SupportManagement({ currentUser, bgColor }) {
 
   return (
     <div
+      className="support-management-container"
       style={{
         padding: '32px 24px',
         maxWidth: '1200px',

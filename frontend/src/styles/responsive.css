@@ -394,28 +394,6 @@
     flex-shrink: 0 !important;
   }
 
-  /* Chat Header no Mobile */
-  .chat-header {
-    padding: 10px 12px !important;
-    gap: 8px !important;
-  }
-
-  .chat-header-icon-box {
-    display: none !important;
-  }
-
-  .chat-header-btn-text {
-    display: none !important;
-  }
-
-  .chat-header [data-testid="chat-header-desc"] {
-    display: none !important;
-  }
-
-  .chat-header [data-testid="chat-header-title"] {
-    font-size: 0.95rem !important;
-  }
-
   /* Input do Chat no Mobile */
   .chat-input-keyboard-hint {
     display: none !important;
@@ -446,10 +424,6 @@
     box-sizing: border-box !important;
   }
 }
-
-/* Chat Helpers para Desktop e Geral */
-.chat-mobile-back-channels-btn { display: none; }
-.chat-header-btn-text { display: inline; }
 
 @media (min-width: 769px) {
   .chat-mobile-back-channels-btn {
@@ -488,4 +462,37 @@
     padding: 7px 9px !important;
     gap: 0 !important;
   }
+
+  /* Gestão de Alunos - Card Responsivo e Imagens no Mobile */
+  .student-card {
+    padding: 14px 12px !important;
+    gap: 12px !important;
+  }
+  .student-card-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .student-card-metrics {
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+  .student-course-item {
+    padding: 12px 10px !important;
+  }
+  .student-course-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
 }
+
+/* Suporte & Dúvidas - Padding otimizado para dispositivos móveis */
+@media (max-width: 768px) {
+  .support-management-container {
+    padding: 16px 12px 32px !important;
+  }
+}
+

@@ -4,12 +4,14 @@ import VideoControls from './VideoControls';
 import VideoChaptersDrawer from './VideoChaptersDrawer';
 import VideoPlayerOverlays from './VideoPlayerOverlays';
 
+const EMPTY_CHAPTERS = [];
+
 export default function CustomVideoPlayer({
   src,
   poster,
   title,
   lessonDuration,
-  chapters = []
+  chapters = EMPTY_CHAPTERS
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -50,8 +52,12 @@ export default function CustomVideoPlayer({
   // Duração de fallback a partir da aula cadastrada (caso video.duration seja Infinity/NaN em streams parciais)
   const fallbackDuration = parseDurationToSeconds(lessonDuration);
 
-  const [activeChapters, setActiveChapters] = useState(chapters || []);
-  useEffect(() => { setActiveChapters(chapters || []); }, [chapters]);
+  const [activeChapters, setActiveChapters] = useState(chapters || EMPTY_CHAPTERS);
+  useEffect(() => {
+    if (chapters && chapters.length > 0) {
+      setActiveChapters(chapters);
+    }
+  }, [chapters]);
   useEffect(() => {
     const handleChaptersLoaded = (e) => {
       if (Array.isArray(e?.detail?.chapters)) setActiveChapters(e.detail.chapters);
@@ -68,6 +74,14 @@ export default function CustomVideoPlayer({
     setHasError(false);
     setCurrentTime(0);
     setDuration(fallbackDuration || 0);
+
+    // Timeout de prontidão rápida: se a conexão externa demorar a disparar canplay,
+    // não deixa o usuário bloqueado no spinner "Carregando aula..."
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [src, fallbackDuration]);
 
   const handleRetry = () => {
@@ -80,6 +94,7 @@ export default function CustomVideoPlayer({
 
   // Inicializa e atualiza duração ao carregar metadados do vídeo
   const handleLoadedMetadata = () => {
+    setIsLoading(false);
     if (videoRef.current) {
       // Aplica a velocidade salva ao novo vídeo carregado
       if (typeof playbackRate === 'number' && playbackRate > 0) {
@@ -155,6 +170,7 @@ export default function CustomVideoPlayer({
   // Play / Pause com feedback visual imediato se houver necessidade de buffer
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
+    setIsLoading(false);
     if (videoRef.current.paused || videoRef.current.ended) {
       if (videoRef.current.readyState < 3) {
         setIsBuffering(true);
@@ -314,7 +330,7 @@ export default function CustomVideoPlayer({
         ref={videoRef}
         key={src}
         src={src}
-        preload="auto"
+        preload="metadata"
         poster={poster || undefined}
         onLoadedMetadata={handleLoadedMetadata}
         onLoadedData={() => {
@@ -323,7 +339,6 @@ export default function CustomVideoPlayer({
         }}
         onTimeUpdate={handleTimeUpdate}
         onLoadStart={() => {
-          setIsLoading(true);
           setIsBuffering(false);
         }}
         onWaiting={() => setIsBuffering(true)}
