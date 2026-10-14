@@ -10,8 +10,7 @@ elif db_url.startswith("postgresql://") or db_url.startswith("postgresql+psycopg
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     connect_args = {
-        "connect_timeout": 10,
-        "options": "-c lock_timeout=5000ms"
+        "connect_timeout": 10
     }
 
 engine_kwargs = {"connect_args": connect_args}

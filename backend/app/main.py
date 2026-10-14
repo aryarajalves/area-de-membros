@@ -58,46 +58,27 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"[MAIN] Aviso ao criar tabelas no startup: {e}")
 
-    # 2. Migrações DDL de compatibilidade com timeout restrito para evitar deadlocks
+    # 2. Limpeza preventiva de conexões e transações órfãs no PostgreSQL (deploys anteriores)
     try:
-        logger.info("[MAIN] Executando verificações DDL de compatibilidade...")
         with engine.connect() as conn:
             from sqlalchemy import text
             is_postgres = "postgresql" in engine.dialect.name
             if is_postgres:
-                try:
-                    conn.execute(text("SET lock_timeout = '2000ms';"))
-                except Exception:
-                    pass
-
-            # Inclusão segura de colunas
-            columns_to_add = [
-                ("invites", "used_by_email", "VARCHAR"),
-                ("invites", "allowed_course_ids", "VARCHAR"),
-            ]
-            for table, col, col_type in columns_to_add:
-                try:
-                    if is_postgres:
-                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type};"))
-                    else:
-                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type};"))
-                    conn.commit()
-                except Exception:
-                    conn.rollback()
-
-            # Sincronização de sequences no PostgreSQL (isolada e protegida com timeout)
-            if is_postgres:
-                seq_tables = ["users", "webhooks", "webhook_logs"]
-                for tbl in seq_tables:
-                    try:
-                        conn.execute(text(f"ALTER TABLE {tbl} ALTER COLUMN id SET DEFAULT nextval('{tbl}_id_seq');"))
-                        conn.commit()
-                    except Exception as seq_err:
-                        conn.rollback()
-                        logger.warning(f"[MAIN] Aviso não impeditivo ao verificar sequence de {tbl}: {seq_err}")
-        logger.info("[MAIN] Verificações DDL concluídas com sucesso.")
+                # Encerra conexões órfãs deixadas em 'idle in transaction' ou com DDLs pendentes
+                conn.execute(text("""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid()
+                      AND (
+                          state IN ('idle in transaction', 'idle in transaction (aborted)')
+                          OR (state = 'active' AND query ILIKE 'ALTER TABLE%')
+                      );
+                """))
+                conn.commit()
+                logger.info("[MAIN] Conexões órfãs e transações pendentes no PostgreSQL limpas com sucesso.")
     except Exception as e:
-        logger.warning(f"[MAIN] Aviso nas migrações DDL de startup: {e}")
+        logger.warning(f"[MAIN] Aviso na verificação de conexões do banco: {e}")
 
     # 3. Sincronização de credenciais do superadministrador
     try:
