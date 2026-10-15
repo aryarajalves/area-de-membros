@@ -319,7 +319,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **942 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento e nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`) e redirecionamento inteligente.
+> **944 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento e nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`), redirecionamento inteligente de convites já utilizados e redirecionamento automático de convites expirados.
 
 ### Backend (Pytest)
 ```bash
@@ -328,7 +328,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **222 testes unitários passando (100% de aprovação)** cobrindo criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`, `test_invite_phone.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
+> **223 testes unitários passando (100% de aprovação)** cobrindo auto-migrações preventivas no startup (`main.py`), validação de convites expirados com flag `is_expired` (`test_invite_phone.py`), criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
 
 ---
 

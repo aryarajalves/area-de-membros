@@ -58,6 +58,49 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"[MAIN] Aviso ao criar tabelas no startup: {e}")
 
+    # 1.1. Auto-migrações preventivas de colunas e tabelas (garante compatibilidade após deploys)
+    try:
+        logger.info("[MAIN] Executando auto-migrações preventivas de colunas e tabelas...")
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            with conn.begin():
+                is_postgres = "postgresql" in engine.dialect.name
+                if is_postgres:
+                    conn.execute(text("""
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type VARCHAR DEFAULT 'course';
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS tool_url VARCHAR;
+                        CREATE TABLE IF NOT EXISTS course_bundles (
+                            id SERIAL PRIMARY KEY,
+                            parent_course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            bundled_course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE (parent_course_id, bundled_course_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_course_bundles_parent_course_id ON course_bundles(parent_course_id);
+                        CREATE INDEX IF NOT EXISTS ix_course_bundles_bundled_course_id ON course_bundles(bundled_course_id);
+                        CREATE TABLE IF NOT EXISTS course_sales_clicks (
+                            id SERIAL PRIMARY KEY,
+                            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_course_sales_clicks_course_id ON course_sales_clicks(course_id);
+                        CREATE INDEX IF NOT EXISTS ix_course_sales_clicks_user_id ON course_sales_clicks(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_course_sales_clicks_created_at ON course_sales_clicks(created_at);
+                    """))
+                else:
+                    try:
+                        conn.execute(text("ALTER TABLE courses ADD COLUMN item_type VARCHAR DEFAULT 'course'"))
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("ALTER TABLE courses ADD COLUMN tool_url VARCHAR"))
+                    except Exception:
+                        pass
+        logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
+    except Exception as e:
+        logger.warning(f"[MAIN] Aviso nas auto-migrações preventivas: {e}")
+
     # 2. Limpeza preventiva de conexões e transações órfãs no PostgreSQL (deploys anteriores)
     try:
         with engine.connect() as conn:

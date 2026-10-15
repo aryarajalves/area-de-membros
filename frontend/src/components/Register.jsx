@@ -150,8 +150,52 @@ export default function Register({
             } else {
               redirectToTarget(false);
             }
+          } else if (data.is_expired || (data.detail && data.detail.includes('expirou'))) {
+            // O convite expirou! Redirecionar para login (ou home se tiver sessão ativa)
+            const savedToken = localStorage.getItem('auth_token');
+            const savedUser = localStorage.getItem('auth_user');
+
+            const redirectToTarget = (isSessionActive) => {
+              if (isSessionActive) {
+                addToast('Este convite expirou, mas você já possui uma sessão ativa. Redirecionando para a tela principal...', 'info');
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, document.title, '/');
+                }
+                if (onRedirectToHome) {
+                  onRedirectToHome();
+                } else {
+                  window.location.href = '/';
+                }
+              } else {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                addToast('Este convite expirou. Solicite um novo convite ao administrador do sistema.', 'error');
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, document.title, '/');
+                }
+                if (onRedirectToLogin) {
+                  onRedirectToLogin();
+                } else {
+                  window.location.href = '/';
+                }
+              }
+            };
+
+            if (savedToken && savedUser) {
+              fetch('/api/v1/users/me', {
+                headers: { Authorization: `Bearer ${savedToken}` },
+              })
+                .then((meRes) => {
+                  redirectToTarget(Boolean(meRes && meRes.ok));
+                })
+                .catch(() => {
+                  redirectToTarget(false);
+                });
+            } else {
+              redirectToTarget(false);
+            }
           } else {
-            const err = data.detail || 'Convite inválido ou expirado.';
+            const err = data.detail || 'Convite inválido.';
             setInviteError(err);
             addToast(err, 'error');
           }

@@ -170,3 +170,31 @@ def test_validate_invite_already_used_returns_flag():
 
     # Limpeza
     client.delete(f"/api/v1/auth/users/{created_user_id}", headers=headers)
+
+
+def test_validate_invite_expired_returns_is_expired_flag():
+    from datetime import timedelta
+    db = TestingSessionLocal()
+    past_date = datetime.now(timezone.utc) - timedelta(hours=2)
+    expired_invite = Invite(
+        token="token_expirado_test_123",
+        role="aluno",
+        expires_at=past_date,
+        is_used=False
+    )
+    db.add(expired_invite)
+    db.commit()
+    db.close()
+
+    res_val = client.get("/api/v1/auth/invites/validate?token=token_expirado_test_123")
+    assert res_val.status_code == 200
+    val_data = res_val.json()
+    assert val_data["valid"] is False
+    assert val_data["is_expired"] is True
+    assert "expirou" in val_data["detail"]
+
+    db = TestingSessionLocal()
+    db.query(Invite).filter_by(token="token_expirado_test_123").delete()
+    db.commit()
+    db.close()
+

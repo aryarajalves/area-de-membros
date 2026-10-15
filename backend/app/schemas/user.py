@@ -138,6 +138,7 @@ class InviteValidateResponse(BaseModel):
     detail: Optional[str] = None
     already_used: Optional[bool] = False
     used_by_email: Optional[str] = None
+    is_expired: Optional[bool] = False
 
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None

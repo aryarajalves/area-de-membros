@@ -754,7 +754,7 @@ def validate_invite(token: str, db: Session = Depends(get_db)):
             expires_at = expires_at.replace(tzinfo=timezone.utc)
             
         if now > expires_at:
-            return InviteValidateResponse(valid=False, detail="Este convite expirou.")
+            return InviteValidateResponse(valid=False, is_expired=True, detail="Este convite expirou.")
 
     return InviteValidateResponse(valid=True, role=invite.role)
 

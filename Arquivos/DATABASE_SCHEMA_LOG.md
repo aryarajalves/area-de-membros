@@ -2,6 +2,17 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [15/10/2026] - Auto-Migrações Preventivas no Startup da Aplicação (Lifespan FastAPI)
+- **Objetivo:** Prevenir erros de coluna ausente (`UndefinedColumn: column courses.item_type does not exist`) em ambientes de produção após deploys sem migração manual.
+- **Tabelas e Colunas Asseguradas Automaticamente:**
+  - `courses.item_type`: Garantida com `ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type VARCHAR DEFAULT 'course';`
+  - `courses.tool_url`: Garantida com `ALTER TABLE courses ADD COLUMN IF NOT EXISTS tool_url VARCHAR;`
+  - `course_bundles`: Criada automaticamente com índices se ainda não existir.
+  - `course_sales_clicks`: Criada automaticamente com índices se ainda não existir.
+- **Arquivo Afetado:** `backend/app/main.py` (função `lifespan`).
+
+---
+
 ### [15/10/2026] - Criptografia em Repouso de Mensagens Diretas (DMs) e Proteção de Dados
 - **Tabela Afetada:** `chat_messages`
   - A coluna `message` passa a armazenar o payload criptografado com cifra simétrica padrão Fernet (AES-128-CBC + HMAC-SHA256) precedido pelo identificador de versão de algoritmo `enc:v1:`, garantindo proteção total contra vazamento de dados em repouso no banco de dados.
