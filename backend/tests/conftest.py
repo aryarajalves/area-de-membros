@@ -36,6 +36,11 @@ import app.services.chat_broadcast_service as _chat_bc_service
 
 _core_db.SessionLocal = TestingSessionLocal
 _chat_bc_service.SessionLocal = TestingSessionLocal
+try:
+    import app.services.funnel_service as _funnel_service
+    _funnel_service.SessionLocal = TestingSessionLocal
+except Exception:
+    pass
 
 def override_get_db():
     db = TestingSessionLocal()

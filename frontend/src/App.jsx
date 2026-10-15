@@ -25,6 +25,7 @@ import { HomeTutorials } from './components/home-tutorials';
 import { IntroductionManagement } from './components/introductions';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
+import { useUrlNavigation } from './hooks/useUrlNavigation';
 
 const ALUNO_ALLOWED_TABS = ['home', 'courses', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
 
@@ -63,12 +64,24 @@ function App() {
     localStorage.setItem('member_area_bg_color', newColor);
   }, []);
 
-  const handleSelectTab = (tabId) => {
+  const handleSelectTab = useCallback((tabId) => {
     setIsInsideCourse(false);
     setIsMobileMenuOpen(false);
     setActiveTab(tabId);
     localStorage.setItem('active_tab', tabId);
-  };
+    if (typeof window !== 'undefined' && window.location.search) {
+      try {
+        const cleanPath = window.location.pathname || '/';
+        if (window.history && typeof window.history.replaceState === 'function') {
+          window.history.replaceState({}, document.title, cleanPath);
+        }
+      } catch {
+        // Ignora erro
+      }
+    }
+  }, []);
+
+  useUrlNavigation({ user, onSelectTab: handleSelectTab });
 
   useEffect(() => {
     // Check local storage for existing session
@@ -105,6 +118,19 @@ function App() {
       window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
     };
   }, [addToast]);
+
+  useEffect(() => {
+    const handleAppNavigateTab = (e) => {
+      const targetTab = e.detail?.tab;
+      if (targetTab) {
+        handleSelectTab(targetTab);
+      }
+    };
+    window.addEventListener('app:navigate_tab', handleAppNavigateTab);
+    return () => {
+      window.removeEventListener('app:navigate_tab', handleAppNavigateTab);
+    };
+  }, []);
 
   useEffect(() => {
     const currentToken = token || localStorage.getItem('auth_token');
@@ -265,11 +291,15 @@ function App() {
   const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage);
 
   if (isRegisterPage) {
+    const handleRedirectFromInvite = () => {
+      if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
+      setPathname('/');
+    };
     return (
       <Register
-        onRegisterSuccess={() => {
-          window.location.href = '/';
-        }}
+        onRegisterSuccess={() => { window.location.href = '/'; }}
+        onRedirectToHome={handleRedirectFromInvite}
+        onRedirectToLogin={handleRedirectFromInvite}
       />
     );
   }

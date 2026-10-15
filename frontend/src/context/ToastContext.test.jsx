@@ -47,4 +47,23 @@ describe('ToastContext & Toast Notifications', () => {
     expect(screen.getByText('Erro ao gerar convite.')).toBeInTheDocument();
     expect(screen.getByTestId('toast-error')).toBeInTheDocument();
   });
+
+  it('does not duplicate identical active toast notifications when triggered multiple times', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer triggerType="error" message="Sua sessão expirou. Por favor, faça login novamente." />
+      </ToastProvider>
+    );
+
+    const triggerBtn = screen.getByTestId('trigger-toast');
+    act(() => {
+      triggerBtn.click();
+      triggerBtn.click();
+      triggerBtn.click();
+    });
+
+    const errorToasts = screen.getAllByText('Sua sessão expirou. Por favor, faça login novamente.');
+    expect(errorToasts).toHaveLength(1);
+    expect(screen.getAllByTestId('toast-error')).toHaveLength(1);
+  });
 });

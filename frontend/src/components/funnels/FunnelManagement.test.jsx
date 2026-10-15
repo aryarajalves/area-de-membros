@@ -84,13 +84,20 @@ describe('Funnel Components Unit Tests', () => {
 
     expect(screen.getByText('ADICIONAR NÓ')).toBeInTheDocument();
     expect(screen.getByText('CONTEÚDO')).toBeInTheDocument();
+    expect(screen.getByText('AÇÕES & CONTATOS')).toBeInTheDocument();
     expect(screen.getByText('FLUXO E TEMPO')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('add-node-message'));
-    expect(handleSelect).toHaveBeenCalledWith('message');
+    expect(handleSelect).toHaveBeenCalledWith('message', undefined);
+
+    fireEvent.click(screen.getByTestId('add-node-tag'));
+    expect(handleSelect).toHaveBeenCalledWith('tag', undefined);
+
+    fireEvent.click(screen.getByTestId('add-node-trigger_course_interest'));
+    expect(handleSelect).toHaveBeenCalledWith('trigger_course_interest', { trigger_event: 'course_interest' });
 
     fireEvent.click(screen.getByTestId('add-node-delay'));
-    expect(handleSelect).toHaveBeenCalledWith('delay');
+    expect(handleSelect).toHaveBeenCalledWith('delay', undefined);
   });
 
   it('renders FunnelCanvasPage with nodes and top bar controls', async () => {
@@ -404,6 +411,47 @@ describe('Funnel Components Unit Tests', () => {
     // Conexão criada de forma bidirecional (origem -> destino)
     expect(screen.queryByTestId('connection-drag-preview')).not.toBeInTheDocument();
     expect(screen.getByTitle('Remover conexão')).toBeInTheDocument();
+  });
+
+  it('enforces 1-to-1 connection by automatically replacing previous connection on port', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        name: 'Funil 1-to-1 Replacement Test',
+        flow_data: JSON.stringify({
+          nodes: [
+            { id: 'node_src', type: 'message', position: { x: 50, y: 50 }, data: { text: 'Origem' } },
+            { id: 'node_dst1', type: 'delay', position: { x: 450, y: 50 }, data: { delay_seconds: 2 } },
+            { id: 'node_dst2', type: 'delay', position: { x: 450, y: 250 }, data: { delay_seconds: 5 } },
+          ],
+          edges: [
+            { id: 'e_initial', source: 'node_src', target: 'node_dst1' },
+          ],
+        }),
+      }),
+    });
+
+    render(
+      <ToastProvider>
+        <FunnelCanvasPage funnelId={1} onBack={vi.fn()} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('node-output-handle-node_src')).toBeInTheDocument();
+      expect(screen.getByTestId('node-input-handle-node_dst2')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTitle('Remover conexão')).toHaveLength(1);
+
+    const srcOutput = screen.getByTestId('node-output-handle-node_src');
+    const dst2Input = screen.getByTestId('node-input-handle-node_dst2');
+
+    fireEvent.mouseDown(srcOutput, { clientX: 370, clientY: 200 });
+    fireEvent.mouseUp(dst2Input);
+
+    expect(screen.getAllByTitle('Remover conexão')).toHaveLength(1);
   });
 });
 

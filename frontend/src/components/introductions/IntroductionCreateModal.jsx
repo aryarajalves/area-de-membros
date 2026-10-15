@@ -41,7 +41,7 @@ export default function IntroductionCreateModal({
             </div>
             <div>
               <h3>Criar Apresentação</h3>
-              <p>Apresente-se para os outros membros e comece a criar conexões.</p>
+              <p>Apresente-se, conte o que você faz e comece a gerar novas conexões.</p>
             </div>
           </div>
 
@@ -92,7 +92,7 @@ export default function IntroductionCreateModal({
           <div className="intro-create-tip-box">
             <Sparkles size={16} className="tip-icon" />
             <span>
-              <strong>Dica de ouro:</strong> Apresentações detalhadas geram mais respostas, conexões e parcerias com outros alunos!
+              <strong>Dica de ouro:</strong> Falar sobre quem você é e o que você faz gera muito mais conexões, respostas e parcerias com outros membros!
             </span>
           </div>
 

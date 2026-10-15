@@ -130,3 +130,27 @@ class ChatMessageFavoriteToggleResponse(BaseModel):
     is_favorited: bool
     favorited: bool = False
 
+
+class ChatMemberItem(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    avatar_url: Optional[str] = None
+    phone: Optional[str] = None
+    created_at: Optional[datetime] = None
+    is_online: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatChannelMembersResponse(BaseModel):
+    channel_type: str
+    course_id: Optional[int] = None
+    channel_name: Optional[str] = None
+    total_members: int = 0
+    superadmins: List[ChatMemberItem] = []
+    admins: List[ChatMemberItem] = []
+    students: List[ChatMemberItem] = []
+
+

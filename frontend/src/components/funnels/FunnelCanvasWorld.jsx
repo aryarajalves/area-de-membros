@@ -25,6 +25,7 @@ export default function FunnelCanvasWorld({
   activeConnectingSource,
   nodeHeights = {},
   onNodeHeightMeasured,
+  availableSenders = [],
 }) {
   return (
     <div
@@ -81,7 +82,8 @@ export default function FunnelCanvasWorld({
             onDuplicateNode={onDuplicateNode}
             onStartConnect={onStartConnect}
             onConnectTarget={onConnectTarget}
-            isTargetActive={Boolean(activeConnectingSource && activeConnectingSource !== node.id)}
+            isTargetActive={Boolean(activeConnectingSource && activeConnectingSource !== node.id && node.type !== 'trigger')}
+            availableSenders={availableSenders}
           />
         </div>
       ))}

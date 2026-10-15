@@ -1,21 +1,35 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const activeMessagesRef = useRef(new Set());
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => {
+      const toastToRemove = prev.find((t) => t.id === id);
+      if (toastToRemove?.key) {
+        activeMessagesRef.current.delete(toastToRemove.key);
+      }
+      return prev.filter((t) => t.id !== id);
+    });
   }, []);
 
   const addToast = useCallback((message, type = 'success', duration = 3500) => {
+    const key = `${type}:${message}`;
+    if (activeMessagesRef.current.has(key)) {
+      return;
+    }
+    activeMessagesRef.current.add(key);
+
     const id = Date.now() + Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, key }]);
 
     if (duration > 0) {
       setTimeout(() => {
+        activeMessagesRef.current.delete(key);
         removeToast(id);
       }, duration);
     }

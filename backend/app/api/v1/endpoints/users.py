@@ -17,6 +17,7 @@ from app.core.security import (
 )
 from app.models.user import User, Invite, PasswordResetToken, RegistrationVerification
 from app.models.course import UserCourse
+from app.services.course_bundle_service import grant_bundle_access_for_user
 from app.services.email import send_verification_email
 from app.schemas.user import (
     UserLogin,
@@ -304,9 +305,17 @@ def create_user_manual(
                 access_duration=dur,
                 expires_at=exp
             ))
+        grant_bundle_access_for_user(db, new_user.id, list(seen_cids))
 
     db.commit()
     db.refresh(new_user)
+
+    if new_user.role == "aluno":
+        try:
+            from app.services.funnel_service import dispatch_student_created_funnels
+            dispatch_student_created_funnels(db, new_user.id)
+        except Exception as fn_err:
+            logger.error(f"[UserCreateManual] Falha ao acionar funis para aluno #{new_user.id}: {fn_err}")
 
     assigned_ucs = db.query(UserCourse).filter(UserCourse.user_id == new_user.id).all()
     res = UserResponse.model_validate(new_user)
@@ -386,6 +395,7 @@ def update_user(
                     access_duration=dur,
                     expires_at=exp
                 ))
+            grant_bundle_access_for_user(db, user_id, list(seen_cids))
 
     db.commit()
     db.refresh(target_user)
@@ -735,7 +745,7 @@ def validate_invite(token: str, db: Session = Depends(get_db)):
     if not invite:
         return InviteValidateResponse(valid=False, detail="Convite não encontrado.")
     if invite.is_used:
-        return InviteValidateResponse(valid=False, detail="Este convite já foi utilizado.")
+        return InviteValidateResponse(valid=False, already_used=True, used_by_email=invite.used_by_email, detail="Este convite já foi utilizado.")
     
     if invite.expires_at is not None:
         now = datetime.now(timezone.utc)
@@ -908,9 +918,17 @@ def verify_registration(
                 access_duration=dur,
                 expires_at=exp
             ))
+        grant_bundle_access_for_user(db, new_user.id, list(seen_cids))
 
     db.commit()
     db.refresh(new_user)
+
+    if new_user.role in ("aluno", "user"):
+        try:
+            from app.services.funnel_service import dispatch_student_created_funnels
+            dispatch_student_created_funnels(db, new_user.id)
+        except Exception as fn_err:
+            logger.error(f"[VerifyRegistration] Falha ao acionar funis para aluno #{new_user.id}: {fn_err}")
 
     assigned_ucs = db.query(UserCourse).filter(UserCourse.user_id == new_user.id).all()
     res = UserResponse.model_validate(new_user)

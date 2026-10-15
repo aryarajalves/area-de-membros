@@ -2,6 +2,47 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [15/10/2026] - Criptografia em Repouso de Mensagens Diretas (DMs) e Proteção de Dados
+- **Tabela Afetada:** `chat_messages`
+  - A coluna `message` passa a armazenar o payload criptografado com cifra simétrica padrão Fernet (AES-128-CBC + HMAC-SHA256) precedido pelo identificador de versão de algoritmo `enc:v1:`, garantindo proteção total contra vazamento de dados em repouso no banco de dados.
+  - Mensagens públicas e canais de curso mantêm o comportamento padrão sem quebra de indexação/busca.
+  - Retrocompatibilidade total: mensagens legadas sem prefixo continuam sendo lidas e entregues sem erro e são encriptadas automaticamente pelo script de migração.
+- **Variáveis de Ambiente Adicionadas:**
+  - `DM_ENCRYPTION_KEY`: Chave Fernet codificada em URL-safe base64 de 32 bytes (com derivação automática e segura a partir de `SECRET_KEY` + `SECURITY_PASSWORD_PEPPER` caso não informada).
+- **Script de Migração:** `backend/scripts/encrypt_existing_dm_messages.py`
+
+---
+
+### [15/10/2026] - Criação da Tabela de Histórico de Cliques na Página de Vendas (Course Sales Clicks)
+- **Tabela Criada:** `course_sales_clicks`
+  - `id`: Chave primária (`SERIAL PRIMARY KEY`).
+  - `course_id`: ID do curso/produto clicado (`INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE`).
+  - `user_id`: ID do usuário autenticado que clicou para ir à página de vendas (`INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE`).
+  - `created_at`: Data e hora em que o clique ocorreu (`TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP`).
+- **Índices Criados:**
+  - `ix_course_sales_clicks_course_id` em `course_sales_clicks(course_id)`.
+  - `ix_course_sales_clicks_user_id` em `course_sales_clicks(user_id)`.
+  - `ix_course_sales_clicks_created_at` em `course_sales_clicks(created_at)`.
+- **Script de Migração:** `backend/scripts/migrate_course_sales_clicks.py`
+
+---
+
+### [14/10/2026] - Criação de Ferramentas/Aplicativos e Pacotes/Combos de Cursos (Course Bundles)
+- **Tabelas Afetadas:**
+  - `courses`:
+    - `item_type`: Tipo do produto/conteúdo (`VARCHAR DEFAULT 'course'`), suporta `'course'` (Curso padrão) ou `'tool'` (Ferramenta/Aplicativo externo).
+    - `tool_url`: URL de acesso direto à ferramenta/aplicativo (`VARCHAR NULL`).
+  - `course_bundles` (Nova Tabela):
+    - `id`: Chave primária (`SERIAL PRIMARY KEY`).
+    - `parent_course_id`: ID do curso principal/pacote (`INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE`).
+    - `bundled_course_id`: ID do curso ou ferramenta incluído automaticamente no pacote (`INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE`).
+    - `created_at`: Data e hora de vinculação (`TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).
+    - Restrição de unicidade: `uq_course_bundle` em `(parent_course_id, bundled_course_id)`.
+- **Índices Criados:**
+  - `ix_course_bundles_parent` em `course_bundles(parent_course_id)`.
+  - `ix_course_bundles_bundled` em `course_bundles(bundled_course_id)`.
+- **Script de Migração:** `backend/scripts/migrate_course_tools_and_bundles.py`
+
 ---
 
 ### [13/10/2026] - Criação das Tabelas da Aba Apresente-se (Introductions)

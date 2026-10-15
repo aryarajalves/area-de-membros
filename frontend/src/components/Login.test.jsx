@@ -118,4 +118,125 @@ describe('Login Component', () => {
       expect(bannerImg).toHaveAttribute('alt', 'Escola de Elite');
     });
   });
+
+  it('switches between login and registration forms using toggle buttons', () => {
+    render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    const goToRegisterBtn = screen.getByTestId('go-to-register-btn');
+    expect(goToRegisterBtn).toBeInTheDocument();
+
+    fireEvent.click(goToRegisterBtn);
+
+    expect(screen.getByText('Criar Conta')).toBeInTheDocument();
+    expect(screen.getByTestId('register-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId('register-email-input')).toBeInTheDocument();
+    expect(screen.getByTestId('register-password-input')).toBeInTheDocument();
+    expect(screen.getByTestId('register-confirm-password-input')).toBeInTheDocument();
+    expect(screen.getByTestId('register-submit-btn')).toBeInTheDocument();
+
+    const goToLoginBtn = screen.getByTestId('go-to-login-btn');
+    fireEvent.click(goToLoginBtn);
+
+    expect(screen.getByTestId('login-email-input')).toBeInTheDocument();
+  });
+
+  it('submits registration form successfully and invokes onLoginSuccess', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/v1/auth/public-register') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            access_token: 'fake-register-token',
+            user: { id: 25, name: 'Aluno Comunidade', email: 'novo@teste.com', role: 'aluno' },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null }),
+      });
+    });
+
+    const onLoginSuccess = vi.fn();
+
+    render(
+      <ToastProvider>
+        <Login onLoginSuccess={onLoginSuccess} />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('go-to-register-btn'));
+
+    fireEvent.change(screen.getByTestId('register-name-input'), { target: { value: 'Aluno Comunidade' } });
+    fireEvent.change(screen.getByTestId('register-email-input'), { target: { value: 'novo@teste.com' } });
+    fireEvent.change(screen.getByTestId('register-password-input'), { target: { value: 'SenhaSegura123!@' } });
+    fireEvent.change(screen.getByTestId('register-confirm-password-input'), { target: { value: 'SenhaSegura123!@' } });
+
+    fireEvent.click(screen.getByTestId('register-submit-btn'));
+
+    await vi.waitFor(() => {
+      expect(onLoginSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Aluno Comunidade', role: 'aluno' }),
+        'fake-register-token'
+      );
+    });
+
+    expect(localStorage.getItem('auth_token')).toBe('fake-register-token');
+  });
+
+  it('shows error banner when passwords do not match', async () => {
+    render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('go-to-register-btn'));
+
+    fireEvent.change(screen.getByTestId('register-name-input'), { target: { value: 'Aluno Teste' } });
+    fireEvent.change(screen.getByTestId('register-email-input'), { target: { value: 'aluno@teste.com' } });
+    fireEvent.change(screen.getByTestId('register-password-input'), { target: { value: 'SenhaSegura123!@' } });
+    fireEvent.change(screen.getByTestId('register-confirm-password-input'), { target: { value: 'OutraSenha123!@' } });
+
+    fireEvent.click(screen.getByTestId('register-submit-btn'));
+
+    expect(screen.getByTestId('register-error')).toHaveTextContent('As senhas digitadas não coincidem.');
+  });
+
+  it('hides right side banner and renders centered register container when in registration mode', () => {
+    const { container } = render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    // No modo login, o banner da direita existe
+    expect(container.querySelector('.login-image-side')).toBeInTheDocument();
+
+    // Clica para ir ao cadastro
+    fireEvent.click(screen.getByTestId('go-to-register-btn'));
+
+    // No modo cadastro, o banner da direita SUMIU e o container centralizado é exibido
+    expect(container.querySelector('.login-image-side')).toBeNull();
+    expect(container.querySelector('.register-page-container')).toBeInTheDocument();
+    expect(screen.getByTestId('public-register-container')).toBeInTheDocument();
+  });
+
+  it('pre-fills email input when prefill_login_email exists in localStorage and cleans it up', () => {
+    localStorage.setItem('prefill_login_email', 'aryarajunity@gmail.com');
+
+    render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    const emailInput = screen.getByTestId('login-email-input');
+    expect(emailInput.value).toBe('aryarajunity@gmail.com');
+    expect(localStorage.getItem('prefill_login_email')).toBeNull();
+  });
 });

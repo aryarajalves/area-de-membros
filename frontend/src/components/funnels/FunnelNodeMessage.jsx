@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, Copy, Trash2, Plus, Sparkles } from 'lucide-react';
+import FunnelNodeSenderSelect from './FunnelNodeSenderSelect';
 
 export default function FunnelNodeMessage({
   node,
@@ -10,6 +11,7 @@ export default function FunnelNodeMessage({
   onStartConnect,
   onConnectTarget,
   isTargetActive = false,
+  availableSenders = [],
 }) {
   const data = node.data || {};
   const buttons = data.buttons || [];
@@ -176,6 +178,15 @@ export default function FunnelNodeMessage({
       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#38bdf8', marginBottom: '6px' }}>
         VERSÃO 1 (PRINCIPAL)
       </div>
+
+      {/* Remetente da DM */}
+      <FunnelNodeSenderSelect
+        value={data.sender_id}
+        onChange={(senderId) => onUpdateData(node.id, { ...data, sender_id: senderId })}
+        availableSenders={availableSenders}
+        nodeId={node.id}
+        accentColor="#38bdf8"
+      />
 
       {/* Textarea */}
       <textarea

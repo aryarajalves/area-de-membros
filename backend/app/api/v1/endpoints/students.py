@@ -24,6 +24,7 @@ from app.schemas.gamification import GamificationHistoryItem
 from app.services.gamification_level_service import calculate_student_level
 from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
 from app.api.v1.endpoints.users import require_admin_or_superadmin, get_current_user, calculate_course_expiration
+from app.services.course_bundle_service import grant_bundle_access_for_user
 from app.services.student_import_export import (
     export_students_csv, export_students_xlsx,
     generate_template_csv, generate_template_xlsx,
@@ -503,6 +504,7 @@ async def import_students(
                         uc.access_duration = duration_type
                         uc.expires_at = expiration_date
 
+                grant_bundle_access_for_user(db, existing_user.id, target_course_ids, duration_type, expiration_date)
                 updated_count += 1
             else:
                 # Cria novo aluno
@@ -525,6 +527,7 @@ async def import_students(
                     )
                     db.add(uc)
 
+                grant_bundle_access_for_user(db, new_student.id, target_course_ids, duration_type, expiration_date)
                 created_count += 1
 
         db.commit()

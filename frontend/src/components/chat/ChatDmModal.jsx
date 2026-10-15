@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft } from 'lucide-react';
+import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock } from 'lucide-react';
 import ChatDmConversationView from './ChatDmConversationView';
 import ChatDmConversationItem from './ChatDmConversationItem';
 import ChatDmNewContactSelector from './ChatDmNewContactSelector';
@@ -92,15 +92,27 @@ export default function ChatDmModal({
     }
   }, [selectedContact?.id]);
 
-  // Enviar mensagem direta
-  const handleSendDmMessage = async (cleanText) => {
-    if (!cleanText || !selectedContact?.id) return false;
+  // Enviar mensagem direta (com suporte a mídias, áudio, vídeo, imagens, GIFs e PDFs)
+  const handleSendDmMessage = async (
+    cleanText,
+    mediaUrl = null,
+    mediaType = null,
+    buttonText = null,
+    buttonUrl = null,
+    buttonActionType = 'url'
+  ) => {
+    if ((!cleanText && !mediaUrl) || !selectedContact?.id) return false;
     const token = getAuthToken();
     try {
       const payload = {
         channel_type: 'dm',
         recipient_id: selectedContact.id,
-        message: cleanText,
+        message: cleanText || '',
+        media_url: mediaUrl,
+        media_type: mediaType,
+        button_text: buttonText,
+        button_url: buttonUrl,
+        button_action_type: buttonActionType,
       };
       const res = await fetch('/api/v1/chat/messages', {
         method: 'POST',
@@ -144,8 +156,8 @@ export default function ChatDmModal({
       <div
         style={{
           width: '100%',
-          maxWidth: selectedContact ? '640px' : '490px',
-          height: '620px',
+          maxWidth: selectedContact ? '680px' : '490px',
+          height: selectedContact ? '660px' : '620px',
           maxHeight: '90vh',
           backgroundColor: '#0f172a',
           borderRadius: '16px',
@@ -198,21 +210,23 @@ export default function ChatDmModal({
                   ? 'Iniciar Nova Conversa'
                   : 'DMs (Mensagens Diretas)'}
               </h2>
-              <p
-                style={{
-                  fontSize: '0.75rem',
-                  color: '#94a3b8',
-                  margin: '2px 0 0',
-                }}
-              >
-                {selectedContact
-                  ? selectedContact.role === 'admin'
-                    ? 'Professor / Administrador'
-                    : 'Aluno'
-                  : isSelectingNewContact
-                  ? 'Selecione um membro para conversar'
-                  : 'Bate-papo privado 1-a-1'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  {selectedContact
+                    ? (selectedContact.role === 'admin' ? 'Professor / Administrador' : 'Aluno')
+                    : isSelectingNewContact ? 'Selecione um membro para conversar' : 'Bate-papo privado 1-a-1'}
+                </span>
+                {selectedContact && (
+                  <span
+                    data-testid="dm-encryption-badge"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 600, color: '#34d399', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '1px 7px' }}
+                    title="Criptografia ativada: mensagens protegidas no banco de dados."
+                  >
+                    <Lock size={10} color="#34d399" />
+                    <span>Criptografada</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

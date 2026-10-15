@@ -287,5 +287,125 @@ describe('CourseManagement Component', () => {
     const searchInput = screen.getByTestId('search-courses-input');
     expect(searchInput).toBeInTheDocument();
   });
+
+  it('redirects to sales_page_url when open_course_lesson is triggered for a course without access', async () => {
+    let assignedHref = '';
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = {
+      get href() { return assignedHref || 'http://localhost:3010/'; },
+      set href(val) { assignedHref = val; }
+    };
+
+    const coursesWithAccess = [
+      {
+        id: 2,
+        title: 'Curso Fechado',
+        sales_page_url: 'https://vendas.com/checkout-curso-fechado',
+        has_access: false,
+      },
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => coursesWithAccess,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Curso Fechado')).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(
+      new CustomEvent('open_course_lesson', {
+        detail: { courseId: 2, lessonId: 99 },
+      })
+    );
+
+    expect(assignedHref).toBe('https://vendas.com/checkout-curso-fechado');
+    window.location = originalLocation;
+  });
+
+  it('opens classroom when open_course_lesson is triggered for a course with access', async () => {
+    const coursesWithAccess = [
+      {
+        id: 1,
+        title: 'Curso Liberado',
+        has_access: true,
+      },
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => coursesWithAccess,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Curso Liberado')).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(
+      new CustomEvent('open_course_lesson', {
+        detail: { courseId: 1, lessonId: 44 },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('courses-grid')).not.toBeInTheDocument();
+    });
+  });
+
+  it('renders bundled course and tool wrapped in CourseBundleGroup box container', async () => {
+    const bundledCourses = [
+      {
+        id: 10,
+        title: 'Bússola Astrológica',
+        description: 'Curso completo',
+        item_type: 'course',
+        bundled_course_ids: [20],
+        has_access: true,
+      },
+      {
+        id: 20,
+        title: 'Bússola Astrológica APP',
+        description: 'Ferramenta astronômica',
+        item_type: 'tool',
+        tool_url: 'https://app.bussola.com',
+        bundled_course_ids: [10],
+        has_access: true,
+      },
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => bundledCourses,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bundle-box-10')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('2 Produtos Inclusos')).toBeInTheDocument();
+    expect(screen.getByText('Bússola Astrológica APP')).toBeInTheDocument();
+    expect(screen.getAllByText('Bússola Astrológica').length).toBeGreaterThanOrEqual(2);
+  });
 });
+
 

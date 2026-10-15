@@ -9,6 +9,7 @@ export default function FunnelCanvasZoomControls({
   onZoomIn,
   onZoomOut,
   onOpenAddMenu,
+  onReset,
 }) {
   const handleZoomIn = (e) => {
     e.stopPropagation();
@@ -30,8 +31,12 @@ export default function FunnelCanvasZoomControls({
 
   const handleReset = (e) => {
     e.stopPropagation();
-    setZoom(1);
-    if (setPan) setPan({ x: 0, y: 0 });
+    if (onReset) {
+      onReset();
+    } else {
+      setZoom(1);
+      if (setPan) setPan({ x: 0, y: 0 });
+    }
   };
 
   const zoomPercent = Math.round(zoom * 100);

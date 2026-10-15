@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Image, Video, FileText, Copy, Trash2, Link as LinkIcon, Sparkles, Upload, Loader2, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import FunnelNodeSenderSelect from './FunnelNodeSenderSelect';
 
 export default function FunnelNodeMedia({
   node,
@@ -11,6 +12,7 @@ export default function FunnelNodeMedia({
   onStartConnect,
   onConnectTarget,
   isTargetActive = false,
+  availableSenders = [],
 }) {
   const data = node.data || {};
   const mediaType = data.media_type || 'image';
@@ -205,6 +207,15 @@ export default function FunnelNodeMedia({
           )}
         </div>
       </div>
+
+      {/* Remetente da DM */}
+      <FunnelNodeSenderSelect
+        value={data.sender_id}
+        onChange={(senderId) => handleUpdate('sender_id', senderId)}
+        availableSenders={availableSenders}
+        nodeId={node.id}
+        accentColor="#ec4899"
+      />
 
       {/* Tipo de Mídia (Pílulas) */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>

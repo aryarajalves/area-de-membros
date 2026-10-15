@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CourseCard from './CourseCard';
+import * as courseSalesApi from './courseSalesApi';
 
 describe('CourseCard Component', () => {
   const mockCourseWithAccess = {
@@ -56,6 +57,7 @@ describe('CourseCard Component', () => {
 
   it('renders "Disponível para Compra" badge, chained lock overlay and "Ver Mais Informações" when student does not have access', () => {
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
+    const recordClickSpy = vi.spyOn(courseSalesApi, 'recordCourseSalesClick').mockImplementation(() => {});
 
     render(
       <CourseCard
@@ -87,8 +89,9 @@ describe('CourseCard Component', () => {
     expect(screen.queryByTestId('contact-support-course-btn-2')).not.toBeInTheDocument();
     expect(screen.queryByText('Entrar em Contato')).not.toBeInTheDocument();
 
-    // Ao clicar, deve redirecionar para sales_page_url
+    // Ao clicar, deve registrar o clique e redirecionar para sales_page_url
     fireEvent.click(moreInfoBtn);
+    expect(recordClickSpy).toHaveBeenCalledWith(2);
     expect(windowOpenSpy).toHaveBeenCalledWith('https://vendas.com/curso2', '_blank', 'noopener,noreferrer');
   });
 
@@ -141,9 +144,10 @@ describe('CourseCard Component', () => {
     expect(onShowInfoToast).toHaveBeenCalledWith('A página de informações deste curso estará disponível em breve.');
   });
 
-  it('renders edit and delete buttons when isManager is true', () => {
+  it('renders sales history, edit and delete buttons when isManager is true', () => {
     const onOpenEditModal = vi.fn();
     const onPromptDelete = vi.fn();
+    const onOpenSalesHistoryModal = vi.fn();
 
     render(
       <CourseCard
@@ -157,14 +161,20 @@ describe('CourseCard Component', () => {
         onSelectCourse={vi.fn()}
         onOpenEditModal={onOpenEditModal}
         onPromptDelete={onPromptDelete}
+        onOpenSalesHistoryModal={onOpenSalesHistoryModal}
       />
     );
 
+    const historyBtn = screen.getByTestId('sales-history-btn-1');
     const editBtn = screen.getByTestId('edit-course-btn-1');
     const deleteBtn = screen.getByTestId('delete-course-btn-1');
 
+    expect(historyBtn).toBeInTheDocument();
     expect(editBtn).toBeInTheDocument();
     expect(deleteBtn).toBeInTheDocument();
+
+    fireEvent.click(historyBtn);
+    expect(onOpenSalesHistoryModal).toHaveBeenCalledWith(mockCourseWithAccess);
 
     fireEvent.click(editBtn);
     expect(onOpenEditModal).toHaveBeenCalledWith(mockCourseWithAccess);
@@ -199,5 +209,66 @@ describe('CourseCard Component', () => {
     const img = screen.getByRole('img', { name: 'Bussola Astrologica' });
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', 'https://b2.com/banner-bussola.jpg');
+  });
+
+  it('renders "Acessar Ferramenta" button and tool badge when item_type is tool and opens tool_url on click', () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
+    const mockTool = {
+      id: 4,
+      title: 'ZapVoice Web App',
+      description: 'Extensão de WhatsApp Web',
+      item_type: 'tool',
+      tool_url: 'https://app.zapvoice.com.br',
+      has_access: true
+    };
+
+    render(
+      <CourseCard
+        course={mockTool}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('course-tool-badge-4')).toBeInTheDocument();
+    expect(screen.getByText('Ferramenta / App')).toBeInTheDocument();
+
+    const toolBtn = screen.getByTestId('access-tool-btn-4');
+    expect(toolBtn).toBeInTheDocument();
+    expect(toolBtn).toHaveTextContent('Acessar Ferramenta');
+
+    fireEvent.click(toolBtn);
+    expect(windowOpenSpy).toHaveBeenCalledWith('https://app.zapvoice.com.br', '_blank', 'noopener,noreferrer');
+  });
+
+  it('renders combo package badge when bundled_items_count > 0', () => {
+    const mockCombo = {
+      id: 5,
+      title: 'Combo Bússola Master',
+      item_type: 'course',
+      bundled_items_count: 2,
+      has_access: true
+    };
+
+    render(
+      <CourseCard
+        course={mockCombo}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('course-bundle-badge-5')).toBeInTheDocument();
+    expect(screen.getByText('Combo (+2)')).toBeInTheDocument();
   });
 });

@@ -158,6 +158,14 @@ class ModuleDetailResponse(ModuleResponse):
 
 
 # --- Schemas de Cursos (Courses) ---
+class CourseBundleItemResponse(BaseModel):
+    id: int
+    title: str
+    item_type: Optional[str] = "course"
+    thumbnail_url: Optional[str] = None
+    tool_url: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class CourseBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -169,6 +177,9 @@ class CourseBase(BaseModel):
     order_index: Optional[int] = 0
     agentflow_kb_id: Optional[int] = None
     agentflow_kb_name: Optional[str] = None
+    item_type: Optional[str] = "course"
+    tool_url: Optional[str] = None
+    bundled_course_ids: Optional[List[int]] = []
 
 class CourseCreate(CourseBase):
     pass
@@ -184,10 +195,15 @@ class CourseUpdate(BaseModel):
     order_index: Optional[int] = None
     agentflow_kb_id: Optional[int] = None
     agentflow_kb_name: Optional[str] = None
+    item_type: Optional[str] = None
+    tool_url: Optional[str] = None
+    bundled_course_ids: Optional[List[int]] = None
 
 class CourseResponse(CourseBase):
     id: int
     has_access: Optional[bool] = True
+    bundled_items_count: Optional[int] = 0
+    bundled_courses: Optional[List[CourseBundleItemResponse]] = []
     created_at: datetime
     updated_at: datetime
 
@@ -360,6 +376,35 @@ class LessonTranscriptionResponse(BaseModel):
 class LessonTranscriptionTriggerRequest(BaseModel):
     language: Optional[str] = "pt"
     video_url: Optional[str] = None  # Se informado, usa essa URL específica; caso contrário usa o vídeo padrão da aula
+
+
+# --- Schemas de Histórico de Cliques na Página de Vendas ---
+class CourseSalesClickUser(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    avatar_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CourseSalesClickResponse(BaseModel):
+    id: int
+    course_id: int
+    user_id: int
+    created_at: datetime
+    user: Optional[CourseSalesClickUser] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CourseSalesClicksListResponse(BaseModel):
+    course_id: int
+    course_title: str
+    total_clicks: int
+    clicks: List[CourseSalesClickResponse]
+
 
 
 

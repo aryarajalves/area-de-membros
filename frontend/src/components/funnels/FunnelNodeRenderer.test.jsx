@@ -193,4 +193,25 @@ describe('FunnelNodeRenderer Unit Tests', () => {
     fireEvent.change(textarea, { target: { value: 'Texto alterado' } });
     expect(handleUpdate).toHaveBeenCalledWith('msg1', expect.objectContaining({ text: 'Texto alterado' }));
   });
+
+  it('renders trigger node when node.type is trigger', () => {
+    const handleUpdate = vi.fn();
+    render(
+      <ToastProvider>
+        <FunnelNodeRenderer
+          node={{ id: 'trig1', type: 'trigger', data: { trigger_event: 'student_created', days_after: 0 } }}
+          isSelected={false}
+          onUpdateData={handleUpdate}
+          onDeleteNode={vi.fn()}
+          onDuplicateNode={vi.fn()}
+          onStartConnect={vi.fn()}
+          onConnectTarget={vi.fn()}
+          isTargetActive={false}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByText('ALUNO CRIADO')).toBeInTheDocument();
+    expect(screen.getByText('GATILHO')).toBeInTheDocument();
+  });
 });

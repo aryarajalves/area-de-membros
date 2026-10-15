@@ -1,1087 +1,1128 @@
-# Regras de Negócio do Sistema (Área de Membros)
+# Regras de NegÃ³cio do Sistema (Ãrea de Membros)
 
-Este documento registra as decisões de regras de negócio da plataforma para consulta e orientação do agente e da equipe.
+Este documento registra as decisÃµes de regras de negÃ³cio da plataforma para consulta e orientaÃ§Ã£o do agente e da equipe.
 
 ---
 
-## 0. Tela de Início e Tutoriais da Plataforma (Onboarding)
-- **Botão "Início" na Barra Lateral (`Sidebar`):**
-  - Posicionado como o primeiro item da categoria pedagógica (*"Meu Aprendizado"* para alunos e *"Área Pedagógica"* para administradores), com ícone `Home`.
-  - Visível e acessível para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
-- **Comportamento de Entrada e Redirecionamento Automático:**
-  - **Com Tutoriais Publicados:** Se houver ao menos 1 vídeo tutorial cadastrado no sistema, tanto alunos quanto administradores caem automaticamente na tela **Início** ao acessar a Área de Membros.
-  - **Sem Tutoriais Publicados:** Caso ainda não exista nenhum vídeo tutorial cadastrado no banco de dados, o usuário é direcionado automaticamente e de forma transparente para a tela de **Cursos** (`courses`).
+## 0. Tela de InÃ­cio e Tutoriais da Plataforma (Onboarding)
+- **BotÃ£o "InÃ­cio" na Barra Lateral (`Sidebar`):**
+  - Posicionado como o primeiro item da categoria pedagÃ³gica (*"Meu Aprendizado"* para alunos e *"Ãrea PedagÃ³gica"* para administradores), com Ã­cone `Home`.
+  - VisÃ­vel e acessÃ­vel para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
+- **Comportamento de Entrada e Redirecionamento AutomÃ¡tico:**
+  - **Com Tutoriais Publicados:** Se houver ao menos 1 vÃ­deo tutorial cadastrado no sistema, tanto alunos quanto administradores caem automaticamente na tela **InÃ­cio** ao acessar a Ãrea de Membros.
+  - **Sem Tutoriais Publicados:** Caso ainda nÃ£o exista nenhum vÃ­deo tutorial cadastrado no banco de dados, o usuÃ¡rio Ã© direcionado automaticamente e de forma transparente para a tela de **Cursos** (`courses`).
 - **Estrutura Visual da Tela:**
-  - **Player em Destaque:** Exibe o vídeo ativo em proporção widescreen 16:9, suportando tanto arquivos hospedados em nuvem (Backblaze B2 / MP4) quanto links externos (YouTube e Vimeo via embed responsivo).
-  - **Card de Informações:** Título da aula de tutorial em destaque, duração estimada (`MM:SS`) e descrição detalhada com tópicos abordados.
+  - **Player em Destaque:** Exibe o vÃ­deo ativo em proporÃ§Ã£o widescreen 16:9, suportando tanto arquivos hospedados em nuvem (Backblaze B2 / MP4) quanto links externos (YouTube e Vimeo via embed responsivo).
+  - **Card de InformaÃ§Ãµes:** TÃ­tulo da aula de tutorial em destaque, duraÃ§Ã£o estimada (`MM:SS`) e descriÃ§Ã£o detalhada com tÃ³picos abordados.
   - **Playlist Lateral Interativa:** Lista numerada de todas as aulas de tutorial cadastradas, permitindo alternar de aula instantaneamente com um clique.
-- **Permissões de Gestão e Upload de Tutoriais:**
-  - **Alunos:** Têm acesso estritamente de visualização e aprendizado (sem botões de adicionar, editar ou excluir).
-  - **Administradores e Super Admins:** Possuem acesso completo de gestão através do botão **`+ Nova Aula de Tutorial`** no topo, além de botões para **Editar** e **Excluir** diretamente em cada item da playlist.
-  - **Exclusão Segura:** Toda exclusão de tutorial exige confirmação obrigatória em popup modal centralizado com fundo escuro (`DeleteTutorialConfirmModal`), removendo o registro e limpando a mídia do Backblaze B2 quando aplicável.
-- **Renderização e Pré-visualização do Vídeo no Modal (`TutorialVideoPreview`):**
-  - Ao selecionar um arquivo de vídeo do computador para upload, o modal exibe imediatamente um player nativo HTML5 renderizando o vídeo com controles de reprodução, facilitando a conferência do arquivo antes de salvar.
-  - Para links externos (YouTube/Vimeo) ou edição de tutoriais existentes, o componente renderiza o respectivo embed ou player nativo responsivo no padrão glassmorphism.
-- **Transcrição e Geração de Descrição Detalhada com IA (`generateTutorialAiDescriptionApi`):**
-  - No modal de tutorial, junto ao campo *"Descrição / O que você vai aprender"*, há o botão em destaque **"Gerar com IA"** (`Sparkles`).
-  - Ao ser acionado com um vídeo selecionado ou informado, o backend extrai o áudio via FFmpeg, realiza a transcrição completa utilizando a API OpenAI Whisper (`whisper-1`) e, em seguida, gera via GPT (`gpt-4o-mini`) uma descrição pedagógica detalhada citando todos os passos, telas, orientações e tópicos que o instrutor fala no vídeo.
-  - O texto gerado e a duração estimada em formato cronômetro (`MM:SS`) são automaticamente preenchidos nos respectivos campos do formulário para revisão do gestor.
-- **Layout Responsivo e Adaptação Mobile (`home-tutorials.css`):**
-  - Em smartphones e tablets (`<= 1024px` e `<= 768px`), o layout de grade de duas colunas colapsa automaticamente para coluna única vertical sem quebras.
-  - O Player 16:9 se ajusta à largura total da tela, com as informações da aula logo abaixo e a Playlist de tutoriais posicionada na sequência inferior com rolagem fluida, eliminando completamente sobreposições visuais entre os cards.
-  - O cabeçalho se organiza em fluxo vertical com botão de criação expandido e toque acessível.
+- **PermissÃµes de GestÃ£o e Upload de Tutoriais:**
+  - **Alunos:** TÃªm acesso estritamente de visualizaÃ§Ã£o e aprendizado (sem botÃµes de adicionar, editar ou excluir).
+  - **Administradores e Super Admins:** Possuem acesso completo de gestÃ£o atravÃ©s do botÃ£o **`+ Nova Aula de Tutorial`** no topo, alÃ©m de botÃµes para **Editar** e **Excluir** diretamente em cada item da playlist.
+  - **ExclusÃ£o Segura:** Toda exclusÃ£o de tutorial exige confirmaÃ§Ã£o obrigatÃ³ria em popup modal centralizado com fundo escuro (`DeleteTutorialConfirmModal`), removendo o registro e limpando a mÃ­dia do Backblaze B2 quando aplicÃ¡vel.
+- **RenderizaÃ§Ã£o e PrÃ©-visualizaÃ§Ã£o do VÃ­deo no Modal (`TutorialVideoPreview`):**
+  - Ao selecionar um arquivo de vÃ­deo do computador para upload, o modal exibe imediatamente um player nativo HTML5 renderizando o vÃ­deo com controles de reproduÃ§Ã£o, facilitando a conferÃªncia do arquivo antes de salvar.
+  - Para links externos (YouTube/Vimeo) ou ediÃ§Ã£o de tutoriais existentes, o componente renderiza o respectivo embed ou player nativo responsivo no padrÃ£o glassmorphism.
+- **TranscriÃ§Ã£o e GeraÃ§Ã£o de DescriÃ§Ã£o Detalhada com IA (`generateTutorialAiDescriptionApi`):**
+  - No modal de tutorial, junto ao campo *"DescriÃ§Ã£o / O que vocÃª vai aprender"*, hÃ¡ o botÃ£o em destaque **"Gerar com IA"** (`Sparkles`).
+  - Ao ser acionado com um vÃ­deo selecionado ou informado, o backend extrai o Ã¡udio via FFmpeg, realiza a transcriÃ§Ã£o completa utilizando a API OpenAI Whisper (`whisper-1`) e, em seguida, gera via GPT (`gpt-4o-mini`) uma descriÃ§Ã£o pedagÃ³gica detalhada citando todos os passos, telas, orientaÃ§Ãµes e tÃ³picos que o instrutor fala no vÃ­deo.
+  - O texto gerado e a duraÃ§Ã£o estimada em formato cronÃ´metro (`MM:SS`) sÃ£o automaticamente preenchidos nos respectivos campos do formulÃ¡rio para revisÃ£o do gestor.
+- **Layout Responsivo e AdaptaÃ§Ã£o Mobile (`home-tutorials.css`):**
+  - Em smartphones e tablets (`<= 1024px` e `<= 768px`), o layout de grade de duas colunas colapsa automaticamente para coluna Ãºnica vertical sem quebras.
+  - O Player 16:9 se ajusta Ã  largura total da tela, com as informaÃ§Ãµes da aula logo abaixo e a Playlist de tutoriais posicionada na sequÃªncia inferior com rolagem fluida, eliminando completamente sobreposiÃ§Ãµes visuais entre os cards.
+  - O cabeÃ§alho se organiza em fluxo vertical com botÃ£o de criaÃ§Ã£o expandido e toque acessÃ­vel.
 
 ---
 
-## 1. Gestão de Cursos e Controle de Acesso por Aluno
-- **Visibilidade de Cursos:** A visibilidade de um curso **NÃO** é definida globalmente no curso para todos os alunos. Cada aluno tem sua própria lista de cursos aos quais possui acesso liberado e seu respectivo prazo de validade individual por produto.
+## 1. GestÃ£o de Cursos e Controle de Acesso por Aluno
+- **Visibilidade de Cursos:** A visibilidade de um curso **NÃO** Ã© definida globalmente no curso para todos os alunos. Cada aluno tem sua prÃ³pria lista de cursos aos quais possui acesso liberado e seu respectivo prazo de validade individual por produto.
 - **Perfis de Acesso na Interface:**
-  - Não existe a opção "Usuário comum" (`user`) na interface de criação de convites, edição de perfil ou filtro de usuários. Os perfis selecionáveis nos modais são exclusivamente **`Aluno` (`aluno`)** e **`Administrador (Admin)` (`admin`)** (além do `Super Admin` protegido).
-- **Definição de Acesso e Tempo de Acesso por Produto/Curso:**
-  - **Na criação de convite (`/invite`):** Ao selecionar o tipo **Aluno**, o administrador marca quais produtos/cursos aquele aluno terá acesso e define, **para cada produto selecionado individualmente**, o **Tempo de Acesso**:
-    - `Vitalício` (`lifetime` — sem expiração)
-    - `1 mês` (`1_month` — 30 dias)
-    - `3 meses` (`3_months` — 90 dias)
-    - `6 meses` (`6_months` — 180 dias)
-    - `1 ano` (`1_year` — 365 dias)
-    - `2 anos` (`2_years` — 730 dias)
-    - `3 anos` (`3_years` — 1095 dias)
-    Quando o aluno conclui o cadastro, o sistema vincula os cursos e calcula a data de expiração (`expires_at`) de cada curso a partir da ativação da conta.
-  - **Na edição do aluno (`/users/{id}`):** O Super Admin pode marcar/desmarcar quais cursos estão liberados para o aluno e definir/alterar o tempo de acesso (`Vitalício`, `6 meses`, `1 ano`, `2 anos`, etc.) de cada produto especificamente.
-- **Permissão de Visualização e Vitrine de Cursos:**
-  - `superadmin` e `admin`: Têm visão completa e acesso irrestrito a todos os cursos cadastrados na plataforma.
-  - `aluno`: Visualiza **todos** os cursos cadastrados e publicados na vitrine da Área de Membros (`/courses`), permitindo que conheça novos treinamentos disponíveis para compra.
-    - **Cursos com Acesso Liberado:** O aluno visualiza o botão destacado **"Acessar Curso"** (`PlayCircle`) e pode navegar livremente por módulos e aulas.
-    - **Cursos Não Adquiridos / Sem Acesso:** O card do curso exibe o selo **"Disponível para Compra"** com ícone de cadeado (`Lock`), overlay sobre a thumbnail da capa com correntes cruzadas estilizadas e cadeado central indicando **"Produto Fechado"**, além do botão único **"Ver Mais Informações"** (`ExternalLink`) na parte inferior do card.
-    - **Redirecionamento:** Ao clicar em "Ver Mais Informações", o aluno é redirecionado em nova aba para a URL configurada no campo `sales_page_url` do curso. Se o curso não possuir URL cadastrada, o sistema exibe feedback amigável informando que a página estará disponível em breve.
-    - **Segurança de Acesso:** O acesso direto ao conteúdo interno (`/courses/{id}`) de cursos não adquiridos permanece estritamente bloqueado (`HTTP 403`).
-- **Criação e Edição de Cursos:**
-  - O formulário conta com o campo **Link da Página de Vendas / Mais Informações (`sales_page_url`)** (opcional), permitindo que o administrador insira o endereço externo da landing page ou checkout do treinamento.
-  - O modal de criar/editar curso **não** possui checkbox de "Curso publicado (visível para alunos)".
-  - O campo **Descrição do Curso** conta com o componente [`ExpandableTextarea`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/frontend/src/components/common/ExpandableTextarea.jsx) com o botão destacado **"Tela Cheia"** (`Maximize2`), abrindo um **popup gigante no meio da tela** (`94vw × 86vh`) para digitação ampla, com contador dinâmico de palavras e caracteres, preservação de quebras de linha e fechamento via botão "Concluir Edição" ou tecla `Esc`.
-  - A imagem de capa (Thumbnail) pode ser enviada diretamente do computador do usuário (upload) ou mantida via URL.
-  - **Especificações recomendadas para a Thumbnail:**
-    - Dimensões recomendadas: **1280 × 720 pixels** (Proporção widescreen 16:9).
+  - NÃ£o existe a opÃ§Ã£o "UsuÃ¡rio comum" (`user`) na interface de criaÃ§Ã£o de convites, ediÃ§Ã£o de perfil ou filtro de usuÃ¡rios. Os perfis selecionÃ¡veis nos modais sÃ£o exclusivamente **`Aluno` (`aluno`)** e **`Administrador (Admin)` (`admin`)** (alÃ©m do `Super Admin` protegido).
+- **DefiniÃ§Ã£o de Acesso e Tempo de Acesso por Produto/Curso:**
+  - **Na criaÃ§Ã£o de convite (`/invite`):** Ao selecionar o tipo **Aluno**, o administrador marca quais produtos/cursos aquele aluno terÃ¡ acesso e define, **para cada produto selecionado individualmente**, o **Tempo de Acesso**:
+    - `VitalÃ­cio` (`lifetime` â sem expiraÃ§Ã£o)
+    - `1 mÃªs` (`1_month` â 30 dias)
+    - `3 meses` (`3_months` â 90 dias)
+    - `6 meses` (`6_months` â 180 dias)
+    - `1 ano` (`1_year` â 365 dias)
+    - `2 anos` (`2_years` â 730 dias)
+    - `3 anos` (`3_years` â 1095 dias)
+    Quando o aluno conclui o cadastro, o sistema vincula os cursos e calcula a data de expiraÃ§Ã£o (`expires_at`) de cada curso a partir da ativaÃ§Ã£o da conta.
+  - **Na ediÃ§Ã£o do aluno (`/users/{id}`):** O Super Admin pode marcar/desmarcar quais cursos estÃ£o liberados para o aluno e definir/alterar o tempo de acesso (`VitalÃ­cio`, `6 meses`, `1 ano`, `2 anos`, etc.) de cada produto especificamente.
+- **PermissÃ£o de VisualizaÃ§Ã£o e Vitrine de Cursos:**
+  - `superadmin` e `admin`: TÃªm visÃ£o completa e acesso irrestrito a todos os cursos cadastrados na plataforma.
+  - `aluno`: Visualiza **todos** os cursos cadastrados e publicados na vitrine da Ãrea de Membros (`/courses`), permitindo que conheÃ§a novos treinamentos disponÃ­veis para compra.
+    - **Cursos com Acesso Liberado:** O aluno visualiza o botÃ£o destacado **"Acessar Curso"** (`PlayCircle`) e pode navegar livremente por mÃ³dulos e aulas.
+    - **Cursos NÃ£o Adquiridos / Sem Acesso:** O card do curso exibe o selo **"DisponÃ­vel para Compra"** com Ã­cone de cadeado (`Lock`), overlay sobre a thumbnail da capa com correntes cruzadas estilizadas e cadeado central indicando **"Produto Fechado"**, alÃ©m do botÃ£o Ãºnico **"Ver Mais InformaÃ§Ãµes"** (`ExternalLink`) na parte inferior do card.
+    - **Redirecionamento e Rastreamento de Interesse:**
+      - Ao clicar em "Ver Mais InformaÃ§Ãµes" (ou no card/capa/tÃ­tulo de um produto nÃ£o adquirido), o sistema registra automaticamente no backend o clique de interesse (`POST /courses/{course_id}/sales-click`) vinculado ao aluno autenticado com timestamp UTC.
+      - O aluno Ã© redirecionado em nova aba para a URL configurada no campo `sales_page_url` do curso. Se o curso nÃ£o possuir URL cadastrada, o sistema exibe feedback amigÃ¡vel informando que a pÃ¡gina estarÃ¡ disponÃ­vel em breve.
+    - **BotÃ£o e Modal de HistÃ³rico de Interesse na PÃ¡gina de Vendas (`CourseSalesHistoryModal`):**
+      - **Acesso:** Nos cards dos cursos (`CourseCard`), gestores (`admin` e `superadmin`) visualizam o botÃ£o dedicado **"HistÃ³rico"** (`History`) ao lado das aÃ§Ãµes de editar e excluir.
+      - **Agrupamento Inteligente por Lead/Contato:** Se o mesmo aluno clicou mais de uma vez para ir Ã  pÃ¡gina de vendas, todos os seus cliques sÃ£o consolidados em um **Ãºnico card de contato**. O card exibe o badge com o total de cliques daquele lead (ex: `2 cliques`, `5 cliques`), avatar, nome, e-mail e perfil.
+      - **OrdenaÃ§Ã£o pelo Ãltimo Clique:** A lista de contatos Ã© sempre ordenada dinamicamente colocando no topo o lead que clicou por Ãºltimo (`lastClickAt DESC`).
+      - **Detalhamento Sanfonado (AcordeÃ£o):** Ao clicar sobre o card de um contato, o painel se expande exibindo o histÃ³rico completo de acessos individuais daquele aluno com numeraÃ§Ã£o sequencial (`#1`, `#2`, etc.), destaque para o `(Ãltimo clique)` e data/hora de cada acesso no **HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo` / UTC-3)** no formato `DD/MM/AAAA Ã s HH:mm:ss`.
+      - **Sistema de PaginaÃ§Ã£o de Contatos:** A listagem Ã© paginada em 6 contatos por pÃ¡gina, com controles de navegaÃ§Ã£o (*"Anterior"*, *"PrÃ³xima"*, indicador de pÃ¡ginas *"X / Y"* e contador *"Mostrando XâY de Z contatos"*), permitindo rÃ¡pida consulta sem sobrecarregar a interface.
+      - **Filtro RÃ¡pido e UX:** Campo de busca em tempo real por nome/e-mail com reset automÃ¡tico para a pÃ¡gina 1 ao pesquisar, badge consolidado no topo informando o total de cliques registrados e quantidade de contatos Ãºnicos, estado de carregamento com spinner, estado vazio amigÃ¡vel e backdrop preto translÃºcido fixo (nÃ£o fecha ao clicar fora).
+    - **SeguranÃ§a de Acesso:** O acesso direto ao conteÃºdo interno (`/courses/{id}`) de cursos nÃ£o adquiridos permanece estritamente bloqueado (`HTTP 403`).
+- **CriaÃ§Ã£o e EdiÃ§Ã£o de Cursos:**
+  - O formulÃ¡rio conta com o campo **Link da PÃ¡gina de Vendas / Mais InformaÃ§Ãµes (`sales_page_url`)** (opcional), permitindo que o administrador insira o endereÃ§o externo da landing page ou checkout do treinamento.
+  - O modal de criar/editar curso **nÃ£o** possui checkbox de "Curso publicado (visÃ­vel para alunos)".
+  - O campo **DescriÃ§Ã£o do Curso** conta com o componente [`ExpandableTextarea`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/frontend/src/components/common/ExpandableTextarea.jsx) com o botÃ£o destacado **"Tela Cheia"** (`Maximize2`), abrindo um **popup gigante no meio da tela** (`94vw Ã 86vh`) para digitaÃ§Ã£o ampla, com contador dinÃ¢mico de palavras e caracteres, preservaÃ§Ã£o de quebras de linha e fechamento via botÃ£o "Concluir EdiÃ§Ã£o" ou tecla `Esc`.
+  - A imagem de capa (Thumbnail) pode ser enviada diretamente do computador do usuÃ¡rio (upload) ou mantida via URL.
+  - **EspecificaÃ§Ãµes recomendadas para a Thumbnail:**
+    - DimensÃµes recomendadas: **1280 Ã 720 pixels** (ProporÃ§Ã£o widescreen 16:9).
     - Formatos aceitos: **JPG, PNG, WEBP**.
-    - Tamanho máximo: **até 5 MB**.
-- **Ordem de Posição e Exibição dos Cursos:**
-  - Cada curso possui o campo numérico **Ordem de Posição / Exibição (`order_index`)** configurável no modal de criação e edição do curso.
-  - A ordenação na plataforma (tanto para administradores quanto para alunos na vitrine) é crescente por ordem (`order_index ASC`), com desempate pelos mais recentes (`id DESC`). Cursos com números menores (ex: `1`, `2`, `3`) aparecem primeiro na lista e na vitrine. O valor padrão é `0`.
-- **Paginação de Cursos:**
-  - A listagem exibe no máximo **20 cursos por página**.
-  - Abaixo da grade de cursos, há controles de navegação ("Anterior", "Próxima", contador de páginas e cursos exibidos).
+    - Tamanho mÃ¡ximo: **atÃ© 5 MB**.
+- **Ordem de PosiÃ§Ã£o e ExibiÃ§Ã£o dos Cursos:**
+  - Cada curso possui o campo numÃ©rico **Ordem de PosiÃ§Ã£o / ExibiÃ§Ã£o (`order_index`)** configurÃ¡vel no modal de criaÃ§Ã£o e ediÃ§Ã£o do curso.
+  - A ordenaÃ§Ã£o na plataforma (tanto para administradores quanto para alunos na vitrine) Ã© crescente por ordem (`order_index ASC`), com desempate pelos mais recentes (`id DESC`). Cursos com nÃºmeros menores (ex: `1`, `2`, `3`) aparecem primeiro na lista e na vitrine. O valor padrÃ£o Ã© `0`.
+- **PaginaÃ§Ã£o de Cursos:**
+  - A listagem exibe no mÃ¡ximo **20 cursos por pÃ¡gina**.
+  - Abaixo da grade de cursos, hÃ¡ controles de navegaÃ§Ã£o ("Anterior", "PrÃ³xima", contador de pÃ¡ginas e cursos exibidos).
+- **Tipos de ConteÃºdo: Cursos Tradicionais vs Ferramentas / Aplicativos (`item_type`):**
+  - **Curso Tradicional (`course`):** Possui estrutura pedagÃ³gica com mÃ³dulos, aulas gravadas, materiais complementares, progresso e sala de aula interna (`CourseClassroom`).
+  - **Ferramenta / Aplicativo (`tool`):** Representa um software, extensÃ£o ou aplicativo web externo (ex: BÃºssola, ZapVoice, dashboards externos). Conta com o campo obrigatÃ³rio **Link de Acesso da Ferramenta (`tool_url`)**.
+  - **Comportamento do Card da Ferramenta (`CourseCard`):**
+    - Quando o aluno possui acesso: o card exibe a badge lilÃ¡s **"ð ï¸ Ferramenta / App"** e o botÃ£o principal **"Acessar Ferramenta"** (`ExternalLink`), abrindo a URL configurada diretamente em nova aba do navegador.
+    - Quando o aluno nÃ£o possui acesso: exibe o overlay de produto fechado com correntes e o botÃ£o **"Ver Mais InformaÃ§Ãµes"** direcionando para a pÃ¡gina de vendas (`sales_page_url`).
+- **Pacotes e Combos de Produtos (`course_bundles`):**
+  - No formulÃ¡rio de criaÃ§Ã£o e ediÃ§Ã£o (`CourseFormModal`), o gestor pode selecionar quais outros cursos ou ferramentas estÃ£o **inclusos neste pacote** atravÃ©s do componente [`CourseBundleSelector`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/frontend/src/components/course-management/CourseBundleSelector.jsx).
+  - O sistema impede auto-associaÃ§Ã£o (um curso nÃ£o pode conter a si mesmo no pacote).
+  - **PropagaÃ§Ã£o AutomÃ¡tica de Acesso (`grant_bundle_access_for_user`):** Sempre que um aluno recebe matrÃ­cula em um curso ou pacote pai (seja por criaÃ§Ã£o direta, convite `/invite`, ediÃ§Ã£o de usuÃ¡rio ou importaÃ§Ã£o por planilha), o backend automaticamente vincula e concede acesso imediato a todas as ferramentas e cursos inclusos no combo, garantindo que o aluno receba o pacote completo sem necessidade de liberaÃ§Ã£o manual item a item.
+  - O card do curso exibe a badge verde **"ð¦ Combo (+X)"** indicando a quantidade de itens inclusos.
+  - **Agrupamento Visual de Pacotes/Combos na Plataforma ([`CourseBundleGroup`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Area%20de%20Membros%20-%20Alunos/frontend/src/components/course-management/CourseBundleGroup.jsx)):**
+    - Todos os produtos (cursos e ferramentas) vinculados ao mesmo pacote/combo sÃ£o renderizados visualmente agrupados dentro de uma **caixa destacada exclusiva** com estÃ©tica Neon e Glassmorphism (`border: 1.5px solid rgba(16, 185, 129, 0.45)`).
+    - O container de pacote conta com cabeÃ§alho ilustrado com Ã­cone de pacote (`Package`), badge "PACOTE / COMBO", contadores de produtos inclusos (cursos e ferramentas), status de liberaÃ§Ã£o do pacote (`Acesso Liberado` vs `Combo Bloqueado`) e grade interna contendo os cards dos produtos inclusos (`CourseCard` com badge `Item do Combo`).
+    - Cursos e produtos avulsos nÃ£o vinculados a pacotes continuam sendo exibidos individualmente na grade regular de cursos.
 
 ---
 
-## 2. Estrutura Interna do Curso (Módulos e Aulas)
+## 2. Estrutura Interna do Curso (MÃ³dulos e Aulas)
 - **Acesso ao Curso:**
-  - Em cada card de curso, há a ação **"Acessar Curso"** (além do clique direto na capa/título), abrindo o ambiente de sala de aula (`CourseClassroom`).
-- **Gestão de Módulos:**
-  - Módulos organizam os tópicos do curso (Título, Descrição, Ordem).
-  - O campo de Descrição possui botões de **"Tela Cheia"** (popup gigante) e **"Maximizar / Restaurar"** (`ExpandableTextarea`), permitindo expandir a área de digitação para textos extensos com facilidade.
-  - **Geração de Título e Descrição do Módulo com IA baseada nas Transcrições das Aulas (`ModuleModal`):**
-    - No modal de **"Editar Módulo"**, administradores e instrutores contam com o botão de destaque **"Gerar com IA"** (`Sparkles`) ao lado do campo "Título do Módulo *".
-    - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema exibe um popup modal centralizado com backdrop preto translúcido (não fechável por clique externo) informando que a IA analisará as transcrições e conteúdos de todas as aulas daquele módulo para formular um título atrativo (preservando identificadores numéricos como 'Módulo 2') e uma descrição pedagógica didática de 2 a 3 parágrafos curtos.
-    - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/generate-ai-overview`, preenche os campos do formulário no modal em tempo real e atualiza a interface, permitindo ao gestor revisar e salvar as alterações.
-  - A exclusão de um módulo apaga em cascata todas as aulas associadas após confirmação em popup modal preto.
-  - **Recolhimento e Expansão de Módulos na Playlist Lateral (ModuleTimelineSidebar):**
-    - O cabeçalho de cada módulo na barra lateral da sala de aula funciona como um controle retrátil (*accordion/collapsible*).
-    - **Fechar o Módulo:** Ao clicar sobre o título ou cabeçalho de um módulo aberto, ele recolhe imediatamente a sua lista de aulas, mantendo a visualização limpa e compacta, exibindo indicador em chevron (ChevronRight) e o número de aulas do módulo.
-    - **Abrir o Módulo:** Ao clicar novamente sobre o módulo fechado, ele expande sua timeline vertical exibindo todas as aulas numeradas, minutagens e status com chevron voltado para baixo (ChevronDown).
-    - **Ações de Gestão:** Os botões de adicionar aula (+), editar e excluir módulo continuam protegidos com isolamento de clique (stopPropagation), permitindo a gestão sem fechar ou reabrir acidentalmente o módulo.
-- **Gestão de Aulas (Lessons):**
-  - Cada aula pertence a um módulo e contém:
-    - **Nome/Título da Aula** (obrigatório).
-    - **Descrição da Aula** (opcional, com botões de **"Tela Cheia"** com popup gigante e **"Maximizar / Restaurar"** para escrita confortável, renderizada abaixo do player com quebras de linha preservadas).
-    - **Duração Estimada Automática (Formato Cronômetro Exato):** Especificada no formato cronômetro exato (ex: `15:30`, `25:40`, `01:10:20`). É calculada e preenchida **automaticamente**:
-      - **No Cadastro/Edição da Aula:** Ao selecionar o arquivo de vídeo no computador, o sistema lê os metadados do vídeo no navegador em milissegundos e já preenche o campo "Duração Estimada" automaticamente no formato `MM:SS` ou `HH:MM:SS`.
-      - **Na Importação em Lote:** O sistema calcula a duração de cada vídeo localmente e cadastra a aula já com a minutagem exata.
-      - **Na Transcrição por IA:** O backend afere os segundos precisos via `ffprobe` e sincroniza `lesson.duration` no banco de dados.
-      - **Geração Automática de Título e Descrição com IA na Conclusão da Transcrição:**
-        - Assim que o processamento da transcrição por IA (Whisper) é finalizado em background, o sistema analisa a transcrição completa e gera **automaticamente** um título otimizado e atrativo (máximo de 65 caracteres) e uma descrição pedagógica envolvente de 2 a 3 parágrafos curtos.
-        - Os dados gerados são salvos imediatamente nas colunas `title` e `description` da tabela `Lesson` e sincronizados nas faixas de vídeo correspondentes (`lesson_videos`), atualizando a interface em tempo real via eventos globais no frontend sem necessidade de intervenção manual do gestor.
-      - **Geração Sob Demanda de Título e Descrição com IA na Visão Geral (`LessonOverviewTab`):**
-        - Sempre que uma aula já possuir transcrição concluída, a aba **"Visão Geral"** exibe para administradores e instrutores o botão destacado **"Gerar Título e Descrição com IA"** (`Sparkles`), permitindo re-gerar o conteúdo pedagógico a qualquer momento.
-        - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema abre um popup modal centralizado de confirmação com backdrop translúcido escuro (não fechável por clique externo) explicando que o título e a descrição atuais serão substituídos pelo conteúdo pedagógico gerado com base na transcrição. A geração só é iniciada após o clique em **"Sim, Gerar com IA"**, mantendo a opção segura de **"Cancelar"**.
-        - Ao confirmar, o sistema aciona o GPT-4o-mini para re-gerar o título conciso e a descrição pedagógica envolvente, salvando imediatamente na tabela `Lesson` e atualizando o player e a visão geral em tempo real.
-      - **Geração Sob Demanda de Título e Descrição com IA no Modal de Edição da Aula (`LessonModal`):**
-        - No modal de edição de aula, na aba **"Dados Gerais"**, administradores e instrutores contam com o botão destacado **"Gerar com IA"** (`Sparkles`) no cabeçalho do campo "Título da Aula *".
-        - **Popup de Confirmação Obrigatório:** Ao clicar no botão, o sistema abre o modal centralizado de confirmação com backdrop translúcido escuro (não fechável por clique externo) informando que a IA formulará um novo título atrativo e uma descrição pedagógica completa a partir da transcrição existente da aula.
-        - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/generate-metadata` e preenche imediatamente os campos "Título da Aula" e "Breve Resumo ou Descrição da Aula" no formulário em tempo real, permitindo que o gestor revise, complemente se desejar e salve as alterações com total flexibilidade.
-      - **Upload em Segundo Plano no Backblaze B2 (Múltiplos Vídeos):** arquivos de vídeo MP4, WebM, MOV ou MKV de até **2 GB (2048 MB)** são enviados diretamente para a nuvem no bucket Backblaze B2 (`AreaDeMembros/videos/`) através de URLs pré-assinadas (S3 Presigned URLs). O envio ocorre em **segundo plano** gerenciado pelo `UploadQueueContext`, **sem nenhum modal bloqueante**. O usuário pode preencher e salvar a aula imediatamente, fechar o formulário, criar novas aulas e enviar múltiplos vídeos concorrentemente. Um painel flutuante discreto no canto inferior direito (`BackgroundUploadWidget`) exibe o progresso individual e permite cancelamento ou acompanhamento em tempo real.
-      - **Importação em Lote de Aulas e Módulos via Pasta Local com IA Automática (`BatchCourseImportModal`):**
-        - **Acesso:** Disponível na sala de aula (`CourseClassroom`) para administradores e instrutores através do botão em destaque **"Importar Pasta de Aulas"** (`FolderUp`).
-        - **Leitura de Diretórios pelo Navegador:** Permite ao usuário selecionar uma pasta do seu computador contendo subpastas e arquivos de vídeo usando a API nativa de diretórios (`webkitdirectory`).
-        - **Mapeamento Automático:**
-          - Cada subpasta é mapeada como um **Módulo** do curso. Se já existir um módulo com o mesmo título cadastrado no curso, o sistema identifica como "Módulo Existente" e vincula as novas aulas a ele sem duplicar o módulo.
-          - **Ordem de Exibição Manual e Automática do Módulo:** Cada card de módulo no modal exibe um campo numérico editável **"Ordem: [N]"** no cabeçalho. O sistema preenche inicialmente com o número extraído do título (ex: 'Módulo 2' -> `2`) ou com o `order_index` do módulo existente, permitindo que o administrador altere livremente o número antes de iniciar a importação. Na criação ou atualização, esse valor é persistido no banco de dados.
-          - Cada arquivo de vídeo (`.mp4`, `.webm`, `.mov`, `.mkv`) é mapeado para uma **Aula**, com título limpo derivado do nome do arquivo e ordenação alfanumérica natural (`01`, `02`, `10`).
-        - **Expansão Fluida e Rolagem Sem Bloqueios das Aulas:** As aulas de cada módulo expandido fluem naturalmente integradas à barra de rolagem principal do modal, permitindo visualizar todas as aulas (mesmo mais de 10 ou 13 aulas) sem scroll interno conflitante ou travamentos na rolagem.
-        - **Desmarcação Flexível de Módulos e Aulas:** O modal apresenta a árvore hierárquica em acordeão com checkboxes individuais. O administrador pode desmarcar módulos inteiros ou aulas específicas que já foram importadas anteriormente ou que não deseja subir, além de contar com botões rápidos "Marcar Todas" e "Desmarcar Todas".
-        - **Fila Sequencial e Disparo Imediato de IA:** Ao iniciar a importação:
-          1. Cria ou reutiliza o Módulo no banco de dados.
-          2. Gera a Presigned URL S3 e faz o upload direto do vídeo para o Backblaze B2 com acompanhamento de progresso de 0% a 100%. Em aulas com múltiplas faixas de idioma, realiza o upload de cada faixa e as cadastra vinculadas à aula.
-          3. Cadastra a Aula no sistema vinculada ao vídeo e módulo (incluindo faixas de múltiplos idiomas quando presentes).
-          4. **Disparo Imediato da IA na Aula:** Imediatamente após a criação da aula, aciona a transcrição por inteligência artificial (OpenAI Whisper + GPT-4o) para gerar a minutagem, capítulos e resumo inteligente em background.
-          5. **Geração Automática de Título e Descrição do Módulo com IA:** Ao concluir o upload de todas as aulas selecionadas de um módulo, o sistema aciona automaticamente a IA (GPT-4o-mini) para analisar os títulos e resumos das aulas e gerar um título atrativo e profissional preservando o identificador numérico original (ex: `Módulo 01 - Fundamentos e Estrutura dos Signos`) e uma descrição didática completa de 2 a 3 parágrafos, atualizando o módulo no banco de dados em tempo real.
-          6. Avança para o próximo módulo da fila de forma sequencial e resiliente.
-        - **Suporte a Múltiplos Idiomas por Subpastas (Opção A):**
-          - O sistema reconhece pastas estruturadas no padrão `Modulo 01/PT/01 - Introducao.mp4`, `Modulo 01/EN/01 - Introduction.mp4`, `Modulo 01/ES/01 - Introduccion.mp4`.
-          - Os arquivos com o mesmo identificador/numeração de aula dentro de subpastas de idiomas (PT, EN, ES, FR, DE, IT) são unificados automaticamente em uma **única aula** contendo as faixas de vídeo correspondentes (`lesson_videos`).
-          - O modal exibe badges com as bandeiras dos idiomas identificados (ex: `🇧🇷 🇺🇸 🇪🇸`) ao lado de cada aula, e realiza o upload sequencial de todas as faixas cadastradas.
-        - **Upload e Replicação de Capas (Módulos e Aulas) na Importação em Lote:** O gestor pode anexar manualmente imagens de capa diretamente no modal de importação antes de iniciar o processo:
-          - **Capa do Módulo:** Botão "+ Capa Módulo" no cabeçalho de cada módulo, permitindo escolher uma imagem do computador com pré-visualização miniatura e botão de remoção. Caso o módulo seja novo, é criado com `image_url`; caso já exista, a capa é atualizada na conclusão.
-          - **Capa da Aula Individual:** Botão "+ Capa" ao lado do tamanho de cada aula, permitindo anexar imagens individuais que são enviadas para o Backblaze B2 (`AreaDeMembros/thumbnails/`) e associadas como `thumbnail_url` da respectiva aula.
-          - **Replicação de Capa para Todas as Aulas (3 Formas Rápidas):**
-            1. **Botão "Replicar p/ todas" na Linha da Aula:** Sempre que o usuário anexar uma capa em qualquer aula, surge imediatamente ao lado um botão destacado "Replicar p/ todas" (`Copy`). Ao clicar, essa imagem é copiada instantaneamente para todas as outras aulas de todos os módulos.
-            2. **Botão "Capa p/ Aulas do Módulo" no Cabeçalho do Módulo:** Permite escolher 1 imagem de capa do computador e aplicá-la em lote especificamente para todas as aulas daquele módulo.
-            3. **Botão "Capa p/ Todas as Aulas" na Barra Superior:** Permite escolher 1 imagem de capa do computador e aplicá-la em lote para todas as aulas de todos os módulos importados.
-        - **Controle e UX:** Barra de progresso geral no topo, indicador de status por aula, botão para interromper a fila a qualquer momento, backdrop fixo não fechável por clique externo e recarregamento automático do curso ao concluir.
-        - **Reinicialização do Estado ao Fechar e Reabrir:** Ao fechar o modal de Importação em Lote (seja pelo botão "X" superior ou "Fechar" inferior), todo o estado temporário do lote é resetado imediatamente (lista de módulos, aulas analisadas, capas vinculadas e seleção de arquivos). Ao reabrir o modal em "Importar Pasta de Aulas", ele sempre se inicia 100% limpo em seu estado inicial de Dropzone, garantindo que importações anteriores ou canceladas não persistam na interface.
-        - **Interrupção Imediata do Upload em Lote:** Ao clicar em "Interromper Envio", qualquer requisição HTTP ativa para o storage (Presigned URL e XMLHttpRequest PUT no Backblaze B2) é abortada imediatamente no mesmo segundo (`xhr.abort()` e `AbortController.abort()`). O status da aula em progresso é restaurado com segurança para "Pronta para envio", liberando a interface instantaneamente sem aguardar o término de uploads de arquivos pesados.
-        - **Reimportação e Retentativa de Aulas com Falha:**
-          - **Botão Individual de Reimportação:** Ao ocorrer qualquer erro durante o upload ou criação da aula (exibindo `(!) Falha`), é renderizado imediatamente um botão `↺ Reimportar` ao lado do status da aula. Ao clicar, o sistema reinicia o processo especificamente para aquela aula de forma isolada e transparente.
-          - **Botão de Reimportar Falhas do Módulo:** No cabeçalho de cada módulo com aulas pendentes de erro, surge o botão `↺ Reimportar Falhas`, permitindo reprocessar todas as aulas com falha daquele módulo com um único clique.
-          - **Botão Geral de Reimportar Falhas no Rodapé:** Sempre que houver 1 ou mais aulas com falha em qualquer módulo, surge no rodapé do modal o botão destacado `↺ Reimportar Falhas (N)`. Ao clicar, todas as aulas falhadas têm o status resetado para pendente e a fila de processamento é retomada automaticamente, pulando com segurança as aulas já concluídas anteriormente e aproveitando o ID do módulo já criado para não gerar duplicatas.
-        - **Enquadramento e Proporções de Capas de Módulos (Cards Netflix):**
-          - **Proporção Ideal de Pôster:** Recomenda-se a proporção vertical **2:3 ou 3:4** (ex: `600×900px` ou `1080×1620px`), idêntica a pôsteres de filmes e séries da Netflix.
-          - **Camadas Inteligentes de Apresentação:** Para suportar qualquer imagem enviada pelo usuário (mesmo artes quadradas 1:1 com mandalas circulares ou banners horizontais 16:9), os cards de módulos utilizam renderização em duas camadas:
-            1. **Fundo Atmosférico (`Ambient Glow`):** Preenche o card com desfoque suave (`blur(16px) brightness(0.35)`) espelhando as cores da arte original, eliminando bordas pretas secas.
-            2. **Pôster Contido em Alta Definição (`contain`):** Mantém a arte integralmente visível sem cortar textos, circunferências ou bordas laterais, eliminando completamente distorções e efeito de super zoom.
-            3. **Degradê Cinematográfico:** Camada de gradiente escuro garantindo contraste e leitura nítida do identificador do módulo e contagem de aulas.
-      - **Aba Padrão:** Por padrão, o modal de criação e edição da aula já se inicia diretamente na aba **"Upload do PC (Backblaze B2)"**.
-      - **Capa do Vídeo da Aula (Thumbnail / Poster):**
+  - Em cada card de curso, hÃ¡ a aÃ§Ã£o **"Acessar Curso"** (alÃ©m do clique direto na capa/tÃ­tulo), abrindo o ambiente de sala de aula (`CourseClassroom`).
+- **GestÃ£o de MÃ³dulos:**
+  - MÃ³dulos organizam os tÃ³picos do curso (TÃ­tulo, DescriÃ§Ã£o, Ordem).
+  - O campo de DescriÃ§Ã£o possui botÃµes de **"Tela Cheia"** (popup gigante) e **"Maximizar / Restaurar"** (`ExpandableTextarea`), permitindo expandir a Ã¡rea de digitaÃ§Ã£o para textos extensos com facilidade.
+  - **GeraÃ§Ã£o de TÃ­tulo e DescriÃ§Ã£o do MÃ³dulo com IA baseada nas TranscriÃ§Ãµes das Aulas (`ModuleModal`):**
+    - No modal de **"Editar MÃ³dulo"**, administradores e instrutores contam com o botÃ£o de destaque **"Gerar com IA"** (`Sparkles`) ao lado do campo "TÃ­tulo do MÃ³dulo *".
+    - **Popup de ConfirmaÃ§Ã£o ObrigatÃ³rio:** Ao clicar no botÃ£o, o sistema exibe um popup modal centralizado com backdrop preto translÃºcido (nÃ£o fechÃ¡vel por clique externo) informando que a IA analisarÃ¡ as transcriÃ§Ãµes e conteÃºdos de todas as aulas daquele mÃ³dulo para formular um tÃ­tulo atrativo (preservando identificadores numÃ©ricos como 'MÃ³dulo 2') e uma descriÃ§Ã£o pedagÃ³gica didÃ¡tica de 2 a 3 parÃ¡grafos curtos.
+    - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/generate-ai-overview`, preenche os campos do formulÃ¡rio no modal em tempo real e atualiza a interface, permitindo ao gestor revisar e salvar as alteraÃ§Ãµes.
+  - A exclusÃ£o de um mÃ³dulo apaga em cascata todas as aulas associadas apÃ³s confirmaÃ§Ã£o em popup modal preto.
+  - **Recolhimento e ExpansÃ£o de MÃ³dulos na Playlist Lateral (ModuleTimelineSidebar):**
+    - O cabeÃ§alho de cada mÃ³dulo na barra lateral da sala de aula funciona como um controle retrÃ¡til (*accordion/collapsible*).
+    - **Fechar o MÃ³dulo:** Ao clicar sobre o tÃ­tulo ou cabeÃ§alho de um mÃ³dulo aberto, ele recolhe imediatamente a sua lista de aulas, mantendo a visualizaÃ§Ã£o limpa e compacta, exibindo indicador em chevron (ChevronRight) e o nÃºmero de aulas do mÃ³dulo.
+    - **Abrir o MÃ³dulo:** Ao clicar novamente sobre o mÃ³dulo fechado, ele expande sua timeline vertical exibindo todas as aulas numeradas, minutagens e status com chevron voltado para baixo (ChevronDown).
+    - **AÃ§Ãµes de GestÃ£o:** Os botÃµes de adicionar aula (+), editar e excluir mÃ³dulo continuam protegidos com isolamento de clique (stopPropagation), permitindo a gestÃ£o sem fechar ou reabrir acidentalmente o mÃ³dulo.
+- **GestÃ£o de Aulas (Lessons):**
+  - Cada aula pertence a um mÃ³dulo e contÃ©m:
+    - **Nome/TÃ­tulo da Aula** (obrigatÃ³rio).
+    - **DescriÃ§Ã£o da Aula** (opcional, com botÃµes de **"Tela Cheia"** com popup gigante e **"Maximizar / Restaurar"** para escrita confortÃ¡vel, renderizada abaixo do player com quebras de linha preservadas).
+    - **DuraÃ§Ã£o Estimada AutomÃ¡tica (Formato CronÃ´metro Exato):** Especificada no formato cronÃ´metro exato (ex: `15:30`, `25:40`, `01:10:20`). Ã calculada e preenchida **automaticamente**:
+      - **No Cadastro/EdiÃ§Ã£o da Aula:** Ao selecionar o arquivo de vÃ­deo no computador, o sistema lÃª os metadados do vÃ­deo no navegador em milissegundos e jÃ¡ preenche o campo "DuraÃ§Ã£o Estimada" automaticamente no formato `MM:SS` ou `HH:MM:SS`.
+      - **Na ImportaÃ§Ã£o em Lote:** O sistema calcula a duraÃ§Ã£o de cada vÃ­deo localmente e cadastra a aula jÃ¡ com a minutagem exata.
+      - **Na TranscriÃ§Ã£o por IA:** O backend afere os segundos precisos via `ffprobe` e sincroniza `lesson.duration` no banco de dados.
+      - **GeraÃ§Ã£o AutomÃ¡tica de TÃ­tulo e DescriÃ§Ã£o com IA na ConclusÃ£o da TranscriÃ§Ã£o:**
+        - Assim que o processamento da transcriÃ§Ã£o por IA (Whisper) Ã© finalizado em background, o sistema analisa a transcriÃ§Ã£o completa e gera **automaticamente** um tÃ­tulo otimizado e atrativo (mÃ¡ximo de 65 caracteres) e uma descriÃ§Ã£o pedagÃ³gica envolvente de 2 a 3 parÃ¡grafos curtos.
+        - Os dados gerados sÃ£o salvos imediatamente nas colunas `title` e `description` da tabela `Lesson` e sincronizados nas faixas de vÃ­deo correspondentes (`lesson_videos`), atualizando a interface em tempo real via eventos globais no frontend sem necessidade de intervenÃ§Ã£o manual do gestor.
+      - **GeraÃ§Ã£o Sob Demanda de TÃ­tulo e DescriÃ§Ã£o com IA na VisÃ£o Geral (`LessonOverviewTab`):**
+        - Sempre que uma aula jÃ¡ possuir transcriÃ§Ã£o concluÃ­da, a aba **"VisÃ£o Geral"** exibe para administradores e instrutores o botÃ£o destacado **"Gerar TÃ­tulo e DescriÃ§Ã£o com IA"** (`Sparkles`), permitindo re-gerar o conteÃºdo pedagÃ³gico a qualquer momento.
+        - **Popup de ConfirmaÃ§Ã£o ObrigatÃ³rio:** Ao clicar no botÃ£o, o sistema abre um popup modal centralizado de confirmaÃ§Ã£o com backdrop translÃºcido escuro (nÃ£o fechÃ¡vel por clique externo) explicando que o tÃ­tulo e a descriÃ§Ã£o atuais serÃ£o substituÃ­dos pelo conteÃºdo pedagÃ³gico gerado com base na transcriÃ§Ã£o. A geraÃ§Ã£o sÃ³ Ã© iniciada apÃ³s o clique em **"Sim, Gerar com IA"**, mantendo a opÃ§Ã£o segura de **"Cancelar"**.
+        - Ao confirmar, o sistema aciona o GPT-4o-mini para re-gerar o tÃ­tulo conciso e a descriÃ§Ã£o pedagÃ³gica envolvente, salvando imediatamente na tabela `Lesson` e atualizando o player e a visÃ£o geral em tempo real.
+      - **GeraÃ§Ã£o Sob Demanda de TÃ­tulo e DescriÃ§Ã£o com IA no Modal de EdiÃ§Ã£o da Aula (`LessonModal`):**
+        - No modal de ediÃ§Ã£o de aula, na aba **"Dados Gerais"**, administradores e instrutores contam com o botÃ£o destacado **"Gerar com IA"** (`Sparkles`) no cabeÃ§alho do campo "TÃ­tulo da Aula *".
+        - **Popup de ConfirmaÃ§Ã£o ObrigatÃ³rio:** Ao clicar no botÃ£o, o sistema abre o modal centralizado de confirmaÃ§Ã£o com backdrop translÃºcido escuro (nÃ£o fechÃ¡vel por clique externo) informando que a IA formularÃ¡ um novo tÃ­tulo atrativo e uma descriÃ§Ã£o pedagÃ³gica completa a partir da transcriÃ§Ã£o existente da aula.
+        - Ao confirmar, o sistema aciona o endpoint `POST /courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/generate-metadata` e preenche imediatamente os campos "TÃ­tulo da Aula" e "Breve Resumo ou DescriÃ§Ã£o da Aula" no formulÃ¡rio em tempo real, permitindo que o gestor revise, complemente se desejar e salve as alteraÃ§Ãµes com total flexibilidade.
+      - **Upload em Segundo Plano no Backblaze B2 (MÃºltiplos VÃ­deos):** arquivos de vÃ­deo MP4, WebM, MOV ou MKV de atÃ© **2 GB (2048 MB)** sÃ£o enviados diretamente para a nuvem no bucket Backblaze B2 (`AreaDeMembros/videos/`) atravÃ©s de URLs prÃ©-assinadas (S3 Presigned URLs). O envio ocorre em **segundo plano** gerenciado pelo `UploadQueueContext`, **sem nenhum modal bloqueante**. O usuÃ¡rio pode preencher e salvar a aula imediatamente, fechar o formulÃ¡rio, criar novas aulas e enviar mÃºltiplos vÃ­deos concorrentemente. Um painel flutuante discreto no canto inferior direito (`BackgroundUploadWidget`) exibe o progresso individual e permite cancelamento ou acompanhamento em tempo real.
+      - **ImportaÃ§Ã£o em Lote de Aulas e MÃ³dulos via Pasta Local com IA AutomÃ¡tica (`BatchCourseImportModal`):**
+        - **Acesso:** DisponÃ­vel na sala de aula (`CourseClassroom`) para administradores e instrutores atravÃ©s do botÃ£o em destaque **"Importar Pasta de Aulas"** (`FolderUp`).
+        - **Leitura de DiretÃ³rios pelo Navegador:** Permite ao usuÃ¡rio selecionar uma pasta do seu computador contendo subpastas e arquivos de vÃ­deo usando a API nativa de diretÃ³rios (`webkitdirectory`).
+        - **Mapeamento AutomÃ¡tico:**
+          - Cada subpasta Ã© mapeada como um **MÃ³dulo** do curso. Se jÃ¡ existir um mÃ³dulo com o mesmo tÃ­tulo cadastrado no curso, o sistema identifica como "MÃ³dulo Existente" e vincula as novas aulas a ele sem duplicar o mÃ³dulo.
+          - **Ordem de ExibiÃ§Ã£o Manual e AutomÃ¡tica do MÃ³dulo:** Cada card de mÃ³dulo no modal exibe um campo numÃ©rico editÃ¡vel **"Ordem: [N]"** no cabeÃ§alho. O sistema preenche inicialmente com o nÃºmero extraÃ­do do tÃ­tulo (ex: 'MÃ³dulo 2' -> `2`) ou com o `order_index` do mÃ³dulo existente, permitindo que o administrador altere livremente o nÃºmero antes de iniciar a importaÃ§Ã£o. Na criaÃ§Ã£o ou atualizaÃ§Ã£o, esse valor Ã© persistido no banco de dados.
+          - Cada arquivo de vÃ­deo (`.mp4`, `.webm`, `.mov`, `.mkv`) Ã© mapeado para uma **Aula**, com tÃ­tulo limpo derivado do nome do arquivo e ordenaÃ§Ã£o alfanumÃ©rica natural (`01`, `02`, `10`).
+        - **ExpansÃ£o Fluida e Rolagem Sem Bloqueios das Aulas:** As aulas de cada mÃ³dulo expandido fluem naturalmente integradas Ã  barra de rolagem principal do modal, permitindo visualizar todas as aulas (mesmo mais de 10 ou 13 aulas) sem scroll interno conflitante ou travamentos na rolagem.
+        - **DesmarcaÃ§Ã£o FlexÃ­vel de MÃ³dulos e Aulas:** O modal apresenta a Ã¡rvore hierÃ¡rquica em acordeÃ£o com checkboxes individuais. O administrador pode desmarcar mÃ³dulos inteiros ou aulas especÃ­ficas que jÃ¡ foram importadas anteriormente ou que nÃ£o deseja subir, alÃ©m de contar com botÃµes rÃ¡pidos "Marcar Todas" e "Desmarcar Todas".
+        - **Fila Sequencial e Disparo Imediato de IA:** Ao iniciar a importaÃ§Ã£o:
+          1. Cria ou reutiliza o MÃ³dulo no banco de dados.
+          2. Gera a Presigned URL S3 e faz o upload direto do vÃ­deo para o Backblaze B2 com acompanhamento de progresso de 0% a 100%. Em aulas com mÃºltiplas faixas de idioma, realiza o upload de cada faixa e as cadastra vinculadas Ã  aula.
+          3. Cadastra a Aula no sistema vinculada ao vÃ­deo e mÃ³dulo (incluindo faixas de mÃºltiplos idiomas quando presentes).
+          4. **Disparo Imediato da IA na Aula:** Imediatamente apÃ³s a criaÃ§Ã£o da aula, aciona a transcriÃ§Ã£o por inteligÃªncia artificial (OpenAI Whisper + GPT-4o) para gerar a minutagem, capÃ­tulos e resumo inteligente em background.
+          5. **GeraÃ§Ã£o AutomÃ¡tica de TÃ­tulo e DescriÃ§Ã£o do MÃ³dulo com IA:** Ao concluir o upload de todas as aulas selecionadas de um mÃ³dulo, o sistema aciona automaticamente a IA (GPT-4o-mini) para analisar os tÃ­tulos e resumos das aulas e gerar um tÃ­tulo atrativo e profissional preservando o identificador numÃ©rico original (ex: `MÃ³dulo 01 - Fundamentos e Estrutura dos Signos`) e uma descriÃ§Ã£o didÃ¡tica completa de 2 a 3 parÃ¡grafos, atualizando o mÃ³dulo no banco de dados em tempo real.
+          6. AvanÃ§a para o prÃ³ximo mÃ³dulo da fila de forma sequencial e resiliente.
+        - **Suporte a MÃºltiplos Idiomas por Subpastas (OpÃ§Ã£o A):**
+          - O sistema reconhece pastas estruturadas no padrÃ£o `Modulo 01/PT/01 - Introducao.mp4`, `Modulo 01/EN/01 - Introduction.mp4`, `Modulo 01/ES/01 - Introduccion.mp4`.
+          - Os arquivos com o mesmo identificador/numeraÃ§Ã£o de aula dentro de subpastas de idiomas (PT, EN, ES, FR, DE, IT) sÃ£o unificados automaticamente em uma **Ãºnica aula** contendo as faixas de vÃ­deo correspondentes (`lesson_videos`).
+          - O modal exibe badges com as bandeiras dos idiomas identificados (ex: `ð§ð· ðºð¸ ðªð¸`) ao lado de cada aula, e realiza o upload sequencial de todas as faixas cadastradas.
+        - **Upload e ReplicaÃ§Ã£o de Capas (MÃ³dulos e Aulas) na ImportaÃ§Ã£o em Lote:** O gestor pode anexar manualmente imagens de capa diretamente no modal de importaÃ§Ã£o antes de iniciar o processo:
+          - **Capa do MÃ³dulo:** BotÃ£o "+ Capa MÃ³dulo" no cabeÃ§alho de cada mÃ³dulo, permitindo escolher uma imagem do computador com prÃ©-visualizaÃ§Ã£o miniatura e botÃ£o de remoÃ§Ã£o. Caso o mÃ³dulo seja novo, Ã© criado com `image_url`; caso jÃ¡ exista, a capa Ã© atualizada na conclusÃ£o.
+          - **Capa da Aula Individual:** BotÃ£o "+ Capa" ao lado do tamanho de cada aula, permitindo anexar imagens individuais que sÃ£o enviadas para o Backblaze B2 (`AreaDeMembros/thumbnails/`) e associadas como `thumbnail_url` da respectiva aula.
+          - **ReplicaÃ§Ã£o de Capa para Todas as Aulas (3 Formas RÃ¡pidas):**
+            1. **BotÃ£o "Replicar p/ todas" na Linha da Aula:** Sempre que o usuÃ¡rio anexar uma capa em qualquer aula, surge imediatamente ao lado um botÃ£o destacado "Replicar p/ todas" (`Copy`). Ao clicar, essa imagem Ã© copiada instantaneamente para todas as outras aulas de todos os mÃ³dulos.
+            2. **BotÃ£o "Capa p/ Aulas do MÃ³dulo" no CabeÃ§alho do MÃ³dulo:** Permite escolher 1 imagem de capa do computador e aplicÃ¡-la em lote especificamente para todas as aulas daquele mÃ³dulo.
+            3. **BotÃ£o "Capa p/ Todas as Aulas" na Barra Superior:** Permite escolher 1 imagem de capa do computador e aplicÃ¡-la em lote para todas as aulas de todos os mÃ³dulos importados.
+        - **Controle e UX:** Barra de progresso geral no topo, indicador de status por aula, botÃ£o para interromper a fila a qualquer momento, backdrop fixo nÃ£o fechÃ¡vel por clique externo e recarregamento automÃ¡tico do curso ao concluir.
+        - **ReinicializaÃ§Ã£o do Estado ao Fechar e Reabrir:** Ao fechar o modal de ImportaÃ§Ã£o em Lote (seja pelo botÃ£o "X" superior ou "Fechar" inferior), todo o estado temporÃ¡rio do lote Ã© resetado imediatamente (lista de mÃ³dulos, aulas analisadas, capas vinculadas e seleÃ§Ã£o de arquivos). Ao reabrir o modal em "Importar Pasta de Aulas", ele sempre se inicia 100% limpo em seu estado inicial de Dropzone, garantindo que importaÃ§Ãµes anteriores ou canceladas nÃ£o persistam na interface.
+        - **InterrupÃ§Ã£o Imediata do Upload em Lote:** Ao clicar em "Interromper Envio", qualquer requisiÃ§Ã£o HTTP ativa para o storage (Presigned URL e XMLHttpRequest PUT no Backblaze B2) Ã© abortada imediatamente no mesmo segundo (`xhr.abort()` e `AbortController.abort()`). O status da aula em progresso Ã© restaurado com seguranÃ§a para "Pronta para envio", liberando a interface instantaneamente sem aguardar o tÃ©rmino de uploads de arquivos pesados.
+        - **ReimportaÃ§Ã£o e Retentativa de Aulas com Falha:**
+          - **BotÃ£o Individual de ReimportaÃ§Ã£o:** Ao ocorrer qualquer erro durante o upload ou criaÃ§Ã£o da aula (exibindo `(!) Falha`), Ã© renderizado imediatamente um botÃ£o `âº Reimportar` ao lado do status da aula. Ao clicar, o sistema reinicia o processo especificamente para aquela aula de forma isolada e transparente.
+          - **BotÃ£o de Reimportar Falhas do MÃ³dulo:** No cabeÃ§alho de cada mÃ³dulo com aulas pendentes de erro, surge o botÃ£o `âº Reimportar Falhas`, permitindo reprocessar todas as aulas com falha daquele mÃ³dulo com um Ãºnico clique.
+          - **BotÃ£o Geral de Reimportar Falhas no RodapÃ©:** Sempre que houver 1 ou mais aulas com falha em qualquer mÃ³dulo, surge no rodapÃ© do modal o botÃ£o destacado `âº Reimportar Falhas (N)`. Ao clicar, todas as aulas falhadas tÃªm o status resetado para pendente e a fila de processamento Ã© retomada automaticamente, pulando com seguranÃ§a as aulas jÃ¡ concluÃ­das anteriormente e aproveitando o ID do mÃ³dulo jÃ¡ criado para nÃ£o gerar duplicatas.
+        - **Enquadramento e ProporÃ§Ãµes de Capas de MÃ³dulos (Cards Netflix):**
+          - **ProporÃ§Ã£o Ideal de PÃ´ster:** Recomenda-se a proporÃ§Ã£o vertical **2:3 ou 3:4** (ex: `600Ã900px` ou `1080Ã1620px`), idÃªntica a pÃ´steres de filmes e sÃ©ries da Netflix.
+          - **Camadas Inteligentes de ApresentaÃ§Ã£o:** Para suportar qualquer imagem enviada pelo usuÃ¡rio (mesmo artes quadradas 1:1 com mandalas circulares ou banners horizontais 16:9), os cards de mÃ³dulos utilizam renderizaÃ§Ã£o em duas camadas:
+            1. **Fundo AtmosfÃ©rico (`Ambient Glow`):** Preenche o card com desfoque suave (`blur(16px) brightness(0.35)`) espelhando as cores da arte original, eliminando bordas pretas secas.
+            2. **PÃ´ster Contido em Alta DefiniÃ§Ã£o (`contain`):** MantÃ©m a arte integralmente visÃ­vel sem cortar textos, circunferÃªncias ou bordas laterais, eliminando completamente distorÃ§Ãµes e efeito de super zoom.
+            3. **DegradÃª CinematogrÃ¡fico:** Camada de gradiente escuro garantindo contraste e leitura nÃ­tida do identificador do mÃ³dulo e contagem de aulas.
+      - **Aba PadrÃ£o:** Por padrÃ£o, o modal de criaÃ§Ã£o e ediÃ§Ã£o da aula jÃ¡ se inicia diretamente na aba **"Upload do PC (Backblaze B2)"**.
+      - **Capa do VÃ­deo da Aula (Thumbnail / Poster):**
         - Cada aula possui suporte a uma capa personalizada exclusiva, hospedada no Backblaze B2 (`AreaDeMembros/thumbnails/`).
-        - Dimensões recomendadas no painel: **1280 × 720 pixels (Proporção widescreen 16:9)**, formatos **JPG, PNG, WEBP (até 5 MB)**.
-        - A capa é renderizada como atributo `poster` no player HTML5 antes do aluno dar o play, e como apresentação de destaque caso nenhum vídeo tenha sido enviado ainda.
+        - DimensÃµes recomendadas no painel: **1280 Ã 720 pixels (ProporÃ§Ã£o widescreen 16:9)**, formatos **JPG, PNG, WEBP (atÃ© 5 MB)**.
+        - A capa Ã© renderizada como atributo `poster` no player HTML5 antes do aluno dar o play, e como apresentaÃ§Ã£o de destaque caso nenhum vÃ­deo tenha sido enviado ainda.
       - **Streaming Nativo e Player Customizado:**
-        - O player de vídeo HTML5 da aula conta com barra de controles interativa sobreposta (`CustomVideoPlayer`).
-        - **Barra de Progresso Interativa (Scrubbing / Seek):** O aluno pode clicar ou arrastar livremente na barra de progresso para avançar ou retroceder a reprodução em qualquer ponto do vídeo instantaneamente.
-        - **Avançar e Retroceder 10 Segundos:** Botões dedicados `-10s` (`RotateCcw`) e `+10s` (`RotateCw`) para saltos ágeis durante o estudo.
-        - **Indicador Exato de Tempo Restante:** O display de tempo exibe o tempo decorrido, a duração total e destaca explicitamente quanto tempo falta para o término do vídeo (ex: `00:09 / 10:00 (Faltam 09:51)`), com fallback inteligente para a duração estimada cadastrada na aula caso o vídeo ainda esteja em buffer de metadados.
-        - **Controle de Velocidade de Reprodução (Playback Rate):** O player conta com seletor dedicado de velocidade (`0.5x`, `0.75x`, `1x normal`, `1.25x`, `1.5x`, `1.75x`, `2x`) com menu popover translúcido, feedback com ícone de velocímetro (`Gauge`), indicador ativo e persistência automática da preferência do aluno no `localStorage` entre aulas e recarregamentos de página.
-        - **Controles de Volume e Tela Cheia:** Ajuste fino de volume com slider, botão mute/unmute e alternância para tela cheia nativa.
-      - **Thumbnails dos Cursos:** Capas enviadas por upload também são hospedadas no Backblaze B2 (`AreaDeMembros/thumbnails/`).
-      - **Limpeza Automática:** Ao excluir um curso ou aula, as mídias vinculadas correspondentes são automaticamente deletadas do Backblaze B2.
+        - O player de vÃ­deo HTML5 da aula conta com barra de controles interativa sobreposta (`CustomVideoPlayer`).
+        - **Barra de Progresso Interativa (Scrubbing / Seek):** O aluno pode clicar ou arrastar livremente na barra de progresso para avanÃ§ar ou retroceder a reproduÃ§Ã£o em qualquer ponto do vÃ­deo instantaneamente.
+        - **AvanÃ§ar e Retroceder 10 Segundos:** BotÃµes dedicados `-10s` (`RotateCcw`) e `+10s` (`RotateCw`) para saltos Ã¡geis durante o estudo.
+        - **Indicador Exato de Tempo Restante:** O display de tempo exibe o tempo decorrido, a duraÃ§Ã£o total e destaca explicitamente quanto tempo falta para o tÃ©rmino do vÃ­deo (ex: `00:09 / 10:00 (Faltam 09:51)`), com fallback inteligente para a duraÃ§Ã£o estimada cadastrada na aula caso o vÃ­deo ainda esteja em buffer de metadados.
+        - **Controle de Velocidade de ReproduÃ§Ã£o (Playback Rate):** O player conta com seletor dedicado de velocidade (`0.5x`, `0.75x`, `1x normal`, `1.25x`, `1.5x`, `1.75x`, `2x`) com menu popover translÃºcido, feedback com Ã­cone de velocÃ­metro (`Gauge`), indicador ativo e persistÃªncia automÃ¡tica da preferÃªncia do aluno no `localStorage` entre aulas e recarregamentos de pÃ¡gina.
+        - **Controles de Volume e Tela Cheia:** Ajuste fino de volume com slider, botÃ£o mute/unmute e alternÃ¢ncia para tela cheia nativa.
+      - **Thumbnails dos Cursos:** Capas enviadas por upload tambÃ©m sÃ£o hospedadas no Backblaze B2 (`AreaDeMembros/thumbnails/`).
+      - **Limpeza AutomÃ¡tica:** Ao excluir um curso ou aula, as mÃ­dias vinculadas correspondentes sÃ£o automaticamente deletadas do Backblaze B2.
       - **Link Externo / Embed:** Suporte mantido a links do YouTube, Vimeo, Panda Video ou URL externa.
-      - **Suporte Multilíngue (Aulas em Múltiplos Idiomas):**
-        - A mesma aula pode conter faixas de vídeo em múltiplos idiomas (ex: Português 🇧🇷, Inglês 🇺🇸, Espanhol 🇪🇸, Francês 🇫🇷, Alemão 🇩🇪, Italiano 🇮🇹, etc.).
-        - **Nome Personalizado do Idioma (Rótulo):** O administrador pode alterar o nome exibido de cada idioma cadastrado (campo `language_label`, ex: "Português (Brasil)", "Inglês (UK)", "Espanhol Neutro", etc.). O nome editado reflete em tempo real nas abas de edição e nos botões de troca de idioma do player visualizados pelo aluno.
-        - **Nome e Descrição da Aula por Idioma:** Além do vídeo, cada idioma cadastrado possui seu próprio **Nome da Aula** e **Descrição da Aula** específicos, permitindo que a interface se adapte completamente ao idioma selecionado pelo aluno.
-          - **Campo de Descrição Maximizado com Tela Cheia:** O campo de descrição de cada faixa de idioma utiliza o componente `ExpandableTextarea` com altura padrão expandida (`rows={6}`, `minHeight="170px"`) e botão **"Tela Cheia"** (`Maximize2`), permitindo escrita e leitura amplas sem que o texto fique recolhido ou difícil de visualizar.
-          - **Renderização Visual do Vídeo Anexado (`LessonVideoPreviewPlayer`):** Tanto em vídeos enviados do computador (Backblaze B2) quanto em links externos (YouTube/Vimeo), o sistema **NÃO** exibe links de texto brutos. Em vez disso, renderiza diretamente o player de vídeo interativo (16:9 widescreen) para que o gestor possa assistir, pausar e conferir a mídia na hora, com botão dedicado de remoção/troca.
-        - Cada faixa de idioma possui seu próprio vídeo independente, com suporte individual a upload direto para o Backblaze B2 ou links externos (YouTube, Vimeo, Panda Video, URL).
-        - No cadastro/edição da aula, o gerenciador em abas permite adicionar, remover e alternar entre os idiomas cadastrados, editando individualmente o rótulo do idioma, o título, a descrição e o vídeo de cada faixa.
-        - No player da sala de aula (`LessonPlayer`), ao alternar entre os botões de idiomas, o título da aula e o texto da aba de visão geral são atualizados dinamicamente em tempo real para os textos daquele idioma.
-        - Ao excluir uma aula ou curso, todos os vídeos de todos os idiomas vinculados são limpos automaticamente do banco e do Backblaze B2.
-      - **Status de Disponibilidade da Aula ("Disponível" vs "Em Breve"):**
-        - O modal de criar e editar aula conta com um seletor de disponibilidade (`Disponível` / `Em Breve`) persistido na coluna `availability_status` da tabela `lessons`.
-        - **Comportamento Híbrido:** Se a aula for explicitamente marcada como "Em Breve" OU se foi criada mas ainda não possui nenhum vídeo enviado/vinculado, o sistema a reconhece automaticamente como aula em produção/em breve.
-        - **Visão do Aluno:**
-          - Na Timeline lateral (`ModuleTimelineSidebar`) e listas de aulas, a aula recebe um badge de destaque âmbar `Em Breve` com ícone de relógio (`Clock`).
-          - Ao abrir a aula no player, em vez de exibir tela preta ou mensagem genérica de erro, o player widescreen exibe uma tela cinematográfica "Aula em Breve / Aula em Produção" estilizada, com a thumbnail de capa (se houver), mensagem acolhedora informando que o conteúdo será liberado em breve, e bloqueio de conclusão prematura.
-        - **Visão do Administrador / Instrutor:** O administrador visualiza o status e conta com botão direto "Editar Aula e Subir Vídeo" na tela de pré-visualização da aula para anexar o vídeo assim que estiver pronto.
+      - **Suporte MultilÃ­ngue (Aulas em MÃºltiplos Idiomas):**
+        - A mesma aula pode conter faixas de vÃ­deo em mÃºltiplos idiomas (ex: PortuguÃªs ð§ð·, InglÃªs ðºð¸, Espanhol ðªð¸, FrancÃªs ð«ð·, AlemÃ£o ð©ðª, Italiano ð®ð¹, etc.).
+        - **Nome Personalizado do Idioma (RÃ³tulo):** O administrador pode alterar o nome exibido de cada idioma cadastrado (campo `language_label`, ex: "PortuguÃªs (Brasil)", "InglÃªs (UK)", "Espanhol Neutro", etc.). O nome editado reflete em tempo real nas abas de ediÃ§Ã£o e nos botÃµes de troca de idioma do player visualizados pelo aluno.
+        - **Nome e DescriÃ§Ã£o da Aula por Idioma:** AlÃ©m do vÃ­deo, cada idioma cadastrado possui seu prÃ³prio **Nome da Aula** e **DescriÃ§Ã£o da Aula** especÃ­ficos, permitindo que a interface se adapte completamente ao idioma selecionado pelo aluno.
+          - **Campo de DescriÃ§Ã£o Maximizado com Tela Cheia:** O campo de descriÃ§Ã£o de cada faixa de idioma utiliza o componente `ExpandableTextarea` com altura padrÃ£o expandida (`rows={6}`, `minHeight="170px"`) e botÃ£o **"Tela Cheia"** (`Maximize2`), permitindo escrita e leitura amplas sem que o texto fique recolhido ou difÃ­cil de visualizar.
+          - **RenderizaÃ§Ã£o Visual do VÃ­deo Anexado (`LessonVideoPreviewPlayer`):** Tanto em vÃ­deos enviados do computador (Backblaze B2) quanto em links externos (YouTube/Vimeo), o sistema **NÃO** exibe links de texto brutos. Em vez disso, renderiza diretamente o player de vÃ­deo interativo (16:9 widescreen) para que o gestor possa assistir, pausar e conferir a mÃ­dia na hora, com botÃ£o dedicado de remoÃ§Ã£o/troca.
+        - Cada faixa de idioma possui seu prÃ³prio vÃ­deo independente, com suporte individual a upload direto para o Backblaze B2 ou links externos (YouTube, Vimeo, Panda Video, URL).
+        - No cadastro/ediÃ§Ã£o da aula, o gerenciador em abas permite adicionar, remover e alternar entre os idiomas cadastrados, editando individualmente o rÃ³tulo do idioma, o tÃ­tulo, a descriÃ§Ã£o e o vÃ­deo de cada faixa.
+        - No player da sala de aula (`LessonPlayer`), ao alternar entre os botÃµes de idiomas, o tÃ­tulo da aula e o texto da aba de visÃ£o geral sÃ£o atualizados dinamicamente em tempo real para os textos daquele idioma.
+        - Ao excluir uma aula ou curso, todos os vÃ­deos de todos os idiomas vinculados sÃ£o limpos automaticamente do banco e do Backblaze B2.
+      - **Status de Disponibilidade da Aula ("DisponÃ­vel" vs "Em Breve"):**
+        - O modal de criar e editar aula conta com um seletor de disponibilidade (`DisponÃ­vel` / `Em Breve`) persistido na coluna `availability_status` da tabela `lessons`.
+        - **Comportamento HÃ­brido:** Se a aula for explicitamente marcada como "Em Breve" OU se foi criada mas ainda nÃ£o possui nenhum vÃ­deo enviado/vinculado, o sistema a reconhece automaticamente como aula em produÃ§Ã£o/em breve.
+        - **VisÃ£o do Aluno:**
+          - Na Timeline lateral (`ModuleTimelineSidebar`) e listas de aulas, a aula recebe um badge de destaque Ã¢mbar `Em Breve` com Ã­cone de relÃ³gio (`Clock`).
+          - Ao abrir a aula no player, em vez de exibir tela preta ou mensagem genÃ©rica de erro, o player widescreen exibe uma tela cinematogrÃ¡fica "Aula em Breve / Aula em ProduÃ§Ã£o" estilizada, com a thumbnail de capa (se houver), mensagem acolhedora informando que o conteÃºdo serÃ¡ liberado em breve, e bloqueio de conclusÃ£o prematura.
+        - **VisÃ£o do Administrador / Instrutor:** O administrador visualiza o status e conta com botÃ£o direto "Editar Aula e Subir VÃ­deo" na tela de prÃ©-visualizaÃ§Ã£o da aula para anexar o vÃ­deo assim que estiver pronto.
     - **Aulas de Leitura e Artigo (`content_type == 'text'`):**
-      - **Editor de Artigo (`LessonArticleEditor`):** No modal de criação e edição da aula, a aba "Texto do Artigo" conta com abas interativas ("Escrever Texto" vs "Pré-visualizar Artigo").
-      - **Upload de Imagens no Artigo:** Botão dedicado "Enviar Imagem do PC" para envio de imagens (JPG, PNG, WEBP até 5 MB hospedadas no Backblaze B2) inserindo automaticamente a tag markdown `![Legenda](url)` na posição do cursor, além de botão "Link URL" para imagens externas.
-      - **Atalhos Rápidos de Formatação:** Barra de ferramentas para inserção de Subtítulos (`## `), Negrito (`**texto**`), Itens de Lista (`- `) e divisores.
-      - **Visualização Editorial (`LessonTextViewer`):** Renderiza o artigo com diagramação cinematográfica, imagens ilustrativas centralizadas com bordas suaves e legendas explicativas, além da barra completa de ações (`LessonActionToolbar`) com avaliação por estrelas, botão "Relatar Problema" e marcação de conclusão sincronizada com a API do backend.
+      - **Editor de Artigo (`LessonArticleEditor`):** No modal de criaÃ§Ã£o e ediÃ§Ã£o da aula, a aba "Texto do Artigo" conta com abas interativas ("Escrever Texto" vs "PrÃ©-visualizar Artigo").
+      - **Upload de Imagens no Artigo:** BotÃ£o dedicado "Enviar Imagem do PC" para envio de imagens (JPG, PNG, WEBP atÃ© 5 MB hospedadas no Backblaze B2) inserindo automaticamente a tag markdown `![Legenda](url)` na posiÃ§Ã£o do cursor, alÃ©m de botÃ£o "Link URL" para imagens externas.
+      - **Atalhos RÃ¡pidos de FormataÃ§Ã£o:** Barra de ferramentas para inserÃ§Ã£o de SubtÃ­tulos (`## `), Negrito (`**texto**`), Itens de Lista (`- `) e divisores.
+      - **VisualizaÃ§Ã£o Editorial (`LessonTextViewer`):** Renderiza o artigo com diagramaÃ§Ã£o cinematogrÃ¡fica, imagens ilustrativas centralizadas com bordas suaves e legendas explicativas, alÃ©m da barra completa de aÃ§Ãµes (`LessonActionToolbar`) com avaliaÃ§Ã£o por estrelas, botÃ£o "Relatar Problema" e marcaÃ§Ã£o de conclusÃ£o sincronizada com a API do backend.
     - **Aulas de Quiz Interativo (`content_type == 'quiz'`):**
-      - **Porcentagem Mínima de Aprovação Configurável:** O administrador/instrutor pode definir a porcentagem de acertos exigida para que o aluno seja aprovado no quiz (coluna `passing_score_pct` na tabela `lessons`, padrão 70%, ajustável de 1% a 100%).
-      - **Pontuação e Peso por Questão:** Cada pergunta possui seu próprio valor em pontos configurável (coluna `points` na tabela `quiz_questions`, inteiro >= 1, padrão 1 ponto). O editor exibe em tempo real a soma total de pontos do quiz.
-      - **Cálculo Ponderado de Nota:** A nota final obtida é calculada proporcionalmente aos pontos das perguntas: `(pontos_obtidos / total_pontos) * 100`.
-      - **Critério de Aprovação Automática:** Se o aluno atingir nota igual ou superior a `passing_score_pct`, a tentativa é aprovada (`passed = True`) e a aula é marcada automaticamente como concluída no progresso do curso. Caso contrário, a aula permanece não concluída e o aluno pode refazer o quiz.
-      - **Segurança Antifraude:** O endpoint de consulta do quiz pelo aluno oculta o campo `is_correct` das opções, impossibilitando descobrir o gabarito via DevTools do navegador.
-      - **Feedback Visual Claro:** O aluno visualiza os pontos de cada questão no card, a meta mínima no banner superior (`Aprovação com X%`) e, ao submeter, visualiza a pontuação obtida versus total de pontos (`X de Y pontos`), a nota percentual e o feedback de aprovação ou incentivo para refazer.
-  - **Reprodutor de Vídeo Customizado (`CustomVideoPlayer` e `VideoControls`):**
-    - **Feedback Imediato de Carregamento e Buffering:** O player oferece feedback visual instantâneo ao alternar entre aulas ou quando a rede oscila.
-    - **Overlay Central Neon de Buffering:** Sempre que a transmissão precisa carregar dados na rede (`waiting`, `stalled`, `seeking`), o centro da tela exibe um painel elegante translúcido com spinner animado e mensagens claras ("Carregando vídeo... Baixando dados de transmissão, aguarde..."), eliminando a sensação de tela congelada.
-    - **Barra de Buffer Visual na Timeline:** O trilho de progresso exibe uma barra de buffer translúcida (`video-buffered-bar`) à frente do tempo atual, permitindo acompanhar o carregamento contínuo dos pacotes de mídia.
-    - **Streaming e Compatibilidade de Formatos:** O backend serve requisições de corte de intervalo (HTTP 206 Partial Content / Range requests) com `media_type` ajustado conforme a extensão (`.mp4`, `.mov`, `.webm`, `.mkv`), otimizando o fluxo de dados.
-  - **Navegação:** O player permite avançar para a "Próxima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
-- **Aba de Comentários da Aula:**
+      - **Porcentagem MÃ­nima de AprovaÃ§Ã£o ConfigurÃ¡vel:** O administrador/instrutor pode definir a porcentagem de acertos exigida para que o aluno seja aprovado no quiz (coluna `passing_score_pct` na tabela `lessons`, padrÃ£o 70%, ajustÃ¡vel de 1% a 100%).
+      - **PontuaÃ§Ã£o e Peso por QuestÃ£o:** Cada pergunta possui seu prÃ³prio valor em pontos configurÃ¡vel (coluna `points` na tabela `quiz_questions`, inteiro >= 1, padrÃ£o 1 ponto). O editor exibe em tempo real a soma total de pontos do quiz.
+      - **CÃ¡lculo Ponderado de Nota:** A nota final obtida Ã© calculada proporcionalmente aos pontos das perguntas: `(pontos_obtidos / total_pontos) * 100`.
+      - **CritÃ©rio de AprovaÃ§Ã£o AutomÃ¡tica:** Se o aluno atingir nota igual ou superior a `passing_score_pct`, a tentativa Ã© aprovada (`passed = True`) e a aula Ã© marcada automaticamente como concluÃ­da no progresso do curso. Caso contrÃ¡rio, a aula permanece nÃ£o concluÃ­da e o aluno pode refazer o quiz.
+      - **SeguranÃ§a Antifraude:** O endpoint de consulta do quiz pelo aluno oculta o campo `is_correct` das opÃ§Ãµes, impossibilitando descobrir o gabarito via DevTools do navegador.
+      - **Feedback Visual Claro:** O aluno visualiza os pontos de cada questÃ£o no card, a meta mÃ­nima no banner superior (`AprovaÃ§Ã£o com X%`) e, ao submeter, visualiza a pontuaÃ§Ã£o obtida versus total de pontos (`X de Y pontos`), a nota percentual e o feedback de aprovaÃ§Ã£o ou incentivo para refazer.
+  - **Reprodutor de VÃ­deo Customizado (`CustomVideoPlayer` e `VideoControls`):**
+    - **Feedback Imediato de Carregamento e Buffering:** O player oferece feedback visual instantÃ¢neo ao alternar entre aulas ou quando a rede oscila.
+    - **Overlay Central Neon de Buffering:** Sempre que a transmissÃ£o precisa carregar dados na rede (`waiting`, `stalled`, `seeking`), o centro da tela exibe um painel elegante translÃºcido com spinner animado e mensagens claras ("Carregando vÃ­deo... Baixando dados de transmissÃ£o, aguarde..."), eliminando a sensaÃ§Ã£o de tela congelada.
+    - **Barra de Buffer Visual na Timeline:** O trilho de progresso exibe uma barra de buffer translÃºcida (`video-buffered-bar`) Ã  frente do tempo atual, permitindo acompanhar o carregamento contÃ­nuo dos pacotes de mÃ­dia.
+    - **Streaming e Compatibilidade de Formatos:** O backend serve requisiÃ§Ãµes de corte de intervalo (HTTP 206 Partial Content / Range requests) com `media_type` ajustado conforme a extensÃ£o (`.mp4`, `.mov`, `.webm`, `.mkv`), otimizando o fluxo de dados.
+  - **NavegaÃ§Ã£o:** O player permite avanÃ§ar para a "PrÃ³xima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
+- **Aba de ComentÃ¡rios da Aula:**
   - Aba dedicada abaixo do player de cada aula.
-  - Alunos e administradores podem enviar comentários com dúvidas ou feedbacks.
-  - Cada comentário exibe o nome do autor, badge de perfil (Aluno, Admin, Super Admin), avatar e data/hora no formato de Brasília.
-  - **Paginação de Comentários:**
-    - A listagem exibe inicialmente os primeiros **20 comentários** da aula.
-    - Quando houver mais de 20 comentários, a barra de navegação ("Anterior", "Próxima", contador "Página X de Y" e intervalo "Exibindo X–Y de Z comentários") permite navegar entre as páginas.
-    - Ao enviar um novo comentário, caso ultrapasse o limite da página atual, a navegação é direcionada para a última página para exibir o comentário recém-criado.
-  - O autor do comentário pode excluir seu próprio comentário a qualquer momento.
-  - Superadmin e Admin possuem privilégio de moderação, podendo excluir qualquer comentário.
-  - Toda exclusão exige confirmação explícita em popup modal com fundo escuro.
-  - **Respostas e Threads em 1 Nível:**
-    - Tanto alunos quanto administradores podem responder a qualquer comentário clicando no botão "Responder".
-    - A estrutura organiza as respostas em **1 nível de thread** (todas as respostas ficam aninhadas diretamente abaixo do comentário raiz original com linha conectora lateral sutil).
-    - Clicar em "Responder" em uma resposta pré-existente insere automaticamente a menção `@Nome` no campo de texto e ancora a resposta na thread principal.
-    - Se houver respostas, o comentário exibe o botão de alternância "Ver X respostas" / "Ocultar respostas".
-    - O autor da resposta ou administradores podem excluir uma resposta individual; ao excluir o comentário raiz original, toda a thread com suas respostas é excluída em cascata.
-  - **Curtidas em Comentários e Respostas:**
-    - Alunos e gestores podem curtir ou descurtir comentários raízes e respostas de aulas clicando no botão de coração (`Heart`).
-    - Cada usuário pode registrar no máximo 1 curtida por comentário/resposta (chave única `uq_lesson_comment_like_user` na tabela `lesson_comment_likes`).
-    - O botão exibe o contador total de curtidas e adquire destaque visual vermelho (`#ef4444`) quando curtido pelo próprio usuário logado (`liked_by_me`).
-    - Quando um aluno curte o comentário de outro aluno, o sistema de gamificação bonifica o autor do comentário com pontos de engajamento comunitário.
+  - Alunos e administradores podem enviar comentÃ¡rios com dÃºvidas ou feedbacks.
+  - Cada comentÃ¡rio exibe o nome do autor, badge de perfil (Aluno, Admin, Super Admin), avatar e data/hora no formato de BrasÃ­lia.
+  - **PaginaÃ§Ã£o de ComentÃ¡rios:**
+    - A listagem exibe inicialmente os primeiros **20 comentÃ¡rios** da aula.
+    - Quando houver mais de 20 comentÃ¡rios, a barra de navegaÃ§Ã£o ("Anterior", "PrÃ³xima", contador "PÃ¡gina X de Y" e intervalo "Exibindo XâY de Z comentÃ¡rios") permite navegar entre as pÃ¡ginas.
+    - Ao enviar um novo comentÃ¡rio, caso ultrapasse o limite da pÃ¡gina atual, a navegaÃ§Ã£o Ã© direcionada para a Ãºltima pÃ¡gina para exibir o comentÃ¡rio recÃ©m-criado.
+  - O autor do comentÃ¡rio pode excluir seu prÃ³prio comentÃ¡rio a qualquer momento.
+  - Superadmin e Admin possuem privilÃ©gio de moderaÃ§Ã£o, podendo excluir qualquer comentÃ¡rio.
+  - Toda exclusÃ£o exige confirmaÃ§Ã£o explÃ­cita em popup modal com fundo escuro.
+  - **Respostas e Threads em 1 NÃ­vel:**
+    - Tanto alunos quanto administradores podem responder a qualquer comentÃ¡rio clicando no botÃ£o "Responder".
+    - A estrutura organiza as respostas em **1 nÃ­vel de thread** (todas as respostas ficam aninhadas diretamente abaixo do comentÃ¡rio raiz original com linha conectora lateral sutil).
+    - Clicar em "Responder" em uma resposta prÃ©-existente insere automaticamente a menÃ§Ã£o `@Nome` no campo de texto e ancora a resposta na thread principal.
+    - Se houver respostas, o comentÃ¡rio exibe o botÃ£o de alternÃ¢ncia "Ver X respostas" / "Ocultar respostas".
+    - O autor da resposta ou administradores podem excluir uma resposta individual; ao excluir o comentÃ¡rio raiz original, toda a thread com suas respostas Ã© excluÃ­da em cascata.
+  - **Curtidas em ComentÃ¡rios e Respostas:**
+    - Alunos e gestores podem curtir ou descurtir comentÃ¡rios raÃ­zes e respostas de aulas clicando no botÃ£o de coraÃ§Ã£o (`Heart`).
+    - Cada usuÃ¡rio pode registrar no mÃ¡ximo 1 curtida por comentÃ¡rio/resposta (chave Ãºnica `uq_lesson_comment_like_user` na tabela `lesson_comment_likes`).
+    - O botÃ£o exibe o contador total de curtidas e adquire destaque visual vermelho (`#ef4444`) quando curtido pelo prÃ³prio usuÃ¡rio logado (`liked_by_me`).
+    - Quando um aluno curte o comentÃ¡rio de outro aluno, o sistema de gamificaÃ§Ã£o bonifica o autor do comentÃ¡rio com pontos de engajamento comunitÃ¡rio.
 - **Aba de Materiais Complementares e Anexos da Aula:**
-  - Aba dedicada **"Materiais Complementares"** abaixo do player da aula, exibindo contador em badge de quantos arquivos estão disponíveis.
-  - **Upload e Gestão:** No modal de criar ou editar aula, o instrutor pode anexar arquivos do seu computador de até 100 MB (PDF, Word, Excel, PowerPoint, ZIP, RAR, TXT, CSV), armazenados no Backblaze B2 (`AreaDeMembros/attachments/`).
-  - **Título e Descrição do Documento:** Para cada arquivo anexado, o instrutor pode definir tanto o **nome exibido** quanto uma **descrição textual explicativa** (ex: instruções de uso da planilha, exercícios da apostila, etc.).
-  - **Acesso pelos Alunos:** Os alunos visualizam cada material com seu ícone correspondente (PDF em vermelho, planilhas em verde, compactados em amarelo, etc.), título, descrição explicativa quando informada, tamanho formatado (KB/MB) e o botão **"Acessar"** para abrir/baixar o arquivo.
-  - **Limpeza Automática em Nuvem:** Ao remover um anexo ou excluir a aula/curso, os arquivos correspondentes são automaticamente deletados do Backblaze B2.
-- **Popups de Upload e Exclusão de Mídias e Arquivos:**
-  - **Upload de Arquivos/Vídeos/Capas:**
-    - Ao iniciar qualquer envio de arquivo (vídeo da aula até 2 GB, capa da aula até 5 MB, capa do curso até 5 MB, documentos/anexos até 100 MB), o sistema abre obrigatoriamente um popup modal centralizado com fundo escuro translúcido (`UploadProgressModal`).
-    - O modal exibe spinner animado, ícone de nuvem, mensagem explicativa e barra de progresso contínua animada.
-    - O modal **não** permite fechamento acidental ao clicar fora do painel central.
-    - O modal fecha automaticamente assim que a transferência para a nuvem for concluída com sucesso ou em caso de erro.
-  - **Confirmação de Exclusão de Arquivos/Mídias:**
-    - Toda ação de remoção de mídia ou documento (remover anexo, remover capa da aula, remover capa do curso, desvincular vídeo da aula ou remover faixa de idioma) exige obrigatoriamente um popup modal de confirmação centralizado (`FileDeleteConfirmModal`).
-    - Possui fundo preto translúcido, não fecha ao clicar fora e conta estritamente com **1 botão Cancelar** e **1 botão Confirmar Exclusão**.
-    - A exclusão física ou lógica só é disparada após a confirmação no modal.
+  - Aba dedicada **"Materiais Complementares"** abaixo do player da aula, exibindo contador em badge de quantos arquivos estÃ£o disponÃ­veis.
+  - **Upload e GestÃ£o:** No modal de criar ou editar aula, o instrutor pode anexar arquivos do seu computador de atÃ© 100 MB (PDF, Word, Excel, PowerPoint, ZIP, RAR, TXT, CSV), armazenados no Backblaze B2 (`AreaDeMembros/attachments/`).
+  - **TÃ­tulo e DescriÃ§Ã£o do Documento:** Para cada arquivo anexado, o instrutor pode definir tanto o **nome exibido** quanto uma **descriÃ§Ã£o textual explicativa** (ex: instruÃ§Ãµes de uso da planilha, exercÃ­cios da apostila, etc.).
+  - **Acesso pelos Alunos:** Os alunos visualizam cada material com seu Ã­cone correspondente (PDF em vermelho, planilhas em verde, compactados em amarelo, etc.), tÃ­tulo, descriÃ§Ã£o explicativa quando informada, tamanho formatado (KB/MB) e o botÃ£o **"Acessar"** para abrir/baixar o arquivo.
+  - **Limpeza AutomÃ¡tica em Nuvem:** Ao remover um anexo ou excluir a aula/curso, os arquivos correspondentes sÃ£o automaticamente deletados do Backblaze B2.
+- **Popups de Upload e ExclusÃ£o de MÃ­dias e Arquivos:**
+  - **Upload de Arquivos/VÃ­deos/Capas:**
+    - Ao iniciar qualquer envio de arquivo (vÃ­deo da aula atÃ© 2 GB, capa da aula atÃ© 5 MB, capa do curso atÃ© 5 MB, documentos/anexos atÃ© 100 MB), o sistema abre obrigatoriamente um popup modal centralizado com fundo escuro translÃºcido (`UploadProgressModal`).
+    - O modal exibe spinner animado, Ã­cone de nuvem, mensagem explicativa e barra de progresso contÃ­nua animada.
+    - O modal **nÃ£o** permite fechamento acidental ao clicar fora do painel central.
+    - O modal fecha automaticamente assim que a transferÃªncia para a nuvem for concluÃ­da com sucesso ou em caso de erro.
+  - **ConfirmaÃ§Ã£o de ExclusÃ£o de Arquivos/MÃ­dias:**
+    - Toda aÃ§Ã£o de remoÃ§Ã£o de mÃ­dia ou documento (remover anexo, remover capa da aula, remover capa do curso, desvincular vÃ­deo da aula ou remover faixa de idioma) exige obrigatoriamente um popup modal de confirmaÃ§Ã£o centralizado (`FileDeleteConfirmModal`).
+    - Possui fundo preto translÃºcido, nÃ£o fecha ao clicar fora e conta estritamente com **1 botÃ£o Cancelar** e **1 botÃ£o Confirmar ExclusÃ£o**.
+    - A exclusÃ£o fÃ­sica ou lÃ³gica sÃ³ Ã© disparada apÃ³s a confirmaÃ§Ã£o no modal.
 
 ---
 
-## 3. Interações com a Aula (Conclusão, Avaliação e Relato de Problemas)
-- **Marcação de Aula como Assistida (Progresso do Aluno):**
-  - Cada aluno pode marcar e desmarcar a aula como concluída através do botão interativo "Marcar como Assistida" / "Aula Concluída" na barra de ações (`LessonActionToolbar`) localizada logo abaixo do título e duração da aula.
-  - O status é registrado na tabela `lesson_progress` vinculado ao aluno autenticado e à aula específica.
-  - Na lista de aulas da barra lateral do curso, as aulas já assistidas recebem instantaneamente um ícone de verificação verde (`CheckCircle2`) e o **nome da aula fica riscado no meio (`line-through`)**, facilitando a identificação visual imediata do avanço pelo aluno.
-- **Avaliação da Aula (0 a 5 Estrelas):**
-  - O aluno pode registrar sua avaliação na aula clicando na escala interativa de 1 a 5 estrelas.
+## 3. InteraÃ§Ãµes com a Aula (ConclusÃ£o, AvaliaÃ§Ã£o e Relato de Problemas)
+- **MarcaÃ§Ã£o de Aula como Assistida (Progresso do Aluno):**
+  - Cada aluno pode marcar e desmarcar a aula como concluÃ­da atravÃ©s do botÃ£o interativo "Marcar como Assistida" / "Aula ConcluÃ­da" na barra de aÃ§Ãµes (`LessonActionToolbar`) localizada logo abaixo do tÃ­tulo e duraÃ§Ã£o da aula.
+  - O status Ã© registrado na tabela `lesson_progress` vinculado ao aluno autenticado e Ã  aula especÃ­fica.
+  - Na lista de aulas da barra lateral do curso, as aulas jÃ¡ assistidas recebem instantaneamente um Ã­cone de verificaÃ§Ã£o verde (`CheckCircle2`) e o **nome da aula fica riscado no meio (`line-through`)**, facilitando a identificaÃ§Ã£o visual imediata do avanÃ§o pelo aluno.
+- **AvaliaÃ§Ã£o da Aula (0 a 5 Estrelas):**
+  - O aluno pode registrar sua avaliaÃ§Ã£o na aula clicando na escala interativa de 1 a 5 estrelas.
   - Ao passar o mouse pelas estrelas, o componente exibe um destaque dourado interativo.
-  - O sistema armazena a nota individual de cada aluno na tabela `lesson_ratings` e exibe dinamicamente a média aritmética consolidada e a contagem total de avaliações recebidas pela aula.
+  - O sistema armazena a nota individual de cada aluno na tabela `lesson_ratings` e exibe dinamicamente a mÃ©dia aritmÃ©tica consolidada e a contagem total de avaliaÃ§Ãµes recebidas pela aula.
 - **Relato de Problemas na Aula:**
-  - O aluno conta com a opção "Relatar Problema" na barra de ações da aula.
-  - Ao clicar, abre-se um modal centralizado com fundo escuro translúcido (`LessonReportModal`) que não fecha com clique fora acidental.
-  - Categorias de problemas pré-definidas:
-    - Vídeo não carrega / trava (`video`)
-    - Áudio baixo / com ruído (`audio`)
+  - O aluno conta com a opÃ§Ã£o "Relatar Problema" na barra de aÃ§Ãµes da aula.
+  - Ao clicar, abre-se um modal centralizado com fundo escuro translÃºcido (`LessonReportModal`) que nÃ£o fecha com clique fora acidental.
+  - Categorias de problemas prÃ©-definidas:
+    - VÃ­deo nÃ£o carrega / trava (`video`)
+    - Ãudio baixo / com ruÃ­do (`audio`)
     - Material ou anexo com erro / link quebrado (`material`)
-    - Dúvida ou erro no conteúdo apresentado (`content`)
+    - DÃºvida ou erro no conteÃºdo apresentado (`content`)
     - Outro problema (`other`)
-  - O campo de descrição textual detalhada é obrigatório para garantir clareza no diagnóstico da equipe de suporte.
+  - O campo de descriÃ§Ã£o textual detalhada Ã© obrigatÃ³rio para garantir clareza no diagnÃ³stico da equipe de suporte.
   - Os relatos ficam persistidos na tabela `lesson_reports` com status inicial `open` (em aberto).
-- **Central de Gestão de Relatos e Notificações no Painel:**
+- **Central de GestÃ£o de Relatos e NotificaÃ§Ãµes no Painel:**
   - **Menu Lateral (Categoria Geral):**
     - Administradores (`admin` e `superadmin`) visualizam o item **"Relatos de Aulas"** na categoria **Geral** da barra lateral.
-    - **Notificação:** Ao lado do item "Relatos de Aulas", é exibido um **badge numérico em vermelho** contendo a quantidade de problemas em aberto (`status == 'open'`). Se não houver chamados pendentes, o badge fica oculto.
-  - **Tela de Gestão (`LessonReportsManagement`):**
-    - **Métricas no Topo:** Cards exibindo "Total de Relatos", "Pendentes / Em Aberto" (em vermelho) e "Resolvidos" (em verde).
-    - **Filtros e Busca:** Campo de busca textual (aluno, e-mail, aula, curso, descrição) e seletores por tipo de problema e status.
-    - **Identificação do Autor do Relato:** Cada card exibe o nome, e-mail e um **badge de perfil** colorido identificando o tipo de usuário (`Super Admin`, `Admin`, `Aluno` ou `Usuário`).
-    - **Fuso Horário de Brasília:** A data e a hora do chamado são obrigatoriamente convertidas e exibidas no **Horário Oficial de Brasília (`America/Sao_Paulo`)**, garantindo exatidão no acompanhamento.
-    - **Ações Administrativas com Confirmação:**
-      - **Popup de Confirmação para "Marcar como Resolvido":** Ao clicar no botão para resolver o chamado, um modal centralizado com fundo preto translúcido (`ActionConfirmModal`) é exibido para confirmação antes de atualizar o status.
+    - **NotificaÃ§Ã£o:** Ao lado do item "Relatos de Aulas", Ã© exibido um **badge numÃ©rico em vermelho** contendo a quantidade de problemas em aberto (`status == 'open'`). Se nÃ£o houver chamados pendentes, o badge fica oculto.
+  - **Tela de GestÃ£o (`LessonReportsManagement`):**
+    - **MÃ©tricas no Topo:** Cards exibindo "Total de Relatos", "Pendentes / Em Aberto" (em vermelho) e "Resolvidos" (em verde).
+    - **Filtros e Busca:** Campo de busca textual (aluno, e-mail, aula, curso, descriÃ§Ã£o) e seletores por tipo de problema e status.
+    - **IdentificaÃ§Ã£o do Autor do Relato:** Cada card exibe o nome, e-mail e um **badge de perfil** colorido identificando o tipo de usuÃ¡rio (`Super Admin`, `Admin`, `Aluno` ou `UsuÃ¡rio`).
+    - **Fuso HorÃ¡rio de BrasÃ­lia:** A data e a hora do chamado sÃ£o obrigatoriamente convertidas e exibidas no **HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo`)**, garantindo exatidÃ£o no acompanhamento.
+    - **AÃ§Ãµes Administrativas com ConfirmaÃ§Ã£o:**
+      - **Popup de ConfirmaÃ§Ã£o para "Marcar como Resolvido":** Ao clicar no botÃ£o para resolver o chamado, um modal centralizado com fundo preto translÃºcido (`ActionConfirmModal`) Ã© exibido para confirmaÃ§Ã£o antes de atualizar o status.
       - **Reabertura:** O administrador pode reabrir o chamado a qualquer momento.
-      - Ao resolver ou reabrir, o contador do badge na barra lateral é atualizado em tempo real.
-      - **Exclusão Segura:** Opção de excluir o registro com popup de confirmação centralizado com fundo escuro translúcido.
+      - Ao resolver ou reabrir, o contador do badge na barra lateral Ã© atualizado em tempo real.
+      - **ExclusÃ£o Segura:** OpÃ§Ã£o de excluir o registro com popup de confirmaÃ§Ã£o centralizado com fundo escuro translÃºcido.
 
 ---
 
-## 4. Anotações Privadas do Aluno na Aula
+## 4. AnotaÃ§Ãµes Privadas do Aluno na Aula
 - **Privacidade Absoluta:**
-  - O aluno possui uma aba dedicada **"Minhas Anotações"** abaixo do player da aula.
-  - **Acesso Estritamente Restrito:** Apenas o próprio aluno que escreveu as anotações tem acesso a elas. Nenhum outro aluno, nem mesmo administradores ou instrutores, tem acesso ou visualização das anotações privadas do aluno na interface.
-  - Os registros na tabela `lesson_notes` são estritamente filtrados pelo `user_id` do aluno autenticado e pela aula específica (`lesson_id`).
+  - O aluno possui uma aba dedicada **"Minhas AnotaÃ§Ãµes"** abaixo do player da aula.
+  - **Acesso Estritamente Restrito:** Apenas o prÃ³prio aluno que escreveu as anotaÃ§Ãµes tem acesso a elas. Nenhum outro aluno, nem mesmo administradores ou instrutores, tem acesso ou visualizaÃ§Ã£o das anotaÃ§Ãµes privadas do aluno na interface.
+  - Os registros na tabela `lesson_notes` sÃ£o estritamente filtrados pelo `user_id` do aluno autenticado e pela aula especÃ­fica (`lesson_id`).
 - **Estrutura em Badges / Cards Individuais:**
-  - Ao salvar uma anotação, ela se transforma em um **badge/card individual estilizado**, permitindo ao aluno registrar múltiplos apontamentos e insights ao longo da aula.
-  - O cabeçalho exibe um badge com o total de anotações feitas pelo aluno na aula.
-  - **Data e Horário de Brasília:** Cada badge de anotação exibe uma tag com a data e horário no **Horário Oficial de Brasília (`America/Sao_Paulo`)**, indicando com exatidão quando a anotação foi criada e se foi editada.
-  - **Edição Inline de Cada Badge:**
-    - Cada badge conta com a opção **"Editar"** que abre o editor inline exclusivo daquele apontamento, permitindo alterar o texto e salvar ou cancelar com facilidade.
-  - **Exclusão Segura com Confirmação:**
-    - Cada badge conta com a opção **"Excluir"**.
-    - Ao clicar, é exibido obrigatoriamente um popup modal centralizado com fundo escuro translúcido (`FileDeleteConfirmModal`), atendendo às regras de UX contra deleções acidentais.
-  - **Salvamento Ágil de Novas Anotações:**
-    - Campo de nova anotação com contador de caracteres.
-    - Botão "Salvar Anotação" com spinner de loading e feedback por toast.
-    - Atalho de teclado rápido: `Ctrl + Enter` para criar o novo badge instantaneamente.
-  - **Paginação de Badges (20 por página):**
-    - A listagem exibe no máximo os **20 primeiros badges de anotações** por página.
-    - Quando houver mais de 20 anotações, a barra de navegação inferior exibe o intervalo (ex: `Exibindo 1–20 de 25 anotações`), indicador de página (`Página 1 de 2`) e botões de navegação `Anterior` e `Próxima`.
-    - Ao criar uma nova anotação, a navegação retorna automaticamente para a página 1 para exibir o badge recém-adicionado de imediato.
+  - Ao salvar uma anotaÃ§Ã£o, ela se transforma em um **badge/card individual estilizado**, permitindo ao aluno registrar mÃºltiplos apontamentos e insights ao longo da aula.
+  - O cabeÃ§alho exibe um badge com o total de anotaÃ§Ãµes feitas pelo aluno na aula.
+  - **Data e HorÃ¡rio de BrasÃ­lia:** Cada badge de anotaÃ§Ã£o exibe uma tag com a data e horÃ¡rio no **HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo`)**, indicando com exatidÃ£o quando a anotaÃ§Ã£o foi criada e se foi editada.
+  - **EdiÃ§Ã£o Inline de Cada Badge:**
+    - Cada badge conta com a opÃ§Ã£o **"Editar"** que abre o editor inline exclusivo daquele apontamento, permitindo alterar o texto e salvar ou cancelar com facilidade.
+  - **ExclusÃ£o Segura com ConfirmaÃ§Ã£o:**
+    - Cada badge conta com a opÃ§Ã£o **"Excluir"**.
+    - Ao clicar, Ã© exibido obrigatoriamente um popup modal centralizado com fundo escuro translÃºcido (`FileDeleteConfirmModal`), atendendo Ã s regras de UX contra deleÃ§Ãµes acidentais.
+  - **Salvamento Ãgil de Novas AnotaÃ§Ãµes:**
+    - Campo de nova anotaÃ§Ã£o com contador de caracteres.
+    - BotÃ£o "Salvar AnotaÃ§Ã£o" com spinner de loading e feedback por toast.
+    - Atalho de teclado rÃ¡pido: `Ctrl + Enter` para criar o novo badge instantaneamente.
+  - **PaginaÃ§Ã£o de Badges (20 por pÃ¡gina):**
+    - A listagem exibe no mÃ¡ximo os **20 primeiros badges de anotaÃ§Ãµes** por pÃ¡gina.
+    - Quando houver mais de 20 anotaÃ§Ãµes, a barra de navegaÃ§Ã£o inferior exibe o intervalo (ex: `Exibindo 1â20 de 25 anotaÃ§Ãµes`), indicador de pÃ¡gina (`PÃ¡gina 1 de 2`) e botÃµes de navegaÃ§Ã£o `Anterior` e `PrÃ³xima`.
+    - Ao criar uma nova anotaÃ§Ã£o, a navegaÃ§Ã£o retorna automaticamente para a pÃ¡gina 1 para exibir o badge recÃ©m-adicionado de imediato.
 
 ---
 
-## 5. Personalização Visual Estilo Netflix (Cursos, Módulos e Aulas)
-- **Configuração Completa pelos Administradores (`admin` e `superadmin`):**
-  - **Cor de Fundo Global da Área de Membros (Aba `Configurações` na Barra Lateral):**
-    - Padrão `#090d16` (*Netflix Dark*).
-    - Configurada globalmente através do botão **"Configurações"** na categoria **Geral** da barra lateral (`PlatformSettings`), e **não** individualmente dentro de cada curso — garantindo que toda a plataforma (barra lateral, vitrine de cursos, salas de aula e popups de todos os cursos) mantenha uma única identidade visual consistente.
-    - Conta com seletor livre de cor (`color picker` + input hexadecimal), pré-visualização ao vivo e presets rápidos: **Netflix Dark (`#090d16`)**, **Preto OLED (`#000000`)**, **Grafite Escuro (`#121620`)**, **Azul Meia-Noite (`#0b1120`)** e **Claro Clássico (`#f8fafc`)**.
-  - **Banner Hero Cinemático do Curso (`cover_image_url` na tabela `courses`):**
-    - Imagem panorâmica exibida no topo da sala de aula com degradê cinemático integrado à cor de fundo escolhida, título em destaque, botão CTA ("Comece Agora" / "Continuar Assistindo") e barra de progresso percentual do aluno.
-    - Caso não seja informado um Banner Hero específico, utiliza automaticamente a capa principal do curso (`thumbnail_url`) ou um degradê radial elegante.
-  - **Imagem de Capa / Pôster dos Módulos (`image_url` na tabela `modules`):**
-    - Cada módulo pode ter sua própria imagem de capa configurada via URL ou upload direto para o Backblaze B2 no modal de Criar/Editar Módulo.
-    - Os módulos são exibidos em uma **trilha horizontal de pôsteres verticais (Estilo Netflix / BE.EXPERT)** logo abaixo do Banner Hero, mostrando tag `MÓDULO X`, imagem de fundo com degradê, título e progresso de conclusão das aulas daquele módulo.
-  - **Experiência Imersiva sem Barra Lateral e Seleção Sob Demanda:**
-    - Ao entrar em um curso, a barra lateral esquerda do sistema (`Sidebar`) é ocultada automaticamente para proporcionar imersão total na cor de fundo configurada.
-    - O botão **"Voltar aos Cursos"** no topo possui estilo *Dark Glassmorphism* (pílula translúcida com ícone dourado) e o título do curso ao lado é exibido com alto contraste.
-    - Ao entrar no curso, as aulas e o player **não aparecem abertos inicialmente**: a seção inferior de aulas + player de vídeo só é exibida na parte de baixo quando o aluno **aperta no card do módulo escolhido** (ou clica em "Comece Agora" / "Continuar Assistindo").
-    - **Layout Editorial de Aula + Timeline de Módulos (ao clicar em um módulo):**
-      - **Player Widescreen no Topo:** O player de vídeo ocupa toda a largura superior da seção da aula com cantos arredondados e sombra cinemática, sem caixa branca ao redor.
+## 5. PersonalizaÃ§Ã£o Visual Estilo Netflix (Cursos, MÃ³dulos e Aulas)
+- **ConfiguraÃ§Ã£o Completa pelos Administradores (`admin` e `superadmin`):**
+  - **Cor de Fundo Global da Ãrea de Membros (Aba `ConfiguraÃ§Ãµes` na Barra Lateral):**
+    - PadrÃ£o `#090d16` (*Netflix Dark*).
+    - Configurada globalmente atravÃ©s do botÃ£o **"ConfiguraÃ§Ãµes"** na categoria **Geral** da barra lateral (`PlatformSettings`), e **nÃ£o** individualmente dentro de cada curso â garantindo que toda a plataforma (barra lateral, vitrine de cursos, salas de aula e popups de todos os cursos) mantenha uma Ãºnica identidade visual consistente.
+    - Conta com seletor livre de cor (`color picker` + input hexadecimal), prÃ©-visualizaÃ§Ã£o ao vivo e presets rÃ¡pidos: **Netflix Dark (`#090d16`)**, **Preto OLED (`#000000`)**, **Grafite Escuro (`#121620`)**, **Azul Meia-Noite (`#0b1120`)** e **Claro ClÃ¡ssico (`#f8fafc`)**.
+  - **Banner Hero CinemÃ¡tico do Curso (`cover_image_url` na tabela `courses`):**
+    - Imagem panorÃ¢mica exibida no topo da sala de aula com degradÃª cinemÃ¡tico integrado Ã  cor de fundo escolhida, tÃ­tulo em destaque, botÃ£o CTA ("Comece Agora" / "Continuar Assistindo") e barra de progresso percentual do aluno.
+    - Caso nÃ£o seja informado um Banner Hero especÃ­fico, utiliza automaticamente a capa principal do curso (`thumbnail_url`) ou um degradÃª radial elegante.
+  - **Imagem de Capa / PÃ´ster dos MÃ³dulos (`image_url` na tabela `modules`):**
+    - Cada mÃ³dulo pode ter sua prÃ³pria imagem de capa configurada via URL ou upload direto para o Backblaze B2 no modal de Criar/Editar MÃ³dulo.
+    - Os mÃ³dulos sÃ£o exibidos em uma **trilha horizontal de pÃ´steres verticais (Estilo Netflix / BE.EXPERT)** logo abaixo do Banner Hero, mostrando tag `MÃDULO X`, imagem de fundo com degradÃª, tÃ­tulo e progresso de conclusÃ£o das aulas daquele mÃ³dulo.
+  - **ExperiÃªncia Imersiva sem Barra Lateral e SeleÃ§Ã£o Sob Demanda:**
+    - Ao entrar em um curso, a barra lateral esquerda do sistema (`Sidebar`) Ã© ocultada automaticamente para proporcionar imersÃ£o total na cor de fundo configurada.
+    - O botÃ£o **"Voltar aos Cursos"** no topo possui estilo *Dark Glassmorphism* (pÃ­lula translÃºcida com Ã­cone dourado) e o tÃ­tulo do curso ao lado Ã© exibido com alto contraste.
+    - Ao entrar no curso, as aulas e o player **nÃ£o aparecem abertos inicialmente**: a seÃ§Ã£o inferior de aulas + player de vÃ­deo sÃ³ Ã© exibida na parte de baixo quando o aluno **aperta no card do mÃ³dulo escolhido** (ou clica em "Comece Agora" / "Continuar Assistindo").
+    - **Layout Editorial de Aula + Timeline de MÃ³dulos (ao clicar em um mÃ³dulo):**
+      - **Player Widescreen no Topo:** O player de vÃ­deo ocupa toda a largura superior da seÃ§Ã£o da aula com cantos arredondados e sombra cinemÃ¡tica, sem caixa branca ao redor.
       - **Grid em 2 Colunas Abaixo do Player:**
-        - **Coluna Esquerda (Editorial & Interações):** Título da aula em destaque, trilha de navegação (*breadcrumb* `Início > Curso > Módulo > Editar esse conteúdo`), descrição editorial limpa sobre o fundo escuro da área de membros, barra de ações com botão verde em pílula (`Marcar como Assistida` / `Aula Concluída`), além das abas interativas (`Visão Geral`, `Materiais Complementares`, `Minhas Anotações`, `Comentários`).
-        - **Coluna Direita (`ModuleTimelineSidebar`):** Exibe no topo o indicador circular `Meu Progresso - X% (X de Y aulas)` e, logo abaixo, a árvore vertical de módulos e aulas em formato de **Timeline** (cada módulo com seu anel de progresso; o módulo selecionado expande uma linha vertical conectora listando as aulas numeradas `1. ...`, `2. ...` com marcador dourado na aula ativa e verde nas aulas concluídas). Para títulos longos de aula, o card aplica limitação elegante de até **2 linhas com reticências (`line-clamp: 2`)** e exibe o título completo em **tooltip nativo ao passar o mouse (`title`)**, preservando o alinhamento e a harmonia visual da barra lateral sem cards desproporcionais.
+        - **Coluna Esquerda (Editorial & InteraÃ§Ãµes):** TÃ­tulo da aula em destaque, trilha de navegaÃ§Ã£o (*breadcrumb* `InÃ­cio > Curso > MÃ³dulo > Editar esse conteÃºdo`), descriÃ§Ã£o editorial limpa sobre o fundo escuro da Ã¡rea de membros, barra de aÃ§Ãµes com botÃ£o verde em pÃ­lula (`Marcar como Assistida` / `Aula ConcluÃ­da`), alÃ©m das abas interativas (`VisÃ£o Geral`, `Materiais Complementares`, `Minhas AnotaÃ§Ãµes`, `ComentÃ¡rios`).
+        - **Coluna Direita (`ModuleTimelineSidebar`):** Exibe no topo o indicador circular `Meu Progresso - X% (X de Y aulas)` e, logo abaixo, a Ã¡rvore vertical de mÃ³dulos e aulas em formato de **Timeline** (cada mÃ³dulo com seu anel de progresso; o mÃ³dulo selecionado expande uma linha vertical conectora listando as aulas numeradas `1. ...`, `2. ...` com marcador dourado na aula ativa e verde nas aulas concluÃ­das). Para tÃ­tulos longos de aula, o card aplica limitaÃ§Ã£o elegante de atÃ© **2 linhas com reticÃªncias (`line-clamp: 2`)** e exibe o tÃ­tulo completo em **tooltip nativo ao passar o mouse (`title`)**, preservando o alinhamento e a harmonia visual da barra lateral sem cards desproporcionais.
   - **Imagem de Fundo / Capa das Aulas (`thumbnail_url` na tabela `lessons`):**
-    - Além de servir como pôster do player de vídeo da aula, a miniatura da aula também é exibida na timeline e nos cards de aulas do módulo selecionado.
-  - **Limpeza Automática no Backblaze B2:**
-    - Ao substituir ou remover imagens de curso, banner hero, capa de módulo ou miniatura de aula (sempre com popup de confirmação centralizado), ou ao excluir o registro pai, os arquivos antigos correspondentes no Backblaze B2 são removidos automaticamente.
+    - AlÃ©m de servir como pÃ´ster do player de vÃ­deo da aula, a miniatura da aula tambÃ©m Ã© exibida na timeline e nos cards de aulas do mÃ³dulo selecionado.
+  - **Limpeza AutomÃ¡tica no Backblaze B2:**
+    - Ao substituir ou remover imagens de curso, banner hero, capa de mÃ³dulo ou miniatura de aula (sempre com popup de confirmaÃ§Ã£o centralizado), ou ao excluir o registro pai, os arquivos antigos correspondentes no Backblaze B2 sÃ£o removidos automaticamente.
 
 ---
 
 ## 6. Acompanhamento de Alunos e Progresso (`/students`)
-- **Localização na Barra Lateral:**
-  - O botão **"Alunos"** fica localizado na categoria **Geral** da barra lateral, posicionado **logo abaixo de "Relatos de Aulas"** e acima de "Configurações".
-  - Visível exclusivamente para perfis com permissão de gestão: **`superadmin`** e **`admin`**.
-- **Listagem, Métricas e Filtros Avançados:**
-  - O painel exibe no topo os contadores gerais: **Total de Alunos**, **Alunos Ativos** e **Progresso Médio Geral**.
-  - **Barra de Busca e Filtros Avançados (`StudentFilterBar`):**
-    - **Busca Textual:** Campo de pesquisa dinâmica por nome ou e-mail do aluno com botão de envio e botão de limpar busca.
-    - **Filtro de Ordenação (`order_by`):**
-      - `Mais recentes (Cadastro)` (padrão)
-      - `🎯 Mais perto de terminar o curso`: ordena alunos pelo maior percentual de conclusão (`overall_progress_percent` decrescente).
-      - `⏳ Quase precisando renovar`: prioriza alunos matriculados em cursos com menor número de dias restantes para expirar (`days_remaining`), seguidos por cursos expirados e, por último, acessos vitalícios.
-      - `🔤 Ordem alfabética (A-Z)` e `🔤 Ordem alfabética (Z-A)`: ordenação alfabética pelo nome completo.
+- **LocalizaÃ§Ã£o na Barra Lateral:**
+  - O botÃ£o **"Alunos"** fica localizado na categoria **Geral** da barra lateral, posicionado **logo abaixo de "Relatos de Aulas"** e acima de "ConfiguraÃ§Ãµes".
+  - VisÃ­vel exclusivamente para perfis com permissÃ£o de gestÃ£o: **`superadmin`** e **`admin`**.
+- **Listagem, MÃ©tricas e Filtros AvanÃ§ados:**
+  - O painel exibe no topo os contadores gerais: **Total de Alunos**, **Alunos Ativos** e **Progresso MÃ©dio Geral**.
+  - **Barra de Busca e Filtros AvanÃ§ados (`StudentFilterBar`):**
+    - **Busca Textual:** Campo de pesquisa dinÃ¢mica por nome ou e-mail do aluno com botÃ£o de envio e botÃ£o de limpar busca.
+    - **Filtro de OrdenaÃ§Ã£o (`order_by`):**
+      - `Mais recentes (Cadastro)` (padrÃ£o)
+      - `ð¯ Mais perto de terminar o curso`: ordena alunos pelo maior percentual de conclusÃ£o (`overall_progress_percent` decrescente).
+      - `â³ Quase precisando renovar`: prioriza alunos matriculados em cursos com menor nÃºmero de dias restantes para expirar (`days_remaining`), seguidos por cursos expirados e, por Ãºltimo, acessos vitalÃ­cios.
+      - `ð¤ Ordem alfabÃ©tica (A-Z)` e `ð¤ Ordem alfabÃ©tica (Z-A)`: ordenaÃ§Ã£o alfabÃ©tica pelo nome completo.
       - `Mais antigos (Cadastro)`
-    - **Filtro por Curso (`course_id`):** Dropdown dinâmico com "Todos os Cursos" e todos os cursos cadastrados na plataforma, exibindo apenas alunos com matrícula ativa no curso selecionado.
-    - **Filtro por Mês (`registration_month`):** Seletor de mês/ano (`YYYY-MM`) que filtra alunos cadastrados naquele mês específico segundo o fuso de Brasília.
-    - **Filtro por Data Específica (`registration_date`):** Seletor de dia exato (`YYYY-MM-DD`) que filtra alunos cadastrados no dia civil selecionado.
-    - **Ação Limpar Filtros:** Botão contextual que reseta todos os filtros e a ordenação com 1 clique.
-  - **Paginação e Controle de Quantidade por Página:**
-    - Exibe no máximo **20 alunos por vez** por padrão.
-    - Conta com um dropdown seletor estilizado que permite alternar a exibição para **20, 50, 100 ou 200 alunos de uma única vez**.
-    - Barra inferior permanente informando o intervalo exibido (ex: `Exibindo 1–20 de 45 alunos`), indicador de página (`Página 1 de 3`) e botões de navegação `Anterior` e `Próxima`.
+    - **Filtro por Curso (`course_id`):** Dropdown dinÃ¢mico com "Todos os Cursos" e todos os cursos cadastrados na plataforma, exibindo apenas alunos com matrÃ­cula ativa no curso selecionado.
+    - **Filtro por MÃªs (`registration_month`):** Seletor de mÃªs/ano (`YYYY-MM`) que filtra alunos cadastrados naquele mÃªs especÃ­fico segundo o fuso de BrasÃ­lia.
+    - **Filtro por Data EspecÃ­fica (`registration_date`):** Seletor de dia exato (`YYYY-MM-DD`) que filtra alunos cadastrados no dia civil selecionado.
+    - **AÃ§Ã£o Limpar Filtros:** BotÃ£o contextual que reseta todos os filtros e a ordenaÃ§Ã£o com 1 clique.
+  - **PaginaÃ§Ã£o e Controle de Quantidade por PÃ¡gina:**
+    - Exibe no mÃ¡ximo **20 alunos por vez** por padrÃ£o.
+    - Conta com um dropdown seletor estilizado que permite alternar a exibiÃ§Ã£o para **20, 50, 100 ou 200 alunos de uma Ãºnica vez**.
+    - Barra inferior permanente informando o intervalo exibido (ex: `Exibindo 1â20 de 45 alunos`), indicador de pÃ¡gina (`PÃ¡gina 1 de 3`) e botÃµes de navegaÃ§Ã£o `Anterior` e `PrÃ³xima`.
 - **Detalhes Exibidos por Aluno:**
-  - **Identificação e Horário Oficial de Brasília:** Nome completo, e-mail, WhatsApp com link direto, badge de status (`Aluno Ativo` / `Inativo`), porcentagem geral de conclusão e a tag `Aluno desde: DD/MM/AAAA às HH:MM` **obrigatoriamente convertida e exibida no Horário Oficial de Brasília (`America/Sao_Paulo`)**.
+  - **IdentificaÃ§Ã£o e HorÃ¡rio Oficial de BrasÃ­lia:** Nome completo, e-mail, WhatsApp com link direto, badge de status (`Aluno Ativo` / `Inativo`), porcentagem geral de conclusÃ£o e a tag `Aluno desde: DD/MM/AAAA Ã s HH:MM` **obrigatoriamente convertida e exibida no HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo`)**.
   - **Cursos aos quais o Aluno tem Acesso:**
-    - Miniatura e título de cada curso vinculado.
-    - Prazo de acesso individual (`Vitalício` ou `Expira em DD/MM/AAAA` / alerta de `Acesso Expirado`).
-    - **Linha do Tempo de Validade do Curso (Cursos Não-Vitalícios):**
-      - Quando o curso possui prazo determinado de expiração, exibe uma seção visual de linha do tempo destacando:
+    - Miniatura e tÃ­tulo de cada curso vinculado.
+    - Prazo de acesso individual (`VitalÃ­cio` ou `Expira em DD/MM/AAAA` / alerta de `Acesso Expirado`).
+    - **Linha do Tempo de Validade do Curso (Cursos NÃ£o-VitalÃ­cios):**
+      - Quando o curso possui prazo determinado de expiraÃ§Ã£o, exibe uma seÃ§Ã£o visual de linha do tempo destacando:
         - Tempo restante: `Faltam X dias` (ou `Acesso Expirado`).
-        - Alerta em âmbar para renovação próxima quando faltar 7 dias ou menos.
-        - Barra de progresso do período de acesso (tempo decorrido vs tempo total da concessão).
-        - Marcadores temporais com data de início e término exato (`Término: DD/MM/AAAA às HH:MM`).
-    - **Histórico de Acesso e Aulas Assistidas:**
-      - Botão dedicado **"Histórico de Acesso"** em cada curso vinculado ao aluno.
-      - Abre modal centralizado escuro translúcido (`StudentAccessHistoryModal`) com a listagem cronológica de todas as aulas concluídas pelo aluno naquele curso:
-        - Título da aula e nome do módulo correspondente.
-        - Mensagem explícita com data e horário completo: `Assistiu a aula completa em DD/MM/AAAA às HH:MM:SS`.
-        - **Paginação de Aulas Concluídas:** Limite de **no máximo 20 aulas por página** (`PAGE_SIZE = 20`). Quando houver mais de 20 aulas, é exibida a barra de paginação com contador dinâmico (ex: `Exibindo 1–20 de 35 aulas concluídas`), indicador de página (`Página 1 de 2`) e botões `Anterior` e `Próxima`.
+        - Alerta em Ã¢mbar para renovaÃ§Ã£o prÃ³xima quando faltar 7 dias ou menos.
+        - Barra de progresso do perÃ­odo de acesso (tempo decorrido vs tempo total da concessÃ£o).
+        - Marcadores temporais com data de inÃ­cio e tÃ©rmino exato (`TÃ©rmino: DD/MM/AAAA Ã s HH:MM`).
+    - **HistÃ³rico de Acesso e Aulas Assistidas:**
+      - BotÃ£o dedicado **"HistÃ³rico de Acesso"** em cada curso vinculado ao aluno.
+      - Abre modal centralizado escuro translÃºcido (`StudentAccessHistoryModal`) com a listagem cronolÃ³gica de todas as aulas concluÃ­das pelo aluno naquele curso:
+        - TÃ­tulo da aula e nome do mÃ³dulo correspondente.
+        - Mensagem explÃ­cita com data e horÃ¡rio completo: `Assistiu a aula completa em DD/MM/AAAA Ã s HH:MM:SS`.
+        - **PaginaÃ§Ã£o de Aulas ConcluÃ­das:** Limite de **no mÃ¡ximo 20 aulas por pÃ¡gina** (`PAGE_SIZE = 20`). Quando houver mais de 20 aulas, Ã© exibida a barra de paginaÃ§Ã£o com contador dinÃ¢mico (ex: `Exibindo 1â20 de 35 aulas concluÃ­das`), indicador de pÃ¡gina (`PÃ¡gina 1 de 2`) e botÃµes `Anterior` e `PrÃ³xima`.
         - Endpoint da API: `GET /api/v1/students/{student_id}/courses/{course_id}/history`.
-    - **Disparo Manual de Eventos de Webhook/Integração:**
-      - Botão dedicado em tom âmbar **"Disparar Evento"** em cada curso do aluno, ao lado do botão de histórico.
-      - Abre o modal de disparo manual (`StudentTriggerWebhookModal`), permitindo que administradores forcem o envio de qualquer um dos 8 eventos suportados para as ferramentas de automação vinculadas (n8n, ActiveCampaign, Make, etc.):
-        - **Obrigatoriedade de Webhook Configurado:** Só é permitido disparar eventos se houver pelo menos uma integração de webhook ativa cadastrada para o curso (ou global). Se não houver nenhum webhook configurado, o modal exibe um alerta explicativo de bloqueio e desativa o botão de disparo.
-        - **Seleção da Integração Configurada:** O modal apresenta o seletor **"Selecione a Integração Configurada"**, permitindo que o administrador escolha exatamente qual webhook cadastrado irá receber o disparo (ex: `🔗 Webhook N8N`, `🔗 Webhook Make`) ou opte por `⚡ Todas as Integrações Ativas`.
+    - **Disparo Manual de Eventos de Webhook/IntegraÃ§Ã£o:**
+      - BotÃ£o dedicado em tom Ã¢mbar **"Disparar Evento"** em cada curso do aluno, ao lado do botÃ£o de histÃ³rico.
+      - Abre o modal de disparo manual (`StudentTriggerWebhookModal`), permitindo que administradores forcem o envio de qualquer um dos 8 eventos suportados para as ferramentas de automaÃ§Ã£o vinculadas (n8n, ActiveCampaign, Make, etc.):
+        - **Obrigatoriedade de Webhook Configurado:** SÃ³ Ã© permitido disparar eventos se houver pelo menos uma integraÃ§Ã£o de webhook ativa cadastrada para o curso (ou global). Se nÃ£o houver nenhum webhook configurado, o modal exibe um alerta explicativo de bloqueio e desativa o botÃ£o de disparo.
+        - **SeleÃ§Ã£o da IntegraÃ§Ã£o Configurada:** O modal apresenta o seletor **"Selecione a IntegraÃ§Ã£o Configurada"**, permitindo que o administrador escolha exatamente qual webhook cadastrado irÃ¡ receber o disparo (ex: `ð Webhook N8N`, `ð Webhook Make`) ou opte por `â¡ Todas as IntegraÃ§Ãµes Ativas`.
         - **Eventos Suportados:** `course.progress.25`, `course.progress.50`, `course.progress.75`, `course.progress.100`, `lesson.completed`, `student.enrolled`, `course.renewal.warning_7d`, `course.renewal.expired`.
         - Endpoint da API: `POST /api/v1/students/{student_id}/courses/{course_id}/trigger-webhook` com payload contendo `event` e `webhook_id` opcional para direcionamento exato.
-        - Carrega métricas consolidadas em tempo real do aluno no curso e envia o payload assinado via HMAC SHA-256 para a integração selecionada, gravando o histórico completo na tabela `webhook_logs`.
-    - **Progresso Detalhado do Curso:** Quantidade exata de aulas assistidas vs total de aulas cadastradas (ex: `8 de 10 aulas`), barra de progresso visual colorida e porcentagem de conclusão.
-    - **Até onde o aluno foi:** Exibe o título da última aula concluída pelo aluno naquele curso (ex: `Última aula concluída: Aula 8 - Trânsitos Planetários`).
-    - Badge de status do curso: `Concluído` (100%), `Em Andamento` (> 0%) ou `Não Iniciado` (0%).
-    - Controle de recolher/expandir a lista de cursos de cada aluno para manter a tela limpa e ágil.
+        - Carrega mÃ©tricas consolidadas em tempo real do aluno no curso e envia o payload assinado via HMAC SHA-256 para a integraÃ§Ã£o selecionada, gravando o histÃ³rico completo na tabela `webhook_logs`.
+    - **Progresso Detalhado do Curso:** Quantidade exata de aulas assistidas vs total de aulas cadastradas (ex: `8 de 10 aulas`), barra de progresso visual colorida e porcentagem de conclusÃ£o.
+    - **AtÃ© onde o aluno foi:** Exibe o tÃ­tulo da Ãºltima aula concluÃ­da pelo aluno naquele curso (ex: `Ãltima aula concluÃ­da: Aula 8 - TrÃ¢nsitos PlanetÃ¡rios`).
+    - Badge de status do curso: `ConcluÃ­do` (100%), `Em Andamento` (> 0%) ou `NÃ£o Iniciado` (0%).
+    - Controle de recolher/expandir a lista de cursos de cada aluno para manter a tela limpa e Ã¡gil.
 
-- **Exportação e Importação de Alunos via Planilha (CSV e Excel):**
-  - **Exportação:**
-    - Localizado no cabeçalho do painel de alunos, com dropdown para escolher entre **Exportar CSV (`.csv`)** e **Exportar Excel (`.xlsx`)**.
-    - Exporta todos os alunos cadastrados com os cursos aos quais têm acesso, validade de acesso, total de aulas, aulas concluídas, progresso percentual e última aula assistida.
-    - O arquivo CSV é codificado com BOM UTF-8 (`utf-8-sig`) e delimitador `;`, garantindo abertura nativa perfeita com acentuação correta no Microsoft Excel no Windows.
-  - **Importação:**
-    - Botão **"Importar Alunos"** abre modal dedicado no padrão de design escuro translúcido com fechamento apenas via botão (sem fechar ao clicar fora).
+- **ExportaÃ§Ã£o e ImportaÃ§Ã£o de Alunos via Planilha (CSV e Excel):**
+  - **ExportaÃ§Ã£o:**
+    - Localizado no cabeÃ§alho do painel de alunos, com dropdown para escolher entre **Exportar CSV (`.csv`)** e **Exportar Excel (`.xlsx`)**.
+    - Exporta todos os alunos cadastrados com os cursos aos quais tÃªm acesso, validade de acesso, total de aulas, aulas concluÃ­das, progresso percentual e Ãºltima aula assistida.
+    - O arquivo CSV Ã© codificado com BOM UTF-8 (`utf-8-sig`) e delimitador `;`, garantindo abertura nativa perfeita com acentuaÃ§Ã£o correta no Microsoft Excel no Windows.
+  - **ImportaÃ§Ã£o:**
+    - BotÃ£o **"Importar Alunos"** abre modal dedicado no padrÃ£o de design escuro translÃºcido com fechamento apenas via botÃ£o (sem fechar ao clicar fora).
     - Suporta upload de arquivos nos formatos **CSV (`.csv`)** e **Excel (`.xlsx`, `.xls`)**.
     - O sistema permite baixar planilhas modelo de exemplo (.csv e .xlsx) diretamente pelo modal para facilitar o preenchimento pelo administrador.
-    - **Colunas Suportadas:** Aceita nomes de colunas em português ou inglês (`Nome/Name`, `Email/E-mail`, `Senha/Password`, `Cursos/Courses`, `Tempo de Acesso/Duration`).
-    - **Associação de Cursos:** A coluna de cursos aceita IDs numéricos ou nomes/títulos dos cursos separados por vírgula ou ponto-e-vírgula.
-    - **Cursos Padrão e Duração Padrão:** No modal, o administrador pode selecionar cursos padrão adicionais e o tempo de acesso padrão (`Vitalício`, `1 mês`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`), que serão aplicados automaticamente caso a planilha não especifique ou para complementar os acessos.
-    - **Senha Segura:** Se a senha não for fornecida na planilha, o sistema gera uma senha segura temporária para o aluno.
-    - **Atualização Segura:** Se o e-mail do aluno já existir na plataforma, a conta é atualizada com os novos cursos e prazos sem duplicar o usuário nem sobrescrever a senha existente.
-    - **Resumo do Processamento:** Ao concluir a importação, o modal exibe um resumo claro de alunos criados, atualizados e eventuais erros/avisos de linhas inválidas.
+    - **Colunas Suportadas:** Aceita nomes de colunas em portuguÃªs ou inglÃªs (`Nome/Name`, `Email/E-mail`, `Senha/Password`, `Cursos/Courses`, `Tempo de Acesso/Duration`).
+    - **AssociaÃ§Ã£o de Cursos:** A coluna de cursos aceita IDs numÃ©ricos ou nomes/tÃ­tulos dos cursos separados por vÃ­rgula ou ponto-e-vÃ­rgula.
+    - **Cursos PadrÃ£o e DuraÃ§Ã£o PadrÃ£o:** No modal, o administrador pode selecionar cursos padrÃ£o adicionais e o tempo de acesso padrÃ£o (`VitalÃ­cio`, `1 mÃªs`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`), que serÃ£o aplicados automaticamente caso a planilha nÃ£o especifique ou para complementar os acessos.
+    - **Senha Segura:** Se a senha nÃ£o for fornecida na planilha, o sistema gera uma senha segura temporÃ¡ria para o aluno.
+    - **AtualizaÃ§Ã£o Segura:** Se o e-mail do aluno jÃ¡ existir na plataforma, a conta Ã© atualizada com os novos cursos e prazos sem duplicar o usuÃ¡rio nem sobrescrever a senha existente.
+    - **Resumo do Processamento:** Ao concluir a importaÃ§Ã£o, o modal exibe um resumo claro de alunos criados, atualizados e eventuais erros/avisos de linhas invÃ¡lidas.
 
 ---
 
-## 7. Módulo de Integrações e Webhooks (`/integrations`)
-- **Localização na Barra Lateral:**
-  - O botão **"Integrações"** fica localizado na categoria **Geral** da barra lateral, posicionado **logo abaixo de "Alunos"** e acima de "Configurações".
-  - Visível exclusivamente para perfis com permissão de gestão: **`superadmin`** e **`admin`**.
-- **Objetivo do Módulo:**
-  - Permitir a conexão com ferramentas externas de automação (n8n, Zapier, Make, ActiveCampaign, CRMs, Webhooks proprietários) enviando notificações em tempo real através de requisições HTTP POST com payloads em JSON.
-- **Eventos de Disparo Disponíveis:**
-  - `course.progress.25`: Disparado quando o aluno atinge exatamente o marco de **25% de conclusão** de um curso.
-  - `course.progress.50`: Disparado quando o aluno atinge exatamente o marco de **50% de conclusão** de um curso.
-  - `course.progress.75`: Disparado quando o aluno atinge exatamente o marco de **75% de conclusão** de um curso.
+## 7. MÃ³dulo de IntegraÃ§Ãµes e Webhooks (`/integrations`)
+- **LocalizaÃ§Ã£o na Barra Lateral:**
+  - O botÃ£o **"IntegraÃ§Ãµes"** fica localizado na categoria **Geral** da barra lateral, posicionado **logo abaixo de "Alunos"** e acima de "ConfiguraÃ§Ãµes".
+  - VisÃ­vel exclusivamente para perfis com permissÃ£o de gestÃ£o: **`superadmin`** e **`admin`**.
+- **Objetivo do MÃ³dulo:**
+  - Permitir a conexÃ£o com ferramentas externas de automaÃ§Ã£o (n8n, Zapier, Make, ActiveCampaign, CRMs, Webhooks proprietÃ¡rios) enviando notificaÃ§Ãµes em tempo real atravÃ©s de requisiÃ§Ãµes HTTP POST com payloads em JSON.
+- **Eventos de Disparo DisponÃ­veis:**
+  - `course.progress.25`: Disparado quando o aluno atinge exatamente o marco de **25% de conclusÃ£o** de um curso.
+  - `course.progress.50`: Disparado quando o aluno atinge exatamente o marco de **50% de conclusÃ£o** de um curso.
+  - `course.progress.75`: Disparado quando o aluno atinge exatamente o marco de **75% de conclusÃ£o** de um curso.
   - `course.progress.100`: Disparado quando o aluno completa **100% das aulas** de um curso.
-  - `lesson.completed`: Disparado individualmente a cada aula assistida/marcada como concluída.
-  - `student.enrolled`: Disparado quando um novo aluno é matriculado ou recebe acesso a um produto.
-  - `course.renewal.warning_7d`: Disparado **1 semana antes (7 dias)** de expirar o prazo de acesso do aluno ao curso, permitindo campanhas preventivas de renovação.
-  - `course.renewal.expired`: Disparado quando termina o prazo do curso, enviando notificação com status explícito: **"Renovação do Curso"**.
-- **Verificação Programada e Manual de Renovações:**
-  - Endpoint `POST /api/v1/integrations/check-renewals` disponível para rotas cron/agendamentos periódicos e checagens manuais no painel.
-  - **Frequência e Regra de Disparo (Verificação Diária):**
-    - A checagem dos eventos `course.renewal.warning_7d` (aviso 7 dias antes) e `course.renewal.expired` (expiração com status "Renovação do Curso") deve ser realizada através de uma **verificação periódica diária** (rotina agendada uma vez ao dia).
-    - Aplica-se apenas para alunos que estão efetivamente matriculados em cursos com prazo determinado.
-    - Se um aluno for matriculado com prazo curto (ex: faltando menos de 7 dias para vencer), o sistema não dispara imediatamente no ato da matrícula, mantendo a cadência da verificação diária automática para evitar disparos descontextualizados no momento do onboarding.
-- **Configuração do Webhook:**
-  - **Nome:** Identificador legível da integração (ex: "Disparo n8n Marcos Alunos", "Zapier Parabéns 100%").
-  - **URL de Destino:** Endpoint público seguro que receberá os payloads via método POST.
-  - **Chave Secreta (Assinatura HMAC-SHA256):** Campo opcional onde o usuário pode definir um segredo compartilhado. Se preenchido, o sistema calcula a assinatura HMAC-SHA256 do corpo da requisição e envia no cabeçalho `X-Webhook-Signature: sha256=<hash>`, permitindo ao servidor receptor validar a autenticidade e integridade do webhook.
-  - **Filtro de Curso:** O webhook pode escutar eventos de **"Todos os Cursos"** ou ser restrito a um **curso específico**.
-  - **Seleção Flexível de Eventos:** Suporta marcar individualmente quaisquer combinações de eventos ou o botão de atalho "Selecionar Todos".
-  - **Ativação:** Chave de ativação para habilitar ou pausar o envio de eventos sem precisar excluir a configuração.
-- **Disparo Assíncrono e Resiliente:**
-  - Todos os webhooks de progresso e conclusão de aula são despachados de forma assíncrona em background via `BackgroundTasks` do FastAPI no momento em que o aluno conclui uma aula (`POST /courses/{course_id}/lessons/{lesson_id}/progress`).
-  - O cálculo de porcentagem avalia o progresso anterior vs o novo progresso após a conclusão da aula, garantindo que os webhooks dos marcos (25%, 50%, 75%, 100%) disparem no momento exato em que a barra atinge ou ultrapassa a meta.
-  - O tempo de resposta para o aluno na interface não sofre atraso nem bloqueio durante a comunicação com servidores externos (timeout configurado de 10 segundos).
-- **Histórico e Logs de Execução:**
-  - Cada disparo é registrado na tabela `webhook_logs` com status HTTP retornado, tempo de execução em milissegundos (`execution_time_ms`), payload JSON enviado e corpo da resposta recebida.
-  - O painel conta com modal de histórico detalhado acessível pelo botão "Logs", com pesquisa rápida e expansão do JSON enviado para auditoria e diagnóstico.
+  - `lesson.completed`: Disparado individualmente a cada aula assistida/marcada como concluÃ­da.
+  - `student.enrolled`: Disparado quando um novo aluno Ã© matriculado ou recebe acesso a um produto.
+  - `course.renewal.warning_7d`: Disparado **1 semana antes (7 dias)** de expirar o prazo de acesso do aluno ao curso, permitindo campanhas preventivas de renovaÃ§Ã£o.
+  - `course.renewal.expired`: Disparado quando termina o prazo do curso, enviando notificaÃ§Ã£o com status explÃ­cito: **"RenovaÃ§Ã£o do Curso"**.
+- **VerificaÃ§Ã£o Programada e Manual de RenovaÃ§Ãµes:**
+  - Endpoint `POST /api/v1/integrations/check-renewals` disponÃ­vel para rotas cron/agendamentos periÃ³dicos e checagens manuais no painel.
+  - **FrequÃªncia e Regra de Disparo (VerificaÃ§Ã£o DiÃ¡ria):**
+    - A checagem dos eventos `course.renewal.warning_7d` (aviso 7 dias antes) e `course.renewal.expired` (expiraÃ§Ã£o com status "RenovaÃ§Ã£o do Curso") deve ser realizada atravÃ©s de uma **verificaÃ§Ã£o periÃ³dica diÃ¡ria** (rotina agendada uma vez ao dia).
+    - Aplica-se apenas para alunos que estÃ£o efetivamente matriculados em cursos com prazo determinado.
+    - Se um aluno for matriculado com prazo curto (ex: faltando menos de 7 dias para vencer), o sistema nÃ£o dispara imediatamente no ato da matrÃ­cula, mantendo a cadÃªncia da verificaÃ§Ã£o diÃ¡ria automÃ¡tica para evitar disparos descontextualizados no momento do onboarding.
+- **ConfiguraÃ§Ã£o do Webhook:**
+  - **Nome:** Identificador legÃ­vel da integraÃ§Ã£o (ex: "Disparo n8n Marcos Alunos", "Zapier ParabÃ©ns 100%").
+  - **URL de Destino:** Endpoint pÃºblico seguro que receberÃ¡ os payloads via mÃ©todo POST.
+  - **Chave Secreta (Assinatura HMAC-SHA256):** Campo opcional onde o usuÃ¡rio pode definir um segredo compartilhado. Se preenchido, o sistema calcula a assinatura HMAC-SHA256 do corpo da requisiÃ§Ã£o e envia no cabeÃ§alho `X-Webhook-Signature: sha256=<hash>`, permitindo ao servidor receptor validar a autenticidade e integridade do webhook.
+  - **Filtro de Curso:** O webhook pode escutar eventos de **"Todos os Cursos"** ou ser restrito a um **curso especÃ­fico**.
+  - **SeleÃ§Ã£o FlexÃ­vel de Eventos:** Suporta marcar individualmente quaisquer combinaÃ§Ãµes de eventos ou o botÃ£o de atalho "Selecionar Todos".
+  - **AtivaÃ§Ã£o:** Chave de ativaÃ§Ã£o para habilitar ou pausar o envio de eventos sem precisar excluir a configuraÃ§Ã£o.
+- **Disparo AssÃ­ncrono e Resiliente:**
+  - Todos os webhooks de progresso e conclusÃ£o de aula sÃ£o despachados de forma assÃ­ncrona em background via `BackgroundTasks` do FastAPI no momento em que o aluno conclui uma aula (`POST /courses/{course_id}/lessons/{lesson_id}/progress`).
+  - O cÃ¡lculo de porcentagem avalia o progresso anterior vs o novo progresso apÃ³s a conclusÃ£o da aula, garantindo que os webhooks dos marcos (25%, 50%, 75%, 100%) disparem no momento exato em que a barra atinge ou ultrapassa a meta.
+  - O tempo de resposta para o aluno na interface nÃ£o sofre atraso nem bloqueio durante a comunicaÃ§Ã£o com servidores externos (timeout configurado de 10 segundos).
+- **HistÃ³rico e Logs de ExecuÃ§Ã£o:**
+  - Cada disparo Ã© registrado na tabela `webhook_logs` com status HTTP retornado, tempo de execuÃ§Ã£o em milissegundos (`execution_time_ms`), payload JSON enviado e corpo da resposta recebida.
+  - O painel conta com modal de histÃ³rico detalhado acessÃ­vel pelo botÃ£o "Logs", com pesquisa rÃ¡pida e expansÃ£o do JSON enviado para auditoria e diagnÃ³stico.
 - **Teste Imediato pelo Painel:**
-  - Cada webhook possui o botão **"Testar"**, permitindo enviar um payload mock instantâneo ao endpoint configurado e exibindo o status HTTP e retorno com toast feedback na tela.
+  - Cada webhook possui o botÃ£o **"Testar"**, permitindo enviar um payload mock instantÃ¢neo ao endpoint configurado e exibindo o status HTTP e retorno com toast feedback na tela.
 
 ---
 
 ## 8. Convites de Acesso e Cadastro de Alunos
 - **Tempo de Validade do Convite:**
-  - O administrador pode escolher o tempo para o link do convite expirar: `1 hora`, `6 horas`, `12 horas`, `24 horas (1 dia)`, `48 horas (2 dias)`, `7 dias` ou **`Indefinido (não expira)`** (`duration_hours = 0` ou `None`, com `expires_at = NULL` no banco de dados).
-  - Links com prazo indefinido permanecem válidos permanentemente até serem utilizados pelo convidado ou excluídos pelo administrador.
-  - Na tabela de convites gerados, o tempo restante é exibido como badge amigável `Não expira` (`Indefinido`).
-- **Data e Horário de Criação (Horário Oficial de Brasília):**
-  - Tanto na tabela de **"Convites Gerados"** (coluna **"CRIADO EM"**) quanto no modal de sucesso após gerar um convite, a data e o horário de criação são exibidos explicitamente no **Horário Oficial de Brasília** (`America/Sao_Paulo`), no formato amigável `DD/MM/AAAA às HH:MM` (ex: `01/10/2026 às 13:01`).
-- **Número de WhatsApp / Telefone do Usuário:**
-  - Na tela de cadastro via convite (`/register`), o preenchimento do **WhatsApp / Telefone é obrigatório** (`phone` com validação de formato e comprimento mínimo no backend e frontend).
+  - O administrador pode escolher o tempo para o link do convite expirar: `1 hora`, `6 horas`, `12 horas`, `24 horas (1 dia)`, `48 horas (2 dias)`, `7 dias` ou **`Indefinido (nÃ£o expira)`** (`duration_hours = 0` ou `None`, com `expires_at = NULL` no banco de dados).
+  - Links com prazo indefinido permanecem vÃ¡lidos permanentemente atÃ© serem utilizados pelo convidado ou excluÃ­dos pelo administrador.
+  - Na tabela de convites gerados, o tempo restante Ã© exibido como badge amigÃ¡vel `NÃ£o expira` (`Indefinido`).
+- **Data e HorÃ¡rio de CriaÃ§Ã£o (HorÃ¡rio Oficial de BrasÃ­lia):**
+  - Tanto na tabela de **"Convites Gerados"** (coluna **"CRIADO EM"**) quanto no modal de sucesso apÃ³s gerar um convite, a data e o horÃ¡rio de criaÃ§Ã£o sÃ£o exibidos explicitamente no **HorÃ¡rio Oficial de BrasÃ­lia** (`America/Sao_Paulo`), no formato amigÃ¡vel `DD/MM/AAAA Ã s HH:MM` (ex: `01/10/2026 Ã s 13:01`).
+- **NÃºmero de WhatsApp / Telefone do UsuÃ¡rio:**
+  - Na tela de cadastro via convite (`/register`), o preenchimento do **WhatsApp / Telefone Ã© obrigatÃ³rio** (`phone` com validaÃ§Ã£o de formato e comprimento mÃ­nimo no backend e frontend).
   - **Seletor de Bandeira e DDI Internacional:**
-    - O campo já vem configurado com a bandeira do **Brasil 🇧🇷 (`+55`)** como padrão pré-selecionado.
-    - O usuário pode clicar no seletor para escolher qualquer outro país (Portugal 🇵🇹 `+351`, Estados Unidos 🇺🇸 `+1`, Angola 🇦🇴 `+244`, Moçambique 🇲🇿 `+258`, Espanha 🇪🇸 `+34`, Argentina 🇦🇷 `+54`, etc.), adaptando dinamicamente o DDI e a máscara de digitação.
-    - O número completo persistido armazena o DDI com o número (ex: `+55 (11) 98765-4321` ou `+351 912345678`).
-  - O número é persistido na coluna `phone` das tabelas `registration_verifications` e `users`.
-  - No painel de acompanhamento de alunos (`/students`) e na tabela de **"Usuários Criados"** (`/users`), é exibida a coluna dedicada **WhatsApp** com link direto verde (`https://wa.me/...`) considerando automaticamente o DDI internacional ou fallback nacional para números legados, e traço (`—`) discreto caso o usuário não possua número cadastrado.
-  - As exportações de alunos em CSV e Excel (XLSX) incluem a coluna dedicada **`WhatsApp/Telefone`**.
-- **Criação Manual Direta de Usuários pelo Administrador (`/users`):**
-  - O cabeçalho da Gestão de Usuários conta com o botão principal em destaque **`+ Criar Usuário`** (para cadastro imediato direto) e o botão secundário **`Gerar Convite`** (para criar links com tempo de expiração).
-  - **Sem Necessidade de Validação de E-mail (Sem OTP):** Ao criar manualmente pelo painel, a conta do usuário é criada imediatamente ativa (`is_active = True`), dispensando o envio e confirmação de código de 6 dígitos no e-mail.
-  - **Validação de E-mail Duplicado:** O sistema realiza a verificação estrita de unicidade do e-mail. Caso o e-mail já pertença a outro usuário, a criação é bloqueada com mensagem clara de erro (`Este e-mail já está cadastrado no sistema`).
-  - **Definição de Credenciais e Perfil:**
-    - O administrador preenche diretamente o **Nome Completo**, **E-mail**, **WhatsApp/Telefone** (com suporte ao seletor internacional de DDI), **Senha de Acesso** (com botão interativo de alternar visibilidade / ocultar senha, checklist em tempo real e validação estrita de requisitos: **no mínimo 12 caracteres, pelo menos 1 letra maiúscula, 1 minúscula, 1 número e 1 caractere especial**) e o **Tipo de Usuário** (`aluno` ou `admin`).
-    - Senhas são validadas estritamente no frontend e backend e criptografadas com segurança máxima utilizando o algoritmo padrão da plataforma (Argon2id).
-  - **Liberação Imediata de Cursos e Tempo de Acesso:**
-    - Ao selecionar o tipo `aluno`, o administrador pode selecionar os produtos/cursos aos quais o novo aluno terá acesso imediato e definir o período individual de vigência (`Vitalício`, `1 mês`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`).
-    - As datas de expiração (`expires_at`) em `user_courses` são calculadas e persistidas no ato da criação com base no momento do cadastro.
+    - O campo jÃ¡ vem configurado com a bandeira do **Brasil ð§ð· (`+55`)** como padrÃ£o prÃ©-selecionado.
+    - O usuÃ¡rio pode clicar no seletor para escolher qualquer outro paÃ­s (Portugal ðµð¹ `+351`, Estados Unidos ðºð¸ `+1`, Angola ð¦ð´ `+244`, MoÃ§ambique ð²ð¿ `+258`, Espanha ðªð¸ `+34`, Argentina ð¦ð· `+54`, etc.), adaptando dinamicamente o DDI e a mÃ¡scara de digitaÃ§Ã£o.
+    - O nÃºmero completo persistido armazena o DDI com o nÃºmero (ex: `+55 (11) 98765-4321` ou `+351 912345678`).
+  - O nÃºmero Ã© persistido na coluna `phone` das tabelas `registration_verifications` e `users`.
+  - No painel de acompanhamento de alunos (`/students`) e na tabela de **"UsuÃ¡rios Criados"** (`/users`), Ã© exibida a coluna dedicada **WhatsApp** com link direto verde (`https://wa.me/...`) considerando automaticamente o DDI internacional ou fallback nacional para nÃºmeros legados, e traÃ§o (`â`) discreto caso o usuÃ¡rio nÃ£o possua nÃºmero cadastrado.
+  - As exportaÃ§Ãµes de alunos em CSV e Excel (XLSX) incluem a coluna dedicada **`WhatsApp/Telefone`**.
+- **Reacesso via Link de Convite de Conta Ja Criada:**
+  - Se um lead que ja concluiu o cadastro tentar acessar o sistema utilizando novamente o link de convite (`/register?token=...` ou `?token=...`):
+    - **Com Sessao Ativa:** Caso o usuario ja possua uma sessao ativa e valida no navegador, o sistema redireciona automaticamente para a **tela principal** da plataforma (area de cursos) e limpa os parametros de convite da URL, com feedback via toast (*"Voce ja possui uma conta ativa. Redirecionando para a tela principal..."*).
+    - **Com Sessao Expirada ou Sem Autenticacao:** Caso o usuario nao esteja autenticado ou sua sessao tenha expirado, o sistema redireciona imediatamente para a **tela de login**, limpando os parametros de cadastro da URL, preenchendo automaticamente o campo de e-mail com o endereco registrado no convite (`used_by_email`), e exibindo toast orientando o login (*"Sua conta ja foi criada anteriormente com este convite. Faca login para acessar seus cursos."*).
+- **CriaÃ§Ã£o Manual Direta de UsuÃ¡rios pelo Administrador (`/users`):**
+  - O cabeÃ§alho da GestÃ£o de UsuÃ¡rios conta com o botÃ£o principal em destaque **`+ Criar UsuÃ¡rio`** (para cadastro imediato direto) e o botÃ£o secundÃ¡rio **`Gerar Convite`** (para criar links com tempo de expiraÃ§Ã£o).
+  - **Sem Necessidade de ValidaÃ§Ã£o de E-mail (Sem OTP):** Ao criar manualmente pelo painel, a conta do usuÃ¡rio Ã© criada imediatamente ativa (`is_active = True`), dispensando o envio e confirmaÃ§Ã£o de cÃ³digo de 6 dÃ­gitos no e-mail.
+  - **ValidaÃ§Ã£o de E-mail Duplicado:** O sistema realiza a verificaÃ§Ã£o estrita de unicidade do e-mail. Caso o e-mail jÃ¡ pertenÃ§a a outro usuÃ¡rio, a criaÃ§Ã£o Ã© bloqueada com mensagem clara de erro (`Este e-mail jÃ¡ estÃ¡ cadastrado no sistema`).
+  - **DefiniÃ§Ã£o de Credenciais e Perfil:**
+    - O administrador preenche diretamente o **Nome Completo**, **E-mail**, **WhatsApp/Telefone** (com suporte ao seletor internacional de DDI), **Senha de Acesso** (com botÃ£o interativo de alternar visibilidade / ocultar senha, checklist em tempo real e validaÃ§Ã£o estrita de requisitos: **no mÃ­nimo 12 caracteres, pelo menos 1 letra maiÃºscula, 1 minÃºscula, 1 nÃºmero e 1 caractere especial**) e o **Tipo de UsuÃ¡rio** (`aluno` ou `admin`).
+    - Senhas sÃ£o validadas estritamente no frontend e backend e criptografadas com seguranÃ§a mÃ¡xima utilizando o algoritmo padrÃ£o da plataforma (Argon2id).
+  - **LiberaÃ§Ã£o Imediata de Cursos e Tempo de Acesso:**
+    - Ao selecionar o tipo `aluno`, o administrador pode selecionar os produtos/cursos aos quais o novo aluno terÃ¡ acesso imediato e definir o perÃ­odo individual de vigÃªncia (`VitalÃ­cio`, `1 mÃªs`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`).
+    - As datas de expiraÃ§Ã£o (`expires_at`) em `user_courses` sÃ£o calculadas e persistidas no ato da criaÃ§Ã£o com base no momento do cadastro.
 
 ---
 
-## 9. Perguntas em Aberto e Histórico de Decisões
-- [x] [RESOLVIDO] Como devem ser tratados os disparos do evento "Renovação do Curso (7 dias antes)" caso o aluno seja matriculado faltando menos de 7 dias para expirar? Deve disparar imediatamente no momento da matrícula ou apenas na verificação periódica do cron diário?
-  - **Decisão do Dono do Projeto:** Deve ser uma verificação periódica diária e aplicada apenas para alunos que forem efetivamente matriculados (sem disparo forçado imediato no momento do cadastro do aluno, respeitando o ciclo da verificação diária).
-- [x] [RESOLVIDO] O tempo de expiração do convite pode ser indefinido? E o aluno pode informar o número de WhatsApp no cadastro?
-  - **Decisão do Dono do Projeto:** Sim, o tempo de expiração pode ser indefinido (não expira).
-- [x] [RESOLVIDO] O WhatsApp no cadastro deve ser obrigatório ou opcional? Como deve funcionar o DDI e bandeiras?
-  - **Decisão do Dono do Projeto:** O WhatsApp é estritamente obrigatório. A bandeira do Brasil 🇧🇷 (+55) é o padrão inicial, e o usuário pode selecionar outras bandeiras para aplicar o DDI de outros países.
-- [ ] [NOVO] No nó de Mensagem do Funil, quando o aluno receber botões interativos, o clique em cada botão deve ramificar para um nó específico do fluxo visual ou registrar uma tag/ação?
-- [ ] [NOVO] Na execução de nós de Delay longos (ex: mais de 10 minutos), o funil deve persistir o agendamento no banco de dados para retomar após eventuais reinícios de servidor?
-- [ ] [NOVO] Quando o aluno subir de nível de RPG (Level Up), o sistema deve disparar uma animação/modal comemorativo na tela com efeitos visuais ou apenas atualizar o badge silenciosamente?
-- [ ] [NOVO] Os níveis mais altos do sistema de RPG (como Elo Diamante e Elo Lenda) devem conceder privilégios automáticos adicionais na plataforma (ex: selos diferenciados no chat da comunidade ou acesso a cursos/aulas especiais)?
+## 9. Perguntas em Aberto e HistÃ³rico de DecisÃµes
+- [x] [RESOLVIDO] Como devem ser tratados os disparos do evento "RenovaÃ§Ã£o do Curso (7 dias antes)" caso o aluno seja matriculado faltando menos de 7 dias para expirar? Deve disparar imediatamente no momento da matrÃ­cula ou apenas na verificaÃ§Ã£o periÃ³dica do cron diÃ¡rio?
+  - **DecisÃ£o do Dono do Projeto:** Deve ser uma verificaÃ§Ã£o periÃ³dica diÃ¡ria e aplicada apenas para alunos que forem efetivamente matriculados (sem disparo forÃ§ado imediato no momento do cadastro do aluno, respeitando o ciclo da verificaÃ§Ã£o diÃ¡ria).
+- [x] [RESOLVIDO] O tempo de expiraÃ§Ã£o do convite pode ser indefinido? E o aluno pode informar o nÃºmero de WhatsApp no cadastro?
+  - **DecisÃ£o do Dono do Projeto:** Sim, o tempo de expiraÃ§Ã£o pode ser indefinido (nÃ£o expira).
+- [x] [RESOLVIDO] O WhatsApp no cadastro deve ser obrigatÃ³rio ou opcional? Como deve funcionar o DDI e bandeiras?
+  - **DecisÃ£o do Dono do Projeto:** O WhatsApp Ã© estritamente obrigatÃ³rio. A bandeira do Brasil ð§ð· (+55) Ã© o padrÃ£o inicial, e o usuÃ¡rio pode selecionar outras bandeiras para aplicar o DDI de outros paÃ­ses.
+- [ ] [NOVO] No nÃ³ de Mensagem do Funil, quando o aluno receber botÃµes interativos, o clique em cada botÃ£o deve ramificar para um nÃ³ especÃ­fico do fluxo visual ou registrar uma tag/aÃ§Ã£o?
+- [ ] [NOVO] Na execuÃ§Ã£o de nÃ³s de Delay longos (ex: mais de 10 minutos), o funil deve persistir o agendamento no banco de dados para retomar apÃ³s eventuais reinÃ­cios de servidor?
+- [ ] [NOVO] Quando o aluno subir de nÃ­vel de RPG (Level Up), o sistema deve disparar uma animaÃ§Ã£o/modal comemorativo na tela com efeitos visuais ou apenas atualizar o badge silenciosamente?
+- [ ] [NOVO] Os nÃ­veis mais altos do sistema de RPG (como Elo Diamante e Elo Lenda) devem conceder privilÃ©gios automÃ¡ticos adicionais na plataforma (ex: selos diferenciados no chat da comunidade ou acesso a cursos/aulas especiais)?
 
 
 ---
 
-## 10. Comunidade VIP, Suporte e Dúvidas dos Cursos
-- **Acesso e Participação:**
-  - Alunos e Instrutores/Admins podem publicar dúvidas técnicas vinculadas aos cursos aos quais têm acesso.
-  - Alunos só podem publicar e interagir em dúvidas de cursos aos quais possuem acesso liberado.
-- **Interações e Engajamento:**
-  - **Curtidas (Likes):** Alunos e administradores podem curtir dúvidas de forma idempotente (`POST /api/v1/support/topics/{id}/like`). O card de dúvida exibe o coração preenchido e contador atualizado.
-  - **Comentários e Respostas:** Clicar no botão de comentário ou no card abre o modal detalhado da discussão com histórico cronológico de respostas.
-  - **Exclusão de Dúvidas e Respostas:**
-    - O autor da publicação e os administradores (`superadmin`, `admin`) podem excluir dúvidas e respostas a qualquer momento.
-    - Toda ação de exclusão exige confirmação explícita em popup modal com fundo escuro translúcido.
-- **Status da Dúvida ("Aguardando Resposta" vs "Resolvida"):**
-  - Novas dúvidas entram com status `open` ("Aguardando Resposta").
-  - O autor da dúvida e administradores contam com botão dedicado no cabeçalho da dúvida para alternar o status entre `open` e `resolved` ("Marcar como Resolvida" / "Reabrir Dúvida").
-- **Solução Oficial / Melhor Resposta:**
-  - O autor da dúvida e administradores podem eleger uma resposta como **"Solução Oficial"** (`is_solution = true`).
-  - A resposta eleita recebe destaque cinematográfico dourado (`border-gold`, badge `Solução Oficial` com estrela e botão ativo `Solução`).
-  - Ao marcar uma resposta como solução oficial, a dúvida é automaticamente marcada como resolvida (`status = 'resolved'`).
-- **Cards de Métricas e Pílulas de Filtros Rápidos:**
-  - No topo da tela de suporte, são exibidas 4 métricas consolidadas em tempo real:
-    - `Total de Dúvidas`
+## 10. Comunidade VIP, Suporte e DÃºvidas dos Cursos
+- **Acesso e ParticipaÃ§Ã£o:**
+  - Alunos e Instrutores/Admins podem publicar dÃºvidas tÃ©cnicas vinculadas aos cursos aos quais tÃªm acesso.
+  - Alunos sÃ³ podem publicar e interagir em dÃºvidas de cursos aos quais possuem acesso liberado.
+- **InteraÃ§Ãµes e Engajamento:**
+  - **Curtidas (Likes):** Alunos e administradores podem curtir dÃºvidas de forma idempotente (`POST /api/v1/support/topics/{id}/like`). O card de dÃºvida exibe o coraÃ§Ã£o preenchido e contador atualizado.
+  - **ComentÃ¡rios e Respostas:** Clicar no botÃ£o de comentÃ¡rio ou no card abre o modal detalhado da discussÃ£o com histÃ³rico cronolÃ³gico de respostas.
+  - **ExclusÃ£o de DÃºvidas e Respostas:**
+    - O autor da publicaÃ§Ã£o e os administradores (`superadmin`, `admin`) podem excluir dÃºvidas e respostas a qualquer momento.
+    - Toda aÃ§Ã£o de exclusÃ£o exige confirmaÃ§Ã£o explÃ­cita em popup modal com fundo escuro translÃºcido.
+- **Status da DÃºvida ("Aguardando Resposta" vs "Resolvida"):**
+  - Novas dÃºvidas entram com status `open` ("Aguardando Resposta").
+  - O autor da dÃºvida e administradores contam com botÃ£o dedicado no cabeÃ§alho da dÃºvida para alternar o status entre `open` e `resolved` ("Marcar como Resolvida" / "Reabrir DÃºvida").
+- **SoluÃ§Ã£o Oficial / Melhor Resposta:**
+  - O autor da dÃºvida e administradores podem eleger uma resposta como **"SoluÃ§Ã£o Oficial"** (`is_solution = true`).
+  - A resposta eleita recebe destaque cinematogrÃ¡fico dourado (`border-gold`, badge `SoluÃ§Ã£o Oficial` com estrela e botÃ£o ativo `SoluÃ§Ã£o`).
+  - Ao marcar uma resposta como soluÃ§Ã£o oficial, a dÃºvida Ã© automaticamente marcada como resolvida (`status = 'resolved'`).
+- **Cards de MÃ©tricas e PÃ­lulas de Filtros RÃ¡pidos:**
+  - No topo da tela de suporte, sÃ£o exibidas 4 mÃ©tricas consolidadas em tempo real:
+    - `Total de DÃºvidas`
     - `Aguardando Resposta`
-    - `Taxa de Resolução %`
+    - `Taxa de ResoluÃ§Ã£o %`
     - `Membros Ativos`
-  - Filtros rápidos em formato de pílulas permitem alternar dinamicamente entre: `Todas as Dúvidas`, `Fixadas por Mim`, `Mais Populares`, `Aguardando Resposta`, `Resolvidas` e `Minhas Dúvidas`.
-- **Fixação Personalizada de Dúvidas de Suporte (Support Topic Pins):**
-  - **Limite Máximo por Usuário:** Cada usuário (aluno, admin ou superadmin) pode fixar até no máximo **5 dúvidas** de suporte de sua preferência (`support_topic_pins`).
-  - **Independência de Lista:** A fixação é estritamente pessoal e individual. As dúvidas que o Aluno A fixa não alteram a visualização dos outros alunos ou administradores.
-  - **Bloqueio Amigável ao Exceder o Limite:** Ao tentar fixar uma 6ª dúvida, o sistema bloqueia a ação retornando HTTP 400 com a mensagem clara: *"Você atingiu o limite de 5 dúvidas fixadas. Desafixe uma dúvida para fixar outra."*, exibindo toast de erro no frontend.
-  - **Destaque Visual no Topo:** Na listagem padrão de dúvidas, as dúvidas fixadas pelo usuário logado aparecem com destaque prioritário no topo, fundo escurecido sutil, borda ciano neon (`#38bdf8`) e badge distintivo `📌 Fixada por você`.
-  - **Botão de Ação Rápida:** No card da dúvida, o botão de alfinete (`Pin`) permite alternar a fixação instantaneamente com um clique (toggle pin/unpin) com feedback via toast.
-  - **Pílula de Acesso Rápido ("Fixadas por Mim"):** Permite consultar em um clique exclusivamente as dúvidas que o próprio usuário fixou.
-- **Anexos e Visualização Lightbox:**
-  - Dúvidas e respostas suportam anexo de imagens (PNG, JPG, WEBP de até 10 MB).
-  - Clicar sobre qualquer imagem anexada abre o modal Lightbox de alta definição, centralizado e com fundo escuro de alto contraste.
+  - Filtros rÃ¡pidos em formato de pÃ­lulas permitem alternar dinamicamente entre: `Todas as DÃºvidas`, `Fixadas por Mim`, `Mais Populares`, `Aguardando Resposta`, `Resolvidas` e `Minhas DÃºvidas`.
+- **FixaÃ§Ã£o Personalizada de DÃºvidas de Suporte (Support Topic Pins):**
+  - **Limite MÃ¡ximo por UsuÃ¡rio:** Cada usuÃ¡rio (aluno, admin ou superadmin) pode fixar atÃ© no mÃ¡ximo **5 dÃºvidas** de suporte de sua preferÃªncia (`support_topic_pins`).
+  - **IndependÃªncia de Lista:** A fixaÃ§Ã£o Ã© estritamente pessoal e individual. As dÃºvidas que o Aluno A fixa nÃ£o alteram a visualizaÃ§Ã£o dos outros alunos ou administradores.
+  - **Bloqueio AmigÃ¡vel ao Exceder o Limite:** Ao tentar fixar uma 6Âª dÃºvida, o sistema bloqueia a aÃ§Ã£o retornando HTTP 400 com a mensagem clara: *"VocÃª atingiu o limite de 5 dÃºvidas fixadas. Desafixe uma dÃºvida para fixar outra."*, exibindo toast de erro no frontend.
+  - **Destaque Visual no Topo:** Na listagem padrÃ£o de dÃºvidas, as dÃºvidas fixadas pelo usuÃ¡rio logado aparecem com destaque prioritÃ¡rio no topo, fundo escurecido sutil, borda ciano neon (`#38bdf8`) e badge distintivo `ð Fixada por vocÃª`.
+  - **BotÃ£o de AÃ§Ã£o RÃ¡pida:** No card da dÃºvida, o botÃ£o de alfinete (`Pin`) permite alternar a fixaÃ§Ã£o instantaneamente com um clique (toggle pin/unpin) com feedback via toast.
+  - **PÃ­lula de Acesso RÃ¡pido ("Fixadas por Mim"):** Permite consultar em um clique exclusivamente as dÃºvidas que o prÃ³prio usuÃ¡rio fixou.
+- **Anexos e VisualizaÃ§Ã£o Lightbox:**
+  - DÃºvidas e respostas suportam anexo de imagens (PNG, JPG, WEBP de atÃ© 10 MB).
+  - Clicar sobre qualquer imagem anexada abre o modal Lightbox de alta definiÃ§Ã£o, centralizado e com fundo escuro de alto contraste.
 
 ---
 
-## 11. Configurações da Plataforma (Aparência e Chaves de API)
-- **Acesso:** Exclusivo para administradores e super administradores através da opção **"Configurações"** na barra lateral.
+## 11. ConfiguraÃ§Ãµes da Plataforma (AparÃªncia e Chaves de API)
+- **Acesso:** Exclusivo para administradores e super administradores atravÃ©s da opÃ§Ã£o **"ConfiguraÃ§Ãµes"** na barra lateral.
 - **Estrutura em Abas:**
-  - **Aba 1: "Aparência" (Cor de Fundo da Plataforma):**
+  - **Aba 1: "AparÃªncia" (Cor de Fundo da Plataforma):**
     - Permite ao administrador personalizar a cor de fundo global da plataforma (Netflix Dark, Deep Navy, Obsidian, Slate, Emerald, ou qualquer cor hexadecimal customizada).
-    - Presets visuais pré-definidos com clique rápido e preview instantâneo na tela.
-    - Salvamento persistido nas preferências da plataforma.
+    - Presets visuais prÃ©-definidos com clique rÃ¡pido e preview instantÃ¢neo na tela.
+    - Salvamento persistido nas preferÃªncias da plataforma.
   - **Aba 2: "Chaves de API" (Tokens de Acesso):**
     - **Finalidade:** Permite integrar a plataforma de membros com ferramentas externas (n8n, Make, Zapier, Webhooks de checkout, CRMs, etc.) sem expor credenciais de login.
-    - **Formato das Chaves:** Padrão industrial com prefixo `sk_live_` gerado criptograficamente com 32 bytes de entropia (`sk_live_<hex>`).
-    - **Tempo de Expiração Configurável:**
+    - **Formato das Chaves:** PadrÃ£o industrial com prefixo `sk_live_` gerado criptograficamente com 32 bytes de entropia (`sk_live_<hex>`).
+    - **Tempo de ExpiraÃ§Ã£o ConfigurÃ¡vel:**
       - `30 dias`
       - `60 dias`
       - `90 dias`
       - `1 ano (365 dias)`
-      - `Não expira (Permanente)`
-    - **Exibição Única de Segurança:** A chave completa sem máscara (`raw_token`) é exibida **uma única vez** no momento de sua criação através de um popup modal de segurança com botão de cópia rápida. Após o fechamento do modal, a chave não pode ser recuperada, permanecendo no banco apenas seu hash/mascaramento.
-    - **Gestão de Chaves:**
-      - Listagem completa das chaves do usuário com nome descritivo, token mascarado (`sk_live_****...`), status de ativação, validade e data do último acesso (`last_used_at`).
-      - **Pausar / Reativar (Toggle):** Possibilidade de pausar temporariamente uma chave sem precisar excluí-la, bloqueando requisições que a utilizem até que seja reativada.
-      - **Revogação / Exclusão:** Possibilidade de revogar permanentemente uma chave de API com confirmação obrigatória em popup modal com fundo escuro translúcido.
-    - **Autenticação no Backend:**
-      - A autenticação de usuário nas rotas da API aceita tanto `Authorization: Bearer sk_live_...` quanto o header `X-API-Key: sk_live_...`, integrando-se de forma transparente com o `get_current_user`.
-      - Atualização automática em background do campo `last_used_at` a cada requisição válida realizada com a chave.
+      - `NÃ£o expira (Permanente)`
+    - **ExibiÃ§Ã£o Ãnica de SeguranÃ§a:** A chave completa sem mÃ¡scara (`raw_token`) Ã© exibida **uma Ãºnica vez** no momento de sua criaÃ§Ã£o atravÃ©s de um popup modal de seguranÃ§a com botÃ£o de cÃ³pia rÃ¡pida. ApÃ³s o fechamento do modal, a chave nÃ£o pode ser recuperada, permanecendo no banco apenas seu hash/mascaramento.
+    - **GestÃ£o de Chaves:**
+      - Listagem completa das chaves do usuÃ¡rio com nome descritivo, token mascarado (`sk_live_****...`), status de ativaÃ§Ã£o, validade e data do Ãºltimo acesso (`last_used_at`).
+      - **Pausar / Reativar (Toggle):** Possibilidade de pausar temporariamente uma chave sem precisar excluÃ­-la, bloqueando requisiÃ§Ãµes que a utilizem atÃ© que seja reativada.
+      - **RevogaÃ§Ã£o / ExclusÃ£o:** Possibilidade de revogar permanentemente uma chave de API com confirmaÃ§Ã£o obrigatÃ³ria em popup modal com fundo escuro translÃºcido.
+    - **AutenticaÃ§Ã£o no Backend:**
+      - A autenticaÃ§Ã£o de usuÃ¡rio nas rotas da API aceita tanto `Authorization: Bearer sk_live_...` quanto o header `X-API-Key: sk_live_...`, integrando-se de forma transparente com o `get_current_user`.
+      - AtualizaÃ§Ã£o automÃ¡tica em background do campo `last_used_at` a cada requisiÃ§Ã£o vÃ¡lida realizada com a chave.
       - Bloqueio imediato (`401 Unauthorized`) caso a chave esteja pausada ou expirada.
 
 ---
 
-## 12. Estrutura de Navegação do Menu Lateral (Categorias)
-- **Organização por Foco Operacional (Proposta 2):**
-  - **Categoria "Gestão de Ensino" (ou "Meu Aprendizado" para alunos):**
-    - `Cursos`: Ambiente de aulas, módulos e quizes (visível para Alunos e Administradores).
-    - `Alunos`: Gestão de matrículas, acompanhamento de progresso e tempo de acesso (Admin/Super Admin).
-    - `Suporte`: Fórum de dúvidas, respostas oficiais e suporte dos cursos (Alunos e Administradores).
-    - `Relatos de Aulas`: Notificações e moderação de problemas relatados em aulas (Admin/Super Admin).
+## 12. Estrutura de NavegaÃ§Ã£o do Menu Lateral (Categorias)
+- **OrganizaÃ§Ã£o por Foco Operacional (Proposta 2):**
+  - **Categoria "GestÃ£o de Ensino" (ou "Meu Aprendizado" para alunos):**
+    - `Cursos`: Ambiente de aulas, mÃ³dulos e quizes (visÃ­vel para Alunos e Administradores).
+    - `Alunos`: GestÃ£o de matrÃ­culas, acompanhamento de progresso e tempo de acesso (Admin/Super Admin).
+    - `Suporte`: FÃ³rum de dÃºvidas, respostas oficiais e suporte dos cursos (Alunos e Administradores).
+    - `Relatos de Aulas`: NotificaÃ§Ãµes e moderaÃ§Ã£o de problemas relatados em aulas (Admin/Super Admin).
     - `Chat da Comunidade`: Ambiente de bate-papo em tempo real entre alunos, professores e administradores, posicionado logo abaixo de Relatos de Aulas (Alunos e Administradores).
-  - **Categoria "Administração":**
-    - `Integrações`: Webhooks e disparos para ferramentas externas (Admin/Super Admin).
-    - `Configurações`: Aparência da plataforma e Chaves de API (Admin/Super Admin).
-  - **Categoria "Segurança":**
-    - `Backup Automático`, `Gerenciamento de logs` e `Gestão de Usuário` (restrito exclusivamente a Super Admin).
+  - **Categoria "AdministraÃ§Ã£o":**
+    - `IntegraÃ§Ãµes`: Webhooks e disparos para ferramentas externas (Admin/Super Admin).
+    - `ConfiguraÃ§Ãµes`: AparÃªncia da plataforma e Chaves de API (Admin/Super Admin).
+  - **Categoria "SeguranÃ§a":**
+    - `Backup AutomÃ¡tico`, `Gerenciamento de logs` e `GestÃ£o de UsuÃ¡rio` (restrito exclusivamente a Super Admin).
 
 ---
 
-## 13. Experiência Mobile e Adaptação para Celulares (Smartphones)
-- **Menu Lateral Retrátil (Drawer / Gaveta):**
-  - Em telas com largura inferior ou igual a `768px`, a barra lateral deixa de ocupar espaço fixo dividindo a tela e passa a se comportar como um **Drawer deslizante**.
+## 13. ExperiÃªncia Mobile e AdaptaÃ§Ã£o para Celulares (Smartphones)
+- **Menu Lateral RetrÃ¡til (Drawer / Gaveta):**
+  - Em telas com largura inferior ou igual a `768px`, a barra lateral deixa de ocupar espaÃ§o fixo dividindo a tela e passa a se comportar como um **Drawer deslizante**.
   - O drawer permanece recolhido fora da tela (`translateX(-100%)`) e desliza suavemente ao ser acionado.
-  - Ao abrir o menu no celular, uma camada de fundo escurecida translúcida com desfoque (`sidebar-backdrop`) cobre a área externa.
-  - O menu pode ser fechado tocando no botão `X` no topo do menu, tocando no backdrop escuro ou selecionando qualquer item da navegação (fechamento automático).
-- **Cabeçalho Superior Mobile (`MobileHeader`):**
-  - Em dispositivos móveis (`<= 768px`), uma barra superior exclusiva é exibida no topo contendo:
-    - Botão hambúrguer interativo para abrir o menu lateral.
-    - Logotipo e título oficial "Área de Membros".
-    - Avatar com a inicial do usuário autenticado.
-- **Sala de Aula e Player de Vídeo no Celular:**
-  - O player de vídeo mantém a proporção `16:9` widescreen fluida sem corte lateral em qualquer tamanho de tela móvel.
-  - Em telas menores que `900px`, a divisão em 2 colunas da sala de aula (conteúdo à esquerda e módulos/materiais à direita) se transforma em um layout empilhado de 1 coluna (`classroom-layout-grid`), garantindo que o vídeo e textos fiquem no topo em largura total e a lista de aulas/materiais logo abaixo.
+  - Ao abrir o menu no celular, uma camada de fundo escurecida translÃºcida com desfoque (`sidebar-backdrop`) cobre a Ã¡rea externa.
+  - O menu pode ser fechado tocando no botÃ£o `X` no topo do menu, tocando no backdrop escuro ou selecionando qualquer item da navegaÃ§Ã£o (fechamento automÃ¡tico).
+- **CabeÃ§alho Superior Mobile (`MobileHeader`):**
+  - Em dispositivos mÃ³veis (`<= 768px`), uma barra superior exclusiva Ã© exibida no topo contendo:
+    - BotÃ£o hambÃºrguer interativo para abrir o menu lateral.
+    - Logotipo e tÃ­tulo oficial "Ãrea de Membros".
+    - Avatar com a inicial do usuÃ¡rio autenticado.
+- **Sala de Aula e Player de VÃ­deo no Celular:**
+  - O player de vÃ­deo mantÃ©m a proporÃ§Ã£o `16:9` widescreen fluida sem corte lateral em qualquer tamanho de tela mÃ³vel.
+  - Em telas menores que `900px`, a divisÃ£o em 2 colunas da sala de aula (conteÃºdo Ã  esquerda e mÃ³dulos/materiais Ã  direita) se transforma em um layout empilhado de 1 coluna (`classroom-layout-grid`), garantindo que o vÃ­deo e textos fiquem no topo em largura total e a lista de aulas/materiais logo abaixo.
 - **Tabelas e Listagens no Celular:**
-  - Tabelas com múltiplas colunas (Gestão de Alunos, Convites, Usuários, Backups, Relatos) contam com rolagem horizontal fluida por toque (`overflow-x: auto; -webkit-overflow-scrolling: touch;`), preservando a legibilidade dos dados sem espremer colunas nem estourar a largura da janela.
+  - Tabelas com mÃºltiplas colunas (GestÃ£o de Alunos, Convites, UsuÃ¡rios, Backups, Relatos) contam com rolagem horizontal fluida por toque (`overflow-x: auto; -webkit-overflow-scrolling: touch;`), preservando a legibilidade dos dados sem espremer colunas nem estourar a largura da janela.
 
 ---
 
 ## 14. Chat da Comunidade e Bate-papo dos Alunos
-- **Objetivo:** Proporcionar um espaço de interação, networking e troca de ideias diretamente dentro da plataforma, conectando alunos e instrutores.
+- **Objetivo:** Proporcionar um espaÃ§o de interaÃ§Ã£o, networking e troca de ideias diretamente dentro da plataforma, conectando alunos e instrutores.
 - **Estrutura de Canais de Conversa:**
   - **Comunidade Geral (`channel_type == 'general'`):**
-    - Canal global único aberto para todos os usuários com conta ativa (Alunos, Instrutores e Administradores).
+    - Canal global Ãºnico aberto para todos os usuÃ¡rios com conta ativa (Alunos, Instrutores e Administradores).
     - Canal fixado em destaque na barra lateral do chat.
   - **Canais por Curso (`channel_type == 'course'`):**
     - Cada curso cadastrado possui seu canal dedicado exclusivo para os alunos matriculados.
     - **Regra de Visibilidade e Acesso:**
-      - Alunos visualizam e enviam mensagens **apenas** nos canais dos cursos aos quais possuem acesso ativo (`UserCourse` não expirado). Tentativas de leitura ou envio para cursos não matriculados retornam `403 Forbidden`.
-      - Instrutores e Administradores (`superadmin`, `admin`) têm acesso irrestrito a todos os canais para suporte e moderação.
-- **Recursos da Interface e Experiência do Usuário:**
-  - **Balões de Mensagem Estilizados:**
-    - Identificação clara do remetente com avatar circular colorido contendo a inicial do usuário.
-    - Badge do perfil do usuário: `Super Admin` (roxo neon), `Instrutor` (azul neon) e `Aluno` (esmeralda).
-    - Horário formatado da mensagem (hora e minuto).
-    - Diferenciação visual suave para mensagens enviadas pelo próprio usuário autenticado versus mensagens recebidas.
-  - **Scroll Automático Inteligente:**
-    - Rolagem suave até a última mensagem recebida ao carregar ou enviar novidades.
-  - **Envio Rápido e Atalhos:**
+      - Alunos visualizam e enviam mensagens **apenas** nos canais dos cursos aos quais possuem acesso ativo (`UserCourse` nÃ£o expirado). Tentativas de leitura ou envio para cursos nÃ£o matriculados retornam `403 Forbidden`.
+      - Instrutores e Administradores (`superadmin`, `admin`) tÃªm acesso irrestrito a todos os canais para suporte e moderaÃ§Ã£o.
+- **Recursos da Interface e ExperiÃªncia do UsuÃ¡rio:**
+  - **BalÃµes de Mensagem Estilizados:**
+    - IdentificaÃ§Ã£o clara do remetente com avatar circular colorido contendo a inicial do usuÃ¡rio.
+    - Badge do perfil do usuÃ¡rio: `Super Admin` (roxo neon), `Instrutor` (azul neon) e `Aluno` (esmeralda).
+    - HorÃ¡rio formatado da mensagem (hora e minuto).
+    - DiferenciaÃ§Ã£o visual suave para mensagens enviadas pelo prÃ³prio usuÃ¡rio autenticado versus mensagens recebidas.
+  - **Scroll AutomÃ¡tico Inteligente:**
+    - Rolagem suave atÃ© a Ãºltima mensagem recebida ao carregar ou enviar novidades.
+  - **Envio RÃ¡pido e Atalhos:**
     - Suporte a tecla `Enter` para envio imediato e `Shift + Enter` para pular linha.
-    - Validação de mensagens vazias e limite de até 3.000 caracteres.
-    - Estado de carregamento com spinner no botão de envio enquanto a mensagem é persistida.
-  - **Experiência Imersiva em Tela Cheia (Fullscreen):**
-    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema e o cabeçalho mobile são ocultados automaticamente, exatamente como na sala de aula dos cursos. O chat e sua listagem de canais preenchem 100% da viewport (`100vw × 100vh`).
-    - Para alternar ou sair do chat, há botões destacados **"Voltar aos Cursos"** (`ArrowLeft`) tanto no topo da lista de canais (`ChatSidebar`) quanto nas ações do cabeçalho da conversa (`ChatHeader`).
-  - **Sincronização Instantânea em Tempo Real via WebSocket (`/api/v1/chat/ws`):**
-    - Conexão nativa e persistente via WebSocket com autenticação por token JWT.
-    - Novas mensagens enviadas por qualquer aluno ou administrador são entregues instantaneamente na tela dos participantes conectados sem necessidade de recarregar a página ou aguardar polling.
-    - Eventos de exclusão de mensagem, curtidas e mensagens fixadas/desafixadas também são transmitidos e refletidos em tempo real.
-    - Mecanismo de Heartbeat (`ping/pong` a cada 25s) e reconexão automática com fallback de segurança.
+    - ValidaÃ§Ã£o de mensagens vazias e limite de atÃ© 3.000 caracteres.
+    - Estado de carregamento com spinner no botÃ£o de envio enquanto a mensagem Ã© persistida.
+  - **ExperiÃªncia Imersiva em Tela Cheia (Fullscreen):**
+    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema e o cabeÃ§alho mobile sÃ£o ocultados automaticamente, exatamente como na sala de aula dos cursos. O chat e sua listagem de canais preenchem 100% da viewport (`100vw Ã 100vh`).
+    - Para alternar ou sair do chat, hÃ¡ botÃµes destacados **"Voltar aos Cursos"** (`ArrowLeft`) tanto no topo da lista de canais (`ChatSidebar`) quanto nas aÃ§Ãµes do cabeÃ§alho da conversa (`ChatHeader`).
+  - **SincronizaÃ§Ã£o InstantÃ¢nea em Tempo Real via WebSocket (`/api/v1/chat/ws`):**
+    - ConexÃ£o nativa e persistente via WebSocket com autenticaÃ§Ã£o por token JWT.
+    - Novas mensagens enviadas por qualquer aluno ou administrador sÃ£o entregues instantaneamente na tela dos participantes conectados sem necessidade de recarregar a pÃ¡gina ou aguardar polling.
+    - Eventos de exclusÃ£o de mensagem, curtidas e mensagens fixadas/desafixadas tambÃ©m sÃ£o transmitidos e refletidos em tempo real.
+    - Mecanismo de Heartbeat (`ping/pong` a cada 25s) e reconexÃ£o automÃ¡tica com fallback de seguranÃ§a.
   - **Curtir Mensagens do Chat:**
-    - Alunos e gestores podem curtir e descurtir mensagens de texto ou mídia clicando no botão de coração (`Heart`).
-    - Contador em tempo real do número de curtidas por mensagem com destaque vermelho para o usuário que curtiu (`liked_by_me`).
-    - Cada usuário pode curtir apenas uma única vez por mensagem (tabela `chat_message_likes`).
-    - Curtir mensagens de outros alunos gera bonificação de engajamento no sistema de gamificação.
+    - Alunos e gestores podem curtir e descurtir mensagens de texto ou mÃ­dia clicando no botÃ£o de coraÃ§Ã£o (`Heart`).
+    - Contador em tempo real do nÃºmero de curtidas por mensagem com destaque vermelho para o usuÃ¡rio que curtiu (`liked_by_me`).
+    - Cada usuÃ¡rio pode curtir apenas uma Ãºnica vez por mensagem (tabela `chat_message_likes`).
+    - Curtir mensagens de outros alunos gera bonificaÃ§Ã£o de engajamento no sistema de gamificaÃ§Ã£o.
   - **Favoritar Mensagens e Filtro de Favoritas:**
-    - Botão de estrela (`Star`) em cada balão de mensagem para favoritar/desfavoritar (tabela `chat_message_favorites`).
-    - Botão de alternância **"⭐ Favoritas"** no cabeçalho do chat (`ChatHeader`), permitindo filtrar instantaneamente o canal para exibir apenas as mensagens salvas pelo usuário autenticado.
+    - BotÃ£o de estrela (`Star`) em cada balÃ£o de mensagem para favoritar/desfavoritar (tabela `chat_message_favorites`).
+    - BotÃ£o de alternÃ¢ncia **"â­ Favoritas"** no cabeÃ§alho do chat (`ChatHeader`), permitindo filtrar instantaneamente o canal para exibir apenas as mensagens salvas pelo usuÃ¡rio autenticado.
   - **Fixar Mensagens no Topo do Chat (Pin) e Redirecionamento por Clique:**
-    - Privilégio restrito a Administradores e Instrutores (`admin` e `superadmin`).
+    - PrivilÃ©gio restrito a Administradores e Instrutores (`admin` e `superadmin`).
     - O gestor pode fixar ou desafixar mensagens importantes no canal (`is_pinned`, `pinned_at`, `pinned_by_user_id`).
-    - Quando há uma mensagem fixada no canal, um banner superior estilizado em azul neon no cabeçalho (`chat-pinned-message-banner`) exibe o autor e o conteúdo da mensagem fixada, acompanhado de botão de desafixação rápida para gestores.
-    - **Redirecionamento ao Clicar na Mensagem Fixada:** Ao clicar em qualquer parte do banner da mensagem fixada, o chat executa uma rolagem suave (`scrollIntoView({ behavior: 'smooth', block: 'center' })`) até a mensagem correspondente na conversa e ativa temporariamente uma animação de destaque luminoso em neon azul ciano (`chat-message-highlighted`) ao redor do balão, facilitando a localização visual imediata pelo usuário. O clique no botão de desafixação (`X`) possui `stopPropagation()` para não disparar a rolagem.
-    - A mensagem também recebe o selo `📌 Fixada` nos seus metadados.
-  - **Envio de Mídias no Chat (Imagens e Documentos):**
-    - Botão de anexo (`Paperclip`) na barra de entrada (`ChatInputBar`) permitindo selecionar imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF) de até 15 MB.
+    - Quando hÃ¡ uma mensagem fixada no canal, um banner superior estilizado em azul neon no cabeÃ§alho (`chat-pinned-message-banner`) exibe o autor e o conteÃºdo da mensagem fixada, acompanhado de botÃ£o de desafixaÃ§Ã£o rÃ¡pida para gestores.
+    - **Redirecionamento ao Clicar na Mensagem Fixada:** Ao clicar em qualquer parte do banner da mensagem fixada, o chat executa uma rolagem suave (`scrollIntoView({ behavior: 'smooth', block: 'center' })`) atÃ© a mensagem correspondente na conversa e ativa temporariamente uma animaÃ§Ã£o de destaque luminoso em neon azul ciano (`chat-message-highlighted`) ao redor do balÃ£o, facilitando a localizaÃ§Ã£o visual imediata pelo usuÃ¡rio. O clique no botÃ£o de desafixaÃ§Ã£o (`X`) possui `stopPropagation()` para nÃ£o disparar a rolagem.
+    - A mensagem tambÃ©m recebe o selo `ð Fixada` nos seus metadados.
+  - **Envio de MÃ­dias no Chat (Imagens e Documentos):**
+    - BotÃ£o de anexo (`Paperclip`) na barra de entrada (`ChatInputBar`) permitindo selecionar imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF, DOCX, XLSX, TXT, ZIP) de atÃ© 25 MB.
     - Suporte a upload em nuvem no Backblaze B2 (`AreaDeMembros/chat_media/`) com fallback em servidor local.
-    - Miniatura de pré-visualização antes do envio com botão de remoção rápida.
-    - Permite envio de mensagem de texto com mídia vinculada, ou somente a mídia isolada.
-    - Imagens são renderizadas no chat com zoom ao clicar, e documentos em card seguro com link de abertura.
-- **Moderação e Exclusão de Mensagens:**
-  - O autor da mensagem pode excluir suas próprias mensagens a qualquer momento.
-  - Instrutores e Administradores possuem privilégio de moderação, podendo excluir mensagens inadequadas de qualquer participante.
-  - A exclusão exige confirmação explícita em popup modal escuro (`DeleteChatMessageModal`) que não fecha por clique fora e exibe feedback imediato via toast de sucesso.
+  - **Barra Lateral Direita de Membros do Chat (`ChatMembersSidebar`):**
+    - Exibe a lista completa de usuÃ¡rios com permissÃ£o de acesso e visualizaÃ§Ã£o no canal atual:
+      - **Comunidade Geral (`general`):** Lista todos os alunos, instrutores e administradores ativos cadastrados no sistema.
+      - **Canais por Curso (`course`):** Lista os administradores e instrutores com acesso global, alÃ©m dos alunos que possuem matrÃ­cula ativa e nÃ£o expirada no respectivo curso.
+    - **Agrupamento SemÃ¢ntico por PapÃ©is:**
+      - **Super Admin:** Membros com perfil `superadmin` com destaque roxo/neon e Ã­cone de coroa (`Crown`).
+      - **Administradores:** Membros com perfil `admin` com destaque azul neon e Ã­cone de escudo (`Shield`).
+      - **Alunos:** Alunos matriculados com destaque verde esmeralda e Ã­cone de capelo (`GraduationCap`).
+    - **IdentificaÃ§Ã£o Visual dos Contatos:** Cada item apresenta foto/avatar/logo oficial, nome completo, subtÃ­tulo do cargo, indicador de status online/offline em tempo real baseado em conexÃµes WebSocket e selo `(VocÃª)` para o usuÃ¡rio logado.
+    - **Filtro e Busca RÃ¡pida:** Campo de pesquisa no topo filtrando participantes dinamicamente por nome e e-mail.
+    - **BotÃ£o de AlternÃ¢ncia no CabeÃ§alho (`ChatHeader`):** BotÃ£o com Ã­cone de usuÃ¡rios (`Users`) permitindo recolher e expandir a barra lateral direita conforme a preferÃªncia do usuÃ¡rio.
+    - **Modal de Perfil do Contato (`ChatMemberProfileModal`):**
+      - Ao clicar em um contato, abre um modal centralizado em Dark Glassmorphism com *backdrop blur* escuro cobrindo o fundo (fechÃ¡vel apenas via botÃ£o fechar).
+      - Exibe a logo/foto do participante em destaque ampliado com status online, nome, badge oficial do perfil, e-mail, telefone/WhatsApp (se disponÃ­vel) e data de cadastro.
+      - BotÃ£o de aÃ§Ã£o rÃ¡pida **"Conversar no Privado (DM)"** (`MessageSquare`) abrindo a caixa de mensagens diretas 1-a-1 com o contato selecionado.
+    - **Mensagens Diretas Privadas 1-a-1 (DM) com Suporte Completo a MÃ­dias e Ferramentas (`ChatDmModal`, `ChatDmConversationView`):**
+      - O chat privado de DM possui paridade integral de funcionalidades com o chat pÃºblico da comunidade.
+      - **Envio de MÃ­dias Diversificadas na DM:** A barra de entrada (`ChatInputBar`) na DM conta com todos os botÃµes e recursos:
+        1. **Anexo de Arquivos Gerais e PDFs:** BotÃ£o com clipe (`Paperclip`) para envio de documentos PDF, planilhas, apostilas, textos e compactados (ZIP/RAR) de atÃ© 25 MB.
+        2. **Imagens com Legenda e Ctrl+V:** BotÃ£o de imagem (`ImageIcon`) abrindo modal de prÃ©-visualizaÃ§Ã£o com legenda, alÃ©m de suporte para colar imagens diretamente da Ã¡rea de transferÃªncia (`Ctrl+V`) ou arrastar (drag & drop).
+        3. **CatÃ¡logo de GIFs Animados:** BotÃ£o `[GIF]` com busca e categorias temÃ¡ticas de GIFs.
+        4. **Seletor de Emojis:** BotÃ£o de carinha sorridente (`Smile`) com abas categorizadas e inserÃ§Ã£o rÃ¡pida.
+        5. **GravaÃ§Ã£o e Envio de Ãudio Nativo:** Microfone integrado com gravaÃ§Ã£o em tempo real, timer, cancelamento e envio de Ã¡udio no formato WebM/OGG.
+        6. **GravaÃ§Ã£o de VÃ­deo pela CÃ¢mera:** BotÃ£o de vÃ­deo (`Video`) abrindo modal de gravaÃ§Ã£o via webcam com espelhamento ao vivo, timer e revisÃ£o antes do envio.
+        7. **Links Internos Interativos com CTA:** InserÃ§Ã£o de links para abas, cursos ou aulas especÃ­ficas da Ãrea de Membros.
+      - **RenderizaÃ§Ã£o Rica de MÃ­dias nos BalÃµes da DM (`ChatMessageMediaAttachment`):**
+        - Fotos e GIFs com thumbnail de visualizaÃ§Ã£o nÃ­tida e zoom em nova aba ao clicar.
+        - VÃ­deos com player nativo responsivo HTML5 e controles de reproduÃ§Ã£o.
+        - Ãudios com player de Ã¡udio estilizado e Ã­cone de microfone verde.
+        - Documentos e PDFs em card com Ã­cone de documento, nome e link direto para visualizaÃ§Ã£o/download.
+      - **PrÃ©-visualizaÃ§Ã£o SemÃ¢ntica na Inbox de DMs:** Quando uma mensagem enviada na DM nÃ£o possui texto (apenas mÃ­dia anexada), a listagem de conversas exibe preview descritivo (`ð· [Foto/GIF]`, `ð¥ [VÃ­deo]`, `ð¤ [Ãudio]`, `ð [Documento]`, `ð [MÃ­dia]`).
+    - Miniatura de prÃ©-visualizaÃ§Ã£o antes do envio com botÃ£o de remoÃ§Ã£o rÃ¡pida.
+    - Permite envio de mensagem de texto com mÃ­dia vinculada, ou somente a mÃ­dia isolada.
+    - Imagens sÃ£o renderizadas no chat com zoom ao clicar, e documentos em card seguro com link de abertura.
+  - **Colar (Ctrl+V) e Arrastar (Drag & Drop) Imagens com Legenda (`ChatImageCaptionModal`):**
+    - O usuÃ¡rio pode colar imagens diretamente da Ã¡rea de transferÃªncia (`Ctrl + V`) ou arrastar arquivos de imagem para a Ã¡rea do chat.
+    - Ao colar ou soltar, abre automaticamente o modal centralizado de prÃ©-visualizaÃ§Ã£o da imagem com campo de **Legenda** para digitaÃ§Ã£o confortÃ¡vel antes do envio ou cancelamento.
+  - **GravaÃ§Ã£o e Envio de VÃ­deo pela CÃ¢mera/Webcam (`ChatVideoRecorderModal`):**
+    - BotÃ£o com Ã­cone de cÃ¢mera de vÃ­deo (`Video`) na barra de ferramentas do chat.
+    - Permite gravar vÃ­deos diretamente pela cÃ¢mera/webcam do computador ou smartphone via `navigator.mediaDevices.getUserMedia`.
+    - Apresenta timer com indicador pulsante, prÃ©-visualizaÃ§Ã£o ao vivo espelhada, conferÃªncia do vÃ­deo gravado com controles de reproduÃ§Ã£o nativos, campo de legenda opcional e upload direto em nuvem no formato WebM/MP4.
+  - **CatÃ¡logo e Seletor de GIFs Animados (`ChatGifPickerPopup`):**
+    - BotÃ£o dedicado `[GIF]` na barra de ferramentas.
+    - Abre popup interativo acima do campo de digitaÃ§Ã£o com busca instantÃ¢nea em portuguÃªs/inglÃªs e filtros por categorias em alta (Palmas, CelebraÃ§Ã£o, Risos, Concordo, ReaÃ§Ãµes, DanÃ§a, Amor), permitindo anexar o GIF diretamente Ã  mensagem.
+  - **MaximizaÃ§Ã£o e ExpansÃ£o da Caixa de Texto:**
+    - BotÃ£o destacado de alternÃ¢ncia (`Maximize2` / `Minimize2`) na barra de ferramentas.
+    - Permite alternar entre o modo de digitaÃ§Ã£o compacto (1 linha com auto-expansÃ£o suave) e o modo maximizado amplo (Ã¡rea expandida com mÃºltiplas linhas para redaÃ§Ã£o confortÃ¡vel de textos longos e parÃ¡grafos).
+  - **Compartilhamento de Links Internos de Abas, Cursos e Aulas (`ChatInternalLinkModal`, `ChatAttachedLinkPreview`, `chatMentionUtils` e `useUrlNavigation`):**
+    - **BotÃ£o na Barra de Ferramentas:** Ãcone de elo (`Link2` / `ð`) com tooltip "Inserir link de aba, curso ou aula".
+    - **Modal Interativo de SeleÃ§Ã£o (`ChatInternalLinkModal`):** Apresenta popup escuro centralizado com campo de busca em tempo real e 3 categorias:
+      1. **Abas / MÃ³dulos:** Seleciona qualquer tela principal da plataforma (InÃ­cio, Cursos, Suporte, Ranking, Depoimentos, Apresente-se, Chat, Relatos, Alunos, Funis, ConfiguraÃ§Ãµes).
+      2. **Cursos:** Consulta a lista de cursos cadastrados via `/api/v1/courses` e permite marcar qualquer curso.
+      3. **Aulas EspecÃ­ficas:** Consulta a grade de mÃ³dulos e aulas via `/api/v1/courses/{id}/modules`, permitindo selecionar uma aula especÃ­fica.
+    - **ExibiÃ§Ã£o Elegante no Campo de Entrada (`ChatAttachedLinkPreview`):** Ao marcar uma aula, curso ou aba, o link nÃ£o polui o campo de digitaÃ§Ã£o com markdown bruto (`[TÃ­tulo](internal://...)`). Em vez disso, Ã© renderizado um card preview estilizado em glassmorphism com Ã­cone correspondente (`PlayCircle` verde para aulas, `BookOpen` azul para cursos, `Compass` roxo para abas), o tÃ­tulo limpo e um botÃ£o de remoÃ§Ã£o rÃ¡pida (`X`). O usuÃ¡rio pode redigir mensagens complementares no campo de texto normalmente ou enviar apenas o link.
+    - **Abertura Exclusiva em Nova Aba (`_blank`):** Ao clicar sobre o badge de aula, curso ou aba dentro de uma mensagem do chat, a plataforma abre o destino **estritamente em uma nova aba** no navegador (`/?tab=courses&courseId=X&lessonId=Y`). A aba atual onde o participante estÃ¡ conversando no chat permanece **100% intacta**, sem qualquer redirecionamento, troca de aba ou perda do contexto da conversa.
+    - **Posicionamento Direto na Aula (Scroll Suave):** Ao abrir o link de uma aula na nova aba, a sala de aula (`CourseClassroom`) seleciona o mÃ³dulo e a aula referenciada e realiza rolagem suave automÃ¡tica (`scrollToClassroomSection`), posicionando o usuÃ¡rio diretamente em cima da aula e de seu player de vÃ­deo.
+    - **Limpeza Imediata de ParÃ¢metros da URL e NavegaÃ§Ã£o Livre na Nova Aba (`useUrlNavigation`):**
+      - Assim que os parÃ¢metros de consulta (`?tab=courses&courseId=X&lessonId=Y`) sÃ£o consumidos na inicializaÃ§Ã£o da nova aba, o hook `useUrlNavigation` limpa imediatamente a query string da barra de endereÃ§os usando `window.history.replaceState({}, document.title, '/')` e trava reexecuÃ§Ãµes via referÃªncia Ãºnica (`hasProcessedRef`).
+      - Isso garante que, se o usuÃ¡rio estiver na aula aberta e clicar em qualquer outro item da barra lateral (`Sidebar`) como *InÃ­cio*, *Alunos*, *Suporte* ou *Chat*, ele navega livremente para a tela desejada sem que os parÃ¢metros antigos de URL reabram a aula anterior.
+    - **Controle de Acesso e Redirecionamento AutomÃ¡tico para Compra:** Caso o aluno que clicou no link nÃ£o possua acesso ativo Ã quele curso ou produto (`has_access === false`):
+      - Se o curso possuir **PÃ¡gina de Vendas (`sales_page_url`)**, o aluno Ã© redirecionado automaticamente para a pÃ¡gina de compra do produto.
+      - Se o curso nÃ£o possuir pÃ¡gina de vendas configurada, a plataforma exibe notificaÃ§Ã£o amigÃ¡vel via toast informando que o aluno nÃ£o possui acesso Ã quele treinamento.
+  - **Sistema de MenÃ§Ãµes a Contatos (@) no Chat:**
+    - **MenÃ§Ã£o Global (@todos):**
+      - Exclusiva para Administradores e Super Administradores (`admin` e `superadmin`).
+      - Permite alertar e notificar todos os membros ativos do canal simultaneamente.
+      - Na lista suspensa de menÃ§Ãµes, o item `@todos` sÃ³ Ã© exibido para gestores. Caso um aluno tente digitar manualmente `@todos`, o frontend bloqueia o envio com alerta em toast e o backend rejeita com `HTTP 403 Forbidden`.
+      - BalÃµes de mensagem exibem o `@todos` com badge dourado neon em destaque (`#fbbf24`).
+    - **Limite de MenÃ§Ãµes para UsuÃ¡rios Comuns (Alunos):**
+      - Alunos podem mencionar no mÃ¡ximo **5 contatos** por mensagem.
+      - Ao atingir o limite no seletor, um alerta em vermelho informa a restriÃ§Ã£o e desativa a seleÃ§Ã£o de novos contatos.
+      - Tentativas de envio com 6 ou mais menÃ§Ãµes sÃ£o bloqueadas pelo frontend e rejeitadas pelo backend com `HTTP 400 Bad Request`.
+      - Gestores (`admin` e `superadmin`) nÃ£o tÃªm limite e podem mencionar qualquer nÃºmero de contatos.
+    - **Busca e Filtro DinÃ¢mico em Tempo Real:**
+      - Ao digitar apÃ³s o `@`, a lista Ã© filtrada instantaneamente conferindo nome ou e-mail dos membros.
+    - **PaginaÃ§Ã£o de Contatos (20 por pÃ¡gina):**
+      - O popup de menÃ§Ãµes exibe no mÃ¡ximo **20 contatos por pÃ¡gina**, com controles de navegaÃ§Ã£o (setas anterior/prÃ³xima) e indicador de pÃ¡ginas (`PÃ¡g. X de Y`), evitando lentidÃ£o ou sobrecarga em comunidades com centenas de membros.
+- **ModeraÃ§Ã£o e ExclusÃ£o de Mensagens:**
+  - O autor da mensagem pode excluir suas prÃ³prias mensagens a qualquer momento.
+  - Instrutores e Administradores possuem privilÃ©gio de moderaÃ§Ã£o, podendo excluir mensagens inadequadas de qualquer participante.
+  - A exclusÃ£o exige confirmaÃ§Ã£o explÃ­cita em popup modal escuro (`DeleteChatMessageModal`) que nÃ£o fecha por clique fora e exibe feedback imediato via toast de sucesso.
 
 ---
 
-## 15. Gestão de Perfil do Usuário e Identidade Visual (Configurações)
-- **Localização:** Aba **"Meu Perfil"** dentro da tela de **Configurações da Área de Membros** (`PlatformSettings`).
-- **Campos Disponíveis:**
+## 15. GestÃ£o de Perfil do UsuÃ¡rio e Identidade Visual (ConfiguraÃ§Ãµes)
+- **LocalizaÃ§Ã£o:** Aba **"Meu Perfil"** dentro da tela de **ConfiguraÃ§Ãµes da Ãrea de Membros** (`PlatformSettings`).
+- **Campos DisponÃ­veis:**
   - **Foto / Logo de Perfil (`avatar_url`):**
-    - Envio direto do computador com suporte a JPG, PNG e WEBP (até 5 MB) com upload para o Backblaze B2 (`AreaDeMembros/avatars/`) ou armazenamento local.
-    - Pré-visualização instantânea em avatar arredondado com borda suave.
-    - Botão de remoção rápida da foto.
-    - Quando cadastrada, a foto substitui a inicial do usuário no rodapé da barra lateral (`Sidebar`) e em outros pontos da plataforma.
-  - **Nome do Contato / Usuário (`name`).**
+    - Envio direto do computador com suporte a JPG, PNG e WEBP (atÃ© 5 MB) com upload para o Backblaze B2 (`AreaDeMembros/avatars/`) ou armazenamento local.
+    - PrÃ©-visualizaÃ§Ã£o instantÃ¢nea em avatar arredondado com borda suave.
+    - BotÃ£o de remoÃ§Ã£o rÃ¡pida da foto.
+    - Quando cadastrada, a foto substitui a inicial do usuÃ¡rio no rodapÃ© da barra lateral (`Sidebar`) e em outros pontos da plataforma.
+  - **Nome do Contato / UsuÃ¡rio (`name`).**
   - **E-mail de Acesso (`email`).**
   - **WhatsApp / Telefone de Contato (`phone`).**
-  - **Segurança e Troca de Senha (`password`):**
-    - Campos "Nova Senha" e "Confirmar Nova Senha" com alternância de visibilidade (`Eye/EyeOff`) e validação de requisitos (mínimo 12 caracteres, maiúscula, minúscula, número e símbolo especial).
-- **Regra de Proteção do Super Admin:**
-  - Por diretrizes de segurança da conta mestre do sistema, o **Super Administrador NÃO pode alterar seu nome, e-mail e senha por esta tela**.
-  - Na interface, os campos de nome e e-mail aparecem desabilitados com ícone de cadeado (`Lock`) e um banner explicativo destacado. O bloco de senha exibe aviso de proteção da conta mestre.
-  - No backend (`PATCH /api/v1/auth/me`), qualquer tentativa de submeter alterações de nome, e-mail ou senha para o `superadmin` é sumariamente rejeitada com `400 Bad Request`.
-  - O Super Admin tem permissão total e irrestrita para **alterar a sua foto de perfil / logo** a qualquer momento.
+  - **SeguranÃ§a e Troca de Senha (`password`):**
+    - Campos "Nova Senha" e "Confirmar Nova Senha" com alternÃ¢ncia de visibilidade (`Eye/EyeOff`) e validaÃ§Ã£o de requisitos (mÃ­nimo 12 caracteres, maiÃºscula, minÃºscula, nÃºmero e sÃ­mbolo especial).
+- **Regra de ProteÃ§Ã£o do Super Admin:**
+  - Por diretrizes de seguranÃ§a da conta mestre do sistema, o **Super Administrador NÃO pode alterar seu nome, e-mail e senha por esta tela**.
+  - Na interface, os campos de nome e e-mail aparecem desabilitados com Ã­cone de cadeado (`Lock`) e um banner explicativo destacado. O bloco de senha exibe aviso de proteÃ§Ã£o da conta mestre.
+  - No backend (`PATCH /api/v1/auth/me`), qualquer tentativa de submeter alteraÃ§Ãµes de nome, e-mail ou senha para o `superadmin` Ã© sumariamente rejeitada com `400 Bad Request`.
+  - O Super Admin tem permissÃ£o total e irrestrita para **alterar a sua foto de perfil / logo** a qualquer momento.
 - **Outros Perfis (Administradores / Instrutores):**
-  - Possuem liberdade para editar nome, e-mail (com validação de unicidade), telefone, senha e foto de perfil normalmente.
+  - Possuem liberdade para editar nome, e-mail (com validaÃ§Ã£o de unicidade), telefone, senha e foto de perfil normalmente.
 
 ---
 
-## 16. Depoimentos e Avaliações dos Cursos (Testimonials & Reviews)
-- **Localização:** Aba **"Depoimentos"** na barra lateral (`Sidebar`) sob a categoria **Gestão de Ensino** (para gestores) e **Meu Aprendizado** (para alunos).
-- **Submissão de Depoimentos pelo Aluno:**
-  - O aluno pode enviar depoimento exclusivamente para cursos aos quais possui **acesso ativo e liberado**. Cursos sem acesso ou expirados não permitem envio de avaliação (`HTTP 403`).
-  - Cada aluno pode cadastrar **1 depoimento por curso**. Caso queira mudar sua opinião, pode editar seu depoimento existente a qualquer momento.
+## 16. Depoimentos e AvaliaÃ§Ãµes dos Cursos (Testimonials & Reviews)
+- **LocalizaÃ§Ã£o:** Aba **"Depoimentos"** na barra lateral (`Sidebar`) sob a categoria **GestÃ£o de Ensino** (para gestores) e **Meu Aprendizado** (para alunos).
+- **SubmissÃ£o de Depoimentos pelo Aluno:**
+  - O aluno pode enviar depoimento exclusivamente para cursos aos quais possui **acesso ativo e liberado**. Cursos sem acesso ou expirados nÃ£o permitem envio de avaliaÃ§Ã£o (`HTTP 403`).
+  - Cada aluno pode cadastrar **1 depoimento por curso**. Caso queira mudar sua opiniÃ£o, pode editar seu depoimento existente a qualquer momento.
   - **Campos do Depoimento:**
-    - **Seleção do Curso:** lista suspensa contendo apenas os cursos liberados para o aluno.
-    - **Nota em Estrelas (1 a 5 ⭐):** seleção interativa de estrelas com destaque dourado.
-    - **Título do Depoimento:** resumo ou manchete da avaliação (opcional, até 200 caracteres).
-    - **Texto do Relato / Opinião:** descrição da experiência, aprendizado e resultados obtidos (mínimo 3 caracteres, até 5.000 caracteres com contador dinâmico).
-- **Fluxo de Moderação pelo Administrador:**
-  - Todo novo depoimento submetido ou editado por aluno entra automaticamente com status **"Aguardando Moderação" (`pending`)**.
-  - Apenas depoimentos com status **"Aprovado" (`approved`)** são exibidos na vitrine pública para outros alunos e visitantes. O autor sempre consegue visualizar seu próprio depoimento para acompanhar o status.
-  - Administradores e Super Admins contam com botões rápidos de ação:
-    - **Aprovar (`approved`):** torna o depoimento visível para a comunidade.
+    - **SeleÃ§Ã£o do Curso:** lista suspensa contendo apenas os cursos liberados para o aluno.
+    - **Nota em Estrelas (1 a 5 â­):** seleÃ§Ã£o interativa de estrelas com destaque dourado.
+    - **TÃ­tulo do Depoimento:** resumo ou manchete da avaliaÃ§Ã£o (opcional, atÃ© 200 caracteres).
+    - **Texto do Relato / OpiniÃ£o:** descriÃ§Ã£o da experiÃªncia, aprendizado e resultados obtidos (mÃ­nimo 3 caracteres, atÃ© 5.000 caracteres com contador dinÃ¢mico).
+- **Fluxo de ModeraÃ§Ã£o pelo Administrador:**
+  - Todo novo depoimento submetido ou editado por aluno entra automaticamente com status **"Aguardando ModeraÃ§Ã£o" (`pending`)**.
+  - Apenas depoimentos com status **"Aprovado" (`approved`)** sÃ£o exibidos na vitrine pÃºblica para outros alunos e visitantes. O autor sempre consegue visualizar seu prÃ³prio depoimento para acompanhar o status.
+  - Administradores e Super Admins contam com botÃµes rÃ¡pidos de aÃ§Ã£o:
+    - **Aprovar (`approved`):** torna o depoimento visÃ­vel para a comunidade.
     - **Rejeitar (`rejected`):** reprova o depoimento mantendo arquivado internamente.
     - **Destacar (`is_featured`):** fixa o depoimento com selo de destaque dourado e posiciona no topo da listagem.
-- **Exclusão de Depoimentos:**
-  - O próprio aluno autor pode excluir seu depoimento a qualquer momento.
+- **ExclusÃ£o de Depoimentos:**
+  - O prÃ³prio aluno autor pode excluir seu depoimento a qualquer momento.
   - Administradores podem excluir qualquer depoimento inapropriado.
-  - Exclusão exige confirmação em modal escuro centralizado com aviso e feedback por toast.
+  - ExclusÃ£o exige confirmaÃ§Ã£o em modal escuro centralizado com aviso e feedback por toast.
 
 ---
 
-## 17. Gamificação e Ranking dos Alunos (Leaderboard & Points)
-- **Localização:** Aba **"Ranking & Conquistas"** (`Trophy`) na barra lateral (`Sidebar`) em página inteira dedicada.
-- **Participação Exclusiva de Alunos:**
-  - Apenas usuários com o perfil **`Aluno` (`aluno`)** acumulam pontos e disputam as posições do pódio e da tabela de classificação.
-  - Administradores e instrutores não entram na disputa do ranking para garantir competição justa entre os alunos.
-- **Tabela de Pontuação por Ações Meritórias:**
-  - **Melhor Solução no Suporte (`support_solution`):** **+50 pontos**. Atribuído quando a resposta do aluno a uma dúvida de colega for marcada como Solução Oficial pelo autor da dúvida ou instrutor.
-  - **Conclusão de Aula (`lesson_completed`):** **+15 pontos**. Atribuído ao assistir e concluir uma aula de qualquer curso (pontuação única por aula).
-  - **Resposta a Dúvida no Suporte (`support_reply`):** **+10 pontos**. Atribuído ao responder e ajudar colegas de curso no fórum de suporte.
-  - **Curtida Recebida no Suporte (`support_like`):** **+5 pontos**. Atribuído ao receber curtidas da comunidade em tópicos e dúvidas.
-  - **Comentário Construtivo em Aula (`lesson_comment`):** **+5 pontos**. Atribuído ao comentar e debater nas aulas.
-  - **Mensagem no Chat da Comunidade (`chat_message`):** **+2 pontos** por mensagem, com **limite diário de até 10 mensagens pontuadas por dia (máximo de 20 pontos/dia)** para estimular conversas saudáveis e evitar flood/spam.
-- **Períodos de Classificação e Histórico de Campeões:**
-  - **Ranking Mensal (Ao Vivo):** reinicia a pontuação a cada mês (ex: Outubro/2026), premiando os alunos mais ativos e engajados do período atual.
-  - **Histórico Geral (All-Time):** histórico acumulado de todos os tempos.
-  - **Meses Anteriores (Top 10 Encerrado):** histórico congelado dos meses que já foram finalizados (ex: Setembro/2026, Agosto/2026). O mês corrente é bloqueado dessa aba até seu encerramento total.
-  - **Anos Anteriores (Top 10 Encerrado):** histórico congelado dos anos civis concluídos (ex: 2025, 2024). O ano em curso nunca é listado nessa aba até ser concluído.
-  - **Corte Estrito no Top 10:** Tanto para meses finalizados quanto para anos finalizados, o sistema exibe estritamente os **10 primeiros alunos com maior pontuação** acumulada no período correspondente.
-  - **Insígnias Comemorativas de Período Fechado:**
-    - 🥇 1º Lugar: *"Campeão do Mês"* ou *"Campeão do Ano"*.
-    - 🥈 2º Lugar: *"Vice do Mês"* ou *"Vice do Ano"*.
-    - 🥉 3º Lugar: *"3º Lugar do Mês"* ou *"3º Lugar do Ano"*.
-    - Top 4 ao 10: *"Top 10 do Mês"* ou *"Top 10 do Ano"*.
-- **Pódio e Insígnias:**
-  - **🥇 1º Lugar:** Pódio Ouro com a insígnia *"Mestre da Comunidade"*.
-  - **🥈 2º Lugar:** Pódio Prata com a insígnia *"Mentor Destaque"*.
-  - **🥉 3º Lugar:** Pódio Bronze com a insígnia *"Aluno Notável"*.
-  - **Top 4 ao 10:** Insígnia *"Top Estudante"*.
-  - **Demais Alunos:** Insígnia *"Aluno Ativo"*.
-- **Histórico de Conquistas no Card do Aluno (`/students`):**
-  - No card de cada aluno na Gestão de Alunos, é exibido o badge destacado com o total de pontos (`🏆 X pts`), o badge de Nível RPG (`🛡️ Nv. X • Patente`) com barra de XP integrada e o botão **"Pontos & Conquistas"**.
-  - O modal (`StudentGamificationHistoryModal`) exibe a pontuação total, o rank do aluno, a insígnia conquistada, o card consolidado do Nível RPG com barra de progresso detalhada e botão para visualização da Escada Completa de 20 Níveis.
+## 17. GamificaÃ§Ã£o e Ranking dos Alunos (Leaderboard & Points)
+- **LocalizaÃ§Ã£o:** Aba **"Ranking & Conquistas"** (`Trophy`) na barra lateral (`Sidebar`) em pÃ¡gina inteira dedicada.
+- **ParticipaÃ§Ã£o Exclusiva de Alunos:**
+  - Apenas usuÃ¡rios com o perfil **`Aluno` (`aluno`)** acumulam pontos e disputam as posiÃ§Ãµes do pÃ³dio e da tabela de classificaÃ§Ã£o.
+  - Administradores e instrutores nÃ£o entram na disputa do ranking para garantir competiÃ§Ã£o justa entre os alunos.
+- **Tabela de PontuaÃ§Ã£o por AÃ§Ãµes MeritÃ³rias:**
+  - **Melhor SoluÃ§Ã£o no Suporte (`support_solution`):** **+50 pontos**. AtribuÃ­do quando a resposta do aluno a uma dÃºvida de colega for marcada como SoluÃ§Ã£o Oficial pelo autor da dÃºvida ou instrutor.
+  - **ConclusÃ£o de Aula (`lesson_completed`):** **+15 pontos**. AtribuÃ­do ao assistir e concluir uma aula de qualquer curso (pontuaÃ§Ã£o Ãºnica por aula).
+  - **Resposta a DÃºvida no Suporte (`support_reply`):** **+10 pontos**. AtribuÃ­do ao responder e ajudar colegas de curso no fÃ³rum de suporte.
+  - **Curtida Recebida no Suporte (`support_like`):** **+5 pontos**. AtribuÃ­do ao receber curtidas da comunidade em tÃ³picos e dÃºvidas.
+  - **ComentÃ¡rio Construtivo em Aula (`lesson_comment`):** **+5 pontos**. AtribuÃ­do ao comentar e debater nas aulas.
+  - **Mensagem no Chat da Comunidade (`chat_message`):** **+2 pontos** por mensagem, com **limite diÃ¡rio de atÃ© 10 mensagens pontuadas por dia (mÃ¡ximo de 20 pontos/dia)** para estimular conversas saudÃ¡veis e evitar flood/spam.
+- **PerÃ­odos de ClassificaÃ§Ã£o e HistÃ³rico de CampeÃµes:**
+  - **Ranking Mensal (Ao Vivo):** reinicia a pontuaÃ§Ã£o a cada mÃªs (ex: Outubro/2026), premiando os alunos mais ativos e engajados do perÃ­odo atual.
+  - **HistÃ³rico Geral (All-Time):** histÃ³rico acumulado de todos os tempos.
+  - **Meses Anteriores (Top 10 Encerrado):** histÃ³rico congelado dos meses que jÃ¡ foram finalizados (ex: Setembro/2026, Agosto/2026). O mÃªs corrente Ã© bloqueado dessa aba atÃ© seu encerramento total.
+  - **Anos Anteriores (Top 10 Encerrado):** histÃ³rico congelado dos anos civis concluÃ­dos (ex: 2025, 2024). O ano em curso nunca Ã© listado nessa aba atÃ© ser concluÃ­do.
+  - **Corte Estrito no Top 10:** Tanto para meses finalizados quanto para anos finalizados, o sistema exibe estritamente os **10 primeiros alunos com maior pontuaÃ§Ã£o** acumulada no perÃ­odo correspondente.
+  - **InsÃ­gnias Comemorativas de PerÃ­odo Fechado:**
+    - ð¥ 1Âº Lugar: *"CampeÃ£o do MÃªs"* ou *"CampeÃ£o do Ano"*.
+    - ð¥ 2Âº Lugar: *"Vice do MÃªs"* ou *"Vice do Ano"*.
+    - ð¥ 3Âº Lugar: *"3Âº Lugar do MÃªs"* ou *"3Âº Lugar do Ano"*.
+    - Top 4 ao 10: *"Top 10 do MÃªs"* ou *"Top 10 do Ano"*.
+- **PÃ³dio e InsÃ­gnias:**
+  - **ð¥ 1Âº Lugar:** PÃ³dio Ouro com a insÃ­gnia *"Mestre da Comunidade"*.
+  - **ð¥ 2Âº Lugar:** PÃ³dio Prata com a insÃ­gnia *"Mentor Destaque"*.
+  - **ð¥ 3Âº Lugar:** PÃ³dio Bronze com a insÃ­gnia *"Aluno NotÃ¡vel"*.
+  - **Top 4 ao 10:** InsÃ­gnia *"Top Estudante"*.
+  - **Demais Alunos:** InsÃ­gnia *"Aluno Ativo"*.
+- **HistÃ³rico de Conquistas no Card do Aluno (`/students`):**
+  - No card de cada aluno na GestÃ£o de Alunos, Ã© exibido o badge destacado com o total de pontos (`ð X pts`), o badge de NÃ­vel RPG (`ð¡ï¸ Nv. X â¢ Patente`) com barra de XP integrada e o botÃ£o **"Pontos & Conquistas"**.
+  - O modal (`StudentGamificationHistoryModal`) exibe a pontuaÃ§Ã£o total, o rank do aluno, a insÃ­gnia conquistada, o card consolidado do NÃ­vel RPG com barra de progresso detalhada e botÃ£o para visualizaÃ§Ã£o da Escada Completa de 20 NÃ­veis.
 
-### 17.1. Sistema de Níveis RPG (20 Níveis Progressivos com Elos e Patentes)
-- **Estrutura dos 20 Níveis:**
-  - Divididos em **5 Elos temáticos** com 4 divisões cada (exceto o nível máximo que é coroado como Lenda Suprema):
-    1. **Elo Bronze (Níveis 1 ao 4):**
-       - **Nível 1 (Bronze I):** 0 pts (ponto de partida de todo aluno).
-       - **Nível 2 (Bronze II):** 25 pts (primeiras aulas concluídas).
-       - **Nível 3 (Bronze III):** 60 pts.
-       - **Nível 4 (Bronze IV):** 110 pts.
-    2. **Elo Prata (Níveis 5 ao 8):**
-       - **Nível 5 (Prata I):** 180 pts.
-       - **Nível 6 (Prata II):** 270 pts.
-       - **Nível 7 (Prata III):** 380 pts.
-       - **Nível 8 (Prata IV):** 510 pts.
-    3. **Elo Ouro (Níveis 9 ao 12):**
-       - **Nível 9 (Ouro I):** 660 pts.
-       - **Nível 10 (Ouro II):** 840 pts.
-       - **Nível 11 (Ouro III):** 1.050 pts.
-       - **Nível 12 (Ouro IV):** 1.300 pts.
-    4. **Elo Diamante (Níveis 13 ao 16):**
-       - **Nível 13 (Diamante I):** 1.600 pts.
-       - **Nível 14 (Diamante II):** 1.950 pts.
-       - **Nível 15 (Diamante III):** 2.350 pts.
-       - **Nível 16 (Diamante IV):** 2.800 pts.
-    5. **Elo Lenda (Níveis 17 ao 20):**
-       - **Nível 17 (Lenda I):** 3.300 pts.
-       - **Nível 18 (Lenda II):** 3.850 pts.
-       - **Nível 19 (Lenda III):** 4.450 pts.
-       - **Nível 20 (Lenda Suprema):** 5.000 pts (**Nível Máximo** com indicador MAX e 100% de maestria).
+### 17.1. Sistema de NÃ­veis RPG (20 NÃ­veis Progressivos com Elos e Patentes)
+- **Estrutura dos 20 NÃ­veis:**
+  - Divididos em **5 Elos temÃ¡ticos** com 4 divisÃµes cada (exceto o nÃ­vel mÃ¡ximo que Ã© coroado como Lenda Suprema):
+    1. **Elo Bronze (NÃ­veis 1 ao 4):**
+       - **NÃ­vel 1 (Bronze I):** 0 pts (ponto de partida de todo aluno).
+       - **NÃ­vel 2 (Bronze II):** 25 pts (primeiras aulas concluÃ­das).
+       - **NÃ­vel 3 (Bronze III):** 60 pts.
+       - **NÃ­vel 4 (Bronze IV):** 110 pts.
+    2. **Elo Prata (NÃ­veis 5 ao 8):**
+       - **NÃ­vel 5 (Prata I):** 180 pts.
+       - **NÃ­vel 6 (Prata II):** 270 pts.
+       - **NÃ­vel 7 (Prata III):** 380 pts.
+       - **NÃ­vel 8 (Prata IV):** 510 pts.
+    3. **Elo Ouro (NÃ­veis 9 ao 12):**
+       - **NÃ­vel 9 (Ouro I):** 660 pts.
+       - **NÃ­vel 10 (Ouro II):** 840 pts.
+       - **NÃ­vel 11 (Ouro III):** 1.050 pts.
+       - **NÃ­vel 12 (Ouro IV):** 1.300 pts.
+    4. **Elo Diamante (NÃ­veis 13 ao 16):**
+       - **NÃ­vel 13 (Diamante I):** 1.600 pts.
+       - **NÃ­vel 14 (Diamante II):** 1.950 pts.
+       - **NÃ­vel 15 (Diamante III):** 2.350 pts.
+       - **NÃ­vel 16 (Diamante IV):** 2.800 pts.
+    5. **Elo Lenda (NÃ­veis 17 ao 20):**
+       - **NÃ­vel 17 (Lenda I):** 3.300 pts.
+       - **NÃ­vel 18 (Lenda II):** 3.850 pts.
+       - **NÃ­vel 19 (Lenda III):** 4.450 pts.
+       - **NÃ­vel 20 (Lenda Suprema):** 5.000 pts (**NÃ­vel MÃ¡ximo** com indicador MAX e 100% de maestria).
 - **Curva Progressiva de Desafio (RPG):**
-  - Cada nível exige um montante adicional de pontos maior que o nível anterior (ex: +25, +35, +50, +70 ... até +600 nos elos mais altos), tornando a ascensão mais desafiadora e prestigiosa.
-- **Visualização e Componentes da Interface:**
-  - **Card do Aluno (`StudentCard`):** Exibe o badge de nível estilizado com a cor oficial do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), mini barra de XP e tooltip explicativo.
-  - **Visão Geral no Modal (`StudentRpgLevelOverviewCard`):** Card em destaque com escudo do elo, nome da patente, barra animada de progresso no nível atual, pontos faltantes para o próximo nível e atalho "Ver 20 Níveis".
-  - **Escada Completa de 20 Níveis (`GamificationRpgLadderModal`):** Popup modal escuro (`rgba(0,0,0,0.85)`) agrupado por elos, destacando visualmente o nível atual do aluno e marcando com check verde os níveis já conquistados.
-  - **Tabela de Classificação do Ranking (`RankingTable`):** Exibe o badge de nível RPG de cada aluno na listagem do ranking.
-  - **Modal de Histórico de Pontos do Aluno (`StudentGamificationHistoryModal`):** Apresenta métricas consolidadas e a linha do tempo cronológica com paginação de **20 pontuações por página** (`HistoryPaginationBar`), permitindo navegar com facilidade entre as conquistas sem sobrecarregar a interface.
+  - Cada nÃ­vel exige um montante adicional de pontos maior que o nÃ­vel anterior (ex: +25, +35, +50, +70 ... atÃ© +600 nos elos mais altos), tornando a ascensÃ£o mais desafiadora e prestigiosa.
+- **VisualizaÃ§Ã£o e Componentes da Interface:**
+  - **Card do Aluno (`StudentCard`):** Exibe o badge de nÃ­vel estilizado com a cor oficial do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), mini barra de XP e tooltip explicativo.
+  - **VisÃ£o Geral no Modal (`StudentRpgLevelOverviewCard`):** Card em destaque com escudo do elo, nome da patente, barra animada de progresso no nÃ­vel atual, pontos faltantes para o prÃ³ximo nÃ­vel e atalho "Ver 20 NÃ­veis".
+  - **Escada Completa de 20 NÃ­veis (`GamificationRpgLadderModal`):** Popup modal escuro (`rgba(0,0,0,0.85)`) agrupado por elos, destacando visualmente o nÃ­vel atual do aluno e marcando com check verde os nÃ­veis jÃ¡ conquistados.
+  - **Tabela de ClassificaÃ§Ã£o do Ranking (`RankingTable`):** Exibe o badge de nÃ­vel RPG de cada aluno na listagem do ranking.
+  - **Modal de HistÃ³rico de Pontos do Aluno (`StudentGamificationHistoryModal`):** Apresenta mÃ©tricas consolidadas e a linha do tempo cronolÃ³gica com paginaÃ§Ã£o de **20 pontuaÃ§Ãµes por pÃ¡gina** (`HistoryPaginationBar`), permitindo navegar com facilidade entre as conquistas sem sobrecarregar a interface.
 ---
 
-## 18. Transcrição de Vídeos e Resumo Inteligente com IA (OpenAI Whisper & GPT)
-- **Localização:** Aba **"Transcrição & Resumo IA"** (`Sparkles`) no player da aula (`LessonPlayer`).
-- **Mecânica de Processamento:**
-  - Extração de áudio otimizada via FFmpeg compacto em MP3 mono 16kHz a 48kbps, garantindo que mesmo aulas de até 1 hora fiquem abaixo do limite de 25 MB da API OpenAI Whisper.
-  - Transcrição textual completa através do modelo `whisper-1`.
-  - Análise pedagógica e geração de Resumo Executivo, Principais Pontos (Key Takeaways) e Documento HTML5 autônomo via `gpt-4o-mini`.
-- **Geração e Edição Automática do Título da Aula por IA:**
-  - A partir da transcrição textual completa do vídeo gerada pelo Whisper, o modelo `gpt-4o-mini` analisa o assunto central e gera um título conciso, profissional e pedagógico para a aula (`generated_lesson_title`, máx. 60–70 caracteres, sem prefixos ou aspas).
-  - O sistema salva e substitui automaticamente o título da aula no banco de dados (`lesson.title`) ao finalizar a transcrição.
-  - No frontend, o evento `lesson-title-updated` atualiza em tempo real o cabeçalho da aula ativa no player e a lista/linha do tempo de aulas na barra lateral (`CourseClassroom`), sem exigir recarregamento manual da página pelo usuário.
+## 18. TranscriÃ§Ã£o de VÃ­deos e Resumo Inteligente com IA (OpenAI Whisper & GPT)
+- **LocalizaÃ§Ã£o:** Aba **"TranscriÃ§Ã£o & Resumo IA"** (`Sparkles`) no player da aula (`LessonPlayer`).
+- **MecÃ¢nica de Processamento:**
+  - ExtraÃ§Ã£o de Ã¡udio otimizada via FFmpeg compacto em MP3 mono 16kHz a 48kbps, garantindo que mesmo aulas de atÃ© 1 hora fiquem abaixo do limite de 25 MB da API OpenAI Whisper.
+  - TranscriÃ§Ã£o textual completa atravÃ©s do modelo `whisper-1`.
+  - AnÃ¡lise pedagÃ³gica e geraÃ§Ã£o de Resumo Executivo, Principais Pontos (Key Takeaways) e Documento HTML5 autÃ´nomo via `gpt-4o-mini`.
+- **GeraÃ§Ã£o e EdiÃ§Ã£o AutomÃ¡tica do TÃ­tulo da Aula por IA:**
+  - A partir da transcriÃ§Ã£o textual completa do vÃ­deo gerada pelo Whisper, o modelo `gpt-4o-mini` analisa o assunto central e gera um tÃ­tulo conciso, profissional e pedagÃ³gico para a aula (`generated_lesson_title`, mÃ¡x. 60â70 caracteres, sem prefixos ou aspas).
+  - O sistema salva e substitui automaticamente o tÃ­tulo da aula no banco de dados (`lesson.title`) ao finalizar a transcriÃ§Ã£o.
+  - No frontend, o evento `lesson-title-updated` atualiza em tempo real o cabeÃ§alho da aula ativa no player e a lista/linha do tempo de aulas na barra lateral (`CourseClassroom`), sem exigir recarregamento manual da pÃ¡gina pelo usuÃ¡rio.
 - **Documento HTML Inteligente:**
-  - Documento HTML5 completo com tipografia moderna, seções pedagógicas bem definidas e estilos de impressão `@media print` para quem desejar imprimir ou salvar como PDF.
-  - Acessível diretamente pelo botão **"Abrir Documento HTML"** via endpoint com streaming nativo (`GET /api/v1/courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/html`).
-  - **Autenticação em Nova Aba:** O endpoint suporta autenticação tanto via header `Authorization: Bearer <token>` quanto via query parameter `?token=<jwt_token>`. Isso permite que o navegador abra a nova aba diretamente sem ser bloqueado com erro 401.
+  - Documento HTML5 completo com tipografia moderna, seÃ§Ãµes pedagÃ³gicas bem definidas e estilos de impressÃ£o `@media print` para quem desejar imprimir ou salvar como PDF.
+  - AcessÃ­vel diretamente pelo botÃ£o **"Abrir Documento HTML"** via endpoint com streaming nativo (`GET /api/v1/courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/html`).
+  - **AutenticaÃ§Ã£o em Nova Aba:** O endpoint suporta autenticaÃ§Ã£o tanto via header `Authorization: Bearer <token>` quanto via query parameter `?token=<jwt_token>`. Isso permite que o navegador abra a nova aba diretamente sem ser bloqueado com erro 401.
 - **Controle de Acesso e Custos de API (Exclusivo Administradores e Super Admins):**
-  - O acionamento da transcrição/re-geração é **restrito a Administradores e Super Admins** (`require_admin_or_superadmin`), evitando gastos desnecessários de API por alunos.
-  - Ao clicar no botão **"Re-gerar"**, o sistema abre obrigatoriamente um **popup modal centralizado de confirmação** (`ConfirmRetriggerAiModal`) com backdrop escuro translúcido, explicando que a ação reprocessará o áudio da aula na IA, evitando cliques acidentais e cobranças desnecessárias de tokens.
-  - Uma vez processado, o material gerado é persistido na tabela `lesson_transcriptions` e fica permanentemente disponível para todos os alunos matriculados no curso.
-  - **Métricas e Custos em Reais (BRL):** O sistema calcula os custos oficiais cobrados pela OpenAI com base na duração do áudio (`$0.006/min` no Whisper-1) e no consumo exato de tokens do GPT-4o-mini (`$0.15/1M` prompt tokens e `$0.60/1M` completion tokens), convertidos para reais com base na taxa `OPENAI_USD_BRL_RATE` (padrão `5.50`).
-  - **Confidencialidade Rigorosa de Custos:** Os dados de custo em reais (`estimated_cost_brl`, `estimated_cost_formatted`) e tokens consumidos são enviados pela API e exibidos na interface (badge `💰 Custo: R$ X,XX`) **exclusivamente para Administradores e Super Admins**. Para o perfil `aluno`, o backend omite esses campos (retornando `null`) e a interface oculta qualquer indicação de custo.
-- **Exibição Seletiva entre Perfis (Aluno vs Gestor):**
-  - **Transcrição Integral e Busca no Texto:** O card com a **Transcrição Integral** completa do vídeo e o campo de pesquisa em tempo real, além do botão de "Copiar Texto" da transcrição integral, são exibidos **exclusivamente para Administradores e Super Admins**. No backend, o campo `full_transcript` é omitido (`""`) para requisições de alunos.
-  - **Experiência do Aluno:** Alunos visualizam uma interface limpa e focada no aprendizado, com os **Principais Pontos da Aula (Key Takeaways)**, a **Minutagem dos Capítulos** e o **Resumo da Aula** sintetizado.
+  - O acionamento da transcriÃ§Ã£o/re-geraÃ§Ã£o Ã© **restrito a Administradores e Super Admins** (`require_admin_or_superadmin`), evitando gastos desnecessÃ¡rios de API por alunos.
+  - Ao clicar no botÃ£o **"Re-gerar"**, o sistema abre obrigatoriamente um **popup modal centralizado de confirmaÃ§Ã£o** (`ConfirmRetriggerAiModal`) com backdrop escuro translÃºcido, explicando que a aÃ§Ã£o reprocessarÃ¡ o Ã¡udio da aula na IA, evitando cliques acidentais e cobranÃ§as desnecessÃ¡rias de tokens.
+  - Uma vez processado, o material gerado Ã© persistido na tabela `lesson_transcriptions` e fica permanentemente disponÃ­vel para todos os alunos matriculados no curso.
+  - **MÃ©tricas e Custos em Reais (BRL):** O sistema calcula os custos oficiais cobrados pela OpenAI com base na duraÃ§Ã£o do Ã¡udio (`$0.006/min` no Whisper-1) e no consumo exato de tokens do GPT-4o-mini (`$0.15/1M` prompt tokens e `$0.60/1M` completion tokens), convertidos para reais com base na taxa `OPENAI_USD_BRL_RATE` (padrÃ£o `5.50`).
+  - **Confidencialidade Rigorosa de Custos:** Os dados de custo em reais (`estimated_cost_brl`, `estimated_cost_formatted`) e tokens consumidos sÃ£o enviados pela API e exibidos na interface (badge `ð° Custo: R$ X,XX`) **exclusivamente para Administradores e Super Admins**. Para o perfil `aluno`, o backend omite esses campos (retornando `null`) e a interface oculta qualquer indicaÃ§Ã£o de custo.
+- **ExibiÃ§Ã£o Seletiva entre Perfis (Aluno vs Gestor):**
+  - **TranscriÃ§Ã£o Integral e Busca no Texto:** O card com a **TranscriÃ§Ã£o Integral** completa do vÃ­deo e o campo de pesquisa em tempo real, alÃ©m do botÃ£o de "Copiar Texto" da transcriÃ§Ã£o integral, sÃ£o exibidos **exclusivamente para Administradores e Super Admins**. No backend, o campo `full_transcript` Ã© omitido (`""`) para requisiÃ§Ãµes de alunos.
+  - **ExperiÃªncia do Aluno:** Alunos visualizam uma interface limpa e focada no aprendizado, com os **Principais Pontos da Aula (Key Takeaways)**, a **Minutagem dos CapÃ­tulos** e o **Resumo da Aula** sintetizado.
 - **Recursos da Interface:**
-  - Busca em tempo real na transcrição com destaque de trechos filtrados (Admin e Super Admin).
-  - Botão de cópia rápida com feedback visual e toast (Admin e Super Admin).
-  - Botão de re-gerar protegido por modal central de confirmação (Admin e Super Admin).
-  - Badge de custo em reais na barra de ações (visível apenas para gestores).
-- **Edição de Capítulos e Minutagens por Administradores e Super Admins:**
-  - **Permissão de Edição:** Administradores e Super Admins possuem permissão para editar os capítulos e minutagens gerados pela IA (`PUT /courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/chapters`), permitindo corrigir erros ortográficos ou palavras transcritas incorretamente pelo modelo (ex: termos técnicos ou neologismos), ajustar tempos e adicionar/remover tópicos da minutagem.
-  - **Interface de Edição:** No card de Capítulos (`LessonChaptersCard`), é exibido o botão **"Editar Capítulos"** (`Pencil`) exclusivamente para gestores. Ao clicar, o sistema abre o modal centralizado (`EditLessonChaptersModal`) com backdrop escuro translúcido (não fechável por clique externo).
-  - **Sincronização em Tempo Real:** Ao salvar as alterações, os novos capítulos são persistidos no banco de dados, a interface da aba atualiza imediatamente e o evento `video-chapters-loaded` é disparado, sincronizando os marcadores do player de vídeo sem requerer recarregamento da página.
-  - **Restrição de Alunos:** O perfil `aluno` visualiza os capítulos apenas em modo de leitura/navegação com seek interativo, sem botões de edição ou acesso ao endpoint (retornando `HTTP 403 Forbidden` caso tente submeter alterações).
+  - Busca em tempo real na transcriÃ§Ã£o com destaque de trechos filtrados (Admin e Super Admin).
+  - BotÃ£o de cÃ³pia rÃ¡pida com feedback visual e toast (Admin e Super Admin).
+  - BotÃ£o de re-gerar protegido por modal central de confirmaÃ§Ã£o (Admin e Super Admin).
+  - Badge de custo em reais na barra de aÃ§Ãµes (visÃ­vel apenas para gestores).
+- **EdiÃ§Ã£o de CapÃ­tulos e Minutagens por Administradores e Super Admins:**
+  - **PermissÃ£o de EdiÃ§Ã£o:** Administradores e Super Admins possuem permissÃ£o para editar os capÃ­tulos e minutagens gerados pela IA (`PUT /courses/{c_id}/modules/{m_id}/lessons/{l_id}/transcription/chapters`), permitindo corrigir erros ortogrÃ¡ficos ou palavras transcritas incorretamente pelo modelo (ex: termos tÃ©cnicos ou neologismos), ajustar tempos e adicionar/remover tÃ³picos da minutagem.
+  - **Interface de EdiÃ§Ã£o:** No card de CapÃ­tulos (`LessonChaptersCard`), Ã© exibido o botÃ£o **"Editar CapÃ­tulos"** (`Pencil`) exclusivamente para gestores. Ao clicar, o sistema abre o modal centralizado (`EditLessonChaptersModal`) com backdrop escuro translÃºcido (nÃ£o fechÃ¡vel por clique externo).
+  - **SincronizaÃ§Ã£o em Tempo Real:** Ao salvar as alteraÃ§Ãµes, os novos capÃ­tulos sÃ£o persistidos no banco de dados, a interface da aba atualiza imediatamente e o evento `video-chapters-loaded` Ã© disparado, sincronizando os marcadores do player de vÃ­deo sem requerer recarregamento da pÃ¡gina.
+  - **RestriÃ§Ã£o de Alunos:** O perfil `aluno` visualiza os capÃ­tulos apenas em modo de leitura/navegaÃ§Ã£o com seek interativo, sem botÃµes de ediÃ§Ã£o ou acesso ao endpoint (retornando `HTTP 403 Forbidden` caso tente submeter alteraÃ§Ãµes).
 
 ---
 
-## 19. Organização da Navegação e Menu Lateral (Proposta 2: 3 Categorias Modernas)
+## 19. OrganizaÃ§Ã£o da NavegaÃ§Ã£o e Menu Lateral (Proposta 2: 3 Categorias Modernas)
 - A barra lateral (`Sidebar`) agrupa as funcionalidades da plataforma em **3 categorias elegantes e compactas**:
-  1. 🎓 **Área Pedagógica** (exibida como **Meu Aprendizado** para o Aluno):
-     - **Cursos** (`courses`): Catálogo e sala de aula (Todos).
-     - **Alunos** (`students`): Gestão de alunos e matrículas (Admin/Super Admin).
-     - **Suporte** (`support`): Central de suporte e tira-dúvidas (Todos).
-     - **Relatos de Aulas** (`lesson-reports`): Problemas técnicos reportados com contadores e badge numérico (Todos). Alunos visualizam a listagem geral em modo somente leitura (sem botões de resolução ou exclusão), enquanto gestores (Admin e Super Admin) realizam a moderação completa.
-  2. 🚀 **Comunidade & Social**:
-     - **Chat da Comunidade** (`chat`): Canais de bate-papo em tempo real com suporte a mídias, curtidas e mensagens fixadas (Todos).
-     - **Ranking & Conquistas** (`ranking`): Gamificação, pódio e pontuação dos alunos (Todos).
-     - **Depoimentos** (`testimonials`): Avaliações em estrelas e relatos aprovados sobre os cursos (Todos).
-  3. ⚙️ **Sistema & Configurações**:
-     - **Configurações** (`settings`):
+  1. ð **Ãrea PedagÃ³gica** (exibida como **Meu Aprendizado** para o Aluno):
+     - **Cursos** (`courses`): CatÃ¡logo e sala de aula (Todos).
+     - **Alunos** (`students`): GestÃ£o de alunos e matrÃ­culas (Admin/Super Admin).
+     - **Suporte** (`support`): Central de suporte e tira-dÃºvidas (Todos).
+     - **Relatos de Aulas** (`lesson-reports`): Problemas tÃ©cnicos reportados com contadores e badge numÃ©rico (Todos). Alunos visualizam a listagem geral em modo somente leitura (sem botÃµes de resoluÃ§Ã£o ou exclusÃ£o), enquanto gestores (Admin e Super Admin) realizam a moderaÃ§Ã£o completa.
+  2. ð **Comunidade & Social**:
+     - **Chat da Comunidade** (`chat`): Canais de bate-papo em tempo real com suporte a mÃ­dias, curtidas e mensagens fixadas (Todos).
+     - **Ranking & Conquistas** (`ranking`): GamificaÃ§Ã£o, pÃ³dio e pontuaÃ§Ã£o dos alunos (Todos).
+     - **Depoimentos** (`testimonials`): AvaliaÃ§Ãµes em estrelas e relatos aprovados sobre os cursos (Todos).
+  3. âï¸ **Sistema & ConfiguraÃ§Ãµes**:
+     - **ConfiguraÃ§Ãµes** (`settings`):
        - **Alunos:** Visualizam as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual, foto/avatar e dados de cadastro. As abas "Tokens de API", "Links da Plataforma" e "WhiteLabel" ficam ocultas.
        - **Admin e Super Admin:** Visualizam as 5 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"**, **"Tokens de API"**, **"Links da Plataforma"** e **"WhiteLabel"**).
-       - **Exibição de Nível RPG e Ranking no Meu Perfil (`ProfileGamificationCard`):**
-         - Localizado no topo da aba **"Meu Perfil"**, exibe em tempo real o status de gamificação do usuário:
-         - **Para Alunos:** Mostra o badge e escudo do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), número do nível (1 ao 20), divisão, patente, barra de progresso animada de XP com porcentagem e pontos restantes para subir de nível, além da posição ordinal no ranking mensal (`#X`), insígnia conquistada, total de pontos e atalhos rápidos para "Ver 20 Níveis" (`GamificationRpgLadderModal`) e "Ver Ranking" da comunidade.
-         - **Para Administradores e Super Admins:** Exibe o selo distintivo de gestão (`Super Administrador Mestre` ou `Administrador da Plataforma`), indicando atuação como supervisor da comunidade (fora da disputa direta de alunos) e métricas gerais da disputa ativa da comunidade com atalhos diretos para inspecionar os níveis e o ranking completo.
-     - **Integrações** (`integrations`): Webhooks de checkout Kiwify/Hotmart (Admin/Super Admin).
-     - **Gestão de Usuários** (`users`): Gestão de administradores e convites (Super Admin).
-     - **Backup Automático** (`backup`): Snapshots de banco e uploads em nuvem Backblaze B2 (Super Admin).
+       - **ExibiÃ§Ã£o de NÃ­vel RPG e Ranking no Meu Perfil (`ProfileGamificationCard`):**
+         - Localizado no topo da aba **"Meu Perfil"**, exibe em tempo real o status de gamificaÃ§Ã£o do usuÃ¡rio:
+         - **Para Alunos:** Mostra o badge e escudo do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), nÃºmero do nÃ­vel (1 ao 20), divisÃ£o, patente, barra de progresso animada de XP com porcentagem e pontos restantes para subir de nÃ­vel, alÃ©m da posiÃ§Ã£o ordinal no ranking mensal (`#X`), insÃ­gnia conquistada, total de pontos e atalhos rÃ¡pidos para "Ver 20 NÃ­veis" (`GamificationRpgLadderModal`) e "Ver Ranking" da comunidade.
+         - **Para Administradores e Super Admins:** Exibe o selo distintivo de gestÃ£o (`Super Administrador Mestre` ou `Administrador da Plataforma`), indicando atuaÃ§Ã£o como supervisor da comunidade (fora da disputa direta de alunos) e mÃ©tricas gerais da disputa ativa da comunidade com atalhos diretos para inspecionar os nÃ­veis e o ranking completo.
+     - **IntegraÃ§Ãµes** (`integrations`): Webhooks de checkout Kiwify/Hotmart (Admin/Super Admin).
+     - **GestÃ£o de UsuÃ¡rios** (`users`): GestÃ£o de administradores e convites (Super Admin).
+     - **Backup AutomÃ¡tico** (`backup`): Snapshots de banco e uploads em nuvem Backblaze B2 (Super Admin).
      - **Logs do Sistema** (`logs`): Auditoria de eventos do servidor (Super Admin).
 
-  4. 🔗 **Links (Parte Inferior da Barra Lateral)**:
-     - Localizada na base do menu de navegação lateral (logo acima do card de perfil do usuário), exibe os links cadastrados e ativos de redes sociais e páginas externas importantes.
-     - Abre cada link em uma nova aba com segurança (`target="_blank" rel="noopener noreferrer"`).
-     - Visível para todos os perfis (Alunos, Administradores e Super Admins).
+  4. ð **Links (Parte Inferior da Barra Lateral)**:
+     - Localizada na base do menu de navegaÃ§Ã£o lateral (logo acima do card de perfil do usuÃ¡rio), exibe os links cadastrados e ativos de redes sociais e pÃ¡ginas externas importantes.
+     - Abre cada link em uma nova aba com seguranÃ§a (`target="_blank" rel="noopener noreferrer"`).
+     - VisÃ­vel para todos os perfis (Alunos, Administradores e Super Admins).
 
 ---
 
-## 20. Gestão de Links da Plataforma e Redes Sociais
-- **Localização:** Aba **"Links da Plataforma"** (`Link2`) dentro de **Configurações** (`/settings`), acessível exclusivamente por Administradores e Super Admins.
+## 20. GestÃ£o de Links da Plataforma e Redes Sociais
+- **LocalizaÃ§Ã£o:** Aba **"Links da Plataforma"** (`Link2`) dentro de **ConfiguraÃ§Ãµes** (`/settings`), acessÃ­vel exclusivamente por Administradores e Super Admins.
 - **Campos do Link:**
-  - **Título:** Rótulo descritivo exibido na barra lateral (ex: "Instagram Oficial", "Canal do YouTube").
-  - **URL de Destino:** Link externo completo iniciado com `https://` ou `http://` (com botão de teste rápido em nova aba).
-  - **Ícone:** Seletor com ícones pré-definidos estilizados com cores oficiais (Instagram, YouTube, WhatsApp, Telegram, Website/Globo, Twitter/X, Facebook, LinkedIn, Discord, GitHub, Link Genérico).
-  - **Ordem de Exibição:** Número inteiro ordenando a lista (menor número aparece primeiro no menu).
-  - **Status Ativo/Oculto:** Permite ativar ou ocultar o link da barra lateral a qualquer momento sem precisar deletá-lo.
-- **Confirmação de Exclusão:** Modal com backdrop preto translúcido protetor, sem fechamento ao clicar fora e apenas 1 botão de cancelar além do botão de confirmação.
-- **Sincronização em Tempo Real:** Toda alteração de link dispara atualização instantânea na barra lateral através do evento `platform_links_updated`.
+  - **TÃ­tulo:** RÃ³tulo descritivo exibido na barra lateral (ex: "Instagram Oficial", "Canal do YouTube").
+  - **URL de Destino:** Link externo completo iniciado com `https://` ou `http://` (com botÃ£o de teste rÃ¡pido em nova aba).
+  - **Ãcone:** Seletor com Ã­cones prÃ©-definidos estilizados com cores oficiais (Instagram, YouTube, WhatsApp, Telegram, Website/Globo, Twitter/X, Facebook, LinkedIn, Discord, GitHub, Link GenÃ©rico).
+  - **Ordem de ExibiÃ§Ã£o:** NÃºmero inteiro ordenando a lista (menor nÃºmero aparece primeiro no menu).
+  - **Status Ativo/Oculto:** Permite ativar ou ocultar o link da barra lateral a qualquer momento sem precisar deletÃ¡-lo.
+- **ConfirmaÃ§Ã£o de ExclusÃ£o:** Modal com backdrop preto translÃºcido protetor, sem fechamento ao clicar fora e apenas 1 botÃ£o de cancelar alÃ©m do botÃ£o de confirmaÃ§Ã£o.
+- **SincronizaÃ§Ã£o em Tempo Real:** Toda alteraÃ§Ã£o de link dispara atualizaÃ§Ã£o instantÃ¢nea na barra lateral atravÃ©s do evento `platform_links_updated`.
 
 ---
 
-## 21. Backup Automático e Sincronização em Nuvem (PostgreSQL & Backblaze B2)
-- **Localização:** Aba **"Backup Automático"** (`Database`) na categoria **Sistema & Configurações** da barra lateral, de acesso exclusivo para **Super Admin**.
-- **Exibição Obrigatória no Horário Oficial de Brasília (`America/Sao_Paulo`):**
-  - **Cards de Métricas:**
-    - O card de **"Último Backup"** deve exibir a data e hora em que o backup foi gerado estritamente no **Horário Oficial de Brasília** no formato `DD/MM/AAAA, HH:MM` (ex: `05/10/2026, 17:27`), sincronizado com o timestamp contido no nome do arquivo físico (`teste_2026_10_05_17_27_47.dump.gz`).
-    - O card de **"Próximo Backup"** deve exibir o horário da próxima execução agendada convertido para o Horário de Brasília. Caso o agendamento esteja ativo e o horário anterior já tenha passado, o sistema recalcula dinamicamente para o próximo ciclo futuro relativo ao momento atual.
+## 21. Backup AutomÃ¡tico e SincronizaÃ§Ã£o em Nuvem (PostgreSQL & Backblaze B2)
+- **LocalizaÃ§Ã£o:** Aba **"Backup AutomÃ¡tico"** (`Database`) na categoria **Sistema & ConfiguraÃ§Ãµes** da barra lateral, de acesso exclusivo para **Super Admin**.
+- **ExibiÃ§Ã£o ObrigatÃ³ria no HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo`):**
+  - **Cards de MÃ©tricas:**
+    - O card de **"Ãltimo Backup"** deve exibir a data e hora em que o backup foi gerado estritamente no **HorÃ¡rio Oficial de BrasÃ­lia** no formato `DD/MM/AAAA, HH:MM` (ex: `05/10/2026, 17:27`), sincronizado com o timestamp contido no nome do arquivo fÃ­sico (`teste_2026_10_05_17_27_47.dump.gz`).
+    - O card de **"PrÃ³ximo Backup"** deve exibir o horÃ¡rio da prÃ³xima execuÃ§Ã£o agendada convertido para o HorÃ¡rio de BrasÃ­lia. Caso o agendamento esteja ativo e o horÃ¡rio anterior jÃ¡ tenha passado, o sistema recalcula dinamicamente para o prÃ³ximo ciclo futuro relativo ao momento atual.
   - **Tabela de Backups (Coluna "CRIADO EM"):**
-    - Todas as linhas da listagem de backups no S3/B2 exibem o momento da criação no Horário de Brasília completo com segundos: `DD/MM/AAAA, HH:MM:SS` (ex: `05/10/2026, 17:27:47`).
-- **Nomenclatura Padrão dos Arquivos:**
-  - O nome gerado inclui o timestamp no fuso de Brasília (`YYYY_MM_DD_HH_MM_SS`), permitindo auditoria visual imediata do momento exato do dump.
+    - Todas as linhas da listagem de backups no S3/B2 exibem o momento da criaÃ§Ã£o no HorÃ¡rio de BrasÃ­lia completo com segundos: `DD/MM/AAAA, HH:MM:SS` (ex: `05/10/2026, 17:27:47`).
+- **Nomenclatura PadrÃ£o dos Arquivos:**
+  - O nome gerado inclui o timestamp no fuso de BrasÃ­lia (`YYYY_MM_DD_HH_MM_SS`), permitindo auditoria visual imediata do momento exato do dump.
 
 ---
 
-## 22. Chat da Comunidade — Galeria de Mídias e Gravação de Áudio
-- **Botão de Acesso à Galeria de Mídias:**
-  - Localizado no cabeçalho do chat (`ChatHeader`), diretamente ao lado do botão de filtro de favoritas (`⭐ Favoritas`).
-  - Rótulo: **"Mídias & Arquivos"** com ícone de pasta (`FolderOpen`).
-  - Ao clicar, abre o modal de galeria de mídias (`ChatMediaGalleryModal`).
-- **Modal de Galeria de Mídias:**
-  - **Padrão de Popups:** Centralizado na tela, com painel backdrop preto translúcido escuro (`rgba(0, 0, 0, 0.85)`), bloqueio de fechamento ao clicar fora (fechamento forçado apenas via botão `X`) e 1 único botão de fechar no cabeçalho.
+## 22. Chat da Comunidade â Galeria de MÃ­dias e GravaÃ§Ã£o de Ãudio
+- **BotÃ£o de Acesso Ã  Galeria de MÃ­dias:**
+  - Localizado no cabeÃ§alho do chat (`ChatHeader`), diretamente ao lado do botÃ£o de filtro de favoritas (`â­ Favoritas`).
+  - RÃ³tulo: **"MÃ­dias & Arquivos"** com Ã­cone de pasta (`FolderOpen`).
+  - Ao clicar, abre o modal de galeria de mÃ­dias (`ChatMediaGalleryModal`).
+- **Modal de Galeria de MÃ­dias:**
+  - **PadrÃ£o de Popups:** Centralizado na tela, com painel backdrop preto translÃºcido escuro (`rgba(0, 0, 0, 0.85)`), bloqueio de fechamento ao clicar fora (fechamento forÃ§ado apenas via botÃ£o `X`) e 1 Ãºnico botÃ£o de fechar no cabeÃ§alho.
   - **Abas de Filtro:**
-    - `Todas` (`all`): Exibe todas as mídias trocadas no canal.
+    - `Todas` (`all`): Exibe todas as mÃ­dias trocadas no canal.
     - `Fotos` (`image`): Apenas imagens (JPG, PNG, WEBP, GIF).
-    - `Vídeos` (`video`): Vídeos MP4, WebM, MOV, MKV com miniatura e botão de play.
-    - `Áudios` (`audio`): Áudios gravados e enviados com reprodução nativa.
-    - `Documentos` (`file`): PDFs, planilhas, arquivos compactados e documentos de texto com ícone e botão de download/visualização.
-  - **Ação "Ver no Chat":** Em cada item da galeria, há um botão de sobreposição "Ver no Chat". Ao clicar, o modal se fecha automaticamente e a lista de mensagens do chat realiza um scroll suave até a mensagem original com highlight luminoso de destaque.
-- **Gravação e Envio de Áudio Nativo:**
-  - O usuário pode gravar áudios diretamente pelo botão de microfone (`Mic`) no rodapé do chat (`ChatInputBar`).
+    - `VÃ­deos` (`video`): VÃ­deos MP4, WebM, MOV, MKV com miniatura e botÃ£o de play.
+    - `Ãudios` (`audio`): Ãudios gravados e enviados com reproduÃ§Ã£o nativa.
+    - `Documentos` (`file`): PDFs, planilhas, arquivos compactados e documentos de texto com Ã­cone e botÃ£o de download/visualizaÃ§Ã£o.
+  - **AÃ§Ã£o "Ver no Chat":** Em cada item da galeria, hÃ¡ um botÃ£o de sobreposiÃ§Ã£o "Ver no Chat". Ao clicar, o modal se fecha automaticamente e a lista de mensagens do chat realiza um scroll suave atÃ© a mensagem original com highlight luminoso de destaque.
+- **GravaÃ§Ã£o e Envio de Ãudio Nativo:**
+  - O usuÃ¡rio pode gravar Ã¡udios diretamente pelo botÃ£o de microfone (`Mic`) no rodapÃ© do chat (`ChatInputBar`).
   - Utiliza `MediaRecorder` nativo do navegador (`audio/webm`).
-  - Exibe timer de gravação dinâmico com indicador vermelho pulsante e botões para "Descartar" ou "Enviar".
-  - O áudio é transmitido e hospedado com segurança e renderizado com player interativo no histórico do canal.
+  - Exibe timer de gravaÃ§Ã£o dinÃ¢mico com indicador vermelho pulsante e botÃµes para "Descartar" ou "Enviar".
+  - O Ã¡udio Ã© transmitido e hospedado com seguranÃ§a e renderizado com player interativo no histÃ³rico do canal.
 - **Upload Ampliado de Arquivos:**
-  - O seletor de anexos aceita imagens, vídeos, áudios e documentos de até 25 MB por arquivo.
+  - O seletor de anexos aceita imagens, vÃ­deos, Ã¡udios e documentos de atÃ© 25 MB por arquivo.
 
 ---
 
-## 23. Botão e Dropdown de Favoritos no Cabeçalho Superior Global (TopNavbar)
-- **Localização:**
-  - Posicionado na barra superior fixa global da plataforma (`TopNavbar`), acessível a partir de qualquer tela (Cursos, Suporte, Chat, Ranking, Depoimentos, Configurações).
-  - Componente: botão estilizado com borda translúcida, ícone de marcador (`Bookmark`) em destaque ciano/azul e rótulo **"Favoritos"**.
-  - **Badge Numérico Dinâmico:** Exibe um contador em formato pílula com o total consolidado de itens favoritados pelo usuário ativo. O badge é ocultado automaticamente se a contagem for zero e atualizado em tempo real via evento customizado de broadcast `window.dispatchEvent(new CustomEvent('favorites_updated'))`.
+## 23. BotÃ£o e Dropdown de Favoritos no CabeÃ§alho Superior Global (TopNavbar)
+- **LocalizaÃ§Ã£o:**
+  - Posicionado na barra superior fixa global da plataforma (`TopNavbar`), acessÃ­vel a partir de qualquer tela (Cursos, Suporte, Chat, Ranking, Depoimentos, ConfiguraÃ§Ãµes).
+  - Componente: botÃ£o estilizado com borda translÃºcida, Ã­cone de marcador (`Bookmark`) em destaque ciano/azul e rÃ³tulo **"Favoritos"**.
+  - **Badge NumÃ©rico DinÃ¢mico:** Exibe um contador em formato pÃ­lula com o total consolidado de itens favoritados pelo usuÃ¡rio ativo. O badge Ã© ocultado automaticamente se a contagem for zero e atualizado em tempo real via evento customizado de broadcast `window.dispatchEvent(new CustomEvent('favorites_updated'))`.
 - **Dropdown de Favoritos (`FavoritesDropdown`):**
-  - **Menu Flutuante / Suspenso:** Abre abaixo do botão com alinhamento à direita, cantos arredondados, fundo escuro profundo (`#0f172a`), bordas sutis e efeito glassmorphism com sombra pronunciada.
+  - **Menu Flutuante / Suspenso:** Abre abaixo do botÃ£o com alinhamento Ã  direita, cantos arredondados, fundo escuro profundo (`#0f172a`), bordas sutis e efeito glassmorphism com sombra pronunciada.
   - **Abas Organizadoras:**
-    1. **Dúvidas:** Lista os tópicos de suporte favoritados pelo aluno/administrador. Exibe título da dúvida, status e autor.
-    2. **Aulas:** Lista as aulas marcadas como favoritas pelo aluno. Exibe título da aula, nome do curso e duração estimada.
-    3. **Comentários:** Lista os comentários de aulas favoritados pelo usuário. Exibe o comentário, autor e aula de origem.
+    1. **DÃºvidas:** Lista os tÃ³picos de suporte favoritados pelo aluno/administrador. Exibe tÃ­tulo da dÃºvida, status e autor.
+    2. **Aulas:** Lista as aulas marcadas como favoritas pelo aluno. Exibe tÃ­tulo da aula, nome do curso e duraÃ§Ã£o estimada.
+    3. **ComentÃ¡rios:** Lista os comentÃ¡rios de aulas favoritados pelo usuÃ¡rio. Exibe o comentÃ¡rio, autor e aula de origem.
     4. **Mensagens:** Lista as mensagens favoritadas no Chat da Comunidade. Exibe autor e trecho da mensagem.
-  - **Contadores por Aba:** Cada aba exibe um badge numérico discreto com a quantidade de itens favoritados naquele tipo.
-  - **Navegação Direta:**
-    - Ao clicar em um tópico de dúvida favoritado, o sistema navega automaticamente para a aba de Suporte e abre o tópico.
+  - **Contadores por Aba:** Cada aba exibe um badge numÃ©rico discreto com a quantidade de itens favoritados naquele tipo.
+  - **NavegaÃ§Ã£o Direta:**
+    - Ao clicar em um tÃ³pico de dÃºvida favoritado, o sistema navega automaticamente para a aba de Suporte e abre o tÃ³pico.
     - Ao clicar em uma aula favoritada, o sistema navega diretamente para a sala de aula correspondente.
-    - Ao clicar em um comentário favoritado, o sistema navega para a aula e centraliza a visualização no comentário.
+    - Ao clicar em um comentÃ¡rio favoritado, o sistema navega para a aula e centraliza a visualizaÃ§Ã£o no comentÃ¡rio.
     - Ao clicar em uma mensagem favoritada, o sistema navega para o Chat da Comunidade.
-  - **Remoção Rápida:** Cada card na listagem possui botão `X` discreto para desfavoritar o item diretamente de dentro do menu, com sincronização imediata nos contadores.
+  - **RemoÃ§Ã£o RÃ¡pida:** Cada card na listagem possui botÃ£o `X` discreto para desfavoritar o item diretamente de dentro do menu, com sincronizaÃ§Ã£o imediata nos contadores.
   - **Mecanismos de Favoritar no Sistema:**
-    - **Aulas:** Botão "Favoritar / Favoritada" (`Bookmark`) na barra de ações inferior da aula (`LessonActionToolbar`).
-    - **Comentários de Aulas:** Botão de marcador (`Bookmark`) em cada item de comentário (`CommentItem`).
-    - **Dúvidas do Suporte:** Botão de favoritar tópico na visualização de detalhes do suporte.
-    - **Mensagens do Chat:** Ação de favoritar mensagem no menu de ações da mensagem.
+    - **Aulas:** BotÃ£o "Favoritar / Favoritada" (`Bookmark`) na barra de aÃ§Ãµes inferior da aula (`LessonActionToolbar`).
+    - **ComentÃ¡rios de Aulas:** BotÃ£o de marcador (`Bookmark`) em cada item de comentÃ¡rio (`CommentItem`).
+    - **DÃºvidas do Suporte:** BotÃ£o de favoritar tÃ³pico na visualizaÃ§Ã£o de detalhes do suporte.
+    - **Mensagens do Chat:** AÃ§Ã£o de favoritar mensagem no menu de aÃ§Ãµes da mensagem.
   - **Estrutura de Banco de Dados:**
-    - Tabelas dedicadas `lesson_favorites` (chave primária composta `lesson_id + user_id`) e `lesson_comment_favorites` (chave primária composta `comment_id + user_id`), com exclusão em cascata ao remover a aula/comentário ou usuário.
+    - Tabelas dedicadas `lesson_favorites` (chave primÃ¡ria composta `lesson_id + user_id`) e `lesson_comment_favorites` (chave primÃ¡ria composta `comment_id + user_id`), com exclusÃ£o em cascata ao remover a aula/comentÃ¡rio ou usuÃ¡rio.
 
 ---
 
-## 24. Central de Notificações no TopNavbar (Menções e Threads)
-- **Localização:**
-  - Botão de sino (`Bell`) posicionado na barra superior fixa global da plataforma (`TopNavbar`), ao lado dos botões de Favoritos e DMs.
-  - **Badge Numérico de Alerta:** Exibe contador em formato pílula na cor de destaque laranja (`#f97316`) com o total de notificações não lidas (`unreadNotifCount`). Suporta indicação `99+` se exceder 99.
-  - **Sincronização em Tempo Real:** Atualizado via polling e evento customizado global `window.dispatchEvent(new CustomEvent('notifications_updated'))`.
-- **Modal de Notificações (`NotificationsModal`):**
-  - **Padrão de Popups:** Centralizado na tela com backdrop preto translúcido (`rgba(0, 0, 0, 0.75)`), efeito glassmorphism, bloqueio total de scroll no fundo (`overflow: hidden` no `document.body`) e portal renderizado via `createPortal(..., document.body)` para escapar de qualquer `backdrop-filter` ou hierarquia do layout.
+## 24. Central de NotificaÃ§Ãµes no TopNavbar (MenÃ§Ãµes e Threads)
+- **LocalizaÃ§Ã£o:**
+  - BotÃ£o de sino (`Bell`) posicionado na barra superior fixa global da plataforma (`TopNavbar`), ao lado dos botÃµes de Favoritos e DMs.
+  - **Badge NumÃ©rico de Alerta:** Exibe contador em formato pÃ­lula na cor de destaque laranja (`#f97316`) com o total de notificaÃ§Ãµes nÃ£o lidas (`unreadNotifCount`). Suporta indicaÃ§Ã£o `99+` se exceder 99.
+  - **SincronizaÃ§Ã£o em Tempo Real:** Atualizado via polling e evento customizado global `window.dispatchEvent(new CustomEvent('notifications_updated'))`.
+- **Modal de NotificaÃ§Ãµes (`NotificationsModal`):**
+  - **PadrÃ£o de Popups:** Centralizado na tela com backdrop preto translÃºcido (`rgba(0, 0, 0, 0.75)`), efeito glassmorphism, bloqueio total de scroll no fundo (`overflow: hidden` no `document.body`) e portal renderizado via `createPortal(..., document.body)` para escapar de qualquer `backdrop-filter` ou hierarquia do layout.
   - **Abas Organizadoras:**
-    1. **Caixa de entrada (`inbox`):** Reúne todas as notificações não lidas (menções `@` e novas respostas dentro das threads do usuário).
-    2. **Menções (`mentions`):** Filtra todas as menções diretas com `@` recebidas pelo usuário logado no chat.
-    3. **Seguindo / Threads (`threads`):** Filtra as respostas enviadas por outros usuários dentro das threads iniciadas pelo usuário ativo.
-    4. **Todas (`all`):** Histórico completo de notificações (lidas e não lidas).
-  - **Ações Rápidas:**
-    - **Marcar lidas:** Botão no cabeçalho para marcar todas as menções e threads como lidas de uma só vez (`/api/v1/chat/notifications/mark-all-read`).
-    - **Marcar individual:** Ação direta em cada card para marcar aquela notificação específica como lida.
-    - **Navegação Direta:** Ao clicar no card da notificação, a notificação é marcada como lida e o usuário é redirecionado para a aba do Chat da Comunidade.
+    1. **Caixa de entrada (`inbox`):** ReÃºne todas as notificaÃ§Ãµes nÃ£o lidas (menÃ§Ãµes `@` e novas respostas dentro das threads do usuÃ¡rio).
+    2. **MenÃ§Ãµes (`mentions`):** Filtra todas as menÃ§Ãµes diretas com `@` recebidas pelo usuÃ¡rio logado no chat.
+    3. **Seguindo / Threads (`threads`):** Filtra as respostas enviadas por outros usuÃ¡rios dentro das threads iniciadas pelo usuÃ¡rio ativo.
+    4. **Todas (`all`):** HistÃ³rico completo de notificaÃ§Ãµes (lidas e nÃ£o lidas).
+  - **AÃ§Ãµes RÃ¡pidas:**
+    - **Marcar lidas:** BotÃ£o no cabeÃ§alho para marcar todas as menÃ§Ãµes e threads como lidas de uma sÃ³ vez (`/api/v1/chat/notifications/mark-all-read`).
+    - **Marcar individual:** AÃ§Ã£o direta em cada card para marcar aquela notificaÃ§Ã£o especÃ­fica como lida.
+    - **NavegaÃ§Ã£o Direta:** Ao clicar no card da notificaÃ§Ã£o, a notificaÃ§Ã£o Ã© marcada como lida e o usuÃ¡rio Ã© redirecionado para a aba do Chat da Comunidade.
 
 ---
 
 ## 25. Sistema de Etiquetas (Tags) de Alunos e Disparo em Massa de Mensagens Diretas (DMs)
-- **Permissões de Acesso:**
-  - Exclusivo para perfis com nível administrativo (**Super Admin** e **Admin**).
-  - Alunos regulares não possuem permissão para criar, editar ou excluir tags, nem para disparar mensagens em massa.
-- **Localização na Interface:**
-  - Botões destacados **"Etiquetas"** (`Tag`) e **"Disparo em Massa"** (`Send`) posicionados na barra de ações superior da tela de **Gestão de Alunos** (`StudentManagement`).
-  - Cada card de aluno (`StudentCard`) exibe as badges das etiquetas atribuídas e um botão rápido `+ Tag` para atribuir ou remover tags individualmente.
-- **Sistema de Gestão de Etiquetas (`StudentTagsModal` & `StudentAssignTagsModal`):**
-  - Permite criar novas etiquetas informando nome e selecionando cor com paleta rápida ou seletor hexadecimal.
-  - Exibe a contagem em tempo real de quantos alunos estão associados a cada etiqueta.
+- **PermissÃµes de Acesso:**
+  - Exclusivo para perfis com nÃ­vel administrativo (**Super Admin** e **Admin**).
+  - Alunos regulares nÃ£o possuem permissÃ£o para criar, editar ou excluir tags, nem para disparar mensagens em massa.
+- **LocalizaÃ§Ã£o na Interface:**
+  - BotÃµes destacados **"Etiquetas"** (`Tag`) e **"Disparo em Massa"** (`Send`) posicionados na barra de aÃ§Ãµes superior da tela de **GestÃ£o de Alunos** (`StudentManagement`).
+  - Cada card de aluno (`StudentCard`) exibe as badges das etiquetas atribuÃ­das e um botÃ£o rÃ¡pido `+ Tag` para atribuir ou remover tags individualmente.
+- **Sistema de GestÃ£o de Etiquetas (`StudentTagsModal` & `StudentAssignTagsModal`):**
+  - Permite criar novas etiquetas informando nome e selecionando cor com paleta rÃ¡pida ou seletor hexadecimal.
+  - Exibe a contagem em tempo real de quantos alunos estÃ£o associados a cada etiqueta.
   - Permite editar nome e cor das etiquetas existentes.
-  - **Popup Obrigatório de Confirmação de Exclusão (`StudentTagDeleteConfirmModal`):**
-    - Ao clicar no botão de lixeira de qualquer etiqueta, o sistema obrigatoriamente abre um popup centralizado de confirmação com backdrop preto translúcido protetor (`rgba(0, 0, 0, 0.85)`).
-    - O popup não fecha ao clicar fora e possui apenas 1 botão de cancelar além do botão de confirmação ("Sim, Excluir").
-    - Exibe com clareza o nome da etiqueta em sua cor oficial e alerta ao administrador que a exclusão removerá a tag de todos os alunos associados, preservando integralmente o cadastro e o acesso dos alunos à plataforma.
-  - Modal de atribuição individual com busca rápida e seleção de múltiplas etiquetas simultâneas.
-- **Segmentação de Público para Disparo em Massa (`ChatBroadcastModal`):**
-  - **Público-alvo:**
+  - **Popup ObrigatÃ³rio de ConfirmaÃ§Ã£o de ExclusÃ£o (`StudentTagDeleteConfirmModal`):**
+    - Ao clicar no botÃ£o de lixeira de qualquer etiqueta, o sistema obrigatoriamente abre um popup centralizado de confirmaÃ§Ã£o com backdrop preto translÃºcido protetor (`rgba(0, 0, 0, 0.85)`).
+    - O popup nÃ£o fecha ao clicar fora e possui apenas 1 botÃ£o de cancelar alÃ©m do botÃ£o de confirmaÃ§Ã£o ("Sim, Excluir").
+    - Exibe com clareza o nome da etiqueta em sua cor oficial e alerta ao administrador que a exclusÃ£o removerÃ¡ a tag de todos os alunos associados, preservando integralmente o cadastro e o acesso dos alunos Ã  plataforma.
+  - Modal de atribuiÃ§Ã£o individual com busca rÃ¡pida e seleÃ§Ã£o de mÃºltiplas etiquetas simultÃ¢neas.
+- **SegmentaÃ§Ã£o de PÃºblico para Disparo em Massa (`ChatBroadcastModal`):**
+  - **PÃºblico-alvo:**
     1. **Todos os Alunos:** Disparo global para todos os alunos ativos da plataforma.
-    2. **Por Curso Específico:** Filtra apenas os alunos matriculados no curso selecionado.
-    3. **Sem Cursos:** Filtra exclusivamente alunos/leads cadastrados que ainda não possuem matrícula em nenhum curso ativo.
-    4. **Por Etiqueta:** Dispara exclusivamente para os alunos vinculados à etiqueta escolhida.
-    5. **Por Recência de Entrada:** Filtra alunos com base na data de criação da conta (`created_at`) nos **últimos 7 dias**, **últimos 14 dias** ou **últimos 30 dias**, ideal para onboardings, boas-vindas e ofertas para novos alunos.
-    6. **Seleção Manual:** Permite selecionar alunos específicos diretamente na interface.
-  - **Botão de Ação Interativo (CTA) na Mensagem:**
-    - O administrador pode configurar opcionalmente um botão de ação destacado junto ao comunicado (`button_text`, `button_url`, `button_action_type`).
-    - **Ações Suportadas:**
-      - **Link Externo (URL):** Checkouts de venda Kiwify/Hotmart, links de convite para grupos de WhatsApp/Telegram, páginas externas, etc. (abertura em nova aba com `target="_blank"`).
-      - **Navegação Interna:** Abrir curso ou aula específica da plataforma (`action_type: 'course'` ou `'lesson'`).
-    - **Renderização Visual:** O botão é renderizado diretamente dentro do balão da conversa privada do aluno (`ChatMessageItem` e `ChatDmConversationView`) com estilo neon/gradiente destacado e pré-visualização ao vivo no modal de envio.
+    2. **Por Curso EspecÃ­fico:** Filtra apenas os alunos matriculados no curso selecionado.
+    3. **Sem Cursos:** Filtra exclusivamente alunos/leads cadastrados que ainda nÃ£o possuem matrÃ­cula em nenhum curso ativo.
+    4. **Por Etiqueta:** Dispara exclusivamente para os alunos vinculados Ã  etiqueta escolhida.
+    5. **Por RecÃªncia de Entrada:** Filtra alunos com base na data de criaÃ§Ã£o da conta (`created_at`) nos **Ãºltimos 7 dias**, **Ãºltimos 14 dias** ou **Ãºltimos 30 dias**, ideal para onboardings, boas-vindas e ofertas para novos alunos.
+    6. **SeleÃ§Ã£o Manual:** Permite selecionar alunos especÃ­ficos diretamente na interface.
+  - **BotÃ£o de AÃ§Ã£o Interativo (CTA) na Mensagem:**
+    - O administrador pode configurar opcionalmente um botÃ£o de aÃ§Ã£o destacado junto ao comunicado (`button_text`, `button_url`, `button_action_type`).
+    - **AÃ§Ãµes Suportadas:**
+      - **Link Externo (URL):** Checkouts de venda Kiwify/Hotmart, links de convite para grupos de WhatsApp/Telegram, pÃ¡ginas externas, etc. (abertura em nova aba com `target="_blank"`).
+      - **NavegaÃ§Ã£o Interna:** Abrir curso ou aula especÃ­fica da plataforma (`action_type: 'course'` ou `'lesson'`).
+    - **RenderizaÃ§Ã£o Visual:** O botÃ£o Ã© renderizado diretamente dentro do balÃ£o da conversa privada do aluno (`ChatMessageItem` e `ChatDmConversationView`) com estilo neon/gradiente destacado e prÃ©-visualizaÃ§Ã£o ao vivo no modal de envio.
   - **Filtro de Perfil:**
-    - Opção de enviar **"Apenas Alunos"** ou incluir administradores (**"Alunos + Administradores"**).
-  - **Estimativa Prévia em Tempo Real:**
-    - Antes do disparo, o sistema consulta a API (`/api/v1/chat/broadcast/estimate`) e apresenta um card com a quantidade exata de destinatários únicos elegíveis e o tempo estimado de duração do envio com delay de 1s por aluno.
-  - **Diálogo de Confirmação:**
-    - Apresenta resumo completo (público, total de alunos, prévia da mensagem e tempo estimado) antes do envio definitivo.
-- **Taxa de Vazão e Processamento em Segundo Plano:**
-  - **Delay Estrito:** O processamento aplica um intervalo obrigatório de **1 segundo** (`await asyncio.sleep(1)`) entre cada mensagem enviada, garantindo estabilidade e evitando sobrecarga no servidor e nos sockets.
-  - **Execução Assíncrona:** O disparo é delegado para `BackgroundTasks` da FastAPI, retornando resposta imediata para a interface do administrador enquanto as mensagens são entregues em segundo plano.
-  - **Integração Nativa com o Chat:** Cada mensagem é registrada individualmente na tabela `chat_messages` com `is_dm=True`, remetente do administrador e destinatário do aluno, emitindo o evento WebSocket `new_dm` para atualizar instantaneamente o chat e o badge do aluno.
-- **Histórico de Disparos e Rastreamento de Leitura (`ChatBroadcastHistoryModal`):**
-  - Acesso através do botão **"Histórico"** no modal de disparo em massa.
-  - **Métricas Consolidadas por Campanha:**
-    - Título/assunto da campanha e autor do disparo.
-    - Total de destinatários, enviados com sucesso e eventuais falhas.
-    - Taxa percentual de visualização/leitura (`% lidos`).
-    - Duração total da execução (em segundos ou minutos).
-    - Data e hora do disparo formatadas no Horário Oficial de Brasília.
-  - **Detalhamento de Destinatários (`ChatBroadcastCampaignDetailView`):**
+    - OpÃ§Ã£o de enviar **"Apenas Alunos"** ou incluir administradores (**"Alunos + Administradores"**).
+  - **Estimativa PrÃ©via em Tempo Real:**
+    - Antes do disparo, o sistema consulta a API (`/api/v1/chat/broadcast/estimate`) e apresenta um card com a quantidade exata de destinatÃ¡rios Ãºnicos elegÃ­veis e o tempo estimado de duraÃ§Ã£o do envio com delay de 1s por aluno.
+  - **DiÃ¡logo de ConfirmaÃ§Ã£o:**
+    - Apresenta resumo completo (pÃºblico, total de alunos, prÃ©via da mensagem e tempo estimado) antes do envio definitivo.
+- **Taxa de VazÃ£o e Processamento em Segundo Plano:**
+  - **Delay Estrito:** O processamento aplica um intervalo obrigatÃ³rio de **1 segundo** (`await asyncio.sleep(1)`) entre cada mensagem enviada, garantindo estabilidade e evitando sobrecarga no servidor e nos sockets.
+  - **ExecuÃ§Ã£o AssÃ­ncrona:** O disparo Ã© delegado para `BackgroundTasks` da FastAPI, retornando resposta imediata para a interface do administrador enquanto as mensagens sÃ£o entregues em segundo plano.
+  - **IntegraÃ§Ã£o Nativa com o Chat:** Cada mensagem Ã© registrada individualmente na tabela `chat_messages` com `is_dm=True`, remetente do administrador e destinatÃ¡rio do aluno, emitindo o evento WebSocket `new_dm` para atualizar instantaneamente o chat e o badge do aluno.
+- **HistÃ³rico de Disparos e Rastreamento de Leitura (`ChatBroadcastHistoryModal`):**
+  - Acesso atravÃ©s do botÃ£o **"HistÃ³rico"** no modal de disparo em massa.
+  - **MÃ©tricas Consolidadas por Campanha:**
+    - TÃ­tulo/assunto da campanha e autor do disparo.
+    - Total de destinatÃ¡rios, enviados com sucesso e eventuais falhas.
+    - Taxa percentual de visualizaÃ§Ã£o/leitura (`% lidos`).
+    - DuraÃ§Ã£o total da execuÃ§Ã£o (em segundos ou minutos).
+    - Data e hora do disparo formatadas no HorÃ¡rio Oficial de BrasÃ­lia.
+  - **Detalhamento de DestinatÃ¡rios (`ChatBroadcastCampaignDetailView`):**
     - Listagem individual de todos os alunos que receberam a mensagem.
-    - Barra de busca por nome ou e-mail e filtros rápidos (Todos, Apenas Lidos, Não Lidos).
+    - Barra de busca por nome ou e-mail e filtros rÃ¡pidos (Todos, Apenas Lidos, NÃ£o Lidos).
     - Status de entrega individual (`sent` ou `failed`).
-    - **Rastreamento de Visualização Preciso:**
-      - Exibe badge verde com o momento exato da leitura: `Visualizado em DD/MM/AAAA às HH:MM` (gravado na abertura da conversa pelo aluno via `read_at`).
-      - Exibe badge cinza `Não lido ainda` para alunos que ainda não abriram a DM.
-  - **Paginação Padrão de 20 Itens por Página (`HistoryPaginationBar`):**
-    - Tanto a lista principal de campanhas de disparos (`ChatBroadcastHistoryModal`) quanto a listagem de destinatários da campanha (`ChatBroadcastCampaignDetailView`) exibem exatamente **20 itens por página**.
-    - Barra de paginação responsiva com contador dinâmico (`Exibindo X–Y de Z itens`), botões de navegação "Anterior" / "Próxima" e botões numéricos com destaque na página ativa.
+    - **Rastreamento de VisualizaÃ§Ã£o Preciso:**
+      - Exibe badge verde com o momento exato da leitura: `Visualizado em DD/MM/AAAA Ã s HH:MM` (gravado na abertura da conversa pelo aluno via `read_at`).
+      - Exibe badge cinza `NÃ£o lido ainda` para alunos que ainda nÃ£o abriram a DM.
+  - **PaginaÃ§Ã£o PadrÃ£o de 20 Itens por PÃ¡gina (`HistoryPaginationBar`):**
+    - Tanto a lista principal de campanhas de disparos (`ChatBroadcastHistoryModal`) quanto a listagem de destinatÃ¡rios da campanha (`ChatBroadcastCampaignDetailView`) exibem exatamente **20 itens por pÃ¡gina**.
+    - Barra de paginaÃ§Ã£o responsiva com contador dinÃ¢mico (`Exibindo XâY de Z itens`), botÃµes de navegaÃ§Ã£o "Anterior" / "PrÃ³xima" e botÃµes numÃ©ricos com destaque na pÃ¡gina ativa.
 
 ---
 
-## 26. Sincronização em Tempo Real via WebSocket dos Badges do TopNavbar (Favoritos, DMs e Notificações)
-- **Conexão Global Contínua:** Mantida ativamente em segundo plano pelo hook `useTopNavbarSocket` conectado a `/api/v1/chat/ws?token=...` em qualquer aba da plataforma (Cursos, Sala de Aula, Suporte, Chat, Ranking, Configurações, Gestão de Alunos, etc.), com reconexão automática e heartbeat ping (`ping`/`pong`).
+## 26. SincronizaÃ§Ã£o em Tempo Real via WebSocket dos Badges do TopNavbar (Favoritos, DMs e NotificaÃ§Ãµes)
+- **ConexÃ£o Global ContÃ­nua:** Mantida ativamente em segundo plano pelo hook `useTopNavbarSocket` conectado a `/api/v1/chat/ws?token=...` em qualquer aba da plataforma (Cursos, Sala de Aula, Suporte, Chat, Ranking, ConfiguraÃ§Ãµes, GestÃ£o de Alunos, etc.), com reconexÃ£o automÃ¡tica e heartbeat ping (`ping`/`pong`).
 - **Eventos em Tempo Real:**
-  1. **Favoritos (`favorites_updated`):** Disparado instantaneamente pelo backend via `chat_manager.send_to_user_sync` ao alternar favoritos em aulas, comentários de aulas, tópicos de suporte ou mensagens do chat. O badge de Favoritos recalcula imediatamente seu total sem precisar atualizar a página.
-  2. **Mensagens Diretas / DMs (`new_dm`, `dm_read`, `dm_sent`):** Disparado ao receber novas DMs (incluindo disparos em massa) ou ao marcar conversas como lidas. O badge vermelho de DMs é atualizado na hora em tempo real para os destinatários online.
-  3. **Notificações / Sininho (`new_notification`, `notifications_updated`):** Disparado em tempo real ao ser mencionado (`@nome`) em qualquer mensagem de canal ou ao receber novas respostas nas threads iniciadas pelo usuário ativo. O badge laranja do sino é atualizado instantaneamente.
-- **Isolamento e Segurança de Usuário:** Os eventos direcionados são enviados estritamente para as conexões ativas do usuário destinatário via `chat_manager.send_to_user_sync(user_id, ...)`, impedindo vazamento de dados entre clientes conectados.
+  1. **Favoritos (`favorites_updated`):** Disparado instantaneamente pelo backend via `chat_manager.send_to_user_sync` ao alternar favoritos em aulas, comentÃ¡rios de aulas, tÃ³picos de suporte ou mensagens do chat. O badge de Favoritos recalcula imediatamente seu total sem precisar atualizar a pÃ¡gina.
+  2. **Mensagens Diretas / DMs (`new_dm`, `dm_read`, `dm_sent`):** Disparado ao receber novas DMs (incluindo disparos em massa) ou ao marcar conversas como lidas. O badge vermelho de DMs Ã© atualizado na hora em tempo real para os destinatÃ¡rios online.
+  3. **NotificaÃ§Ãµes / Sininho (`new_notification`, `notifications_updated`):** Disparado em tempo real ao ser mencionado (`@nome`) em qualquer mensagem de canal ou ao receber novas respostas nas threads iniciadas pelo usuÃ¡rio ativo. O badge laranja do sino Ã© atualizado instantaneamente.
+- **Isolamento e SeguranÃ§a de UsuÃ¡rio:** Os eventos direcionados sÃ£o enviados estritamente para as conexÃµes ativas do usuÃ¡rio destinatÃ¡rio via `chat_manager.send_to_user_sync(user_id, ...)`, impedindo vazamento de dados entre clientes conectados.
 
 ---
 
 ## 27. Sistema de Funis de Mensagens e Fluxos Visuais (Funnels)
-- **Localização:** Item de navegação **"Funis de Mensagens"** (`GitBranch`) na barra lateral (`Sidebar`) sob a categoria **Comunidade & Social**, acessível por Administradores e Super Admins.
+- **LocalizaÃ§Ã£o:** Item de navegaÃ§Ã£o **"Funis de Mensagens"** (`GitBranch`) na barra lateral (`Sidebar`) sob a categoria **Comunidade & Social**, acessÃ­vel por Administradores e Super Admins.
 - **Estrutura e Conceito:**
-  - Permite aos administradores criar e gerenciar fluxos automatizados de mensagens com nós encadeados em um canvas interativo.
-  - **4 Nós Básicos Oficiais:**
-    1. **Nó de Texto (`message`):** Envia mensagem privada (DM) para o aluno com suporte a tags dinâmicas `{aluno}`, variações Spintax (ex: `{Olá|Oi|E aí}`) sorteadas a cada execução, e até 3 botões de ação interativos.
-    2. **Nó de Mídia (`media`):** Envia imagens, vídeos ou documentos via URL direta com legenda opcional e suporte a Spintax.
-    3. **Nó de Áudio (`audio`):** Envia mensagens de áudio (MP3/WebM) com opção de simular gravação de voz na hora.
-    4. **Nó de Delay / Espera (`delay`):** Aplica uma pausa temporizada em segundos (`seconds`) antes de avançar para o próximo nó do fluxo.
-  - **Canvas Visual Interativo (`FunnelCanvasPage`):**
-    - Grid pontilhado Dark/Neon, suporte a movimentação/arrasto (pan), controles de zoom (+, -, reset), arrasto fluido de nós e desenho de conexões em curvas Bezier estéticas entre os nós.
-    - Barra de ferramentas com edição de título do funil, salvamento instantâneo, exportação em JSON e exclusão com modal de confirmação.
-    - **Menu Flutuante "+ Adicionar Nó" (`FunnelNodeMenu`):**
-      - Ao ser acionado pelo botão inferior central da tela, posiciona-se automaticamente **acima do botão** (`bottom: 80px`), garantindo que todas as opções fiquem visíveis sem cortar na borda da tela.
-      - Ao ser acionado com clique do mouse no canvas, inverte sua abertura para cima (`translateY(-100%)`) caso a posição do cursor esteja próxima do limite inferior da tela.
-- **Disparo e Execução (`FunnelService`):**
-  - **Gatilho via Botão de Disparo em Massa:** No modal de envio de mensagens em massa (`ChatBroadcastModal`), o administrador pode configurar um botão de ação com o tipo `"Disparar Funil" (`funnel`)` selecionando o funil desejado.
-  - **Acionamento na DM do Aluno:** Quando o aluno recebe o comunicado na conversa privada (DM) e clica no botão, o frontend dispara a execução imediata através do endpoint `POST /api/v1/funnels/{funnel_id}/trigger`, iniciando a sequência de nós configurada no funil para aquele aluno em segundo plano com entrega instantânea via WebSocket e registro no histórico de execuções (`FunnelExecution`).
-
----
-
-## 28. Integração com AgentFlow (Base de Conhecimento e Robô de Dúvidas)
-- **Vínculo Curso ➔ Base de Conhecimento:**
-  - No modal de Criação e Edição de Cursos (`CourseFormModal`), o gestor pode selecionar a qual **Base de Conhecimento do AgentFlow** o curso estará associado.
-  - **Design do Seletor (`AgentFlowKbSelector`):**
-    - Componente dropdown customizado com design Dark Glassmorphism, ícone temático e iluminação neon índigo (`#818cf8`).
-    - **Exibição Limpa:** O dropdown e os itens da lista exibem **estritamente o nome da base** (ex: `Base - Tarcira`), sem textos extensos ou descrições no item.
-    - **Feedback de Sincronização:** Quando uma base é selecionada, o componente exibe um badge sutil confirmando que as transcrições das aulas serão enviadas para aquela base.
-    - **Criação Rápida no Modal (`AgentFlowCreateKbModal`):** O botão "+ Criar Nova Base" permite cadastrar uma nova base no AgentFlow sem sair da tela do curso.
-- **Sincronização e Re-sincronização de Aulas (`AgentFlowLessonSync`):**
-  - Na aba de Transcrição / IA da aula (`LessonAiTranscriptionTab`), o gestor visualiza o status de sincronização com o AgentFlow.
-  - **Popup Centralizado de Confirmação:** Ao clicar no botão **"Re-sincronizar"**, o sistema obrigatoriamente abre um popup modal centralizado com fundo escuro translúcido (*backdrop blur*, não fechável por clique externo), solicitando confirmação explícita antes de re-enviar os trechos, perguntas, respostas e resumos para o AgentFlow, evitando reprocessamentos acidentais.
-  - **Popup Bloqueante de Progresso em Tempo Real (`AgentFlowSyncProgressModal`):** Durante toda a execução da sincronização (seja inicial ou re-sincronização), é exibido obrigatoriamente um popup centralizado bloqueante na tela com animação de progresso, etapas dinâmicas de processamento e alerta explícito de segurança orientando o usuário a não sair da tela até a conclusão definitiva do envio.
-  - **Fatiamento Inteligente com Overlay Contextual (*Contextual Chunking*):**
-    - **Overlay de Contexto:** Cada trecho salvo na base de conhecimento do AgentFlow recebe obrigatoriamente no corpo do texto um cabeçalho explícito: `[Contexto da Aula: Curso: "{curso}" | Módulo: "{modulo}" | Aula: "{aula}"]`. Isso garante que as buscas semânticas vetoriais no RAG recuperem trechos que já contenham o contexto completo da origem.
-    - **Overlap Real sem Quebra de Palavras:** Os trechos possuem tamanho máximo de ~1.100 caracteres com overlap de ~180 caracteres, quebrando estritamente em finais de frase (`. `, `! `, `? `) ou fronteiras de palavras (` `), impedindo cortes no meio de palavras (como "deal" em vez de "ideal").
-    - **Envio Unificado de Perguntas & Respostas:** O backend gera perguntas e respostas didáticas formuladas com base no conteúdo da aula com variações de dúvidas de alunos (`question_variations`), enviando simultaneamente as P&R didáticas, os trechos contextuais e os resumos oficiais da aula e do módulo.
-
----
-
-## 29. Configurações de WhiteLabel e Identidade Visual da Plataforma
-- **Localização e Permissões:**
-  - Disponível em **Configurações da Área de Membros** (`PlatformSettings.jsx`) na aba dedicada **"WhiteLabel"** (`Tag`), posicionada ao lado de *Links da Plataforma*.
-  - Acesso estritamente restrito a **Administradores (`admin`)** e **Super Admins (`superadmin`)**. Usuários com perfil `aluno` têm a aba totalmente oculta.
-- **Nome da Plataforma (Marca / WhiteLabel):**
-  - Permite aos administradores personalizar o nome exibido de "Área de Membros" para a marca de seu infoproduto ou comunidade (ex: "Academia VIP", "Clube dos Criadores").
-  - **Sincronização em Tempo Real:** O nome é persistido no backend em `uploads/platform_theme.json` e servido publicamente via `GET /api/v1/whitelabel`. Ao ser salvo, dispara o evento customizado `whitelabel_updated` e atualiza instantaneamente o `document.title`, o topo da barra lateral (`Sidebar`), a barra superior mobile (`TopNavbar`) e a tela de autenticação (`Login`).
-  - **Restaurar Padrão:** O formulário disponibiliza um botão para restaurar rapidamente o nome oficial "Área de Membros".
-- **Banner Lateral da Tela de Login:**
-  - Permite aos administradores substituir a imagem padrão da lateral da tela de login por uma imagem personalizada.
-  - **Upload do Computador:** Suporta formatos de imagem em alta resolução (JPG, PNG, WEBP, SVG), com pré-visualização instantânea no card antes de confirmar o envio.
-  - **Armazenamento Seguro:** Persistido com segurança no Backblaze B2 (com fallback para armazenamento local em modo desenvolvimento) e URL vinculada a `platform_theme.json`.
-  - **Restauração do Banner Oficial:** Quando uma imagem personalizada está ativa, o painel exibe o botão **"Restaurar Imagem Padrão"** (`RotateCcw`), permitindo remover a imagem customizada e voltar imediatamente para o banner oficial do sistema.
-
----
-
-## 30. Aba Apresente-se (Comunidade & Social)
-- **Localização e Navegação:**
-  - Localizada no menu lateral (`Sidebar`) dentro da seção **Comunidade & Social**, com ícone `Handshake` e identificador `introductions`.
-  - Visível e acessível para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
-- **Banner Superior (Hero de Boas-Vindas):**
-  - Card estilizado em Dark Glassmorphism com iluminação âmbar/dourada, badge "Boas-vindas", título "Apresente-se", subtítulo explicativo e checklist de tópicos (quem você é, interesses, outros membros, conexões).
-  - Botão de ação rápida **"Quero me apresentar"** (`Handshake`) que abre o modal de criação de nova apresentação.
-  - Cards ilustrativos na lateral direita destacando "Primeira conexão", "Sua apresentação" e "Bem-vindo".
-- **Listagem Sequencial de Apresentações:**
-  - Exibe os posts criados pelos membros em sequência cronológica do mais recente para o mais antigo.
-  - Cada item apresenta o avatar do autor, título da apresentação, autor ou última resposta com tempo relativo, e contadores de curtidas (👍) e comentários (💬).
-  - **Curtida Direta na Linha:** O contador de curtidas funciona como um botão interativo (`intro-stat-like-btn`), permitindo ao usuário curtir ou descurtir a publicação diretamente da listagem com feedback imediato, sem necessidade de abrir o modal de detalhes da apresentação (`e.stopPropagation()`).
-  - **Estado Vazio Harmonioso:** Quando ainda não houver apresentações, exibe ilustração de brilho (`Sparkles`), mensagem de incentivo e botão de ação rápida para criar a primeira apresentação com espaçamento e respiro visual adequados.
-  - Botão destacado **"Novo post"** (`intro-new-post-btn`) no topo da seção para criar novas publicações.
-- **Visualização e Interação (Modal do Post):**
-  - Ao clicar em qualquer apresentação, abre o modal centralizado com fundo escuro e *backdrop blur*, protegido contra fechamento por clique fora do painel.
-  - Exibe o cabeçalho completo do autor com avatar, nome, selo do perfil (`Super Admin`, `Admin` ou `Aluno`) e data formatada.
-  - Exibe o texto integral da apresentação com preservação de formatação e quebra de linhas.
-  - **Sistema de Curtidas (Likes):** Permite curtir/descurtir (toggle) com atualização instantânea do contador e destaque visual do botão.
-  - **Comentários de Boas-Vindas:** Lista de respostas com dados do autor e data, acompanhada de formulário no rodapé para envio rápido de novas mensagens.
-  - **Exclusão Segura e Popup Premium:** Autores de posts e comentários podem excluir suas próprias publicações; administradores e superadmins possuem autorização para moderação de qualquer publicação. Toda exclusão exige confirmação em popup dedicado com backdrop preto translúcido, ícone de alerta em vermelho suave com efeito glow, botão secundário de cancelar e botão perigoso de exclusão estilizado em degradê vermelho.
-
-
-
-
-
-
-
-
-
-
-
+  - Permite aos administradores criar e gerenciar fluxos automatizados de mensagens com nÃ³s encadeados em um canvas interativo.
+  - **CatÃ¡logo de NÃ³s Oficiais:**
+    1. **Categoria Gatilhos (`trigger`):**
+       - **Gatilho "Aluno Criado":** Atua como nÃ³ de inÃ­cio automÃ¡tico de sequÃªncias para novos membros.
+       - **Prioridade Absoluta de NÃ³ Inicial (`is_start`):** Se algum nÃ³ de gatilho estiver presente no fluxo, ele Ã© **automaticamente o primeiro nÃ³ do funil** (`is_start: true`). O cabeÃ§alho do gatilho exibe conjuntamente o badge **`[GATILHO]`** (Ã¢mbar) e o badge **`[â¶ INÃCIO]`** (verde destacado). Enquanto houver um nÃ³ de gatilho no fluxo, nenhum outro nÃ³ (mensagem, Ã¡udio, mÃ­dia ou delay) exibe o badge de inÃ­cio. Caso o gatilho seja removido, o nÃ³ de mensagem retoma automaticamente o status e badge de inÃ­cio.
+       - **Bloqueio de ConexÃµes de Entrada (Target):** Como o Gatilho Ã© o ponto inicial disparado por eventos externos, ele **possui exclusivamente porta de saÃ­da (output)** e Ã© **terminantemente proibido de receber conexÃµes de entrada**. O sistema bloqueia tentativas de conectar qualquer nÃ³ apontando para trÃ¡s em direÃ§Ã£o ao gatilho, exibe notificaÃ§Ã£o explicativa e expurga automaticamente conexÃµes reversas.
+       - **ConfiguraÃ§Ã£o de Tempo / Atraso:** Permite disparar **imediatamente** (`0 dias`) ou com delay de **X dias apÃ³s a criaÃ§Ã£o do aluno** (presets rÃ¡pidos: `Imediatamente (0d)`, `7 dias`, `14 dias`, `21 dias`, alÃ©m de campo numÃ©rico customizado).
+       - **ExecuÃ§Ã£o AutomÃ¡tica no Backend:** Quando um aluno Ã© cadastrado (seja via cadastro pÃºblico, convite com cÃ³digo OTP ou criaÃ§Ã£o manual pelo administrador), o sistema localiza os funis ativos com gatilho imediato (`0d`) e inicia a sequÃªncia. Para gatilhos com atraso (`days_after > 0`), a rotina periÃ³dica do worker e o endpoint `POST /api/v1/funnels/check-triggers` verificam e disparam o fluxo uma Ãºnica vez por aluno.
+    2. **Categoria Mensagens (`message`):** Envia mensagem privada (DM) para o aluno com suporte a tags dinÃ¢micas `{aluno}`, variaÃ§Ãµes Spintax (ex: `{OlÃ¡|Oi|E aÃ­}`) sorteadas a cada execuÃ§Ã£o, e atÃ© 3 botÃµes de aÃ§Ã£o interativos.
+    3. **Categoria MÃ­dias (`media`):** Envia imagens, vÃ­deos ou documentos via URL direta com legenda opcional e suporte a Spintax.
+    4. **Categoria Ãudio (`audio`):** Envia mensagens de Ã¡udio (MP3/WebM) com opÃ§Ã£o de simular gravaÃ§Ã£o de voz na hora.
+    5. **Categoria Controle de Fluxo (`delay`):** Aplica uma pausa temporizada em segundos (`seconds`) antes de avanÃ§ar para o prÃ³ximo nÃ³ do fluxo.
+    6. **Categoria Etiquetas / Tags (`tag`):** Gerencia e avalia etiquetas do contato através de três abas no topo do nó:
+       - **Aba `+ Adicionar Tag` (`add`):** Aplica uma ou mais etiquetas ao contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).
+       - **Aba `- Remover Tag` (`remove`):** Remove uma ou mais etiquetas do contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).
+       - **Aba `Verificar Tag` (`condition`):** Avalia se o aluno cumpre o critério de etiquetas configurado e **bifurca o fluxo em 2 saídas exclusivas à direita**:
+         - **Saída SIM (Verde Esmeralda - `output_yes` / top: 35%):** Segue por este caminho quando o aluno cumpre a condição (AND/OR). Aresta desenhada em verde esmeralda com marcador e etiqueta `SIM`.
+         - **Saída NÃO (Vermelha - `output_no` / top: 65%):** Segue por este caminho quando o aluno NÃO cumpre a condição. Aresta desenhada em vermelho neon com marcador e etiqueta `NÃO`.
+       - **Modos e Operadores Lógicos:** `Possui etiqueta(s)` (`has_tags`) ou `NÃO possui` (`not_has_tags`), com operador `AND (Todas)` ou `OR (Pelo menos 1)`.
+       - **Unicidade de Portas na Bifurcação:** Permite conectar simultaneamente 1 nó na saída SIM e 1 nó na saída NÃO, mantendo a regra 1:1 por porta (`sourceHandle`).
+       - **Criação Rápida com Paleta de Cores:** Busca em tempo real com criação de etiqueta via modal popup com escolha de cores.
+    6. **Categoria Etiquetas / Tags (`tag`):** Gerencia e avalia etiquetas do contato através de três abas no topo do nó:
+       - **Aba `+ Adicionar Tag` (`add`):** Aplica uma ou mais etiquetas ao contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).
+       - **Aba `- Remover Tag` (`remove`):** Remove uma ou mais etiquetas do contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).

@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import re
 from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
@@ -32,6 +33,7 @@ from app.schemas.chat import (
 from app.services.chat_ws_manager import chat_manager
 from app.services.chat_media_service import process_chat_media_upload, CHAT_MEDIA_DIR
 from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history
+from app.services.chat_encryption_service import encrypt_dm_message, decrypt_dm_message
 from app.services.chat_unread_service import (
     get_channel_last_read_map,
     get_channel_unread_count,
@@ -344,29 +346,32 @@ def send_chat_message(
         )
 
     if not check_channel_access(current_user, payload.channel_type, payload.course_id, db):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Você não tem permissão para enviar mensagens neste canal.",
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para enviar mensagens neste canal.")
 
-    # Validar se parent_id pertence ao mesmo canal/curso
+    # Validar menções (@todos exclusivo para admin e limite de 5 para alunos)
+    if "@" in clean_text:
+        text_lower = clean_text.lower()
+        is_admin = current_user.role in ("admin", "superadmin")
+        if "@todos" in text_lower and not is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem utilizar a menção @todos.")
+        if not is_admin and len(re.findall(r"@[A-Za-zÀ-ÿ0-9_]+", clean_text)) > 5:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuários comuns podem mencionar no máximo 5 contatos por mensagem.")
+
     parent_id = payload.parent_id
     if parent_id is not None:
         parent_msg = db.query(ChatMessage).filter(ChatMessage.id == parent_id).first()
         if not parent_msg or parent_msg.channel_type != payload.channel_type:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Mensagem pai da thread não encontrada neste canal.",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mensagem pai da thread não encontrada neste canal.")
 
     try:
+        saved_message_text = encrypt_dm_message(clean_text) if payload.channel_type == "dm" else clean_text
         new_msg = ChatMessage(
             channel_type=payload.channel_type,
             course_id=payload.course_id if payload.channel_type == "course" else None,
             parent_id=parent_id,
             user_id=current_user.id,
             recipient_id=payload.recipient_id if payload.channel_type == "dm" else None,
-            message=clean_text,
+            message=saved_message_text,
             media_url=media_url,
             media_type=media_type,
             button_text=payload.button_text,
@@ -379,37 +384,29 @@ def send_chat_message(
         db.commit()
         db.refresh(new_msg)
 
-        # Detectar menções do tipo @Nome ou @Nome Sobrenome
-        # Varre usuários ativos e cria registros em chat_mentions
+        # Detectar menções do tipo @Nome ou @todos
         if "@" in clean_text:
             try:
                 active_users = db.query(User).filter(User.is_active == True, User.id != current_user.id).all()
                 mentioned_set = set()
                 text_lower = clean_text.lower()
-                for u in active_users:
-                    if not u.name:
-                        continue
-                    # Checar menção por nome completo ou primeiro nome
-                    mention_tag = f"@{u.name.lower()}"
-                    first_name_tag = f"@{u.name.lower().split()[0]}" if len(u.name.split()) > 1 else None
-                    if mention_tag in text_lower or (first_name_tag and first_name_tag in text_lower):
-                        mentioned_set.add(u.id)
+                is_admin = current_user.role in ("admin", "superadmin")
+                if "@todos" in text_lower and is_admin:
+                    mentioned_set = {u.id for u in active_users}
+                else:
+                    for u in active_users:
+                        if u.name:
+                            m_tag = f"@{u.name.lower()}"
+                            f_tag = f"@{u.name.lower().split()[0]}" if len(u.name.split()) > 1 else None
+                            if m_tag in text_lower or (f_tag and f_tag in text_lower):
+                                mentioned_set.add(u.id)
 
                 for m_uid in mentioned_set:
-                    mention_rec = ChatMessageMention(
-                        message_id=new_msg.id,
-                        mentioned_user_id=m_uid,
-                        is_read=False,
-                    )
-                    db.add(mention_rec)
+                    db.add(ChatMessageMention(message_id=new_msg.id, mentioned_user_id=m_uid, is_read=False))
                 if mentioned_set:
                     db.commit()
                     for m_uid in mentioned_set:
-                        chat_manager.send_to_user_sync(
-                            m_uid,
-                            "new_notification",
-                            {"user_id": m_uid, "type": "mention", "message_id": new_msg.id}
-                        )
+                        chat_manager.send_to_user_sync(m_uid, "new_notification", {"user_id": m_uid, "type": "mention", "message_id": new_msg.id})
             except Exception as m_exc:
                 logger.error(f"Erro ao processar menções no chat: {m_exc}")
 
@@ -446,7 +443,7 @@ def send_chat_message(
             course_id=new_msg.course_id,
             parent_id=new_msg.parent_id,
             recipient_id=new_msg.recipient_id,
-            message=new_msg.message,
+            message=decrypt_dm_message(new_msg.message) or "",
             media_url=new_msg.media_url,
             media_type=new_msg.media_type,
             button_text=new_msg.button_text,

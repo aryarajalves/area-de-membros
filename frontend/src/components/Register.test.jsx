@@ -312,6 +312,144 @@ describe('Register Component', () => {
     const errorBanner = await screen.findByTestId('verify-error');
     expect(errorBanner).toHaveTextContent('Erro inesperado no servidor. Tente novamente mais tarde.');
   });
+
+  it('redireciona para a tela principal quando o convite já foi utilizado e o usuário possui sessão ativa válida', async () => {
+    localStorage.setItem('auth_token', 'valid-token-123');
+    localStorage.setItem('auth_user', JSON.stringify({ id: 1, name: 'Lead Ativo' }));
+
+    const onRedirectToHome = vi.fn();
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: false,
+            already_used: true,
+            used_by_email: 'lead@teste.com',
+            detail: 'Este convite já foi utilizado.',
+          }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/v1/users/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: 1, name: 'Lead Ativo', email: 'lead@teste.com' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register
+          token="token-usado"
+          onRedirectToHome={onRedirectToHome}
+          onRedirectToLogin={onRedirectToLogin}
+        />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(onRedirectToHome).toHaveBeenCalled();
+    });
+    expect(onRedirectToLogin).not.toHaveBeenCalled();
+  });
+
+  it('redireciona para a tela de login quando o convite já foi utilizado e o usuário não possui sessão', async () => {
+    localStorage.clear();
+
+    const onRedirectToHome = vi.fn();
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: false,
+            already_used: true,
+            used_by_email: 'aryarajunity@gmail.com',
+            detail: 'Este convite já foi utilizado.',
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register
+          token="token-usado"
+          onRedirectToHome={onRedirectToHome}
+          onRedirectToLogin={onRedirectToLogin}
+        />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(onRedirectToLogin).toHaveBeenCalled();
+    });
+    expect(onRedirectToHome).not.toHaveBeenCalled();
+    expect(localStorage.getItem('prefill_login_email')).toBe('aryarajunity@gmail.com');
+  });
+
+  it('redireciona para login e limpa dados quando a sessão está expirada (/users/me retorna 401)', async () => {
+    localStorage.setItem('auth_token', 'expired-token');
+    localStorage.setItem('auth_user', JSON.stringify({ id: 99 }));
+
+    const onRedirectToHome = vi.fn();
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: false,
+            already_used: true,
+            used_by_email: 'lead_expirado@teste.com',
+            detail: 'Este convite já foi utilizado.',
+          }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/v1/users/me')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ detail: 'Token inválido ou expirado' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register
+          token="token-usado-expirado"
+          onRedirectToHome={onRedirectToHome}
+          onRedirectToLogin={onRedirectToLogin}
+        />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(onRedirectToLogin).toHaveBeenCalled();
+    });
+    expect(onRedirectToHome).not.toHaveBeenCalled();
+    expect(localStorage.getItem('auth_token')).toBeNull();
+    expect(localStorage.getItem('prefill_login_email')).toBe('lead_expirado@teste.com');
+  });
 });
 
 

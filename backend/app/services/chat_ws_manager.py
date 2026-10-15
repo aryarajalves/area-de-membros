@@ -42,6 +42,14 @@ class ChatConnectionManager:
         if user_data:
             logger.info(f"WebSocket Chat desconectado: User {user_data.get('name')} (ID {user_data.get('user_id')}). Restantes: {len(self.active_connections)}")
 
+    def get_online_user_ids(self) -> Set[int]:
+        """Retorna o conjunto de IDs de usuários atualmente conectados ao WebSocket do chat."""
+        return {
+            int(meta.get("user_id"))
+            for meta in self.active_connections.values()
+            if meta.get("user_id") is not None
+        }
+
     async def broadcast_event(self, event_type: str, data: Dict[str, Any], channel_type: Optional[str] = None, course_id: Optional[int] = None):
         """
         Envia uma notificação em tempo real para todos os clientes conectados.

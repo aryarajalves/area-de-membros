@@ -40,6 +40,20 @@ def run_renewal_check_job():
             f"[WORKER] <<< Verificação de renovações finalizada com sucesso! "
             f"Avisos 7 dias enviados: {warnings} | Notificações de expiração enviadas: {expired}"
         )
+
+        # Verificação de funis com gatilhos atrasados (ex: X dias após criação)
+        try:
+            from app.core.database import SessionLocal
+            from app.services.funnel_service import check_and_dispatch_delayed_student_funnels
+            db_w = SessionLocal()
+            try:
+                fn_count = check_and_dispatch_delayed_student_funnels(db_w)
+                logger.info(f"[WORKER] Gatilhos de funil verificados: {fn_count} disparo(s) efetuado(s).")
+            finally:
+                db_w.close()
+        except Exception as fn_exc:
+            logger.error(f"[WORKER] Erro ao verificar gatilhos de funil: {fn_exc}")
+
         return results
     except Exception as exc:
         logger.error(f"[WORKER] Erro inesperado na rotina de renovação de cursos: {exc}")

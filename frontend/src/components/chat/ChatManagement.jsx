@@ -9,12 +9,17 @@ import ChatMediaGalleryModal from './ChatMediaGalleryModal';
 import ChatThreadPanel from './ChatThreadPanel';
 import ChatMentionsModal from './ChatMentionsModal';
 import ChatDmModal from './ChatDmModal';
+import ChatMembersSidebar from './ChatMembersSidebar';
+import ChatMemberProfileModal from './ChatMemberProfileModal';
 
 export default function ChatManagement({ currentUser, bgColor, onBack }) {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
   const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
   const [isDmModalOpen, setIsDmModalOpen] = useState(false);
+  const [isMembersSidebarOpen, setIsMembersSidebarOpen] = useState(true);
+  const [selectedMemberProfile, setSelectedMemberProfile] = useState(null);
+  const [targetDmContact, setTargetDmContact] = useState(null);
   const [activeThreadMessage, setActiveThreadMessage] = useState(null);
   const [mobileTab, setMobileTab] = useState('channels');
 
@@ -103,6 +108,8 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onOpenMediaGallery={() => setIsMediaGalleryOpen(true)}
           onOpenMentions={() => setIsMentionsModalOpen(true)}
           onOpenDm={() => setIsDmModalOpen(true)}
+          onToggleMembers={() => setIsMembersSidebarOpen((prev) => !prev)}
+          isMembersOpen={isMembersSidebarOpen}
           onUnpinMessage={togglePin}
           onBack={onBack}
           onJumpToMessage={handleJumpToMessage}
@@ -129,6 +136,21 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
         />
       </section>
 
+      {/* Barra Lateral Direita com os Membros com Acesso ao Chat */}
+      {isMembersSidebarOpen && (
+        <ChatMembersSidebar
+          isOpen={isMembersSidebarOpen}
+          onClose={() => setIsMembersSidebarOpen(false)}
+          channel={selectedChannel}
+          currentUser={currentUser}
+          onSelectMember={(m) => setSelectedMemberProfile(m)}
+          onStartDm={(m) => {
+            setTargetDmContact(m);
+            setIsDmModalOpen(true);
+          }}
+        />
+      )}
+
       {/* Painel Lateral de Threads de Discussão */}
       {activeThreadMessage && (
         <ChatThreadPanel
@@ -141,6 +163,18 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onTogglePin={togglePin}
         />
       )}
+
+      {/* Modal de Perfil Detalhado do Membro */}
+      <ChatMemberProfileModal
+        isOpen={!!selectedMemberProfile}
+        member={selectedMemberProfile}
+        currentUser={currentUser}
+        onClose={() => setSelectedMemberProfile(null)}
+        onStartDm={(m) => {
+          setTargetDmContact(m);
+          setIsDmModalOpen(true);
+        }}
+      />
 
       {/* Modal de Confirmação de Exclusão */}
       <DeleteChatMessageModal
@@ -168,8 +202,12 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
       {/* Modal de Mensagens Diretas (DMs / Inbox) */}
       <ChatDmModal
         isOpen={isDmModalOpen}
-        onClose={() => setIsDmModalOpen(false)}
+        onClose={() => {
+          setIsDmModalOpen(false);
+          setTargetDmContact(null);
+        }}
         currentUser={currentUser}
+        targetContact={targetDmContact}
       />
     </div>
   );

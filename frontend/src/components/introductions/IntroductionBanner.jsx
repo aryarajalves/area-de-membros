@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, User, Heart, MessageCircle, Handshake, Sparkles } from 'lucide-react';
+import { Users, User, MessageCircle, Handshake, Sparkles, Briefcase } from 'lucide-react';
 
 export default function IntroductionBanner({ onOpenCreateModal }) {
   return (
@@ -13,7 +13,7 @@ export default function IntroductionBanner({ onOpenCreateModal }) {
 
         <h1 className="introductions-banner-title">Apresente-se</h1>
         <p className="introductions-banner-subtitle">
-          O primeiro espaço para novos membros se apresentarem, contarem quem são e começarem a criar conexões na comunidade.
+          Apresente-se para a comunidade! Dizer quem você é e o que você faz é a melhor forma de gerar novas conexões, trocar experiências e abrir portas para parcerias.
         </p>
 
         <ul className="introductions-banner-checklist">
@@ -22,16 +22,16 @@ export default function IntroductionBanner({ onOpenCreateModal }) {
             <span>Conte quem você é</span>
           </li>
           <li>
-            <Heart size={16} className="checklist-icon" />
-            <span>Compartilhe seus interesses</span>
+            <Briefcase size={16} className="checklist-icon" />
+            <span>Mostre o que você faz</span>
           </li>
           <li>
-            <Users size={16} className="checklist-icon" />
-            <span>Conheça outros membros</span>
+            <Handshake size={16} className="checklist-icon" />
+            <span>Gere novas conexões e parcerias</span>
           </li>
           <li>
             <MessageCircle size={16} className="checklist-icon" />
-            <span>Comece suas conexões</span>
+            <span>Interaja com outros membros</span>
           </li>
         </ul>
 
@@ -59,7 +59,7 @@ export default function IntroductionBanner({ onOpenCreateModal }) {
           <div className="intro-card-divider" />
           <div className="intro-card-footer">
             <Users size={16} />
-            <p>Encontre pessoas com interesses em comum.</p>
+            <p>Encontre pessoas com interesses e objetivos em comum.</p>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ export default function IntroductionBanner({ onOpenCreateModal }) {
           <div className="intro-card-divider" />
           <div className="intro-card-footer">
             <Sparkles size={16} />
-            <p>Diga seu nome, área de atuação e o que busca na comunidade.</p>
+            <p>Diga seu nome, o que você faz e como pode somar na comunidade.</p>
           </div>
         </div>
 
@@ -89,7 +89,7 @@ export default function IntroductionBanner({ onOpenCreateModal }) {
           <div className="intro-card-divider" />
           <div className="intro-card-footer">
             <Sparkles size={16} />
-            <p>Esse é o melhor ponto de partida para entrar na comunidade.</p>
+            <p>Esse é o melhor ponto de partida para fazer networking ativo.</p>
           </div>
         </div>
       </div>

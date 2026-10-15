@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.schemas.chat import ChatUser, ChatDmConversationItem, ChatMessageResponse
+from app.services.chat_encryption_service import decrypt_dm_message
 from app.core.logger import logger
 
 
@@ -71,7 +72,7 @@ def get_user_dm_conversations(
                     and_(ChatMessage.user_id == c_id, ChatMessage.recipient_id == current_user.id),
                 ),
             )
-            .order_by(desc(ChatMessage.created_at))
+            .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
             .first()
         )
 
@@ -90,6 +91,25 @@ def get_user_dm_conversations(
         if unread_only and unread_count == 0:
             continue
 
+        def _format_dm_preview(msg):
+            if not msg:
+                return None
+            decrypted_text = decrypt_dm_message(msg.message)
+            if decrypted_text and decrypted_text.strip():
+                return decrypted_text.strip()
+            if msg.media_url:
+                m_type = msg.media_type or ""
+                if m_type == "image":
+                    return "📷 [Foto/GIF]"
+                elif m_type == "video":
+                    return "🎥 [Vídeo]"
+                elif m_type == "audio":
+                    return "🎤 [Áudio]"
+                elif m_type == "file":
+                    return "📄 [Documento]"
+                return "📎 [Mídia]"
+            return None
+
         conversations.append(
             ChatDmConversationItem(
                 contact=ChatUser(
@@ -99,7 +119,7 @@ def get_user_dm_conversations(
                     role=contact_user.role,
                     avatar_url=contact_user.avatar_url,
                 ),
-                last_message=last_msg.message if last_msg else None,
+                last_message=_format_dm_preview(last_msg),
                 last_message_at=last_msg.created_at if last_msg else None,
                 unread_count=unread_count,
             )
@@ -185,7 +205,7 @@ def get_dm_messages_history(
                 course_id=None,
                 parent_id=msg.parent_id,
                 recipient_id=msg.recipient_id,
-                message=msg.message or "",
+                message=decrypt_dm_message(msg.message) or "",
                 media_url=msg.media_url,
                 media_type=msg.media_type,
                 is_pinned=False,

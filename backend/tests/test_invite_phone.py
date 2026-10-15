@@ -123,3 +123,50 @@ def test_register_without_phone_fails():
         "password_confirm": "Password123!@#"
     })
     assert res_empty_phone.status_code == 422
+
+
+def test_validate_invite_already_used_returns_flag():
+    headers = get_superadmin_headers()
+    # 1. Cria convite
+    res_inv = client.post("/api/v1/auth/invites", json={"role": "aluno", "duration_hours": 0}, headers=headers)
+    assert res_inv.status_code == 201
+    token = res_inv.json()["token"]
+
+    # 2. Registra usuário com este convite
+    email_lead = "lead_usou_convite@teste.com"
+    res_reg = client.post("/api/v1/auth/register", json={
+        "token": token,
+        "name": "Lead Já Registrado",
+        "email": email_lead,
+        "phone": "(11) 97777-6666",
+        "password": "Password123!@#",
+        "password_confirm": "Password123!@#"
+    })
+    assert res_reg.status_code == 200
+
+    # Pega OTP
+    db = TestingSessionLocal()
+    ver = db.query(RegistrationVerification).filter_by(email=email_lead).first()
+    assert ver is not None
+    otp_code = ver.code
+    db.close()
+
+    # Valida OTP para marcar o convite como usado
+    res_verify = client.post("/api/v1/auth/register/verify", json={
+        "email": email_lead,
+        "code": otp_code
+    })
+    assert res_verify.status_code == 201
+    created_user_id = res_verify.json()["id"]
+
+    # 3. Agora o lead acessa o link do convite novamente
+    res_val = client.get(f"/api/v1/auth/invites/validate?token={token}")
+    assert res_val.status_code == 200
+    val_data = res_val.json()
+    assert val_data["valid"] is False
+    assert val_data["already_used"] is True
+    assert val_data["used_by_email"] == email_lead
+    assert "já foi utilizado" in val_data["detail"]
+
+    # Limpeza
+    client.delete(f"/api/v1/auth/users/{created_user_id}", headers=headers)

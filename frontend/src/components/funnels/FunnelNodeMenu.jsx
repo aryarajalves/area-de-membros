@@ -3,22 +3,34 @@ import {
   MessageSquare,
   Image,
   Mic,
-  FileText,
-  Clock,
   Hourglass,
-  PauseCircle,
-  Download,
   Search,
   X,
+  Zap,
+  Target,
+  Tag,
 } from 'lucide-react';
 
 const NODE_CATALOG = [
+  {
+    category: 'GATILHOS',
+    items: [
+      { type: 'trigger', label: 'Aluno Criado', icon: Zap, color: '#eab308', defaultData: { trigger_event: 'student_created' } },
+      { type: 'trigger_course_interest', label: 'Interesse em Curso', icon: Target, color: '#f59e0b', defaultData: { trigger_event: 'course_interest' } },
+    ],
+  },
   {
     category: 'CONTEÚDO',
     items: [
       { type: 'message', label: 'Texto', icon: MessageSquare, color: '#38bdf8' },
       { type: 'media', label: 'Mídia', icon: Image, color: '#ec4899' },
       { type: 'audio', label: 'Áudio', icon: Mic, color: '#10b981' },
+    ],
+  },
+  {
+    category: 'AÇÕES & CONTATOS',
+    items: [
+      { type: 'tag', label: 'Adicionar Tag', icon: Tag, color: '#a855f7' },
     ],
   },
   {
@@ -49,7 +61,6 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
         position: 'absolute',
         left: `${position?.x ?? 300}px`,
         top: `${position?.y ?? 150}px`,
-        transform: (position?.y ?? 0) > 280 ? 'translateY(-100%)' : 'none',
       };
 
   return (
@@ -135,7 +146,7 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
                       key={item.type}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSelectNode(item.type);
+                        onSelectNode(item.type, item.defaultData);
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       style={{

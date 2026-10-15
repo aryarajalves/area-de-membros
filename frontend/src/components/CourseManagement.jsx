@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, BookOpen, Search, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import CourseClassroom from './course-classroom/CourseClassroom';
-import CourseCard from './course-management/CourseCard';
-import { CourseFormModal, CourseDeleteModal } from './course-management/CourseModals';
+import { CourseCard, CourseBundleGroup, groupCoursesByBundles, CourseFormModal, CourseDeleteModal, CourseSalesHistoryModal } from './course-management';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -14,25 +13,62 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [initialTargetLesson, setInitialTargetLesson] = useState(null);
+  const [pendingLessonTarget, setPendingLessonTarget] = useState(null);
+
+  const { addToast } = useToast();
+  const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
 
   useEffect(() => {
     const handleOpenCourseLesson = (e) => {
       const { courseId, moduleId, lessonId } = e.detail || {};
       if (!courseId) return;
 
-      setInitialTargetLesson({ moduleId, lessonId });
-      setSelectedCourse((prev) => {
-        if (prev?.id === Number(courseId)) return prev;
-        const found = courses.find((c) => c.id === Number(courseId));
-        return found || { id: Number(courseId) };
-      });
+      const targetId = Number(courseId);
+      const found = courses.find((c) => c.id === targetId);
+
+      if (found) {
+        const hasAccess = isManager || found.has_access !== false;
+        if (!hasAccess) {
+          if (found.sales_page_url) {
+            window.location.href = found.sales_page_url;
+            return;
+          }
+          addToast('Você não possui acesso a este produto. Entre em contato para adquiri-lo.', 'info');
+          return;
+        }
+        setInitialTargetLesson({ moduleId, lessonId });
+        setSelectedCourse(found);
+      } else {
+        setPendingLessonTarget({ courseId: targetId, moduleId, lessonId });
+      }
     };
 
     window.addEventListener('open_course_lesson', handleOpenCourseLesson);
     return () => {
       window.removeEventListener('open_course_lesson', handleOpenCourseLesson);
     };
-  }, [courses]);
+  }, [courses, isManager, addToast]);
+
+  useEffect(() => {
+    if (!pendingLessonTarget || courses.length === 0) return;
+    const { courseId, moduleId, lessonId } = pendingLessonTarget;
+    const found = courses.find((c) => c.id === courseId);
+    setPendingLessonTarget(null);
+
+    if (found) {
+      const hasAccess = isManager || found.has_access !== false;
+      if (!hasAccess) {
+        if (found.sales_page_url) {
+          window.location.href = found.sales_page_url;
+          return;
+        }
+        addToast('Você não possui acesso a este produto. Entre em contato para adquiri-lo.', 'info');
+        return;
+      }
+      setInitialTargetLesson({ moduleId, lessonId });
+      setSelectedCourse(found);
+    }
+  }, [courses, pendingLessonTarget, isManager, addToast]);
 
   useEffect(() => {
     if (onCourseViewChange) {
@@ -47,6 +83,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
   const [editingCourse, setEditingCourse] = useState(null);
+  const [salesHistoryCourse, setSalesHistoryCourse] = useState(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -57,12 +94,12 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [orderIndex, setOrderIndex] = useState(0);
   const [agentflowKbId, setAgentflowKbId] = useState(null);
   const [agentflowKbName, setAgentflowKbName] = useState(null);
+  const [itemType, setItemType] = useState('course');
+  const [toolUrl, setToolUrl] = useState('');
+  const [bundledCourseIds, setBundledCourseIds] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { addToast } = useToast();
-
-  const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
   const activeBgColor = (courses[0]?.bg_color && propBgColor === '#090d16' ? courses[0].bg_color : propBgColor) || '#090d16';
 
   const fetchCourses = async () => {
@@ -107,6 +144,9 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setOrderIndex(0);
     setAgentflowKbId(null);
     setAgentflowKbName(null);
+    setItemType('course');
+    setToolUrl('');
+    setBundledCourseIds([]);
     setModalOpen(true);
   };
 
@@ -120,6 +160,9 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setOrderIndex(course.order_index ?? 0);
     setAgentflowKbId(course.agentflow_kb_id || null);
     setAgentflowKbName(course.agentflow_kb_name || null);
+    setItemType(course.item_type || 'course');
+    setToolUrl(course.tool_url || '');
+    setBundledCourseIds(course.bundled_course_ids || (course.bundled_courses ? course.bundled_courses.map((b) => b.id) : []));
     setModalOpen(true);
   };
 
@@ -160,29 +203,20 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   };
 
   const handleUploadThumbnail = (e) =>
-    handleUploadImageField(
-      e,
-      (url) => {
-        setThumbnailUrl(url);
-        if (!coverImageUrl) setCoverImageUrl(url);
-      },
-      'Thumbnail carregada com sucesso!'
-    );
+    handleUploadImageField(e, (url) => { setThumbnailUrl(url); if (!coverImageUrl) setCoverImageUrl(url); }, 'Thumbnail carregada com sucesso!');
 
   const handleUploadCoverImage = (e) =>
-    handleUploadImageField(
-      e,
-      (url) => {
-        setCoverImageUrl(url);
-        if (!thumbnailUrl) setThumbnailUrl(url);
-      },
-      'Banner Hero carregado com sucesso!'
-    );
+    handleUploadImageField(e, (url) => { setCoverImageUrl(url); if (!thumbnailUrl) setThumbnailUrl(url); }, 'Banner Hero carregado com sucesso!');
 
   const handleSaveCourse = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      addToast('O título do curso é obrigatório.', 'error');
+      addToast(itemType === 'tool' ? 'O nome da ferramenta é obrigatório.' : 'O título do curso é obrigatório.', 'error');
+      return;
+    }
+
+    if (itemType === 'tool' && !toolUrl.trim()) {
+      addToast('O link de acesso da ferramenta é obrigatório.', 'error');
       return;
     }
 
@@ -197,7 +231,10 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       order_index: parseInt(orderIndex, 10) || 0,
       agentflow_kb_id: agentflowKbId,
       agentflow_kb_name: agentflowKbName,
-      bg_color: activeBgColor
+      bg_color: activeBgColor,
+      item_type: itemType,
+      tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
+      bundled_course_ids: bundledCourseIds
     };
 
     try {
@@ -214,7 +251,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       });
 
       if (res.ok) {
-        addToast(editingCourse ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!', 'success');
+        const itemLabel = itemType === 'tool' ? 'Ferramenta' : 'Curso';
+        addToast(editingCourse ? `${itemLabel} atualizado com sucesso!` : `${itemLabel} criado com sucesso!`, 'success');
         setModalOpen(false);
         fetchCourses();
       } else {
@@ -255,6 +293,12 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     }
   };
 
+  const filteredCourses = courses.filter((c) =>
+    c.title.toLowerCase().includes(search.toLowerCase()) ||
+    (c.description && c.description.toLowerCase().includes(search.toLowerCase()))
+  );
+  const groupedDisplayItems = useMemo(() => groupCoursesByBundles(filteredCourses), [filteredCourses]);
+
   // Se um curso estiver selecionado para visualização/conteúdo
   if (selectedCourse) {
     return (
@@ -272,20 +316,24 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     );
   }
 
-  const filteredCourses = courses.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    (c.description && c.description.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(groupedDisplayItems.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedCourses = filteredCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedItems = groupedDisplayItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes(activeBgColor.toLowerCase());
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)';
+
+  const commonCardProps = {
+    isManager, isLightBg, textColor, subTextColor, cardBg, cardBorder,
+    onSelectCourse: setSelectedCourse,
+    onOpenEditModal: handleOpenEditModal,
+    onPromptDelete: handlePromptDelete,
+    onOpenSalesHistoryModal: (c) => setSalesHistoryCourse(c),
+    onShowInfoToast: (msg) => addToast(msg, 'info')
+  };
 
   return (
     <div
@@ -358,28 +406,19 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       ) : (
         <>
           <div className="courses-grid" data-testid="courses-grid">
-            {paginatedCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                isManager={isManager}
-                isLightBg={isLightBg}
-                textColor={textColor}
-                subTextColor={subTextColor}
-                cardBg={cardBg}
-                cardBorder={cardBorder}
-                onSelectCourse={setSelectedCourse}
-                onOpenEditModal={handleOpenEditModal}
-                onPromptDelete={handlePromptDelete}
-                onShowInfoToast={(msg) => addToast(msg, 'info')}
-              />
-            ))}
+            {paginatedItems.map((item) =>
+              item.type === 'bundle' ? (
+                <CourseBundleGroup key={item.key} bundle={item} {...commonCardProps} />
+              ) : (
+                <CourseCard key={item.course.id} course={item.course} {...commonCardProps} />
+              )
+            )}
           </div>
 
           {/* Barra de Paginação (20 cursos por página) */}
           <div className="table-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', marginTop: '20px', flexWrap: 'wrap', gap: '12px', backgroundColor: cardBg, border: cardBorder }} data-testid="courses-pagination">
             <span style={{ fontSize: '13px', color: subTextColor }}>
-              Exibindo {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredCourses.length)} de {filteredCourses.length} cursos
+              Exibindo {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, groupedDisplayItems.length)} de {filteredCourses.length} cursos
             </span>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -415,32 +454,20 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         </>
       )}
 
-      {/* Modal de Criação / Edição de Curso */}
+      {/* Modal de Criação / Edição de Curso ou Ferramenta */}
       <CourseFormModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        editingCourse={editingCourse}
-        title={title}
-        setTitle={setTitle}
-        description={description}
-        setDescription={setDescription}
-        thumbnailUrl={thumbnailUrl}
-        setThumbnailUrl={setThumbnailUrl}
-        coverImageUrl={coverImageUrl}
-        setCoverImageUrl={setCoverImageUrl}
-        salesPageUrl={salesPageUrl}
-        setSalesPageUrl={setSalesPageUrl}
-        orderIndex={orderIndex}
-        setOrderIndex={setOrderIndex}
-        agentflowKbId={agentflowKbId}
-        setAgentflowKbId={setAgentflowKbId}
-        agentflowKbName={agentflowKbName}
-        setAgentflowKbName={setAgentflowKbName}
-        bgColor={activeBgColor}
-        uploading={uploading}
-        saving={saving}
-        onUploadThumbnail={handleUploadThumbnail}
-        onUploadCoverImage={handleUploadCoverImage}
+        isOpen={modalOpen} onClose={() => setModalOpen(false)} editingCourse={editingCourse}
+        title={title} setTitle={setTitle} description={description} setDescription={setDescription}
+        thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
+        coverImageUrl={coverImageUrl} setCoverImageUrl={setCoverImageUrl}
+        salesPageUrl={salesPageUrl} setSalesPageUrl={setSalesPageUrl}
+        orderIndex={orderIndex} setOrderIndex={setOrderIndex}
+        agentflowKbId={agentflowKbId} setAgentflowKbId={setAgentflowKbId}
+        agentflowKbName={agentflowKbName} setAgentflowKbName={setAgentflowKbName}
+        itemType={itemType} setItemType={setItemType} toolUrl={toolUrl} setToolUrl={setToolUrl}
+        bundledCourseIds={bundledCourseIds} setBundledCourseIds={setBundledCourseIds}
+        availableCourses={courses} bgColor={activeBgColor} uploading={uploading} saving={saving}
+        onUploadThumbnail={handleUploadThumbnail} onUploadCoverImage={handleUploadCoverImage}
         onSaveCourse={handleSaveCourse}
       />
 
@@ -451,6 +478,14 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         onClose={() => setDeleteModalOpen(false)}
         onConfirmDelete={handleConfirmDelete}
         bgColor={activeBgColor}
+      />
+
+      {/* Modal de Histórico de Interesse na Página de Vendas */}
+      <CourseSalesHistoryModal
+        isOpen={Boolean(salesHistoryCourse)}
+        course={salesHistoryCourse}
+        onClose={() => setSalesHistoryCourse(null)}
+        isLightBg={isLightBg}
       />
     </div>
   );

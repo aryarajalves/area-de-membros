@@ -10,7 +10,12 @@ import {
 
 import { DEFAULT_COUNTRY } from './register/countryData';
 
-export default function Register({ token: initialToken, onRegisterSuccess }) {
+export default function Register({
+  token: initialToken,
+  onRegisterSuccess,
+  onRedirectToHome,
+  onRedirectToLogin,
+}) {
   const [token, setToken] = useState(initialToken || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -98,6 +103,53 @@ export default function Register({ token: initialToken, onRegisterSuccess }) {
         .then((data) => {
           if (data.valid) {
             setInviteInfo(data);
+          } else if (data.already_used || (data.detail && data.detail.includes('já foi utilizado'))) {
+            // O lead já possui conta criada com este convite!
+            const savedToken = localStorage.getItem('auth_token');
+            const savedUser = localStorage.getItem('auth_user');
+
+            const redirectToTarget = (isSessionActive) => {
+              if (isSessionActive) {
+                addToast('Você já possui uma conta ativa. Redirecionando para a tela principal...', 'success');
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, document.title, '/');
+                }
+                if (onRedirectToHome) {
+                  onRedirectToHome();
+                } else {
+                  window.location.href = '/';
+                }
+              } else {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                if (data.used_by_email) {
+                  localStorage.setItem('prefill_login_email', data.used_by_email);
+                }
+                addToast('Sua conta já foi criada anteriormente com este convite. Faça login para acessar seus cursos.', 'info');
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, document.title, '/');
+                }
+                if (onRedirectToLogin) {
+                  onRedirectToLogin();
+                } else {
+                  window.location.href = '/';
+                }
+              }
+            };
+
+            if (savedToken && savedUser) {
+              fetch('/api/v1/users/me', {
+                headers: { Authorization: `Bearer ${savedToken}` },
+              })
+                .then((meRes) => {
+                  redirectToTarget(Boolean(meRes && meRes.ok));
+                })
+                .catch(() => {
+                  redirectToTarget(false);
+                });
+            } else {
+              redirectToTarget(false);
+            }
           } else {
             const err = data.detail || 'Convite inválido ou expirado.';
             setInviteError(err);

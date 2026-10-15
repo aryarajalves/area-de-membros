@@ -7,6 +7,7 @@ from app.models.course import Course, UserCourse
 from app.models.chat import ChatMessage
 from app.models.student_tag import StudentTag, StudentTagAssignment
 from app.models.chat_broadcast import ChatBroadcastCampaign, ChatBroadcastRecipient
+from app.services.chat_encryption_service import decrypt_dm_message
 from tests.conftest import TestingSessionLocal, client
 
 
@@ -446,10 +447,12 @@ async def test_broadcast_idempotency_prevents_duplicate_messages(seed_broadcast_
     assert c1.sent_count == 1
     msgs1 = (
         db_check1.query(ChatMessage)
-        .filter_by(user_id=admin_id, recipient_id=aluno_b_id, message="Mensagem única sem repetição!")
+        .filter_by(user_id=admin_id, recipient_id=aluno_b_id, channel_type="dm")
         .all()
     )
     assert len(msgs1) == 1
+    assert msgs1[0].message.startswith("enc:v1:")
+    assert decrypt_dm_message(msgs1[0].message) == "Mensagem única sem repetição!"
     first_msg_id = msgs1[0].id
     db_check1.close()
 
@@ -462,11 +465,12 @@ async def test_broadcast_idempotency_prevents_duplicate_messages(seed_broadcast_
     assert c2.sent_count == 1, "sent_count não pode ultrapassar o total de destinatários enviados"
     msgs2 = (
         db_check2.query(ChatMessage)
-        .filter_by(user_id=admin_id, recipient_id=aluno_b_id, message="Mensagem única sem repetição!")
+        .filter_by(user_id=admin_id, recipient_id=aluno_b_id, channel_type="dm")
         .all()
     )
     assert len(msgs2) == 1, "Não pode haver mensagens duplicadas criadas no chat"
     assert msgs2[0].id == first_msg_id
+    assert decrypt_dm_message(msgs2[0].message) == "Mensagem única sem repetição!"
     db_check2.close()
 
 

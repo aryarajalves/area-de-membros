@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic, Copy, Trash2, Link as LinkIcon, Radio, Upload, Loader2, X, Music } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import FunnelNodeSenderSelect from './FunnelNodeSenderSelect';
 
 export default function FunnelNodeAudio({
   node,
@@ -11,6 +12,7 @@ export default function FunnelNodeAudio({
   onStartConnect,
   onConnectTarget,
   isTargetActive = false,
+  availableSenders = [],
 }) {
   const data = node.data || {};
   const [uploading, setUploading] = useState(false);
@@ -197,6 +199,15 @@ export default function FunnelNodeAudio({
           )}
         </div>
       </div>
+
+      {/* Remetente da DM */}
+      <FunnelNodeSenderSelect
+        value={data.sender_id}
+        onChange={(senderId) => handleUpdate('sender_id', senderId)}
+        availableSenders={availableSenders}
+        nodeId={node.id}
+        accentColor="#10b981"
+      />
 
       {/* Seção de Upload de Áudio */}
       <div style={{ marginBottom: '10px' }}>

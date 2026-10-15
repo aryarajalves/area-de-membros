@@ -22,6 +22,7 @@ from app.schemas.course import (
 )
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.services.storage import upload_media_file, delete_media_file
+from app.services.course_bundle_service import sync_course_bundles, attach_bundles_to_courses, get_effective_user_course_ids
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -38,15 +39,22 @@ def _is_user_course_active(uc: UserCourse) -> bool:
 
 
 def _verify_student_course_access(db: Session, user_id: int, course_id: int):
-    """Valida se o aluno possui acesso liberado e vigente ao curso."""
+    """Valida se o aluno possui acesso liberado e vigente ao curso (direto ou via pacote/combo)."""
     uc = db.query(UserCourse).filter(
         UserCourse.user_id == user_id,
         UserCourse.course_id == course_id
     ).first()
-    if not uc:
-        raise HTTPException(status_code=403, detail="Você não possui acesso liberado a este curso.")
-    if not _is_user_course_active(uc):
+    if uc and _is_user_course_active(uc):
+        return
+
+    # Se não tem direto, verifica se possui acesso ativo via pacote/combo
+    effective_ids = get_effective_user_course_ids(db, user_id)
+    if course_id in effective_ids:
+        return
+
+    if uc and not _is_user_course_active(uc):
         raise HTTPException(status_code=403, detail="O seu período de acesso a este curso expirou.")
+    raise HTTPException(status_code=403, detail="Você não possui acesso liberado a este curso.")
 
 BASE_UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
@@ -78,25 +86,13 @@ def _get_saved_platform_bg_color(db: Session) -> str:
     return "#090d16"
 
 
-@router.get(
-    "/platform-theme",
-    response_model=PlatformThemeResponse,
-    tags=["Cursos e Módulos"],
-    summary="Obter Tema Global da Plataforma",
-    description="Retorna a cor de fundo padrão da Área de Membros configurada pelo administrador."
-)
+@router.get("/platform-theme", response_model=PlatformThemeResponse, tags=["Cursos e Módulos"], summary="Obter Tema Global da Plataforma")
 def get_platform_theme(db: Session = Depends(get_db)):
-    """Retorna a cor de fundo global configurada para a Área de Membros (público para páginas de registro e login)."""
+    """Retorna a cor de fundo global configurada para a Área de Membros."""
     return {"bg_color": _get_saved_platform_bg_color(db)}
 
 
-@router.patch(
-    "/platform-theme",
-    response_model=PlatformThemeResponse,
-    tags=["Cursos e Módulos"],
-    summary="Atualizar Tema Global da Plataforma",
-    description="Atualiza a cor de fundo global e sincroniza automaticamente com todos os cursos cadastrados."
-)
+@router.patch("/platform-theme", response_model=PlatformThemeResponse, tags=["Cursos e Módulos"], summary="Atualizar Tema Global da Plataforma")
 def update_platform_theme(
     theme_in: PlatformThemeUpdate,
     db: Session = Depends(get_db),
@@ -118,13 +114,7 @@ def update_platform_theme(
 # CURSOS (COURSES)
 # ============================================================================
 
-@router.get(
-    "",
-    response_model=List[CourseResponse],
-    tags=["Cursos e Módulos"],
-    summary="Listar Cursos",
-    description="Retorna os cursos disponíveis. Alunos recebem apenas os cursos que possuem matrícula ativa."
-)
+@router.get("", response_model=List[CourseResponse], tags=["Cursos e Módulos"], summary="Listar Cursos")
 def list_courses(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
@@ -141,15 +131,15 @@ def list_courses(
         courses = db.query(Course).order_by(Course.order_index.asc(), Course.id.desc()).offset(skip).limit(limit).all()
         for c in courses:
             setattr(c, "has_access", True)
+        attach_bundles_to_courses(db, courses)
         return courses
 
     if current_user.role == "aluno":
-        user_courses = db.query(UserCourse).filter(UserCourse.user_id == current_user.id).all()
-        user_course_ids = {uc.course_id for uc in user_courses if _is_user_course_active(uc)}
-        # Alunos visualizam todos os cursos da plataforma ordenados pela ordem definida
+        user_course_ids = get_effective_user_course_ids(db, current_user.id)
         all_courses = db.query(Course).filter(Course.is_published == True).order_by(Course.order_index.asc(), Course.id.desc()).offset(skip).limit(limit).all()
         for c in all_courses:
             setattr(c, "has_access", c.id in user_course_ids)
+        attach_bundles_to_courses(db, all_courses)
         return all_courses
 
     return []
@@ -159,15 +149,15 @@ def list_courses(
     response_model=CourseResponse,
     status_code=status.HTTP_201_CREATED,
     tags=["Cursos e Módulos"],
-    summary="Criar Novo Curso",
-    description="Cadastra um novo curso na Área de Membros com título, descrição, capa, tema visual, link de vendas e ordem de exibição."
+    summary="Criar Novo Curso ou Ferramenta",
+    description="Cadastra um novo curso ou ferramenta na Área de Membros com suporte a pacotes inclusos."
 )
 def create_course(
     course_in: CourseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
 ):
-    """Cria um novo curso na plataforma (apenas admin ou superadmin)."""
+    """Cria um novo curso ou ferramenta na plataforma (apenas admin ou superadmin)."""
     global_bg = _get_saved_platform_bg_color(db)
     new_course = Course(
         title=course_in.title.strip(),
@@ -179,11 +169,16 @@ def create_course(
         sales_page_url=course_in.sales_page_url.strip() if course_in.sales_page_url else None,
         order_index=course_in.order_index if course_in.order_index is not None else 0,
         agentflow_kb_id=course_in.agentflow_kb_id,
-        agentflow_kb_name=course_in.agentflow_kb_name
+        agentflow_kb_name=course_in.agentflow_kb_name,
+        item_type=course_in.item_type or "course",
+        tool_url=course_in.tool_url.strip() if course_in.tool_url else None
     )
     db.add(new_course)
     db.commit()
     db.refresh(new_course)
+    if course_in.bundled_course_ids:
+        sync_course_bundles(db, new_course.id, course_in.bundled_course_ids)
+    attach_bundles_to_courses(db, [new_course])
     setattr(new_course, "has_access", True)
     return new_course
 
@@ -207,14 +202,15 @@ def get_course(
     if current_user.role == "aluno":
         _verify_student_course_access(db, current_user.id, course_id)
 
+    attach_bundles_to_courses(db, [course])
     return course
 
 @router.patch(
     "/{course_id}",
     response_model=CourseResponse,
     tags=["Cursos e Módulos"],
-    summary="Atualizar Curso",
-    description="Atualiza título, descrição, capa, cor de fundo ou publicação de um curso existente."
+    summary="Atualizar Curso ou Ferramenta",
+    description="Atualiza título, descrição, capa, cor de fundo, ferramenta ou pacotes."
 )
 def update_course(
     course_id: int,
@@ -222,7 +218,7 @@ def update_course(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_superadmin)
 ):
-    """Atualiza as informações de um curso existente."""
+    """Atualiza as informações de um curso ou ferramenta existente."""
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Curso não encontrado.")
@@ -251,9 +247,16 @@ def update_course(
         course.agentflow_kb_id = course_update.agentflow_kb_id if course_update.agentflow_kb_id > 0 else None
     if course_update.agentflow_kb_name is not None:
         course.agentflow_kb_name = course_update.agentflow_kb_name or None
+    if course_update.item_type is not None:
+        course.item_type = course_update.item_type
+    if course_update.tool_url is not None:
+        course.tool_url = course_update.tool_url.strip() if course_update.tool_url else None
+    if course_update.bundled_course_ids is not None:
+        sync_course_bundles(db, course.id, course_update.bundled_course_ids)
 
     db.commit()
     db.refresh(course)
+    attach_bundles_to_courses(db, [course])
     setattr(course, "has_access", True)
     return course
 

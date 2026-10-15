@@ -170,5 +170,43 @@ describe('ChatHeader Component', () => {
     const liveIndicator = container.querySelector('.chat-header-live-indicator');
     expect(liveIndicator).toBeInTheDocument();
   });
+
+  it('renderiza botão de alternar membros e aciona onToggleMembers', () => {
+    const handleToggleMembers = vi.fn();
+    render(
+      <ChatHeader
+        selectedChannel={mockChannel}
+        onToggleMembers={handleToggleMembers}
+        isMembersOpen={true}
+      />
+    );
+
+    const membersBtn = screen.getByTestId('chat-open-members-sidebar-btn');
+    expect(membersBtn).toBeInTheDocument();
+    expect(screen.getByText('Membros')).toBeInTheDocument();
+    fireEvent.click(membersBtn);
+    expect(handleToggleMembers).toHaveBeenCalledTimes(1);
+  });
+
+  it('guarantees horizontal layout for title and description with nowrap to prevent text squeezing', () => {
+    const { container } = render(
+      <ChatHeader
+        selectedChannel={{
+          ...mockChannel,
+          description: 'Bate-papo aberto para todos os alunos e instrutores',
+        }}
+      />
+    );
+
+    const headerLeft = container.querySelector('.chat-header-left');
+    expect(headerLeft).toHaveStyle({ minWidth: 'fit-content', flexShrink: '0' });
+
+    const titleEl = screen.getByTestId('chat-header-title');
+    expect(titleEl).toHaveStyle({ whiteSpace: 'nowrap' });
+
+    const descEl = screen.getByTestId('chat-header-desc');
+    expect(descEl).toHaveStyle({ whiteSpace: 'nowrap' });
+    expect(descEl).toHaveTextContent('Bate-papo aberto para todos os alunos e instrutores');
+  });
 });
 

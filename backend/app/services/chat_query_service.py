@@ -1,15 +1,19 @@
 from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from fastapi import HTTPException, status
 from app.models.chat import ChatMessage, ChatMessageMention
 from app.models.user import User
+from app.models.course import Course, UserCourse
 from app.schemas.chat import (
     ChatMentionContactItem,
     ChatMentionNotificationItem,
     ChatNotificationItem,
     ChatNotificationCountsResponse,
     ChatUser,
+    ChatMemberItem,
+    ChatChannelMembersResponse,
 )
 
 
@@ -267,5 +271,96 @@ def mark_user_all_notifications_read(db: Session, user: User):
     from app.services.chat_ws_manager import chat_manager
     chat_manager.send_to_user_sync(user.id, "notifications_updated", {"user_id": user.id})
     return {"ok": True, "message": "Todas as notificações foram marcadas como lidas."}
+
+
+def get_channel_members(
+    db: Session,
+    channel_type: str = "general",
+    course_id: Optional[int] = None,
+) -> ChatChannelMembersResponse:
+    """
+    Retorna os usuários que têm permissão para visualizar e participar deste canal de chat:
+    - Super Admins (acesso global)
+    - Administradores (acesso global)
+    - Alunos:
+        * 'general': Todos os alunos ativos cadastrados no sistema.
+        * 'course': Alunos ativos com matrícula válida/não expirada no respectivo curso.
+    """
+    from app.services.chat_ws_manager import chat_manager
+
+    online_ids = chat_manager.get_online_user_ids()
+    channel_name = "Comunidade Geral"
+
+    # 1. Super Admins
+    superadmin_users = (
+        db.query(User)
+        .filter(User.role == "superadmin", User.is_active == True)
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    # 2. Administradores
+    admin_users = (
+        db.query(User)
+        .filter(User.role == "admin", User.is_active == True)
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    # 3. Alunos
+    if channel_type == "course" and course_id:
+        course = db.query(Course).filter(Course.id == course_id).first()
+        if course:
+            channel_name = f"Curso: {course.title}"
+        now = datetime.now(timezone.utc)
+        student_users = (
+            db.query(User)
+            .join(UserCourse, User.id == UserCourse.user_id)
+            .filter(
+                UserCourse.course_id == course_id,
+                User.role.in_(["aluno", "user"]),
+                User.is_active == True,
+                or_(UserCourse.expires_at.is_(None), UserCourse.expires_at > now),
+            )
+            .distinct()
+            .order_by(User.name.asc())
+            .all()
+        )
+    else:
+        student_users = (
+            db.query(User)
+            .filter(User.role.in_(["aluno", "user"]), User.is_active == True)
+            .order_by(User.name.asc())
+            .all()
+        )
+
+    def _to_member_item(u: User) -> ChatMemberItem:
+        return ChatMemberItem(
+            id=u.id,
+            name=u.name,
+            email=u.email,
+            role=u.role,
+            avatar_url=u.avatar_url,
+            phone=u.phone,
+            created_at=u.created_at,
+            is_online=u.id in online_ids,
+        )
+
+    superadmins_dto = [_to_member_item(u) for u in superadmin_users]
+    admins_dto = [_to_member_item(u) for u in admin_users]
+    students_dto = [_to_member_item(u) for u in student_users]
+
+    total = len(superadmins_dto) + len(admins_dto) + len(students_dto)
+
+    return ChatChannelMembersResponse(
+        channel_type=channel_type,
+        course_id=course_id,
+        channel_name=channel_name,
+        total_members=total,
+        superadmins=superadmins_dto,
+        admins=admins_dto,
+        students=students_dto,
+    )
+
 
 

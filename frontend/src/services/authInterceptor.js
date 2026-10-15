@@ -4,18 +4,38 @@
 
 export const AUTH_EXPIRED_EVENT = 'auth:session_expired';
 
+let lastExpiredEventTime = 0;
+const EXPIRED_EVENT_COOLDOWN_MS = 3000;
+
 /**
  * Dispara o evento de expiração de sessão e limpa os dados de autenticação locais.
  */
 export function handleSessionExpired() {
+  const now = Date.now();
+  const isCooldownActive = (now - lastExpiredEventTime) < EXPIRED_EVENT_COOLDOWN_MS;
+
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
   localStorage.removeItem('active_tab');
   localStorage.removeItem('active_subtab_usermanagement');
+
+  if (isCooldownActive) {
+    return;
+  }
+  lastExpiredEventTime = now;
+
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
 }
 
 let isInterceptorInstalled = false;
+
+/**
+ * Reseta o estado interno do interceptor (útil para testes unitários).
+ */
+export function resetAuthInterceptorState() {
+  lastExpiredEventTime = 0;
+  isInterceptorInstalled = false;
+}
 
 /**
  * Instala um interceptor global no window.fetch nativo.

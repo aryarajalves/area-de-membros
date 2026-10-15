@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecret-jwt-key-projeto-base-981273491")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    DM_ENCRYPTION_KEY: str = os.getenv("DM_ENCRYPTION_KEY", "")
 
     # Pepper for password hashing (kept secret on the server)
     SECURITY_PASSWORD_PEPPER: str = os.getenv("SECURITY_PASSWORD_PEPPER", "custom-pepper-salt-projeto-base-secure-key-2026")

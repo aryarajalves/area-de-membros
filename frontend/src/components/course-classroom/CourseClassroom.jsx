@@ -35,6 +35,9 @@ export default function CourseClassroom({
         if (found) {
           setSelectedModuleId(mod.id);
           setActiveLesson(found);
+          setTimeout(() => {
+            scrollToClassroomSection();
+          }, 120);
           return;
         }
       }
@@ -44,6 +47,9 @@ export default function CourseClassroom({
       if (targetMod) {
         setSelectedModuleId(targetMod.id);
         if (targetMod.lessons?.length > 0) setActiveLesson(targetMod.lessons[0]);
+        setTimeout(() => {
+          scrollToClassroomSection();
+        }, 120);
       }
     }
   }, [modules, initialModuleId, initialLessonId, setActiveLesson]);

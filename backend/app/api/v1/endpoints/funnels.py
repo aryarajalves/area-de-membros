@@ -14,6 +14,9 @@ from app.schemas.funnel import (
     FunnelDetail,
     FunnelTriggerRequest,
     FunnelTriggerResponse,
+    FunnelSenderOption,
+    FunnelExecutionsResponse,
+    ContactActiveFunnelItem,
 )
 from app.services.funnel_service import (
     list_funnels,
@@ -23,9 +26,34 @@ from app.services.funnel_service import (
     delete_funnel,
     duplicate_funnel,
     execute_funnel_flow,
+    check_and_dispatch_delayed_student_funnels,
+    get_funnel_executions,
+    get_contact_active_funnels,
 )
 
 router = APIRouter(prefix="/funnels", tags=["Funis de Mensagens"])
+
+
+@router.get("/senders", response_model=List[FunnelSenderOption], summary="Listar Remetentes Autorizados para Funis")
+def list_funnel_senders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Retorna os administradores e superadmins autorizados a disparar mensagens no funil."""
+    users = db.query(User).filter(
+        User.role.in_(["superadmin", "admin"]),
+        User.is_active == True,
+    ).order_by(User.role.desc(), User.name.asc()).all()
+    return [
+        FunnelSenderOption(
+            id=u.id,
+            name=u.name,
+            email=u.email,
+            role=u.role,
+            avatar_url=getattr(u, "avatar_url", None),
+        )
+        for u in users
+    ]
 
 
 @router.get("", response_model=List[FunnelSummary], summary="Listar Funis Cadastrados")
@@ -155,4 +183,49 @@ def get_funnel_local_media(filename: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo de mídia não encontrado.")
     return FileResponse(path)
+
+
+@router.post("/check-triggers", summary="Verificar e Disparar Gatilhos Pendentes")
+def check_funnel_triggers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Verifica alunos cadastrados e dispara funis que contenham gatilhos por tempo
+    (ex: X dias após a criação do aluno).
+    """
+    dispatched = check_and_dispatch_delayed_student_funnels(db)
+    return {
+        "success": True,
+        "message": f"Verificação concluída. {dispatched} funil(is) acionado(s).",
+        "dispatched_count": dispatched,
+    }
+
+
+@router.get("/{funnel_id}/executions", response_model=FunnelExecutionsResponse, summary="Listar Histórico de Execuções do Funil")
+def get_funnel_executions_endpoint(
+    funnel_id: int,
+    student_id: Optional[int] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Retorna o histórico de todas as vezes que o funil foi disparado, com nós visitados,
+    contatos, status e estrutura visual dos nós.
+    """
+    return get_funnel_executions(db, funnel_id, student_id=student_id, status_filter=status)
+
+
+@router.get("/contacts/{student_id}/active-funnels", response_model=List[ContactActiveFunnelItem], summary="Listar Funis em Andamento do Contato")
+def get_contact_active_funnels_endpoint(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Retorna os funis ativos e histórico recente de execuções para um contato específico.
+    """
+    return get_contact_active_funnels(db, student_id)
+
 

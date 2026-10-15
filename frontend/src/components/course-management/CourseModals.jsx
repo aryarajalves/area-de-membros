@@ -4,6 +4,8 @@ import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackM
 import ExpandableTextarea from '../common/ExpandableTextarea';
 import ConfirmGenerateAiMetadataModal from '../course-classroom/ConfirmGenerateAiMetadataModal';
 import AgentFlowKbSelector from './AgentFlowKbSelector';
+import CourseTypeSelector from './CourseTypeSelector';
+import CourseBundleSelector from './CourseBundleSelector';
 import { useToast } from '../../context/ToastContext';
 
 export function CourseFormModal({
@@ -26,6 +28,13 @@ export function CourseFormModal({
   setAgentflowKbId,
   agentflowKbName = '',
   setAgentflowKbName,
+  itemType = 'course',
+  setItemType,
+  toolUrl = '',
+  setToolUrl,
+  bundledCourseIds = [],
+  setBundledCourseIds,
+  availableCourses = [],
   bgColor = '#090d16',
   uploading,
   saving,
@@ -93,7 +102,9 @@ export function CourseFormModal({
         }}
       >
         <div className="modal-header">
-          <h3 style={{ color: textColor }}>{editingCourse ? 'Editar Curso' : 'Criar Novo Curso'}</h3>
+          <h3 style={{ color: textColor }}>
+            {editingCourse ? (itemType === 'tool' ? 'Editar Ferramenta' : 'Editar Curso') : (itemType === 'tool' ? 'Criar Nova Ferramenta' : 'Criar Novo Curso')}
+          </h3>
           <button
             type="button"
             className="close-modal-btn"
@@ -105,13 +116,26 @@ export function CourseFormModal({
         </div>
 
         <form onSubmit={onSaveCourse} className="modal-form">
+          {/* Seletor de Tipo de Item (Curso ou Ferramenta) */}
+          {setItemType && (
+            <CourseTypeSelector
+              itemType={itemType}
+              onChangeItemType={setItemType}
+              toolUrl={toolUrl}
+              onChangeToolUrl={setToolUrl}
+              isLightBg={isLightBg}
+            />
+          )}
+
           <div className="form-group">
-            <label htmlFor="course-title">Título do Curso *</label>
+            <label htmlFor="course-title">
+              {itemType === 'tool' ? 'Nome da Ferramenta / Aplicativo *' : 'Título do Curso *'}
+            </label>
             <input
               id="course-title"
               type="text"
               required
-              placeholder="Ex: Formação em Tráfego Direto"
+              placeholder={itemType === 'tool' ? 'Ex: ZapVoice - Disparador WhatsApp' : 'Ex: Formação em Tráfego Direto'}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               data-testid="course-title-input"
@@ -311,6 +335,17 @@ export function CourseFormModal({
             isLightBg={isLightBg}
           />
 
+          {/* Seletor de Cursos/Ferramentas Inclusos neste Pacote */}
+          {setBundledCourseIds && (
+            <CourseBundleSelector
+              availableCourses={availableCourses}
+              currentCourseId={editingCourse?.id}
+              selectedCourseIds={bundledCourseIds}
+              onChangeSelectedCourseIds={setBundledCourseIds}
+              isLightBg={isLightBg}
+            />
+          )}
+
           <div className="modal-actions">
             <button
               type="button"
@@ -326,7 +361,7 @@ export function CourseFormModal({
               disabled={saving || uploading}
               data-testid="submit-course-btn"
             >
-              {saving ? 'Salvando...' : (editingCourse ? 'Salvar Alterações' : 'Criar Curso')}
+              {saving ? 'Salvando...' : (editingCourse ? 'Salvar Alterações' : (itemType === 'tool' ? 'Criar Ferramenta' : 'Criar Curso'))}
             </button>
           </div>
         </form>

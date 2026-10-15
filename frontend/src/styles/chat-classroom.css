@@ -350,6 +350,21 @@
   display: inline;
 }
 
+.chat-header-left {
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.chat-header [data-testid="chat-header-title"] {
+  white-space: nowrap;
+}
+
+.chat-header [data-testid="chat-header-desc"] {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 768px) {
   .chat-header {
     padding: 8px 10px !important;

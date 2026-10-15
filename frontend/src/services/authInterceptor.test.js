@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   setupAuthInterceptor,
   handleSessionExpired,
+  resetAuthInterceptorState,
   AUTH_EXPIRED_EVENT,
 } from './authInterceptor';
 
 describe('authInterceptor', () => {
   beforeEach(() => {
     localStorage.clear();
+    resetAuthInterceptorState();
     vi.restoreAllMocks();
   });
 
@@ -86,6 +88,24 @@ describe('authInterceptor', () => {
     await window.fetch('/api/v1/auth/login');
 
     expect(listener).not.toHaveBeenCalled();
+
+    window.removeEventListener(AUTH_EXPIRED_EVENT, listener);
+  });
+
+  it('ignores multiple rapid calls within cooldown period and only dispatches event once', () => {
+    const listener = vi.fn();
+    window.addEventListener(AUTH_EXPIRED_EVENT, listener);
+
+    localStorage.setItem('auth_token', 'test_token');
+
+    // Simula 5 chamadas quase simultâneas vindas de requisições paralelas com 401
+    handleSessionExpired();
+    handleSessionExpired();
+    handleSessionExpired();
+    handleSessionExpired();
+    handleSessionExpired();
+
+    expect(listener).toHaveBeenCalledTimes(1);
 
     window.removeEventListener(AUTH_EXPIRED_EVENT, listener);
   });

@@ -129,4 +129,88 @@ describe('InviteTableTab Component', () => {
     const actionCells = container.querySelectorAll('.table-actions-cell');
     expect(actionCells.length).toBeGreaterThan(0);
   });
+
+  it('renders copy invite button for all invites including used and expired invites', () => {
+    const mockCopy = vi.fn();
+    const testInvites = [
+      {
+        id: 10,
+        role: 'aluno',
+        token: 'token_active',
+        is_used: false,
+        is_expired: false,
+        time_remaining: '24h',
+        used_by_email: null,
+        created_at: '2026-10-01T10:00:00Z',
+      },
+      {
+        id: 20,
+        role: 'aluno',
+        token: 'token_used',
+        is_used: true,
+        is_expired: false,
+        time_remaining: '12h',
+        used_by_email: 'user@used.com',
+        created_at: '2026-10-01T10:00:00Z',
+      },
+      {
+        id: 30,
+        role: 'aluno',
+        token: 'token_expired',
+        is_used: false,
+        is_expired: true,
+        time_remaining: 'Expirado',
+        used_by_email: null,
+        created_at: '2026-10-01T10:00:00Z',
+      },
+      {
+        id: 40,
+        role: 'aluno',
+        token: 'token_used_and_expired',
+        is_used: true,
+        is_expired: true,
+        time_remaining: 'Expirado',
+        used_by_email: 'expired@used.com',
+        created_at: '2026-10-01T10:00:00Z',
+      },
+    ];
+
+    render(
+      <InviteTableTab
+        filteredInvites={testInvites}
+        paginatedInvites={testInvites}
+        inviteStatusFilter="all"
+        setInviteStatusFilter={vi.fn()}
+        selectedInviteIds={[]}
+        setSelectedInviteIds={vi.fn()}
+        paginatedInviteIds={[10, 20, 30, 40]}
+        isAllInvitesSelected={false}
+        toggleSelectAllInvites={vi.fn()}
+        toggleSelectInvite={vi.fn()}
+        handleBulkDeleteInvites={vi.fn()}
+        handleDeleteInvite={vi.fn()}
+        copyToClipboard={mockCopy}
+        invitesPage={1}
+        setInvitesPage={vi.fn()}
+        totalInvitePages={1}
+        pageSize={20}
+      />
+    );
+
+    const copyBtnActive = screen.getByTestId('copy-row-invite-10');
+    const copyBtnUsed = screen.getByTestId('copy-row-invite-20');
+    const copyBtnExpired = screen.getByTestId('copy-row-invite-30');
+    const copyBtnUsedAndExpired = screen.getByTestId('copy-row-invite-40');
+
+    expect(copyBtnActive).toBeInTheDocument();
+    expect(copyBtnUsed).toBeInTheDocument();
+    expect(copyBtnExpired).toBeInTheDocument();
+    expect(copyBtnUsedAndExpired).toBeInTheDocument();
+
+    fireEvent.click(copyBtnUsedAndExpired);
+    expect(mockCopy).toHaveBeenCalledWith(
+      expect.stringContaining('register?token=token_used_and_expired')
+    );
+  });
 });
+

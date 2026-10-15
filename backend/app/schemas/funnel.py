@@ -66,3 +66,61 @@ class FunnelTriggerResponse(BaseModel):
     message: str
     execution_id: Optional[int] = None
     messages_dispatched: int = 0
+
+
+class FunnelSenderOption(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class FunnelExecutionItem(BaseModel):
+    id: int
+    funnel_id: int
+    funnel_name: str
+    user_id: int
+    student_name: str
+    student_email: Optional[str] = None
+    student_avatar: Optional[str] = None
+    triggered_by: str
+    current_node_id: Optional[str] = None
+    status: str
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    logs: Optional[str] = None
+    visited_nodes: List[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class FunnelExecutionsResponse(BaseModel):
+    funnel_id: int
+    funnel_name: str
+    flow_nodes: List[Any] = []
+    flow_edges: List[Any] = []
+    total_executions: int = 0
+    running_count: int = 0
+    completed_count: int = 0
+    executions: List[FunnelExecutionItem] = []
+
+
+class ContactActiveFunnelItem(BaseModel):
+    execution_id: int
+    funnel_id: int
+    funnel_name: str
+    triggered_by: str
+    status: str
+    current_node_id: Optional[str] = None
+    current_node_type: Optional[str] = None
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    progress_percentage: int = 0
+    visited_nodes_count: int = 0
+    total_nodes_count: int = 0
+
+    model_config = {"from_attributes": True}
+

@@ -20,10 +20,28 @@ class Course(Base):
     order_index = Column(Integer, default=0, index=True)
     agentflow_kb_id = Column(Integer, nullable=True)
     agentflow_kb_name = Column(String, nullable=True)
+    item_type = Column(String, default="course", nullable=True)  # 'course' ou 'tool'
+    tool_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     modules = relationship("Module", back_populates="course", cascade="all, delete-orphan", order_by="Module.order_index")
+
+
+class CourseBundle(Base):
+    __tablename__ = "course_bundles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    bundled_course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("parent_course_id", "bundled_course_id", name="uq_course_bundle"),
+    )
+
+    parent_course = relationship("Course", foreign_keys=[parent_course_id], backref=backref("bundled_items", cascade="all, delete-orphan"))
+    bundled_course = relationship("Course", foreign_keys=[bundled_course_id])
 
 
 class UserCourse(Base):
@@ -335,6 +353,19 @@ class LessonTranscription(Base):
 
     lesson = relationship("Lesson", back_populates="transcription")
     generated_by = relationship("User")
+
+
+class CourseSalesClick(Base):
+    __tablename__ = "course_sales_clicks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    course = relationship("Course", backref=backref("sales_clicks", cascade="all, delete-orphan", order_by="CourseSalesClick.created_at.desc()"))
+    user = relationship("User")
+
 
 
 

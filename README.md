@@ -158,12 +158,23 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 ### ⚡ 10. Editor Visual de Funis de Automação (`/funnels`)
 - **Canvas Interativo e Fluido:**
   - Navegação infinita (*pan*) com arrasto do mouse e controles de zoom centralizados (in, out, reset com indicador de porcentagem).
+  - **Centralização Automática:** Ao carregar um funil existente ou navegar entre abas, o canvas calcula automaticamente o centro de massa de todos os nós e ajusta o enquadramento na tela.
   - Adição rápida de nós via menu inferior ou clique com botão direito no canvas.
-- **Nós de Conteúdo e Fluxo:**
+- **Nós de Conteúdo, Fluxo e Etiquetas:**
   - **Mensagem:** Texto dinâmico com suporte a Spintax (`{Oi|Olá}`), variáveis (`{aluno}`) e até 3 botões interativos com links/ações.
   - **Mídia:** Suporte a imagens, vídeos e documentos anexos com legenda.
   - **Áudio:** Envio de arquivos de áudio com toggle para simular gravação na hora (*voice note*).
   - **Delay:** Intervalo de tempo configurável em segundos/minutos entre mensagens.
+  - **Nó de Etiquetas (Tags):**
+    - **Adicionar Etiqueta:** Aplica uma ou mais tags aos alunos ao passarem pelo nó.
+    - **Remover Etiqueta:** Remove tags específicas atribuídas ao contato.
+    - **Verificar Etiqueta (Condicional):** Avalia se o contato possui etiquetas específicas com suporte a operadores lógicos **E (`AND`)** e **OU (`OR`)**, ramificando o fluxo em 2 saídas distintas: *"Possui etiqueta"* (verde) e *"Não possui etiqueta"* (cinza/laranja).
+  - **Criação Rápida de Etiquetas com Paleta de Cores:** Modal centralizado com backdrop escuro (`FunnelCreateTagModal`) para cadastrar novas etiquetas informando nome e escolhendo entre 8 cores temáticas vibrantes.
+- **Segurança de Fluxo e Confirmação de Ações:**
+  - **Duplicação e Exclusão Seguras:** Modais centralizados com painel escuro translúcido para confirmação de duplicação ou exclusão tanto de nós individuais quanto do fluxo completo (`FunnelDuplicateConfirmModal`, `FunnelNodeConfirmModal`).
+- **Histórico e Rastreamento Visual de Execuções (`FunnelExecutionsHistoryModal`):**
+  - Modal para consultar o histórico detalhado de execuções do funil por contato.
+  - **Visualização de Progresso (`FunnelExecutionFlowProgress`):** Renderização gráfica indicando exatamente até qual nó o lead avançou, se está pausado em um nó de delay ou se o fluxo foi concluído.
 - **Conexões Bézier Precisas e Bidirecionais:**
   - Linhas curvas Bézier SVG suaves conectadas com precisão milimétrica no centro das bolinhas (*handles*) de entrada e saída.
   - Conexão bidirecional por arrasto (*drag-and-drop*) com detecção inteligente ao soltar tanto na bolinha quanto no card de destino.
@@ -181,36 +192,55 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Card dedicado na aba Meu Perfil exibindo o Elo atual, badge temático, pontuação acumulada, barra de progresso para o próximo nível e posição no ranking em tempo real.
   - Botão de acesso rápido para inspecionar a escada completa de 20 níveis.
 
-### 📢 12. Disparos em Massa no Chat (Chat Broadcast) & Tags de Alunos
-- **Campanhas de Mensagens:**
-  - Disparos em massa para canais ou DMs com segmentação por tags personalizadas de alunos.
-  - Botões de chamada para ação (CTA) configuráveis com links interativos.
-  - Histórico de campanhas com estatísticas de entrega e status.
+### 📢 12. Chat da Comunidade, Mensagens Diretas (DMs) Seguras & Broadcast
+- **Criptografia Simétrica de Ponta a Ponta (DMs):**
+  - Todas as conversas privadas entre usuários contam com criptografia simétrica robusta (`Fernet / AES-128-CBC` via biblioteca auditada `cryptography==50.0.2`), garantindo privacidade absoluta no banco de dados.
+- **Sidebar de Membros e Perfil Interativo:**
+  - Lista lateral com contatos online/offline, status de presença e modal de perfil do membro com botão de início de conversa privada imediata.
+- **Recursos Ricos no Chat:**
+  - Envio de áudio gravado e gravador de vídeo embutido (`ChatVideoRecorderModal`).
+  - Seletor de GIFs animados integrado (`ChatGifPickerPopup`).
+  - Envio de mídias com modal dedicado de legenda (`ChatImageCaptionModal`).
+  - Pré-visualização automática de links externos (`ChatAttachedLinkPreview`) e anexo de links internos diretos para cursos e aulas da plataforma (`ChatInternalLinkModal`).
+  - Menção de contatos com autocompletar `@` e destaque visual dinâmico.
+- **Disparos em Massa (Chat Broadcast):**
+  - Campanhas de mensagens segmentadas por tags de alunos, CTAs com botões interativos e histórico completo de entrega.
 
-### 🎨 13. WhiteLabel e Identidade Visual Personalizada (`/settings`)
+### 🛍️ 13. Vitrine de Cursos, Ferramentas, Combos e Rastreamento de Vendas
+- **Classificação de Produtos (Cursos vs Ferramentas):**
+  - Seletor de tipo de produto (`CourseTypeSelector`) permitindo catalogar conteúdos pedagógicos e ferramentas utilitárias na vitrine.
+- **Criação de Combos / Bundles Agrupados (`CourseBundleSelector`, `CourseBundleGroup`):**
+  - Agrupamento de múltiplos cursos e ferramentas em pacotes integrados com gestão visual unificada.
+- **Rastreamento de Leads e Interesse de Vendas:**
+  - Registro automático de cliques de alunos interessados em cursos fechados (`POST /courses/{id}/sales-click`).
+  - **Modal de Histórico de Vendas (`CourseSalesHistoryModal`):** Gestores acompanham em tempo real os contatos que demonstraram interesse em cada produto com contadores de cliques e último acesso.
+
+### 🎨 14. WhiteLabel e Identidade Visual Personalizada (`/settings`)
 - **Customização Completa de Marca (`PlatformWhiteLabelTab` & `/api/v1/whitelabel`):**
   - Configuração de nome da plataforma, logo oficial, ícone/favicon e paleta de cores primárias.
   - Banner customizado na tela de login/boas-vindas com upload direto.
   - Aplicação reativa e persistente no TopNavbar, Sidebar e aba do navegador.
 
-### 🧭 14. Central de Início e Tutoriais Interativos com IA (`/tutorials`)
+### 🧭 15. Central de Início e Tutoriais Interativos com IA (`/tutorials`)
 - **Guia de Primeiros Passos e Onboarding:**
   - Vitrine de tutoriais para novos alunos com barra de progresso individual (`HomeTutorials`).
   - Geração automática de roteiros e etapas de tutorial utilizando inteligência artificial (`/api/v1/tutorials/ai-generate`).
   - Suporte a vídeos demonstrativos, links externos e checklist de passos concluídos pelo aluno.
 
-### 🤝 15. Mural "Apresente-se" e Networking de Alunos (`/introductions`)
+### 🤝 16. Mural "Apresente-se" e Networking de Alunos (`/introductions`)
 - **Comunidade Social de Apresentações:**
   - Feed interativo de networking onde alunos publicam biografia, foto de perfil, links sociais e vídeo de introdução (`IntroductionManagement`).
   - **Transcrição e Descrição com IA:** Upload de vídeo com transcrição automática via Whisper e síntese inteligente do perfil em texto.
   - Curtidas e comentários em tempo real com contadores dinâmicos.
   - Modais de exclusão e edição com confirmação segura e layout responsivo.
 
-### 🔐 16. Criação Manual de Usuários, Senha Forte e Resiliência
-- **Criação Manual de Alunos/Admins (`CreateUserManualModal`):**
-  - Formulário completo para administradores cadastrarem usuários diretamente pelo painel com definição de perfil (`student` ou `admin`), cursos vinculados e data de expiração.
-- **Validação Rigorosa de Senha (12 Caracteres):**
-  - Requisito de senha com no mínimo 12 caracteres contendo letras maiúsculas, minúsculas, números e caracteres especiais em todas as telas (Registro, Perfil, Criação Manual e Redefinição).
+### 🔐 17. Gestão de Convites, Redirecionamento Inteligente e Criação de Usuários
+- **Cópia de Link de Convite Desbloqueada:**
+  - O botão de copiar link fica permanentemente disponível em todas as linhas da tabela de convites (`InviteTableTab.jsx`), permitindo copiar links mesmo para convites já utilizados ou expirados.
+- **Redirecionamento Inteligente de Convite Utilizado:**
+  - Se um aluno tentar reutilizar seu link de convite: caso possua sessão ativa no navegador, é redirecionado instantaneamente para a tela principal da Área de Membros; caso a sessão esteja expirada, é direcionado com segurança para o login com notificação amigável.
+- **Criação Manual e Registro Público Seguro:**
+  - Cadastro de alunos e administradores com vinculação de cursos, validação rigorosa de senha com 12+ caracteres e fuso horário oficial de Brasília.
 - **Handler Global de Exceções no FastAPI:**
   - Captura padronizada de erros inesperados retornando JSON `{"detail": "..."}` com status HTTP 500 e log estruturado, prevenindo vazamento de stack traces.
 
@@ -289,7 +319,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 cd frontend
 npm test -- --run
 ```
-> **723 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, separadores de datas inteligentes no chat da comunidade (`ChatDateSeparator`), rolagem horizontal e filtros responsivos de suporte (`SupportFilterPills`), proporção e layout mobile do card de alunos (`StudentCard`), reprodutor de vídeo ultrarrápido com streaming leve sob demanda (`CustomVideoPlayer`, `VideoPlayerOverlays`, `VideoControls`), gamificação RPG no Meu Perfil, módulos retráteis na sala de aula, mural social, editor de funis Bézier, chat broadcast, Favoritos unificados e logs.
+> **942 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento e nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`) e redirecionamento inteligente.
 
 ### Backend (Pytest)
 ```bash
@@ -298,7 +328,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **177 testes unitários passando (100% de aprovação)** cobrindo ciclo de vida e startup resiliente da API (`test_lifespan_startup.py`), endpoints de WhiteLabel (`/api/v1/whitelabel`), tutoriais e geração por IA (`/api/v1/tutorials`), mural de apresentações com vídeo e comentários (`/api/v1/introductions`), criação manual de usuários e senha forte de 12 caracteres (`/api/v1/users`), handler global de exceções HTTP 500, capítulos de transcrição IA, funis de automação, chat broadcast, tags de alunos, gamificação RPG, Favoritos, tokens de API, uploads S3/Backblaze B2, autenticação JWT, marcos de progresso e rotas de convites.
+> **222 testes unitários passando (100% de aprovação)** cobrindo criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`, `test_invite_phone.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
 
 ---
 
@@ -309,7 +339,7 @@ O projeto conta com um script de auditoria unificado que inspeciona pacotes do P
 ```bash
 python scripts/audit_security.py
 ```
-> **Aprovado com 0 vulnerabilidades no Backend e 0 vulnerabilidades no Frontend.**
+> **Aprovado com 0 vulnerabilidades no Backend e 0 vulnerabilidades no Frontend** (incluindo o pacote de criptografia `cryptography==50.0.2` atualizado e auditado).
 
 ---
 

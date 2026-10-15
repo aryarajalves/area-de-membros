@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import ChatDmConversationView from './ChatDmConversationView';
+import { ToastProvider } from '../../context/ToastContext';
 
 describe('ChatDmConversationView Component', () => {
   const mockContact = {
@@ -38,13 +39,15 @@ describe('ChatDmConversationView Component', () => {
     ];
 
     render(
-      <ChatDmConversationView
-        selectedContact={mockContact}
-        currentUser={mockUser}
-        messages={mockMessages}
-        loading={false}
-        onSendMessage={vi.fn()}
-      />
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={mockMessages}
+          loading={false}
+          onSendMessage={vi.fn()}
+        />
+      </ToastProvider>
     );
 
     expect(screen.getByText('Olá Carlos, tudo bem?')).toBeInTheDocument();
@@ -55,26 +58,43 @@ describe('ChatDmConversationView Component', () => {
     expect(ctaBtn).toHaveTextContent('Assistir Aula Ao Vivo');
     expect(ctaBtn).toHaveAttribute('href', 'https://youtube.com/live/exemplo');
     expect(ctaBtn).toHaveAttribute('target', '_blank');
+
+    // Valida o banner de criptografia de ponta a ponta
+    expect(screen.getByTestId('dm-encryption-banner')).toBeInTheDocument();
+    expect(screen.getByText('Mensagens e arquivos protegidos por criptografia de ponta a ponta')).toBeInTheDocument();
   });
 
-  it('handles message submission', async () => {
+  it('handles message submission and renders media input toolbar', async () => {
     const onSendMessage = vi.fn().mockResolvedValue(true);
     render(
-      <ChatDmConversationView
-        selectedContact={mockContact}
-        currentUser={mockUser}
-        messages={[]}
-        loading={false}
-        onSendMessage={onSendMessage}
-      />
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={[]}
+          loading={false}
+          onSendMessage={onSendMessage}
+        />
+      </ToastProvider>
     );
 
-    const input = screen.getByTestId('dm-message-input');
+    // Valida que a barra de ferramentas completa com todas as mídias está presente
+    expect(screen.getByTestId('chat-input-toolbar')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-attach-button')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-image-button')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-gif-button')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-emoji-button')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-record-audio-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-video-record-button')).toBeInTheDocument();
+
+    const input = screen.getByTestId('chat-message-textarea');
     fireEvent.change(input, { target: { value: 'Nova mensagem teste' } });
 
-    const sendBtn = screen.getByTestId('dm-send-btn');
+    const sendBtn = screen.getByTestId('chat-send-button');
     fireEvent.click(sendBtn);
 
-    expect(onSendMessage).toHaveBeenCalledWith('Nova mensagem teste');
+    await waitFor(() => {
+      expect(onSendMessage).toHaveBeenCalledWith('Nova mensagem teste', null, null);
+    });
   });
 });

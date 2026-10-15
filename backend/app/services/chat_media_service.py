@@ -12,8 +12,8 @@ CHAT_MEDIA_DIR = os.path.join(BASE_UPLOAD_DIR, "chat_media")
 os.makedirs(CHAT_MEDIA_DIR, exist_ok=True)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac"}
-VIDEO_EXTS = {".mp4", ".mov", ".mkv"}
+AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm"}
+VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".webm"}
 DOC_EXTS = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".zip", ".rar", ".csv"}
 ALLOWED_EXTS = IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS | DOC_EXTS
 
@@ -36,12 +36,15 @@ async def process_chat_media_upload(file: UploadFile) -> Dict[str, Any]:
         )
 
     content_type = file.content_type or ""
-    if (content_type.startswith("audio/") or ext in AUDIO_EXTS) and not content_type.startswith("video/"):
+    if content_type.startswith("video/") or ext in {".mp4", ".mov", ".mkv"}:
+        media_type = "video"
+        default_mime = "video/webm" if ext == ".webm" else "video/mp4"
+    elif content_type.startswith("audio/") or ext in {".mp3", ".wav", ".ogg", ".m4a", ".aac"}:
         media_type = "audio"
         default_mime = "audio/webm" if ext == ".webm" else "audio/mpeg"
-    elif content_type.startswith("video/") or ext in VIDEO_EXTS:
-        media_type = "video"
-        default_mime = "video/mp4"
+    elif ext == ".webm":
+        media_type = "video" if "video" in content_type else "audio"
+        default_mime = f"{media_type}/webm"
     elif content_type.startswith("image/") or ext in IMAGE_EXTS:
         media_type = "image"
         default_mime = "image/jpeg"

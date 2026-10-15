@@ -20,6 +20,7 @@ from app.models.course import (
     QuizSubmission,
     LessonFavorite,
     LessonCommentFavorite,
+    CourseSalesClick,
 )
 from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
 from app.models.chat import ChatMessage
@@ -78,4 +79,5 @@ __all__ = [
     "IntroductionPost",
     "IntroductionComment",
     "IntroductionLike",
+    "CourseSalesClick",
 ]

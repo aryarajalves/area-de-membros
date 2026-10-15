@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen, AtSign, Mail } from 'lucide-react';
+import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen, AtSign, Mail, Users } from 'lucide-react';
 
 export default function ChatHeader({
   selectedChannel,
@@ -10,6 +10,8 @@ export default function ChatHeader({
   onOpenMediaGallery,
   onOpenMentions,
   onOpenDm,
+  onToggleMembers,
+  isMembersOpen = true,
   onUnpinMessage,
   onBack,
   onJumpToMessage,
@@ -27,15 +29,25 @@ export default function ChatHeader({
         className="chat-header"
         data-testid="chat-active-header"
         style={{
-          padding: '16px 24px',
+          padding: '14px 20px',
           backgroundColor: '#0f172a',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: '16px',
         }}
       >
-        <div className="chat-header-left" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+        <div
+          className="chat-header-left"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            minWidth: 'fit-content',
+            flexShrink: 0,
+          }}
+        >
           {onBackToChannels && (
             <button
               type="button"
@@ -63,13 +75,14 @@ export default function ChatHeader({
               border: isGeneral
                 ? '1px solid rgba(37, 99, 235, 0.35)'
                 : '1px solid rgba(139, 92, 246, 0.35)',
+              flexShrink: 0,
             }}
           >
             <Icon size={20} />
           </div>
 
-          <div className="chat-header-title-container" style={{ minWidth: 0 }}>
-            <div className="chat-header-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <div className="chat-header-title-container" style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className="chat-header-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               <h1
                 data-testid="chat-header-title"
                 style={{
@@ -78,6 +91,7 @@ export default function ChatHeader({
                   color: '#ffffff',
                   margin: 0,
                   lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {selectedChannel.name}
@@ -93,6 +107,7 @@ export default function ChatHeader({
                     color: '#93c5fd',
                     fontWeight: 600,
                     border: '1px solid rgba(59, 130, 246, 0.3)',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   Comunidade
@@ -105,7 +120,12 @@ export default function ChatHeader({
                 fontSize: '0.8125rem',
                 color: '#94a3b8',
                 margin: '3px 0 0',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '520px',
               }}
+              title={selectedChannel.description || 'Canal de bate-papo e troca de ideias'}
             >
               {selectedChannel.description || 'Canal de bate-papo e troca de ideias'}
             </p>
@@ -113,7 +133,17 @@ export default function ChatHeader({
         </div>
 
         {/* Controles da Direita: Filtro de Favoritas, Mídias, Menções, DMs e Indicador Ao Vivo */}
-        <div className="chat-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div
+          className="chat-header-actions"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 1,
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+          }}
+        >
           {/* Botão de Alternar Filtro de Favoritas */}
           <button
             type="button"
@@ -219,6 +249,34 @@ export default function ChatHeader({
             >
               <Mail size={13} />
               <span className="chat-header-btn-text">DMs</span>
+            </button>
+          )}
+
+          {/* Botão para Alternar Barra Lateral de Membros */}
+          {onToggleMembers && (
+            <button
+              type="button"
+              onClick={onToggleMembers}
+              className={`chat-header-action-btn ${isMembersOpen ? 'active' : ''}`}
+              data-testid="chat-open-members-sidebar-btn"
+              title={isMembersOpen ? 'Ocultar barra de membros' : 'Ver membros que podem ver este chat'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: isMembersOpen ? 'rgba(59, 130, 246, 0.22)' : 'rgba(59, 130, 246, 0.08)',
+                border: isMembersOpen ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                color: isMembersOpen ? '#93c5fd' : '#60a5fa',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Users size={13} />
+              <span className="chat-header-btn-text">Membros</span>
             </button>
           )}
 

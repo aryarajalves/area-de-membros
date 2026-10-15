@@ -11,9 +11,12 @@ import {
   CheckCircle2,
   Search,
   ExternalLink,
+  History,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import FunnelDeleteConfirmModal from './FunnelDeleteConfirmModal';
+import FunnelDuplicateConfirmModal from './FunnelDuplicateConfirmModal';
+import FunnelExecutionsHistoryModal from './FunnelExecutionsHistoryModal';
 
 export default function FunnelsListPage({ onSelectFunnel }) {
   const [funnels, setFunnels] = useState([]);
@@ -24,6 +27,9 @@ export default function FunnelsListPage({ onSelectFunnel }) {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] = useState(null);
+  const [duplicating, setDuplicating] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState(null);
   const { addToast } = useToast();
 
   const fetchFunnels = useCallback(async () => {
@@ -77,18 +83,23 @@ export default function FunnelsListPage({ onSelectFunnel }) {
     }
   };
 
-  const handleDuplicate = async (funnelId) => {
+  const handleConfirmDuplicate = async () => {
+    if (!duplicateTarget) return;
+    setDuplicating(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const res = await fetch(`/api/v1/funnels/${funnelId}/duplicate`, {
+      const res = await fetch(`/api/v1/funnels/${duplicateTarget.id}/duplicate`, {
         method: 'POST',
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!res.ok) throw new Error('Falha ao duplicar funil');
       addToast('Funil duplicado com sucesso!', 'success');
+      setDuplicateTarget(null);
       fetchFunnels();
     } catch (err) {
       addToast(err.message, 'error');
+    } finally {
+      setDuplicating(false);
     }
   };
 
@@ -283,7 +294,17 @@ export default function FunnelsListPage({ onSelectFunnel }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <button
                     type="button"
-                    onClick={() => handleDuplicate(item.id)}
+                    onClick={() => setHistoryTarget(item)}
+                    title="Histórico de Execuções e Contatos"
+                    style={{ background: 'transparent', border: '1px solid rgba(139, 92, 246, 0.35)', color: '#c084fc', padding: '7px', borderRadius: '6px', cursor: 'pointer' }}
+                    data-testid={`history-funnel-btn-${item.id}`}
+                  >
+                    <History size={13} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateTarget(item)}
                     title="Duplicar Funil"
                     style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', padding: '7px', borderRadius: '6px', cursor: 'pointer' }}
                     data-testid={`duplicate-funnel-btn-${item.id}`}
@@ -345,6 +366,23 @@ export default function FunnelsListPage({ onSelectFunnel }) {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmar Duplicação */}
+      <FunnelDuplicateConfirmModal
+        isOpen={!!duplicateTarget}
+        funnelName={duplicateTarget?.name}
+        onClose={() => setDuplicateTarget(null)}
+        onConfirm={handleConfirmDuplicate}
+        duplicating={duplicating}
+      />
+
+      {/* Modal Histórico de Execuções */}
+      <FunnelExecutionsHistoryModal
+        isOpen={!!historyTarget}
+        funnelId={historyTarget?.id}
+        funnelName={historyTarget?.name}
+        onClose={() => setHistoryTarget(null)}
+      />
 
       {/* Modal Confirmar Exclusão */}
       <FunnelDeleteConfirmModal

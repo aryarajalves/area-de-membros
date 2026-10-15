@@ -1,29 +1,67 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Paperclip, Smile, AtSign } from 'lucide-react';
+import { Send, Loader2, UploadCloud } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import ChatAudioRecorder from './ChatAudioRecorder';
 import ChatAttachedMediaPreview from './ChatAttachedMediaPreview';
+import ChatAttachedLinkPreview from './ChatAttachedLinkPreview';
 import ChatEmojiPickerPopup from './ChatEmojiPickerPopup';
 import ChatMentionContactsList from './ChatMentionContactsList';
+import ChatGifPickerPopup from './ChatGifPickerPopup';
+import ChatImageCaptionModal from './ChatImageCaptionModal';
+import ChatVideoRecorderModal from './ChatVideoRecorderModal';
+import ChatInternalLinkModal from './ChatInternalLinkModal';
+import ChatInputActionsToolbar from './ChatInputActionsToolbar';
+import { useChatInputMedia } from './useChatInputMedia';
+import {
+  getStoredAuthUser,
+  validateMentionsForSend,
+  countMentionsInText,
+} from './chatMentionUtils';
 
 export default function ChatInputBar({
   onSendMessage,
   sending = false,
   channelName = '',
   parentMessage = null,
+  placeholder = '',
 }) {
   const { addToast } = useToast();
   const [text, setText] = useState('');
-  const [attachedMedia, setAttachedMedia] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [attachedLink, setAttachedLink] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  // Popups e Modais
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [showMentionPopup, setShowMentionPopup] = useState(false);
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  const [showInternalLinkModal, setShowInternalLinkModal] = useState(false);
+
   const [mentionFilter, setMentionFilter] = useState('');
   const [contacts, setContacts] = useState([]);
 
-  const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const {
+    attachedMedia,
+    setAttachedMedia,
+    uploading,
+    setUploading,
+    isDraggingOver,
+    pendingImageForCaption,
+    setPendingImageForCaption,
+    fileInputRef,
+    imageOnlyInputRef,
+    uploadFileToServer,
+    handleFileChange,
+    handleImageOnlyChange,
+    handlePaste,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleConfirmSendImageWithCaption,
+    handleSendRecordedVideo,
+  } = useChatInputMedia({ onSendMessage });
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 
@@ -54,65 +92,14 @@ export default function ChatInputBar({
     }
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 25 * 1024 * 1024) {
-      addToast('O arquivo excede o limite máximo de 25 MB.', 'error');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setUploading(true);
-    const token = getAuthToken();
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/v1/chat/upload-media', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAttachedMedia({
-          url: data.media_url,
-          type: data.media_type,
-          name: data.filename || file.name,
-        });
-        addToast('Mídia anexada com sucesso!', 'success');
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        addToast(errData.detail || 'Falha no upload da mídia.', 'error');
-      }
-    } catch (err) {
-      console.error('Erro ao enviar mídia:', err);
-      addToast('Erro ao fazer upload da mídia.', 'error');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleSendRecordedAudio = async (audioBlob) => {
     setUploading(true);
-    const token = getAuthToken();
     try {
-      const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: audioBlob.type || 'audio/webm' });
-      const formData = new FormData();
-      formData.append('file', audioFile);
-
-      const res = await fetch('/api/v1/chat/upload-media', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
+      const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, {
+        type: audioBlob.type || 'audio/webm',
       });
-
-      if (res.ok) {
-        const data = await res.json();
+      const data = await uploadFileToServer(audioFile);
+      if (data) {
         const trimmed = text.trim();
         const success = await onSendMessage(trimmed, data.media_url, 'audio');
         if (success) {
@@ -121,12 +108,9 @@ export default function ChatInputBar({
           setIsRecording(false);
           addToast('Áudio enviado com sucesso!', 'success');
         }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        addToast(errData.detail || 'Falha no upload do áudio.', 'error');
       }
     } catch (err) {
-      console.error('Erro ao enviar gravação de áudio:', err);
+      console.error('Erro ao enviar áudio:', err);
       addToast('Erro ao enviar áudio.', 'error');
     } finally {
       setUploading(false);
@@ -134,48 +118,88 @@ export default function ChatInputBar({
     }
   };
 
-  const handleRemoveMedia = () => {
-    setAttachedMedia(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleSelectGif = (gif) => {
+    setAttachedMedia({
+      url: gif.url,
+      type: 'image',
+      name: `${gif.title}.gif`,
+    });
+    setShowGifPicker(false);
+    addToast('GIF selecionado!', 'info');
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
   const handleSelectEmoji = (emoji) => {
     setText((prev) => prev + emoji);
     setShowEmojiPicker(false);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
   const handleSelectContact = (contact) => {
+    const user = getStoredAuthUser();
+    const isPrivileged = user?.role === 'admin' || user?.role === 'superadmin';
+    if (contact.isAll && !isPrivileged) {
+      addToast('Apenas administradores podem utilizar a menção @todos.', 'error');
+      setShowMentionPopup(false);
+      return;
+    }
+    if (!isPrivileged && countMentionsInText(text) >= 5) {
+      addToast('Usuários comuns podem mencionar no máximo 5 contatos por mensagem.', 'warning');
+      setShowMentionPopup(false);
+      return;
+    }
+
     const atIndex = text.lastIndexOf('@');
-    if (atIndex !== -1) {
-      const beforeAt = text.slice(0, atIndex);
-      setText(`${beforeAt}@${contact.name} `);
-    } else {
-      setText((prev) => `${prev}@${contact.name} `);
-    }
+    const tag = `@${contact.name} `;
+    setText((prev) => (atIndex !== -1 ? `${prev.slice(0, atIndex)}${tag}` : `${prev}${tag}`));
     setShowMentionPopup(false);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
+    if (textareaRef.current) textareaRef.current.focus();
+  };
+
+  const handleTriggerMention = () => {
+    setShowMentionPopup((prev) => !prev);
+    setShowEmojiPicker(false);
+    setShowGifPicker(false);
+    if (!text.includes('@')) {
+      setText((prev) => (prev ? `${prev} @` : '@'));
     }
+    if (textareaRef.current) textareaRef.current.focus();
+  };
+
+  const handleSelectInternalLink = (item) => {
+    if (!item) return;
+    setAttachedLink(item);
+    setShowInternalLinkModal(false);
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
   const handleSend = async () => {
     const trimmed = text.trim();
-    if ((!trimmed && !attachedMedia) || sending || uploading) return;
+    const messageToSend = attachedLink
+      ? (trimmed ? `${trimmed} [${attachedLink.label}](${attachedLink.url})` : `[${attachedLink.label}](${attachedLink.url})`)
+      : trimmed;
+
+    if ((!messageToSend && !attachedMedia) || sending || uploading) return;
+
+    const val = validateMentionsForSend(messageToSend, getStoredAuthUser());
+    if (!val.valid) {
+      addToast(val.error, 'error');
+      return;
+    }
 
     const mediaUrl = attachedMedia?.url || null;
     const mediaType = attachedMedia?.type || null;
 
-    const success = await onSendMessage(trimmed, mediaUrl, mediaType);
+    const success = await onSendMessage(messageToSend, mediaUrl, mediaType);
     if (success) {
       setText('');
       setAttachedMedia(null);
+      setAttachedLink(null);
       setShowEmojiPicker(false);
+      setShowGifPicker(false);
       setShowMentionPopup(false);
       if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = isMaximized ? '140px' : 'auto';
         textareaRef.current.focus();
       }
     }
@@ -185,7 +209,6 @@ export default function ChatInputBar({
     const val = e.target.value;
     setText(val);
 
-    // Detectar digitação de @ para abrir popup de contatos
     const lastAt = val.lastIndexOf('@');
     if (lastAt !== -1 && lastAt >= val.length - 15) {
       const afterAt = val.slice(lastAt + 1);
@@ -199,29 +222,67 @@ export default function ChatInputBar({
       setShowMentionPopup(false);
     }
 
-    if (textareaRef.current) {
+    if (textareaRef.current && !isMaximized) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   };
 
-  const isButtonDisabled = (!text.trim() && !attachedMedia) || sending || uploading;
+  const isButtonDisabled = (!text.trim() && !attachedMedia && !attachedLink) || sending || uploading;
   const isCompact = Boolean(parentMessage);
 
   return (
     <footer
       className="chat-input-bar"
       data-testid="chat-input-bar"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragOver}
+      onDrop={handleDrop}
       style={{
+        position: 'relative',
         padding: isCompact ? '12px 14px' : '16px 24px',
         backgroundColor: '#0f172a',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         flexShrink: 0,
         width: '100%',
         boxSizing: 'border-box',
+        transition: 'all 0.2s ease',
       }}
     >
-      {/* Input de Arquivo Oculto */}
+      {/* Overlay Visual em Tela Cheia ao Arrastar Arquivo */}
+      {isDraggingOver && (
+        <div
+          data-testid="chat-drag-overlay"
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(7, 11, 19, 0.88)',
+            backdropFilter: 'blur(8px)', border: '3px dashed #38bdf8', zIndex: 99999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            color: '#38bdf8', gap: '16px', animation: 'fadeIn 0.15s ease', pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              width: '88px', height: '88px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 30px rgba(56, 189, 248, 0.3)', pointerEvents: 'none',
+            }}
+          >
+            <UploadCloud size={48} color="#38bdf8" />
+          </div>
+          <div style={{ textAlign: 'center', pointerEvents: 'none' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', pointerEvents: 'none' }}>
+              Solte sua mídia aqui para enviar
+            </h3>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.875rem', color: '#94a3b8', pointerEvents: 'none' }}>
+              Imagens abrirão o assistente com pré-visualização e legenda
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Inputs Ocultos de Arquivo */}
       <input
         type="file"
         ref={fileInputRef}
@@ -230,225 +291,172 @@ export default function ChatInputBar({
         onChange={handleFileChange}
         data-testid="chat-file-input"
       />
-
-      {/* Preview de Mídia Anexada */}
-      <ChatAttachedMediaPreview
-        attachedMedia={attachedMedia}
-        onRemove={handleRemoveMedia}
+      <input
+        type="file"
+        ref={imageOnlyInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleImageOnlyChange}
+        data-testid="chat-image-input"
       />
 
-      {/* Popups de Emoji e Menção de Contatos */}
-      {showEmojiPicker && (
-        <ChatEmojiPickerPopup
-          onSelectEmoji={handleSelectEmoji}
-          onClose={() => setShowEmojiPicker(false)}
-        />
-      )}
+      {/* Previews de Mídia e Link Anexados */}
+      <ChatAttachedMediaPreview attachedMedia={attachedMedia} onRemove={() => setAttachedMedia(null)} />
+      <ChatAttachedLinkPreview attachedLink={attachedLink} onRemove={() => setAttachedLink(null)} />
 
+      {/* Popups e Modais */}
+      {showEmojiPicker && <ChatEmojiPickerPopup onSelectEmoji={handleSelectEmoji} onClose={() => setShowEmojiPicker(false)} />}
+      {showGifPicker && <ChatGifPickerPopup onSelectGif={handleSelectGif} onClose={() => setShowGifPicker(false)} />}
       {showMentionPopup && (
         <ChatMentionContactsList
           contacts={contacts}
           filterText={mentionFilter}
           onSelectContact={handleSelectContact}
           onClose={() => setShowMentionPopup(false)}
+          currentUser={getStoredAuthUser()}
+          currentMentionCount={countMentionsInText(text)}
         />
       )}
+      {pendingImageForCaption && (
+        <ChatImageCaptionModal
+          imageFile={pendingImageForCaption}
+          initialCaption={text}
+          onConfirmSend={handleConfirmSendImageWithCaption}
+          onCancel={() => setPendingImageForCaption(null)}
+          isSending={uploading}
+        />
+      )}
+      {showVideoRecorder && <ChatVideoRecorderModal onSendRecordedVideo={handleSendRecordedVideo} onClose={() => setShowVideoRecorder(false)} />}
+      {showInternalLinkModal && <ChatInternalLinkModal isOpen={showInternalLinkModal} onClose={() => setShowInternalLinkModal(false)} onSelectLink={handleSelectInternalLink} />}
 
+      {/* Container Principal de Digitação */}
       <div
         style={{
           position: 'relative',
           display: 'flex',
-          alignItems: 'flex-end',
+          flexDirection: isMaximized ? 'column' : 'row',
+          alignItems: isMaximized ? 'stretch' : 'flex-end',
           gap: isCompact ? '6px' : '10px',
           backgroundColor: '#1e293b',
           borderRadius: '12px',
-          padding: isCompact ? '6px 8px' : '8px 12px 8px 14px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
-          transition: 'border-color 0.2s',
+          padding: isCompact ? '6px 8px' : '10px 14px',
+          border: isMaximized ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: isMaximized ? '0 8px 32px rgba(56, 189, 248, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.25)',
+          transition: 'all 0.2s ease',
           width: '100%',
           boxSizing: 'border-box',
         }}
       >
-        {/* Botão de Anexo / Mídia */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || sending || isRecording}
-          title="Anexar imagem, vídeo, áudio ou documento"
-          data-testid="chat-attach-button"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: uploading ? '#3b82f6' : '#94a3b8',
-            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
-            padding: '6px',
-            marginBottom: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#38bdf8';
-          }}
-          onMouseLeave={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#94a3b8';
-          }}
-        >
-          {uploading ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Paperclip size={18} />
-          )}
-        </button>
-
-        {/* Botão de Emojis */}
-        <button
-          type="button"
-          onClick={() => {
-            setShowEmojiPicker((prev) => !prev);
-            setShowMentionPopup(false);
-          }}
-          disabled={uploading || sending || isRecording}
-          title="Inserir emoji"
-          data-testid="chat-emoji-button"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: showEmojiPicker ? '#fbbf24' : '#94a3b8',
-            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
-            padding: '6px',
-            marginBottom: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#fbbf24';
-          }}
-          onMouseLeave={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = showEmojiPicker ? '#fbbf24' : '#94a3b8';
-          }}
-        >
-          <Smile size={18} />
-        </button>
-
-        {/* Botão de Marcar Contato (@) */}
-        <button
-          type="button"
-          onClick={() => {
-            setShowMentionPopup((prev) => !prev);
-            setShowEmojiPicker(false);
-            if (!text.includes('@')) {
-              setText((prev) => prev ? `${prev} @` : '@');
-            }
-            if (textareaRef.current) textareaRef.current.focus();
-          }}
-          disabled={uploading || sending || isRecording}
-          title="Mencionar alguém (@)"
-          data-testid="chat-mention-button"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: showMentionPopup ? '#38bdf8' : '#94a3b8',
-            cursor: uploading || sending || isRecording ? 'not-allowed' : 'pointer',
-            padding: '6px',
-            marginBottom: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = '#38bdf8';
-          }}
-          onMouseLeave={(e) => {
-            if (!uploading && !sending && !isRecording) e.currentTarget.style.color = showMentionPopup ? '#38bdf8' : '#94a3b8';
-          }}
-        >
-          <AtSign size={18} />
-        </button>
-
-        {/* Componente de Gravação de Áudio */}
-        <ChatAudioRecorder
+        {/* Barra de Ferramentas / Ações Rápidas */}
+        <ChatInputActionsToolbar
+          fileInputRef={fileInputRef}
+          imageOnlyInputRef={imageOnlyInputRef}
+          uploading={uploading}
+          sending={sending}
           isRecording={isRecording}
-          onStartRecording={() => setIsRecording(true)}
-          onCancelRecording={() => setIsRecording(false)}
-          onSendAudio={handleSendRecordedAudio}
-          sending={sending || uploading}
+          setIsRecording={setIsRecording}
+          onSendRecordedAudio={handleSendRecordedAudio}
+          showGifPicker={showGifPicker}
+          setShowGifPicker={setShowGifPicker}
+          showEmojiPicker={showEmojiPicker}
+          setShowEmojiPicker={setShowEmojiPicker}
+          showMentionPopup={showMentionPopup}
+          setShowMentionPopup={setShowMentionPopup}
+          setShowVideoRecorder={setShowVideoRecorder}
+          onOpenInternalLinkModal={() => setShowInternalLinkModal(true)}
+          isMaximized={isMaximized}
+          setIsMaximized={setIsMaximized}
+          isCompact={isCompact}
+          onTriggerMention={handleTriggerMention}
         />
 
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder={`Enviar mensagem em #${channelName || 'conversa'}... (Enter para enviar)`}
-          rows={1}
-          maxLength={3000}
-          data-testid="chat-message-textarea"
+        {/* Textarea e Botão de Enviar */}
+        <div
           style={{
+            display: 'flex',
+            alignItems: isMaximized ? 'stretch' : 'flex-end',
+            gap: '8px',
             flex: 1,
-            minWidth: '100px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            outline: 'none',
-            color: '#f8fafc',
-            fontSize: '0.9rem',
-            lineHeight: 1.5,
-            resize: 'none',
-            maxHeight: '120px',
-            fontFamily: 'inherit',
+            width: '100%',
           }}
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {text.length > 2500 && (
-            <span
-              style={{
-                fontSize: '0.75rem',
-                color: text.length > 2900 ? '#ef4444' : '#f59e0b',
-                fontWeight: 500,
-              }}
-            >
-              {text.length}/3000
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isButtonDisabled}
-            data-testid="chat-send-button"
-            title="Enviar mensagem (Enter)"
+        >
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            placeholder={placeholder || `Enviar mensagem em #${channelName || 'conversa'}... (ou cole imagens com Ctrl+V)`}
+            rows={isMaximized ? 6 : 1}
+            maxLength={3000}
+            data-testid="chat-message-textarea"
             style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '8px',
-              backgroundColor: isButtonDisabled ? 'rgba(59, 130, 246, 0.3)' : '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              cursor: isButtonDisabled ? 'not-allowed' : 'pointer',
+              flex: 1,
+              minWidth: '100px',
+              backgroundColor: isMaximized ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+              borderRadius: isMaximized ? '8px' : '0',
+              padding: isMaximized ? '10px' : '0',
+              border: isMaximized ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+              outline: 'none',
+              color: '#f8fafc',
+              fontSize: '0.9rem',
+              lineHeight: 1.5,
+              resize: 'none',
+              minHeight: isMaximized ? '140px' : 'auto',
+              maxHeight: isMaximized ? '280px' : '120px',
+              fontFamily: 'inherit',
+            }}
+          />
+
+          <div
+            style={{
               display: 'flex',
+              flexDirection: isMaximized ? 'column' : 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background-color 0.15s ease',
-              boxShadow: isButtonDisabled ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)',
+              justifyContent: isMaximized ? 'flex-end' : 'center',
+              gap: '8px',
+              flexShrink: 0,
             }}
           >
-            {sending ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Send size={18} />
+            {text.length > 2500 && (
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: text.length > 2900 ? '#ef4444' : '#f59e0b',
+                  fontWeight: 500,
+                }}
+              >
+                {text.length}/3000
+              </span>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={isButtonDisabled}
+              data-testid="chat-send-button"
+              title="Enviar mensagem (Enter)"
+              style={{
+                width: isMaximized ? '42px' : '38px',
+                height: isMaximized ? '42px' : '38px',
+                borderRadius: '8px',
+                backgroundColor: isButtonDisabled ? 'rgba(59, 130, 246, 0.3)' : '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                cursor: isButtonDisabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.15s ease',
+                boxShadow: isButtonDisabled ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)',
+              }}
+            >
+              {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            </button>
+          </div>
         </div>
       </div>
+
       <div
         className="chat-input-keyboard-hint"
         style={{
@@ -460,7 +468,7 @@ export default function ChatInputBar({
         }}
       >
         <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
-          Pressione <kbd style={{ padding: '1px 4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Enter</kbd> para enviar ou <kbd style={{ padding: '1px 4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Shift + Enter</kbd> para nova linha
+          Pressione <kbd style={{ padding: '1px 4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Enter</kbd> para enviar ou <kbd style={{ padding: '1px 4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Shift + Enter</kbd> para nova linha • Cole imagens com <kbd style={{ padding: '1px 4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px' }}>Ctrl + V</kbd>
         </span>
       </div>
     </footer>

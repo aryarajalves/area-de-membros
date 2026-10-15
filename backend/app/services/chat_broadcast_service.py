@@ -21,6 +21,7 @@ from app.schemas.chat_broadcast import (
     BroadcastRecipientItem,
 )
 from app.services.chat_ws_manager import chat_manager
+from app.services.chat_encryption_service import encrypt_dm_message
 
 
 def resolve_broadcast_recipients(
@@ -183,7 +184,7 @@ async def run_broadcast_worker(
                     channel_type="dm",
                     user_id=sender_id,
                     recipient_id=rec.recipient_id,
-                    message=campaign.message,
+                    message=encrypt_dm_message(campaign.message),
                     button_text=campaign.button_text,
                     button_url=campaign.button_url,
                     button_action_type=campaign.button_action_type,

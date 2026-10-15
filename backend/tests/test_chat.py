@@ -694,6 +694,136 @@ async def test_chat_realtime_ws_manager_send_to_user():
     assert len(manager.active_connections) == 0
 
 
+def test_mention_todos_forbidden_for_common_user(seed_chat_data):
+    """Aluno comum não pode mencionar @todos (retorna 403)."""
+    aluno_headers = get_headers("chat_aluno1@test.com", "pass123")
+    res = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Olá @todos venham ver isso"},
+        headers=aluno_headers,
+    )
+    assert res.status_code == 403
+    assert "Apenas administradores podem utilizar a menção @todos" in res.json()["detail"]
+
+
+def test_mention_todos_allowed_for_admin(seed_chat_data):
+    """Admin/superadmin pode mencionar @todos (retorna 201)."""
+    admin_headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    res = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Comunicado oficial para @todos os alunos"},
+        headers=admin_headers,
+    )
+    assert res.status_code == 201
+    assert res.json()["message"] == "Comunicado oficial para @todos os alunos"
+
+
+def test_mention_limit_max_5_for_common_user(seed_chat_data):
+    """Aluno comum só pode mencionar até 5 contatos por mensagem. Se tentar 6, retorna 400."""
+    aluno_headers = get_headers("chat_aluno1@test.com", "pass123")
+
+    # 6 menções -> 400 Bad Request
+    res_excess = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Atenção @a @b @c @d @e @f vejam"},
+        headers=aluno_headers,
+    )
+    assert res_excess.status_code == 400
+    assert "Usuários comuns podem mencionar no máximo 5 contatos" in res_excess.json()["detail"]
+
+    # 5 menções -> 201 Created
+    res_ok = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Atenção @a @b @c @d @e vejam"},
+        headers=aluno_headers,
+    )
+    assert res_ok.status_code == 201
+
+
+def test_mention_unlimited_for_admin(seed_chat_data):
+    """Admin pode mencionar mais de 5 contatos sem restrição."""
+    admin_headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    res = client.post(
+        "/api/v1/chat/messages",
+        json={"channel_type": "general", "message": "Mensagem do admin com @u1 @u2 @u3 @u4 @u5 @u6 @u7"},
+        headers=admin_headers,
+    )
+    assert res.status_code == 201
+
+
+def test_chat_dm_with_media_attachments(seed_chat_data):
+    """Valida envio e recebimento de mídias (foto, áudio, vídeo, documento/pdf) em conversas diretas (DM)."""
+    aluno1_headers = get_headers("chat_aluno1@test.com", "pass123")
+    aluno2_headers = get_headers("chat_aluno2@test.com", "pass123")
+    db = TestingSessionLocal()
+    aluno1 = db.query(User).filter(User.email == "chat_aluno1@test.com").first()
+    aluno2 = db.query(User).filter(User.email == "chat_aluno2@test.com").first()
+    db.close()
+
+    # 1. Aluno 1 envia foto na DM
+    res_img = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "dm",
+            "recipient_id": aluno2.id,
+            "message": "Veja este print explicativo",
+            "media_url": "https://storage.exemplo.com/print.png",
+            "media_type": "image",
+        },
+        headers=aluno1_headers,
+    )
+    assert res_img.status_code == 201
+    data_img = res_img.json()
+    assert data_img["media_url"] == "https://storage.exemplo.com/print.png"
+    assert data_img["media_type"] == "image"
+
+    # 2. Aluno 1 envia documento PDF na DM sem texto na legenda
+    res_doc = client.post(
+        "/api/v1/chat/messages",
+        json={
+            "channel_type": "dm",
+            "recipient_id": aluno2.id,
+            "message": "",
+            "media_url": "https://storage.exemplo.com/apostila.pdf",
+            "media_type": "file",
+        },
+        headers=aluno1_headers,
+    )
+    assert res_doc.status_code == 201
+    data_doc = res_doc.json()
+    assert data_doc["media_url"] == "https://storage.exemplo.com/apostila.pdf"
+    assert data_doc["media_type"] == "file"
+
+    # 3. Aluno 2 consulta a inbox e verifica o preview da última mensagem como [Documento]
+    res_convs = client.get("/api/v1/chat/dm/conversations", headers=aluno2_headers)
+    assert res_convs.status_code == 200
+    convs = res_convs.json()
+    found = next((c for c in convs if c["contact"]["id"] == aluno1.id), None)
+    assert found is not None
+    assert found["last_message"] == "📄 [Documento]"
+
+    # 4. Aluno 2 busca histórico de mensagens da DM com Aluno 1
+    res_msgs = client.get(f"/api/v1/chat/dm/messages/{aluno1.id}", headers=aluno2_headers)
+    assert res_msgs.status_code == 200
+    msgs = res_msgs.json()
+    assert len(msgs) >= 2
+    assert any(m["media_type"] == "image" and m["media_url"] == "https://storage.exemplo.com/print.png" for m in msgs)
+    assert any(m["media_type"] == "file" and m["media_url"] == "https://storage.exemplo.com/apostila.pdf" for m in msgs)
+    # A API deve entregar a mensagem descriptografada para o usuário autenticado
+    img_msg = next(m for m in msgs if m["id"] == data_img["id"])
+    assert img_msg["message"] == "Veja este print explicativo"
+
+    # 5. Validação de Segurança em Repouso (At Rest): no banco de dados, o texto deve estar estritamente encriptado
+    db_check = TestingSessionLocal()
+    saved_db_msg = db_check.query(ChatMessage).filter(ChatMessage.id == data_img["id"]).first()
+    assert saved_db_msg.message.startswith("enc:v1:")
+    assert saved_db_msg.message != "Veja este print explicativo"
+    db_check.close()
+
+
+
+
+
 
 
 

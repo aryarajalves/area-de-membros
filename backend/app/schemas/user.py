@@ -67,6 +67,25 @@ class UserManualCreate(BaseModel):
     def validate_password_strength(cls, v: str) -> str:
         return validate_password_strength_func(v)
 
+class PublicRegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        cleaned = v.strip() if v else ""
+        if len(cleaned) < 2:
+            raise ValueError("O nome deve ter no mínimo 2 caracteres.")
+        return cleaned
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        return validate_password_strength_func(v)
+
 class BulkDeleteRequest(BaseModel):
     ids: List[int]
 
@@ -117,6 +136,8 @@ class InviteValidateResponse(BaseModel):
     valid: bool
     role: Optional[str] = None
     detail: Optional[str] = None
+    already_used: Optional[bool] = False
+    used_by_email: Optional[str] = None
 
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None

@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  AlertCircle,
+  ArrowRight,
+} from 'lucide-react';
 import loginBanner from '../assets/login-banner.jpg';
 import { useToast } from '../context/ToastContext';
+import PublicRegisterCard from './PublicRegisterCard';
 
 export default function Login({ onLoginSuccess }) {
-  const [email, setEmail] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState(() => {
+    const prefill = localStorage.getItem('prefill_login_email');
+    if (prefill) {
+      localStorage.removeItem('prefill_login_email');
+      return prefill;
+    }
+    return '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
@@ -73,6 +90,38 @@ export default function Login({ onLoginSuccess }) {
       setLoading(false);
     }
   };
+
+  // Se o usuário clicar em "Criar conta", renderiza a tela de cadastro centralizada e sem banner lateral
+  if (isRegistering) {
+    return (
+      <div
+        className="register-page-container"
+        style={{
+          minHeight: '100vh',
+          width: '100vw',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f8fafc',
+          padding: '16px',
+          boxSizing: 'border-box',
+          overflowY: 'auto',
+        }}
+      >
+        <PublicRegisterCard
+          onRegisterSuccess={(user, token) => {
+            if (onLoginSuccess) {
+              onLoginSuccess(user, token);
+            }
+          }}
+          onBackToLogin={() => {
+            setIsRegistering(false);
+            setError('');
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="login-split-page">
@@ -152,10 +201,43 @@ export default function Login({ onLoginSuccess }) {
               )}
             </button>
           </form>
+
+          {/* Opção para Criar Conta */}
+          <div
+            style={{
+              marginTop: '20px',
+              textAlign: 'center',
+              borderTop: '1px solid #f1f5f9',
+              paddingTop: '16px',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+              Não tem uma conta na comunidade?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(true);
+                  setError('');
+                }}
+                data-testid="go-to-register-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0284c7',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                Criar conta
+              </button>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Coluna da Direita: Banner Ilustrativo Moderno e Otimizado */}
+      {/* Coluna da Direita: Banner Ilustrativo Moderno (Apenas no Login) */}
       <div className="login-image-side">
         <div className="image-overlay-card">
           <img

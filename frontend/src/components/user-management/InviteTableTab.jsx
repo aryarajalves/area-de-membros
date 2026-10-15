@@ -159,18 +159,16 @@ export default function InviteTableTab({
                     </td>
                     <td className="table-actions-cell">
                       <div className="table-actions-group">
-                        {!inv.is_used && !inv.is_expired && (
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(inviteUrl)}
-                            className="table-action-btn"
-                            title="Copiar link do convite"
-                            data-testid={`copy-row-invite-${inv.id}`}
-                          >
-                            <Copy size={14} />
-                            <span>Copiar Link</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(inviteUrl)}
+                          className="table-action-btn"
+                          title="Copiar link do convite"
+                          data-testid={`copy-row-invite-${inv.id}`}
+                        >
+                          <Copy size={14} />
+                          <span>Copiar Link</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteInvite(inv.id)}

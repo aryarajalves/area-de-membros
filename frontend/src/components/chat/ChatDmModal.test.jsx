@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ChatDmModal from './ChatDmModal';
 import ChatDmConversationView from './ChatDmConversationView';
+import { ToastProvider } from '../../context/ToastContext';
 
 describe('ChatDmModal and ChatDmConversationView Components', () => {
   beforeEach(() => {
@@ -27,11 +28,13 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     });
 
     render(
-      <ChatDmModal
-        isOpen={true}
-        onClose={vi.fn()}
-        currentUser={currentUser}
-      />
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
     );
 
     expect(screen.getByText('DMs (Mensagens Diretas)')).toBeInTheDocument();
@@ -53,11 +56,13 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     global.fetch = fetchMock;
 
     render(
-      <ChatDmModal
-        isOpen={true}
-        onClose={vi.fn()}
-        currentUser={currentUser}
-      />
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
     );
 
     const unreadTab = screen.getByTestId('dm-tab-unread');
@@ -71,7 +76,7 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     });
   });
 
-  it('renders ChatDmConversationView and allows sending private message', async () => {
+  it('renders ChatDmConversationView with all media action buttons (image, video, audio, gif, file/pdf)', async () => {
     const handleSend = vi.fn().mockResolvedValue(true);
     const messages = [
       {
@@ -82,41 +87,89 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       },
       {
         id: 2,
-        message: 'Minha resposta direta',
+        message: 'Foto de confirmação',
+        media_url: 'https://exemplo.com/foto.jpg',
+        media_type: 'image',
         created_at: '2026-10-06T10:01:00Z',
         user: { id: 1, name: 'Aryaraj' },
+      },
+      {
+        id: 3,
+        message: 'Áudio gravado',
+        media_url: 'https://exemplo.com/audio.webm',
+        media_type: 'audio',
+        created_at: '2026-10-06T10:02:00Z',
+        user: { id: 2, name: 'João Aluno' },
+      },
+      {
+        id: 4,
+        message: 'Vídeo explicativo',
+        media_url: 'https://exemplo.com/video.mp4',
+        media_type: 'video',
+        created_at: '2026-10-06T10:03:00Z',
+        user: { id: 1, name: 'Aryaraj' },
+      },
+      {
+        id: 5,
+        message: 'Documento PDF com instruções',
+        media_url: 'https://exemplo.com/guia.pdf',
+        media_type: 'file',
+        created_at: '2026-10-06T10:04:00Z',
+        user: { id: 2, name: 'João Aluno' },
       },
     ];
 
     render(
-      <ChatDmConversationView
-        selectedContact={mockContact}
-        currentUser={currentUser}
-        messages={messages}
-        loading={false}
-        onSendMessage={handleSend}
-      />
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={currentUser}
+          messages={messages}
+          loading={false}
+          onSendMessage={handleSend}
+        />
+      </ToastProvider>
     );
 
+    // Valida mensagens de texto e anexos de mídia renderizados
     expect(screen.getByText('Mensagem privada recebida')).toBeInTheDocument();
-    expect(screen.getByText('Minha resposta direta')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-media-img-2')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-media-audio-3')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-media-video-4')).toBeInTheDocument();
+    expect(screen.getByText('Visualizar Documento')).toBeInTheDocument();
 
-    const input = screen.getByTestId('dm-message-input');
-    fireEvent.change(input, { target: { value: 'Nova mensagem secreta' } });
-    const sendBtn = screen.getByTestId('dm-send-btn');
+    // Valida presença da barra de ferramentas completa com todas as ações de mídia
+    expect(screen.getByTestId('chat-input-toolbar')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-attach-button')).toBeInTheDocument(); // Anexar qualquer arquivo / PDF
+    expect(screen.getByTestId('chat-image-button')).toBeInTheDocument(); // Enviar imagem com legenda
+    expect(screen.getByTestId('chat-gif-button')).toBeInTheDocument(); // GIFs animados
+    expect(screen.getByTestId('chat-emoji-button')).toBeInTheDocument(); // Emojis
+    expect(screen.getByTestId('chat-record-audio-btn')).toBeInTheDocument(); // Gravação de áudio nativa
+    expect(screen.getByTestId('chat-video-record-button')).toBeInTheDocument(); // Gravação de vídeo pela câmera
+
+    // Digitar e enviar mensagem de texto
+    const textarea = screen.getByTestId('chat-message-textarea');
+    expect(textarea).toHaveAttribute('placeholder', 'Mensagem para João Aluno...');
+
+    fireEvent.change(textarea, { target: { value: 'Nova mensagem secreta' } });
+    const sendBtn = screen.getByTestId('chat-send-button');
     fireEvent.click(sendBtn);
 
-    expect(handleSend).toHaveBeenCalledWith('Nova mensagem secreta');
+    await waitFor(() => {
+      expect(handleSend).toHaveBeenCalledWith('Nova mensagem secreta', null, null);
+    });
   });
 
   it('locks body scroll when open and restores it when unmounted', () => {
     document.body.style.overflow = 'auto';
     const { unmount } = render(
-      <ChatDmModal
-        isOpen={true}
-        onClose={vi.fn()}
-        currentUser={currentUser}
-      />
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
     );
     expect(document.body.style.overflow).toBe('hidden');
 
@@ -136,11 +189,13 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     });
 
     render(
-      <ChatDmModal
-        isOpen={true}
-        onClose={vi.fn()}
-        currentUser={currentUser}
-      />
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
     );
 
     // Botão "+ Nova Conversa" no cabeçalho deve estar visível imediatamente
@@ -165,6 +220,8 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Mensagens com João Aluno')).toBeInTheDocument();
+      expect(screen.getByTestId('dm-encryption-badge')).toBeInTheDocument();
+      expect(screen.getByText('Criptografada')).toBeInTheDocument();
     });
   });
 });
