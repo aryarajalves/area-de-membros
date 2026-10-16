@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.0`** | **1.200 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.2.0` / `frontend-1.2.0`**
+> **Versão Oficial: `v1.1.1`** | **1.200 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.1.1` / `frontend-1.1.1`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -329,8 +329,8 @@ As imagens oficiais de produção estão publicadas no Docker Hub com versioname
 
 | Serviço | Imagem Docker Oficial | Descrição |
 | :--- | :--- | :--- |
-| **Backend API & Worker** | `aryalvesfernandes/area-de-membros:backend-1.1.0` | API FastAPI em Python 3.11 com worker periódico e auto-migrações preventivas no startup. |
-| **Frontend Web** | `aryalvesfernandes/area-de-membros:frontend-1.1.0` | Interface React + Vite de alta performance servida por Nginx otimizado. |
+| **Backend API & Worker** | `aryalvesfernandes/area-de-membros:backend-1.1.1` | API FastAPI em Python 3.11 com worker periódico e auto-migrações preventivas no startup. |
+| **Frontend Web** | `aryalvesfernandes/area-de-membros:frontend-1.1.1` | Interface React + Vite de alta performance servida por Nginx otimizado. |
 
 #### Deploy em Produção (Docker Swarm / Traefik):
 ```bash
