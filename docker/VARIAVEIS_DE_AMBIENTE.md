@@ -39,8 +39,8 @@ Controlam quais versões das imagens pré-compiladas no Docker Hub serão baixad
 
 | Variável | Descrição | Onde é Usada | Exemplo em Produção |
 | :--- | :--- | :--- | :--- |
-| `BACKEND_IMAGE` | Imagem Docker da API FastAPI e do Worker de rotinas agendadas. | Serviços `backend` e `worker`. | `aryalvesfernandes/area-de-membros:backend-1.0.1` |
-| `FRONTEND_IMAGE` | Imagem Docker da interface React compilada com servidor Nginx. | Serviço `frontend`. | `aryalvesfernandes/area-de-membros:frontend-1.0.1` |
+| `BACKEND_IMAGE` | Imagem Docker da API FastAPI e do Worker de rotinas agendadas. | Serviços `backend` e `worker`. | `aryalvesfernandes/area-de-membros:backend-1.1.0` |
+| `FRONTEND_IMAGE` | Imagem Docker da interface React compilada com servidor Nginx. | Serviço `frontend`. | `aryalvesfernandes/area-de-membros:frontend-1.1.0` |
 
 ---
 

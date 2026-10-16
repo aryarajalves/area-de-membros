@@ -114,7 +114,7 @@ services:
   # ----------------------------------------------------------------------------
   worker:
     # Utiliza a imagem do Backend com execução isolada das rotinas agendadas
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.0.1}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.0}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Comando de inicialização do Worker de rotinas periódicas

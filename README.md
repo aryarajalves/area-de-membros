@@ -1,4 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
+> **Versão Oficial: `v1.1.0`** | **1.167 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.1.0` / `frontend-1.1.0`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -234,15 +235,24 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Curtidas e comentários em tempo real com contadores dinâmicos.
   - Modais de exclusão e edição com confirmação segura e layout responsivo.
 
-### 🔐 17. Gestão de Convites, Redirecionamento Inteligente e Criação de Usuários
+### 🔐 17. Gestão de Convites, Redirecionamento Inteligente e Auto-Migrações
 - **Cópia de Link de Convite Desbloqueada:**
   - O botão de copiar link fica permanentemente disponível em todas as linhas da tabela de convites (`InviteTableTab.jsx`), permitindo copiar links mesmo para convites já utilizados ou expirados.
-- **Redirecionamento Inteligente de Convite Utilizado:**
-  - Se um aluno tentar reutilizar seu link de convite: caso possua sessão ativa no navegador, é redirecionado instantaneamente para a tela principal da Área de Membros; caso a sessão esteja expirada, é direcionado com segurança para o login com notificação amigável.
+- **Redirecionamento Inteligente de Convite Utilizado ou Expirado:**
+  - **Convite já utilizado (`already_used`):** Se o aluno possuir sessão ativa no navegador, é redirecionado instantaneamente para a tela principal da Área de Membros; caso a sessão esteja expirada, é direcionado com segurança para o login com notificação amigável.
+  - **Convite expirado (`is_expired`):** Ao acessar um link de convite com validade esgotada, o sistema detecta a flag no backend (`GET /api/v1/users/invites/validate`), limpa o token da URL e redireciona de imediato para a tela de login (ou home se já autenticado), disparando notificação Toast explicativa (*"Este convite expirou. Entre em contato com o suporte para receber um novo link."*), eliminando telas de erro travadas.
+- **Auto-Migrações Preventivas no Startup (`main.py`):**
+  - No evento `lifespan` do FastAPI, a aplicação executa checagens e comandos SQL automáticos e idempotentes (`ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type/tool_url` e criação de `course_bundles`/`course_sales_clicks`). Isso assegura total resiliência entre o ORM e instâncias PostgreSQL de produção, prevenindo incidentes de colunas ausentes (`UndefinedColumn`) sem exigir intervenção manual via terminal.
 - **Criação Manual e Registro Público Seguro:**
   - Cadastro de alunos e administradores com vinculação de cursos, validação rigorosa de senha com 12+ caracteres e fuso horário oficial de Brasília.
 - **Handler Global de Exceções no FastAPI:**
   - Captura padronizada de erros inesperados retornando JSON `{"detail": "..."}` com status HTTP 500 e log estruturado, prevenindo vazamento de stack traces.
+
+### 🛡️ 18. Diretrizes de Engenharia e Prevenção de Loops de Teste
+- **Transparência de Progresso em Tempo Real:**
+  - Operações de longa duração (builds de frontend, uploads Docker Hub, migrações de banco e suítes completas de testes) emitem notificações visuais de status a cada etapa, eliminando períodos de silêncio do agente de IA.
+- **Bloqueio Obrigatório na 3ª Tentativa de Teste:**
+  - Caso qualquer teste falhe por 2 vezes consecutivas, a 3ª tentativa deve ser obrigatoriamente precedida por um relatório detalhado no chat com a causa raiz e a correção proposta. Se falhar na 3ª vez, a execução é interrompida imediatamente para alinhamento com o usuário, extinguindo loops infinitos.
 
 ---
 
@@ -299,7 +309,22 @@ Area de Membros - Alunos/
 
 ## 🚀 Como Executar com Docker
 
-Para subir todo o ecossistema (PostgreSQL, Backend FastAPI e Frontend Nginx):
+### 📦 Imagens Oficiais de Produção (Docker Hub)
+
+As imagens oficiais de produção estão publicadas no Docker Hub com versionamento semântico rígido (sem uso de tag `latest` para garantir deploys 100% reproduzíveis e imutáveis):
+
+| Serviço | Imagem Docker Oficial | Descrição |
+| :--- | :--- | :--- |
+| **Backend API & Worker** | `aryalvesfernandes/area-de-membros:backend-1.1.0` | API FastAPI em Python 3.11 com worker periódico e auto-migrações preventivas no startup. |
+| **Frontend Web** | `aryalvesfernandes/area-de-membros:frontend-1.1.0` | Interface React + Vite de alta performance servida por Nginx otimizado. |
+
+#### Deploy em Produção (Docker Swarm / Traefik):
+```bash
+docker stack deploy -c docker/docker-compose-producao.yml area_de_membros
+```
+
+#### Execução em Desenvolvimento Local:
+Para subir todo o ecossistema local (PostgreSQL, Backend FastAPI e Frontend Nginx):
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d --build
@@ -313,6 +338,8 @@ docker compose -f docker/docker-compose.yml up -d --build
 ---
 
 ## 🧪 Suíte de Testes Unitários
+
+> 🏆 **Total de 1.167 testes unitários automatizados (100% de aprovação)** cobrindo ponta a ponta as regras de negócio da plataforma.
 
 ### Frontend (Vitest + React Testing Library)
 ```bash
