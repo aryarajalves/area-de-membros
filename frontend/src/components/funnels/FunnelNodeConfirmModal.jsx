@@ -110,14 +110,15 @@ export default function FunnelNodeConfirmModal({
             type="button"
             onClick={onClose}
             style={{
-              padding: '9px 18px',
+              padding: '10px 20px',
               borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              backgroundColor: 'transparent',
-              color: '#cbd5e1',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              color: '#e2e8f0',
               fontSize: '0.88rem',
               fontWeight: 600,
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
             data-testid="cancel-node-action-btn"
           >
@@ -128,33 +129,36 @@ export default function FunnelNodeConfirmModal({
             type="button"
             onClick={onConfirm}
             style={{
-              padding: '9px 22px',
+              padding: '10px 22px',
               borderRadius: '8px',
-              backgroundColor: isDelete ? '#ef4444' : undefined,
-              background: isDelete ? undefined : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              background: isDelete
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              backgroundColor: isDelete ? '#dc2626' : '#7c3aed',
               color: '#ffffff',
-              border: 'none',
+              border: isDelete ? '1px solid #f87171' : '1px solid #a855f7',
               fontSize: '0.88rem',
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               boxShadow: isDelete
-                ? '0 4px 15px rgba(239, 68, 68, 0.35)'
-                : '0 4px 15px rgba(99, 102, 241, 0.35)',
+                ? '0 4px 18px rgba(239, 68, 68, 0.45)'
+                : '0 4px 18px rgba(99, 102, 241, 0.45)',
+              transition: 'all 0.15s ease',
             }}
             data-testid="confirm-node-action-btn"
           >
             {isDelete ? (
               <>
-                <Trash2 size={16} />
-                <span>Sim, Excluir Nó</span>
+                <Trash2 size={16} color="#ffffff" strokeWidth={2.2} />
+                <span style={{ color: '#ffffff', fontWeight: 700 }}>Sim, Excluir Nó</span>
               </>
             ) : (
               <>
-                <Copy size={16} />
-                <span>Sim, Duplicar Nó</span>
+                <Copy size={16} color="#ffffff" strokeWidth={2.2} />
+                <span style={{ color: '#ffffff', fontWeight: 700 }}>Sim, Duplicar Nó</span>
               </>
             )}
           </button>

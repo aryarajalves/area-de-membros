@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.0`** | **1.167 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.1.0` / `frontend-1.1.0`**
+> **Versão Oficial: `v1.2.0`** | **1.200 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.2.0` / `frontend-1.2.0`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -161,15 +161,29 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Navegação infinita (*pan*) com arrasto do mouse e controles de zoom centralizados (in, out, reset com indicador de porcentagem).
   - **Centralização Automática:** Ao carregar um funil existente ou navegar entre abas, o canvas calcula automaticamente o centro de massa de todos os nós e ajusta o enquadramento na tela.
   - Adição rápida de nós via menu inferior ou clique com botão direito no canvas.
-- **Nós de Conteúdo, Fluxo e Etiquetas:**
+- **Nós de Conteúdo, Fluxo, Lógica e Ações:**
   - **Mensagem:** Texto dinâmico com suporte a Spintax (`{Oi|Olá}`), variáveis (`{aluno}`) e até 3 botões interativos com links/ações.
   - **Mídia:** Suporte a imagens, vídeos e documentos anexos com legenda.
   - **Áudio:** Envio de arquivos de áudio com toggle para simular gravação na hora (*voice note*).
-  - **Delay:** Intervalo de tempo configurável em segundos/minutos entre mensagens.
+  - **Delay com Janela de Horário Comercial:** Temporizador com unidades configuráveis (segundos, minutos, horas, dias) e toggle expansível de Janela de Horário Comercial (ex: 09:00 às 20:00 e apenas dias úteis) respeitando o fuso de Brasília (`America/Sao_Paulo`).
+  - **Nó de Teste A/B (`ab_split`):** Divisão estatística de tráfego com slider percentual (10% a 90%) e presets rápidos (50/50, 70/30, 80/20, 90/10), ramificando o fluxo em saídas `A` e `B` com badges temáticos nas conexões.
+  - **Nó Condicional "Possui Curso?" (`course_condition`):** Verificação pedagógica de acesso ativo do aluno a um curso ou ferramenta (incluindo acesso herdado por Combos/Bundles), ramificando em saídas `SIM` (verde) e `NÃO` (vermelho).
+  - **Nó Terminal "Encerrar Funil" (`stop`):** Finalização explícita do lead na automação, com opção de cancelar simultaneamente outros funis ativos do aluno.
+  - **Nós de Ação Pedagógica:**
+    - **Webhook:** Requisições HTTP externas customizáveis (GET/POST/PUT) com cabeçalhos e payload JSON.
+    - **Matrícula Automática:** Liberação instantânea de novos cursos para o aluno com validade configurável (vitalício, meses, anos).
+    - **Recompensa de XP:** Bonificação direta de experiência gamificada ao aluno.
+    - **Notificação Interna:** Emissão de avisos pedagógicos no painel do aluno ou administradores.
   - **Nó de Etiquetas (Tags):**
     - **Adicionar Etiqueta:** Aplica uma ou mais tags aos alunos ao passarem pelo nó.
     - **Remover Etiqueta:** Remove tags específicas atribuídas ao contato.
     - **Verificar Etiqueta (Condicional):** Avalia se o contato possui etiquetas específicas com suporte a operadores lógicos **E (`AND`)** e **OU (`OR`)**, ramificando o fluxo em 2 saídas distintas: *"Possui etiqueta"* (verde) e *"Não possui etiqueta"* (cinza/laranja).
+  - **Gatilhos Pedagógicos de Início de Funil (`trigger`):**
+    - **Interesse de Compra no Curso:** Disparo automático quando o aluno clica no botão de interesse em curso fechado.
+    - **Novo Aluno Cadastrado:** Disparo automático no momento do cadastro do aluno.
+    - **Inatividade de Aluno:** Disparo após X dias sem acessar a plataforma.
+    - **Marco de Progresso de Curso:** Disparo ao atingir 25%, 50%, 75% ou 100% de conclusão.
+    - **Alerta de Renovação / Expiração:** Disparo quando faltam X dias para expirar a vigência do curso.
   - **Criação Rápida de Etiquetas com Paleta de Cores:** Modal centralizado com backdrop escuro (`FunnelCreateTagModal`) para cadastrar novas etiquetas informando nome e escolhendo entre 8 cores temáticas vibrantes.
 - **Segurança de Fluxo e Confirmação de Ações:**
   - **Duplicação e Exclusão Seguras:** Modais centralizados com painel escuro translúcido para confirmação de duplicação ou exclusão tanto de nós individuais quanto do fluxo completo (`FunnelDuplicateConfirmModal`, `FunnelNodeConfirmModal`).
@@ -339,14 +353,14 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## 🧪 Suíte de Testes Unitários
 
-> 🏆 **Total de 1.167 testes unitários automatizados (100% de aprovação)** cobrindo ponta a ponta as regras de negócio da plataforma.
+> 🏆 **Total de 1.200 testes unitários automatizados (100% de aprovação)** cobrindo ponta a ponta as regras de negócio da plataforma.
 
 ### Frontend (Vitest + React Testing Library)
 ```bash
 cd frontend
 npm test -- --run
 ```
-> **944 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento e nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`), redirecionamento inteligente de convites já utilizados e redirecionamento automático de convites expirados.
+> **964 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento, novos nós lógicos de Teste A/B (`FunnelNodeAbSplit`), condicional de curso (`FunnelNodeCourseCondition`), nó terminal (`FunnelNodeStop`), delay comercial com fuso de Brasília, nós de ação pedagógica (Webhook, Matrícula Automática, Recompensa XP, Notificação Interna), novos gatilhos pedagógicos com modais de configuração dedicados, nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`), redirecionamento inteligente de convites já utilizados e redirecionamento automático de convites expirados.
 
 ### Backend (Pytest)
 ```bash
@@ -355,7 +369,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **223 testes unitários passando (100% de aprovação)** cobrindo auto-migrações preventivas no startup (`main.py`), validação de convites expirados com flag `is_expired` (`test_invite_phone.py`), criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
+> **236 testes unitários passando (100% de aprovação)** cobrindo execução e validação dos novos nós lógicos (`test_funnel_logic_nodes.py`: Teste A/B com split percentual, condicional de posse de curso com verificação de bundles, nó stop com cancelamento de fluxos paralelos e delay com janela de horário comercial), execução dos nós de ação de funil (`test_funnel_action_nodes.py`: webhook com headers, matrícula automática com prazos, gamificação XP e notificação interna), gatilhos pedagógicos (`test_funnel_pedagogical_triggers.py`: interesse em curso, criação de aluno, inatividade, marcos de progresso e alertas de expiração), auto-migrações preventivas no startup (`main.py`), validação de convites expirados com flag `is_expired` (`test_invite_phone.py`), criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
 
 ---
 

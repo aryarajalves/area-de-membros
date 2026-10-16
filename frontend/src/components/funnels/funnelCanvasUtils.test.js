@@ -18,6 +18,10 @@ describe('funnelCanvasUtils Unit Tests', () => {
     expect(getNodeWidth('trigger')).toBe(320);
     expect(getNodeWidth('trigger_course_interest')).toBe(320);
     expect(getNodeWidth('tag')).toBe(300);
+    expect(getNodeWidth('action_webhook')).toBe(310);
+    expect(getNodeWidth('action_enrollment')).toBe(310);
+    expect(getNodeWidth('action_gamification_xp')).toBe(310);
+    expect(getNodeWidth('action_internal_notify')).toBe(310);
     expect(getNodeWidth('audio')).toBe(290);
     expect(getNodeWidth('media')).toBe(300);
     expect(getNodeWidth('message')).toBe(320);
@@ -26,6 +30,10 @@ describe('funnelCanvasUtils Unit Tests', () => {
 
   it('calculates default node height based on type and buttons count', () => {
     expect(getDefaultNodeHeight({ type: 'delay' })).toBe(94);
+    expect(getDefaultNodeHeight({ type: 'action_webhook' })).toBe(230);
+    expect(getDefaultNodeHeight({ type: 'action_enrollment' })).toBe(250);
+    expect(getDefaultNodeHeight({ type: 'action_gamification_xp' })).toBe(245);
+    expect(getDefaultNodeHeight({ type: 'action_internal_notify' })).toBe(255);
     expect(getDefaultNodeHeight({ type: 'trigger' })).toBe(215);
     expect(getDefaultNodeHeight({ type: 'trigger', data: { trigger_event: 'course_interest' } })).toBe(220);
     expect(getDefaultNodeHeight({ type: 'tag' })).toBe(160);
@@ -90,6 +98,44 @@ describe('funnelCanvasUtils Unit Tests', () => {
       course_id: null,
       course_title: 'Todos os Cursos',
       is_start: true,
+    });
+    expect(getInitialNodeData('trigger_progress_milestone')).toEqual({
+      trigger_event: 'progress_milestone',
+      milestone: '100',
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+    });
+    expect(getInitialNodeData('trigger_renewal_warning')).toEqual({
+      trigger_event: 'renewal_warning',
+      days_before: 7,
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+    });
+    expect(getInitialNodeData('trigger_student_inactivity')).toEqual({
+      trigger_event: 'student_inactivity',
+      inactive_days: 7,
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+    });
+    expect(getInitialNodeData('action_webhook')).toEqual({
+      method: 'POST',
+      url: '',
+    });
+    expect(getInitialNodeData('action_enrollment')).toEqual({
+      course_id: null,
+      course_title: '',
+      access_duration: 'lifetime',
+    });
+    expect(getInitialNodeData('action_gamification_xp')).toEqual({
+      xp_amount: 50,
+      reason: 'Recompensa do Funil',
+    });
+    expect(getInitialNodeData('action_internal_notify')).toEqual({
+      notify_target: 'admins',
+      message: '🔔 Alerta: O aluno {aluno} ({email}) atingiu esta etapa!',
     });
     expect(getInitialNodeData('tag')).toEqual({
       tag_id: null,

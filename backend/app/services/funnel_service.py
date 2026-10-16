@@ -66,10 +66,12 @@ def normalize_flow_data_nodes(flow_data_str: str) -> str:
 
         has_trigger = any(n.get("type") == "trigger" for n in nodes)
         trigger_ids = {n["id"] for n in nodes if n.get("type") == "trigger"}
+        stop_ids = {n["id"] for n in nodes if n.get("type") == "stop"}
 
         # Regra de negócio:
         # 1. Nós de gatilho são pontos de entrada e nunca podem ser target de conexões.
-        # 2. Relação 1-para-1 estrita: Cada nó só pode se conectar com 1 outro nó (no máximo 1 saída por source e 1 entrada por target).
+        # 2. Nós de parada (stop) são terminais e nunca podem ser source de conexões.
+        # 3. Relação 1-para-1 estrita por porta: Cada porta de saída só pode se conectar com 1 porta de entrada.
         edges = data.get("edges", [])
         if edges:
             node_ids = {n["id"] for n in nodes if isinstance(n, dict) and "id" in n}
@@ -85,7 +87,7 @@ def normalize_flow_data_nodes(flow_data_str: str) -> str:
                     continue
                 if src not in node_ids or tgt not in node_ids:
                     continue
-                if tgt in trigger_ids:
+                if tgt in trigger_ids or src in stop_ids:
                     continue
                 src_port = (src, e.get("sourceHandle") or e.get("source_handle") or "output")
                 if src_port in used_sources or tgt in used_targets:
@@ -433,8 +435,9 @@ async def execute_funnel_flow(
                 execution_logs.append(f"Mensagem enviada (Nó {current_node_id})")
 
             elif node_type == "delay":
-                delay_sec = int(node_data.get("delay_seconds", 2))
-                execution_logs.append(f"Aguardando delay de {delay_sec}s (Nó {current_node_id})")
+                from app.services.funnel_logic_node_service import calculate_delay_with_business_hours
+                delay_sec, delay_log = calculate_delay_with_business_hours(node_data, current_node_id)
+                execution_logs.append(delay_log)
                 await asyncio.sleep(min(delay_sec, 60))
 
             elif node_type == "media":
@@ -510,11 +513,32 @@ async def execute_funnel_flow(
                     tag_log = execute_tag_node(db, student_id, node_data, current_node_id, funnel_id)
                     execution_logs.append(tag_log)
 
+            elif node_type == "condition_course":
+                from app.services.funnel_logic_node_service import execute_course_condition_node
+                branch_chosen, course_log = execute_course_condition_node(db, student_id, node_data, current_node_id, funnel_id)
+                execution_logs.append(course_log)
+
+            elif node_type == "ab_split":
+                from app.services.funnel_logic_node_service import execute_ab_split_node
+                branch_chosen, split_log = execute_ab_split_node(node_data, current_node_id, funnel_id)
+                execution_logs.append(split_log)
+
+            elif node_type == "stop":
+                from app.services.funnel_logic_node_service import execute_stop_node
+                _, stop_log = execute_stop_node(db, student_id, node_data, current_node_id, funnel_id, execution.id)
+                execution_logs.append(stop_log)
+                break
+
+            elif node_type in ["action_webhook", "action_enrollment", "action_gamification_xp", "action_internal_notify"]:
+                from app.services.funnel_action_node_service import execute_action_node
+                action_log = await execute_action_node(db, student, node_type, node_data, current_node_id, funnel_id)
+                execution_logs.append(action_log)
+
             # Próximo nó na sequência de arestas (respeita bifurcação condicional de portas)
             if branch_chosen:
                 next_target = (
                     edge_port_map.get((current_node_id, branch_chosen))
-                    or edge_port_map.get((current_node_id, "yes" if branch_chosen == "output_yes" else "no"))
+                    or edge_port_map.get((current_node_id, "yes" if branch_chosen == "output_yes" else "no" if branch_chosen == "output_no" else "a" if branch_chosen == "output_a" else "b"))
                 )
                 current_node_id = next_target
             else:
@@ -849,131 +873,20 @@ def dispatch_course_interest_funnels(
     return dispatched
 
 
-def extract_visited_nodes_from_logs(logs: Optional[str], current_node_id: Optional[str]) -> List[str]:
-    visited: List[str] = []
-    if logs:
-        matches = re.findall(r"\(Nó\s+([a-zA-Z0-9_\-]+)\)", logs)
-        for m in matches:
-            if m not in visited:
-                visited.append(m)
-    if current_node_id and current_node_id not in visited:
-        visited.append(current_node_id)
-    return visited
+# ============================================================================
+# Re-exports das consultas e histórico de funis (modularizados)
+# ============================================================================
+from app.services.funnel_execution_query_service import (
+    extract_visited_nodes_from_logs,
+    get_funnel_executions,
+    get_contact_active_funnels,
+)
+from app.services.funnel_trigger_service import (
+    dispatch_progress_milestone_funnels,
+    dispatch_renewal_warning_funnels,
+    dispatch_student_inactivity_funnels,
+)
 
 
-def get_funnel_executions(
-    db: Session,
-    funnel_id: int,
-    student_id: Optional[int] = None,
-    status_filter: Optional[str] = None,
-) -> FunnelExecutionsResponse:
-    funnel = db.query(Funnel).filter(Funnel.id == funnel_id).first()
-    if not funnel:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funil não encontrado.")
-
-    try:
-        flow = json.loads(funnel.flow_data or "{}")
-    except Exception:
-        flow = {}
-
-    nodes = flow.get("nodes", [])
-    edges = flow.get("edges", [])
-
-    query = db.query(FunnelExecution).filter(FunnelExecution.funnel_id == funnel_id)
-    if student_id:
-        query = query.filter(FunnelExecution.user_id == student_id)
-    if status_filter:
-        query = query.filter(FunnelExecution.status == status_filter)
-
-    executions_db = query.order_by(FunnelExecution.started_at.desc()).all()
-
-    total_executions = len(executions_db)
-    running_count = sum(1 for e in executions_db if e.status == "running")
-    completed_count = sum(1 for e in executions_db if e.status == "completed")
-
-    items = []
-    for ex in executions_db:
-        st = ex.user
-        student_name = st.name if st else f"Contato #{ex.user_id}"
-        student_email = st.email if st else None
-        student_avatar = getattr(st, "avatar_url", None)
-        visited = extract_visited_nodes_from_logs(ex.logs, ex.current_node_id)
-
-        items.append(
-            FunnelExecutionItem(
-                id=ex.id,
-                funnel_id=funnel.id,
-                funnel_name=funnel.name,
-                user_id=ex.user_id,
-                student_name=student_name,
-                student_email=student_email,
-                student_avatar=student_avatar,
-                triggered_by=ex.triggered_by,
-                current_node_id=ex.current_node_id,
-                status=ex.status,
-                started_at=ex.started_at,
-                completed_at=ex.completed_at,
-                logs=ex.logs,
-                visited_nodes=visited,
-            )
-        )
-
-    return FunnelExecutionsResponse(
-        funnel_id=funnel.id,
-        funnel_name=funnel.name,
-        flow_nodes=nodes,
-        flow_edges=edges,
-        total_executions=total_executions,
-        running_count=running_count,
-        completed_count=completed_count,
-        executions=items,
-    )
-
-
-def get_contact_active_funnels(db: Session, student_id: int) -> List[ContactActiveFunnelItem]:
-    executions = (
-        db.query(FunnelExecution)
-        .filter(FunnelExecution.user_id == student_id)
-        .order_by(FunnelExecution.started_at.desc())
-        .all()
-    )
-
-    results = []
-    for ex in executions:
-        fn = ex.funnel
-        if not fn:
-            continue
-        try:
-            flow = json.loads(fn.flow_data or "{}")
-        except Exception:
-            flow = {}
-
-        nodes = flow.get("nodes", [])
-        total_nodes = len(nodes)
-        node_map = {n.get("id"): n for n in nodes}
-        curr_node = node_map.get(ex.current_node_id) if ex.current_node_id else None
-        curr_type = curr_node.get("type") if curr_node else None
-
-        visited = extract_visited_nodes_from_logs(ex.logs, ex.current_node_id)
-        progress = int((len(visited) / max(total_nodes, 1)) * 100) if total_nodes > 0 else 100
-
-        results.append(
-            ContactActiveFunnelItem(
-                execution_id=ex.id,
-                funnel_id=fn.id,
-                funnel_name=fn.name,
-                triggered_by=ex.triggered_by,
-                status=ex.status,
-                current_node_id=ex.current_node_id,
-                current_node_type=curr_type,
-                started_at=ex.started_at,
-                completed_at=ex.completed_at,
-                progress_percentage=min(progress, 100),
-                visited_nodes_count=len(visited),
-                total_nodes_count=total_nodes,
-            )
-        )
-
-    return results
 
 

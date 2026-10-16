@@ -224,6 +224,19 @@ def check_and_dispatch_progress_events(
                 logger.info(f"Aluno {user.email} atingiu marco de {milestone_val}% no curso '{course.title}'!")
                 dispatch_event_to_webhooks(event_name, base_data, course_id=course.id, db=db)
 
+        # 3. Dispara funis com gatilho de marco de progresso (progress_milestone)
+        try:
+            from app.services.funnel_trigger_service import dispatch_progress_milestone_funnels
+            dispatch_progress_milestone_funnels(
+                db=db,
+                student_id=user.id,
+                course_id=course.id,
+                previous_pct=previous_percent,
+                current_pct=current_percent,
+            )
+        except Exception as f_exc:
+            logger.error(f"Erro ao disparar funis de marco de progresso: {f_exc}")
+
     except Exception as exc:
         logger.error(f"Erro ao verificar marcos de progresso do usuário {user_id}: {exc}")
     finally:
@@ -282,6 +295,11 @@ def check_and_dispatch_renewal_events(db: Optional[Session] = None) -> Dict[str,
                 logger.info(f"Disparando evento course.renewal.expired para aluno {student.email} no curso {course.title}")
                 dispatched = dispatch_event_to_webhooks("course.renewal.expired", payload_expired, course_id=course.id, db=db)
                 expired_sent += len(dispatched)
+                try:
+                    from app.services.funnel_trigger_service import dispatch_renewal_warning_funnels
+                    dispatch_renewal_warning_funnels(db=db, student_id=student.id, course_id=course.id, days_before=0)
+                except Exception as rf_exc:
+                    logger.error(f"Erro ao disparar funil de renovação expirada: {rf_exc}")
 
             # Caso 2: Aviso de 1 semana antes (entre 6.0 e 7.5 dias para expirar)
             elif 6.0 <= days_diff <= 7.5:
@@ -306,6 +324,11 @@ def check_and_dispatch_renewal_events(db: Optional[Session] = None) -> Dict[str,
                 logger.info(f"Disparando evento course.renewal.warning_7d para aluno {student.email} no curso {course.title}")
                 dispatched = dispatch_event_to_webhooks("course.renewal.warning_7d", payload_warning, course_id=course.id, db=db)
                 warnings_sent += len(dispatched)
+                try:
+                    from app.services.funnel_trigger_service import dispatch_renewal_warning_funnels
+                    dispatch_renewal_warning_funnels(db=db, student_id=student.id, course_id=course.id, days_before=7)
+                except Exception as rf_exc:
+                    logger.error(f"Erro ao disparar funil de renovação 7 dias: {rf_exc}")
 
         return {"warnings_sent": warnings_sent, "expired_sent": expired_sent}
 

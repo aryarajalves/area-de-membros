@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hourglass, Trash2, Copy } from 'lucide-react';
+import { Hourglass, Trash2, Copy, Clock, Calendar } from 'lucide-react';
 
 export default function FunnelNodeDelay({
   node,
@@ -12,18 +12,71 @@ export default function FunnelNodeDelay({
   isTargetActive = false,
 }) {
   const data = node.data || {};
-  const delaySec = data.delay_seconds ?? 2;
+  const delayVal = data.delay_value ?? data.delay_seconds ?? 2;
+  const delayUnit = data.delay_unit || 'seconds';
+  const businessHoursEnabled = Boolean(data.business_hours_enabled);
+  const businessHoursStart = data.business_hours_start || '09:00';
+  const businessHoursEnd = data.business_hours_end || '20:00';
+  const businessDaysOnly = Boolean(data.business_days_only);
 
-  const handleChangeDelay = (e) => {
+  const calculateSeconds = (val, unit) => {
+    const multipliers = { seconds: 1, minutes: 60, hours: 3600, days: 86400 };
+    return Math.max(1, (parseInt(val, 10) || 1) * (multipliers[unit] || 1));
+  };
+
+  const handleChangeValue = (e) => {
     const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-    onUpdateData(node.id, { ...data, delay_seconds: val });
+    const secs = calculateSeconds(val, delayUnit);
+    onUpdateData(node.id, {
+      ...data,
+      delay_value: val,
+      delay_seconds: secs,
+    });
+  };
+
+  const handleChangeUnit = (e) => {
+    const unit = e.target.value;
+    const secs = calculateSeconds(delayVal, unit);
+    onUpdateData(node.id, {
+      ...data,
+      delay_unit: unit,
+      delay_seconds: secs,
+    });
+  };
+
+  const handleToggleBusinessHours = (e) => {
+    onUpdateData(node.id, {
+      ...data,
+      business_hours_enabled: e.target.checked,
+    });
+  };
+
+  const handleChangeStartTime = (e) => {
+    onUpdateData(node.id, {
+      ...data,
+      business_hours_start: e.target.value,
+    });
+  };
+
+  const handleChangeEndTime = (e) => {
+    onUpdateData(node.id, {
+      ...data,
+      business_hours_end: e.target.value,
+    });
+  };
+
+  const handleToggleBusinessDaysOnly = (e) => {
+    onUpdateData(node.id, {
+      ...data,
+      business_days_only: e.target.checked,
+    });
   };
 
   return (
     <div
       style={{
         position: 'relative',
-        width: '240px',
+        width: '280px',
         backgroundColor: '#17120a',
         border: isSelected ? '2px solid #f59e0b' : '1px solid rgba(245, 158, 11, 0.4)',
         borderRadius: '14px',
@@ -31,6 +84,7 @@ export default function FunnelNodeDelay({
         color: '#f8fafc',
         padding: '12px 14px',
         userSelect: 'none',
+        transition: 'border 0.2s ease, box-shadow 0.2s ease',
       }}
       data-testid={`funnel-node-delay-${node.id}`}
     >
@@ -113,7 +167,9 @@ export default function FunnelNodeDelay({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b' }}>
           <Hourglass size={15} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.04em' }}>DELAY</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+            DELAY
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -134,31 +190,132 @@ export default function FunnelNodeDelay({
         </div>
       </div>
 
-      {/* Input */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {/* Tempo Base de Espera */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
         <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Aguardar antes do próximo nó:</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
             type="number"
             min="1"
-            max="300"
-            value={delaySec}
-            onChange={handleChangeDelay}
+            max="1000"
+            value={delayVal}
+            onChange={handleChangeValue}
             style={{
-              width: '80px',
+              width: '70px',
               backgroundColor: '#020617',
               border: '1px solid rgba(245, 158, 11, 0.4)',
               borderRadius: '6px',
               color: '#ffffff',
-              padding: '6px 8px',
-              fontSize: '0.85rem',
+              padding: '5px 8px',
+              fontSize: '0.82rem',
               fontWeight: 700,
               outline: 'none',
             }}
             data-testid={`node-delay-input-${node.id}`}
           />
-          <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>segundos</span>
+          <select
+            value={delayUnit}
+            onChange={handleChangeUnit}
+            style={{
+              backgroundColor: '#020617',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              borderRadius: '6px',
+              color: '#cbd5e1',
+              padding: '5px 8px',
+              fontSize: '0.78rem',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="seconds">segundos</option>
+            <option value="minutes">minutos</option>
+            <option value="hours">horas</option>
+            <option value="days">dias</option>
+          </select>
         </div>
+      </div>
+
+      {/* Janela de Horário Comercial */}
+      <div
+        style={{
+          backgroundColor: businessHoursEnabled ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+          border: businessHoursEnabled ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
+          borderRadius: '8px',
+          padding: '8px',
+          marginTop: '6px',
+        }}
+      >
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            marginBottom: businessHoursEnabled ? '6px' : '0',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={businessHoursEnabled}
+            onChange={handleToggleBusinessHours}
+            style={{ accentColor: '#f59e0b', cursor: 'pointer' }}
+            data-testid={`delay-business-hours-toggle-${node.id}`}
+          />
+          <span style={{ fontSize: '0.74rem', fontWeight: 700, color: businessHoursEnabled ? '#fbbf24' : '#cbd5e1' }}>
+            Janela de Horário Comercial
+          </span>
+        </label>
+
+        {businessHoursEnabled && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: '#94a3b8' }}>
+              <Clock size={12} color="#f59e0b" />
+              <span>Enviar entre:</span>
+              <input
+                type="time"
+                value={businessHoursStart}
+                onChange={handleChangeStartTime}
+                style={{
+                  backgroundColor: '#020617',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: '4px',
+                  color: '#ffffff',
+                  padding: '2px 4px',
+                  fontSize: '0.72rem',
+                }}
+              />
+              <span>e</span>
+              <input
+                type="time"
+                value={businessHoursEnd}
+                onChange={handleChangeEndTime}
+                style={{
+                  backgroundColor: '#020617',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: '4px',
+                  color: '#ffffff',
+                  padding: '2px 4px',
+                  fontSize: '0.72rem',
+                }}
+              />
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.68rem', color: '#cbd5e1' }}>
+              <input
+                type="checkbox"
+                checked={businessDaysOnly}
+                onChange={handleToggleBusinessDaysOnly}
+                style={{ accentColor: '#f59e0b', cursor: 'pointer' }}
+              />
+              <Calendar size={11} color="#f59e0b" />
+              <span>Apenas dias úteis (Seg a Sex)</span>
+            </label>
+
+            <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.2 }}>
+              Se expirar de madrugada ou fora do horário, aguardará até as {businessHoursStart} do próximo dia útil.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

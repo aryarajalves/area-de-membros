@@ -36,7 +36,7 @@ describe('FunnelNodeTrigger Component', () => {
     expect(screen.getByTestId('trigger-preset-7d-trigger_1')).toBeInTheDocument();
     expect(screen.getByTestId('trigger-preset-14d-trigger_1')).toBeInTheDocument();
     expect(screen.getByTestId('trigger-preset-21d-trigger_1')).toBeInTheDocument();
-    expect(screen.getByText(/O funil iniciará imediatamente assim que o aluno for cadastrado/i)).toBeInTheDocument();
+    expect(screen.getByText(/Disparará imediatamente assim que o aluno for cadastrado/i)).toBeInTheDocument();
   });
 
   it('permite selecionar preset de 7 dias e atualiza os dados do nó', () => {
@@ -69,7 +69,7 @@ describe('FunnelNodeTrigger Component', () => {
       />
     );
 
-    const input = screen.getByTestId('trigger-days-input-trigger_1');
+    const input = screen.getByTestId('trigger-custom-days-input-trigger_1');
     fireEvent.change(input, { target: { value: '30' } });
 
     expect(onUpdateData).toHaveBeenCalledWith('trigger_1', expect.objectContaining({
@@ -97,7 +97,7 @@ describe('FunnelNodeTrigger Component', () => {
       />
     );
 
-    expect(screen.getByText(/O funil iniciará automaticamente 14 dia\(s\) após o cadastro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Disparará automaticamente 14 dia\(s\) após a criação do aluno/i)).toBeInTheDocument();
   });
 
   it('exibe o badge [▶ INÍCIO] em verde ao lado do badge [GATILHO] quando is_start for true', () => {

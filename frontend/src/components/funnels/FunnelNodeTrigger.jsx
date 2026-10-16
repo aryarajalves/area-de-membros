@@ -1,9 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Target, Copy, Trash2, Clock, Calendar, CheckCircle2, BookOpen } from 'lucide-react';
+import { Zap, Target, Award, Hourglass, UserX, Copy, Trash2 } from 'lucide-react';
+import FunnelTriggerStudentCreatedConfig from './FunnelTriggerStudentCreatedConfig';
+import FunnelTriggerCourseInterestConfig from './FunnelTriggerCourseInterestConfig';
+import FunnelTriggerProgressConfig from './FunnelTriggerProgressConfig';
+import FunnelTriggerRenewalConfig from './FunnelTriggerRenewalConfig';
+import FunnelTriggerInactivityConfig from './FunnelTriggerInactivityConfig';
+
+const TRIGGER_METADATA = {
+  student_created: {
+    label: 'ALUNO CRIADO',
+    icon: Zap,
+    themeColor: '#eab308',
+    glowColor: 'rgba(234, 179, 8, 0.45)',
+    textColor: '#facc15',
+  },
+  course_interest: {
+    label: 'INTERESSE EM CURSO',
+    icon: Target,
+    themeColor: '#f59e0b',
+    glowColor: 'rgba(245, 158, 11, 0.45)',
+    textColor: '#fbbf24',
+  },
+  progress_milestone: {
+    label: 'MARCO DE PROGRESSO',
+    icon: Award,
+    themeColor: '#a855f7',
+    glowColor: 'rgba(168, 85, 247, 0.45)',
+    textColor: '#c084fc',
+  },
+  renewal_warning: {
+    label: 'AVISO DE EXPIRAÇÃO',
+    icon: Hourglass,
+    themeColor: '#f43f5e',
+    glowColor: 'rgba(244, 63, 94, 0.45)',
+    textColor: '#fb7185',
+  },
+  student_inactivity: {
+    label: 'ALERTA DE INATIVIDADE',
+    icon: UserX,
+    themeColor: '#ec4899',
+    glowColor: 'rgba(236, 72, 153, 0.45)',
+    textColor: '#f472b6',
+  },
+};
 
 export default function FunnelNodeTrigger({
   node,
   isSelected,
+  courses: propCourses,
   onUpdateData,
   onDeleteNode,
   onDuplicateNode,
@@ -12,15 +56,19 @@ export default function FunnelNodeTrigger({
   isTargetActive = false,
 }) {
   const data = node.data || {};
-  const isCourseInterest = data.trigger_event === 'course_interest';
-  const daysAfter = parseInt(data.days_after, 10) || 0;
-  const delayType = data.delay_type || (daysAfter === 0 ? 'immediate' : [7, 14, 21].includes(daysAfter) ? `${daysAfter}_days` : 'custom');
+  const triggerEvent = data.trigger_event || 'student_created';
+  const meta = TRIGGER_METADATA[triggerEvent] || TRIGGER_METADATA.student_created;
+  const IconComponent = meta.icon;
 
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState(propCourses || []);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
   useEffect(() => {
-    if (!isCourseInterest) return;
+    if (propCourses && propCourses.length > 0) {
+      setCourses(propCourses);
+      return;
+    }
+    if (triggerEvent === 'student_created') return;
     let isMounted = true;
     const fetchCourses = async () => {
       setLoadingCourses(true);
@@ -43,42 +91,7 @@ export default function FunnelNodeTrigger({
     return () => {
       isMounted = false;
     };
-  }, [isCourseInterest]);
-
-  const handleSelectPreset = (presetDays, type) => {
-    onUpdateData(node.id, {
-      ...data,
-      trigger_event: 'student_created',
-      delay_type: type,
-      days_after: presetDays,
-    });
-  };
-
-  const handleCustomDaysChange = (e) => {
-    const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-    onUpdateData(node.id, {
-      ...data,
-      trigger_event: 'student_created',
-      delay_type: val === 0 ? 'immediate' : 'custom',
-      days_after: val,
-    });
-  };
-
-  const handleSelectCourse = (e) => {
-    const val = e.target.value;
-    const selectedCourseId = val ? parseInt(val, 10) : null;
-    const found = courses.find((c) => c.id === selectedCourseId);
-    onUpdateData(node.id, {
-      ...data,
-      trigger_event: 'course_interest',
-      course_id: selectedCourseId,
-      course_title: found ? found.title : 'Todos os Cursos',
-    });
-  };
-
-  const selectedCourseTitle = data.course_id
-    ? (courses.find((c) => c.id === data.course_id)?.title || data.course_title || `Curso #${data.course_id}`)
-    : 'Todos os Cursos';
+  }, [triggerEvent]);
 
   return (
     <div
@@ -86,10 +99,10 @@ export default function FunnelNodeTrigger({
         position: 'relative',
         width: '320px',
         backgroundColor: '#181408',
-        border: isSelected ? '2px solid #eab308' : '1px solid rgba(234, 179, 8, 0.45)',
+        border: isSelected ? `2px solid ${meta.themeColor}` : `1px solid ${meta.glowColor}`,
         borderRadius: '14px',
         boxShadow: isSelected
-          ? '0 10px 30px rgba(234, 179, 8, 0.35)'
+          ? `0 10px 30px ${meta.glowColor}`
           : '0 10px 25px rgba(0, 0, 0, 0.7)',
         color: '#f8fafc',
         padding: '14px',
@@ -120,9 +133,9 @@ export default function FunnelNodeTrigger({
           width: '16px',
           height: '16px',
           borderRadius: '50%',
-          backgroundColor: '#eab308',
+          backgroundColor: meta.themeColor,
           border: '2px solid #0f172a',
-          boxShadow: '0 0 10px #eab308',
+          boxShadow: `0 0 10px ${meta.themeColor}`,
           cursor: 'grab',
           zIndex: 10,
           transition: 'all 0.15s ease',
@@ -138,7 +151,7 @@ export default function FunnelNodeTrigger({
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: '10px',
-          borderBottom: '1px solid rgba(234, 179, 8, 0.2)',
+          borderBottom: `1px solid ${meta.glowColor}`,
           paddingBottom: '8px',
         }}
       >
@@ -148,18 +161,18 @@ export default function FunnelNodeTrigger({
               width: '24px',
               height: '24px',
               borderRadius: '6px',
-              backgroundColor: 'rgba(234, 179, 8, 0.2)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#facc15',
+              color: meta.textColor,
             }}
           >
-            {isCourseInterest ? <Target size={14} /> : <Zap size={14} />}
+            <IconComponent size={14} />
           </div>
           <div>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#facc15', letterSpacing: '0.04em' }}>
-              {isCourseInterest ? 'INTERESSE EM CURSO' : 'ALUNO CRIADO'}
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: meta.textColor, letterSpacing: '0.04em' }}>
+              {meta.label}
             </span>
           </div>
         </div>
@@ -169,9 +182,9 @@ export default function FunnelNodeTrigger({
             style={{
               fontSize: '10px',
               fontWeight: 700,
-              color: '#eab308',
-              backgroundColor: 'rgba(234, 179, 8, 0.15)',
-              border: '1px solid rgba(234, 179, 8, 0.35)',
+              color: meta.themeColor,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              border: `1px solid ${meta.glowColor}`,
               borderRadius: '10px',
               padding: '2px 6px',
             }}
@@ -212,226 +225,53 @@ export default function FunnelNodeTrigger({
         </div>
       </div>
 
-      {/* Conteúdo Conforme Tipo do Gatilho */}
-      {isCourseInterest ? (
-        <>
-          <p style={{ fontSize: '0.74rem', color: '#cbd5e1', margin: '0 0 10px 0', lineHeight: 1.4 }}>
-            Dispara <strong>1 única vez</strong> quando o aluno tentar acessar um curso que ele ainda não possui.
-          </p>
+      {/* Conteúdo Específico do Gatilho */}
+      {triggerEvent === 'course_interest' && (
+        <FunnelTriggerCourseInterestConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
 
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' }}>
-              <BookOpen size={12} color="#facc15" />
-              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
-                Qual curso ativará o gatilho:
-              </label>
-            </div>
-            <select
-              value={data.course_id || ''}
-              onChange={handleSelectCourse}
-              disabled={loadingCourses}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                borderRadius: '6px',
-                backgroundColor: '#0a0703',
-                border: '1px solid rgba(234, 179, 8, 0.4)',
-                color: '#fef08a',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-              data-testid={`trigger-course-select-${node.id}`}
-            >
-              <option value="">🌟 Todos os Cursos (Qualquer um)</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-          </div>
+      {triggerEvent === 'progress_milestone' && (
+        <FunnelTriggerProgressConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
 
-          {/* Caixa Resumo Informativa */}
-          <div
-            style={{
-              padding: '8px 10px',
-              backgroundColor: 'rgba(234, 179, 8, 0.08)',
-              borderLeft: '3px solid #eab308',
-              borderRadius: '0 6px 6px 0',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '6px',
-            }}
-          >
-            <CheckCircle2 size={13} color="#facc15" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span style={{ fontSize: '0.7rem', color: '#fef08a', lineHeight: 1.35 }}>
-              {data.course_id
-                ? `Disparará 1 única vez quando o aluno clicar no curso "${selectedCourseTitle}".`
-                : 'Disparará 1 única vez quando o aluno clicar em qualquer curso que não possua.'}
-            </span>
-          </div>
-        </>
-      ) : (
-        <>
-          <p style={{ fontSize: '0.75rem', color: '#cbd5e1', margin: '0 0 10px 0', lineHeight: 1.4 }}>
-            Dispara esta sequência de mensagens quando uma nova conta de aluno for criada.
-          </p>
+      {triggerEvent === 'renewal_warning' && (
+        <FunnelTriggerRenewalConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
 
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' }}>
-              <Clock size={12} color="#facc15" />
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Momento do disparo:</span>
-            </div>
+      {triggerEvent === 'student_inactivity' && (
+        <FunnelTriggerInactivityConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => handleSelectPreset(0, 'immediate')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: delayType === 'immediate' || daysAfter === 0
-                    ? '1.5px solid #eab308'
-                    : '1px solid rgba(255, 255, 255, 0.1)',
-                  backgroundColor: delayType === 'immediate' || daysAfter === 0
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  color: delayType === 'immediate' || daysAfter === 0 ? '#fef08a' : '#cbd5e1',
-                }}
-                data-testid={`trigger-preset-immediate-${node.id}`}
-              >
-                ⚡ Imediatamente
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectPreset(7, '7_days')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: delayType === '7_days' && daysAfter === 7
-                    ? '1.5px solid #eab308'
-                    : '1px solid rgba(255, 255, 255, 0.1)',
-                  backgroundColor: delayType === '7_days' && daysAfter === 7
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  color: delayType === '7_days' && daysAfter === 7 ? '#fef08a' : '#cbd5e1',
-                }}
-                data-testid={`trigger-preset-7d-${node.id}`}
-              >
-                📅 7 dias depois
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectPreset(14, '14_days')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: delayType === '14_days' && daysAfter === 14
-                    ? '1.5px solid #eab308'
-                    : '1px solid rgba(255, 255, 255, 0.1)',
-                  backgroundColor: delayType === '14_days' && daysAfter === 14
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  color: delayType === '14_days' && daysAfter === 14 ? '#fef08a' : '#cbd5e1',
-                }}
-                data-testid={`trigger-preset-14d-${node.id}`}
-              >
-                📅 14 dias depois
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectPreset(21, '21_days')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: delayType === '21_days' && daysAfter === 21
-                    ? '1.5px solid #eab308'
-                    : '1px solid rgba(255, 255, 255, 0.1)',
-                  backgroundColor: delayType === '21_days' && daysAfter === 21
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  color: delayType === '21_days' && daysAfter === 21 ? '#fef08a' : '#cbd5e1',
-                }}
-                data-testid={`trigger-preset-21d-${node.id}`}
-              >
-                📅 21 dias depois
-              </button>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 10px',
-              backgroundColor: '#0a0703',
-              border: '1px solid rgba(234, 179, 8, 0.25)',
-              borderRadius: '8px',
-              marginBottom: '10px',
-            }}
-          >
-            <Calendar size={13} color="#facc15" />
-            <span style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Personalizar dias:</span>
-            <input
-              type="number"
-              min="0"
-              max="365"
-              value={daysAfter}
-              onChange={handleCustomDaysChange}
-              style={{
-                width: '60px',
-                backgroundColor: '#181408',
-                border: '1px solid rgba(234, 179, 8, 0.5)',
-                borderRadius: '6px',
-                color: '#fef08a',
-                padding: '4px 6px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                outline: 'none',
-              }}
-              data-testid={`trigger-days-input-${node.id}`}
-            />
-            <span style={{ fontSize: '0.73rem', color: '#cbd5e1' }}>dias</span>
-          </div>
-
-          <div
-            style={{
-              padding: '8px 10px',
-              backgroundColor: 'rgba(234, 179, 8, 0.08)',
-              borderLeft: '3px solid #eab308',
-              borderRadius: '0 6px 6px 0',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '6px',
-            }}
-          >
-            <CheckCircle2 size={13} color="#facc15" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span style={{ fontSize: '0.7rem', color: '#fef08a', lineHeight: 1.35 }}>
-              {daysAfter === 0
-                ? 'O funil iniciará imediatamente assim que o aluno for cadastrado.'
-                : `O funil iniciará automaticamente ${daysAfter} dia(s) após o cadastro.`}
-            </span>
-          </div>
-        </>
+      {triggerEvent === 'student_created' && (
+        <FunnelTriggerStudentCreatedConfig
+          nodeId={node.id}
+          data={data}
+          onUpdateData={onUpdateData}
+        />
       )}
     </div>
   );

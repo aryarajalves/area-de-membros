@@ -1125,6 +1125,23 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
        - **Modos e Operadores Lógicos:** `Possui etiqueta(s)` (`has_tags`) ou `NÃO possui` (`not_has_tags`), com operador `AND (Todas)` ou `OR (Pelo menos 1)`.
        - **Unicidade de Portas na Bifurcação:** Permite conectar simultaneamente 1 nó na saída SIM e 1 nó na saída NÃO, mantendo a regra 1:1 por porta (`sourceHandle`).
        - **Criação Rápida com Paleta de Cores:** Busca em tempo real com criação de etiqueta via modal popup com escolha de cores.
-    6. **Categoria Etiquetas / Tags (`tag`):** Gerencia e avalia etiquetas do contato através de três abas no topo do nó:
-       - **Aba `+ Adicionar Tag` (`add`):** Aplica uma ou mais etiquetas ao contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).
-       - **Aba `- Remover Tag` (`remove`):** Remove uma ou mais etiquetas do contato ao atingir este nó. Possui 1 saída padrão à direita (`output` centralizada).
+    7. **Categoria Ações & Contatos (`action_*`):**
+       - **Webhook Externo (`action_webhook`):** Dispara requisições HTTP (GET/POST/PUT) com payload JSON dinâmico contendo dados do aluno.
+       - **Matrícula Automática (`action_enrollment`):** Concede matrícula imediata em um curso ou pacote da plataforma com tempo de acesso configurável.
+       - **Recompensa XP (`action_gamification_xp`):** Credita pontos de gamificação (XP) e histórico de recompensa diretamente ao aluno.
+       - **Notificação Interna (`action_internal_notify`):** Envia alerta interno para administradores ou canais quando o aluno atinge determinada etapa.
+    8. **Categoria Lógica e Divisão de Fluxo (`ab_split`):**
+       - **Nó de Teste A/B (Split de Tráfego):** Divide os alunos de forma randômica ponderada entre duas saídas:
+         - **Saída A (`output_a` / top: 35%):** Segue pelo Caminho A com a porcentagem configurada (ex: 50%, 70%, 80%, etc.). Aresta identificada com badge `A` em ciano.
+         - **Saída B (`output_b` / top: 65%):** Segue pelo Caminho B com a porcentagem complementar (`100% - A%`). Aresta identificada com badge `B` em âmbar.
+    9. **Nó Condicional "Possui Curso?" (`condition_course`):**
+       - Avalia se o aluno possui matrícula ativa no curso selecionado (ou qualquer curso ativo), suportando inclusive acessos herdados de Pacotes/Combos (`CourseBundle`).
+       - **Saída SIM (`output_yes` / top: 35%):** Segue se o aluno possui o curso (verde com badge `SIM`).
+       - **Saída NÃO (`output_no` / top: 65%):** Segue se o aluno ainda NÃO comprou/não possui acesso (vermelho com badge `NÃO`), permitindo direcionar para oferta de compra.
+    10. **Nó Terminal de Encerrar Funil (`stop`):**
+       - Finaliza imediatamente a cadeia de execução do funil para o aluno.
+       - **Nó Terminal:** Possui exclusivamente porta de entrada (`input`) e é **terminantemente proibido de possuir porta ou arestas de saída**.
+       - **Opção Cancelar Outros Funis (`cancel_other_funnels`):** Permite interromper e remover o aluno de quaisquer outros funis em andamento para evitar mensagens concorrentes ou em duplicidade.
+    11. **Delay com Janela de Horário Comercial:**
+       - Integrado ao nó de **Delay**: além do tempo base (segundos, minutos, horas ou dias), permite ativar **"Janela de Horário Comercial"** com horários de início e término (padrão 09:00 às 20:00 no Horário de Brasília) e filtro opcional para apenas dias úteis (Segunda a Sexta).
+       - Caso o tempo de espera expire fora do intervalo ou de madrugada, o envio é ajustado para as 09:00 do próximo dia útil elegível.

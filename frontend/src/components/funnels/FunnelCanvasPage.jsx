@@ -86,10 +86,13 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
     fetchFunnel();
   }, [fetchFunnel]);
 
-  // Previne rolagem padrão da janela no canvas assim que ele é carregado
+  // Previne rolagem da janela no canvas, permitindo scroll dentro do menu de nós
   useEffect(() => {
     if (loading || !canvasRef.current) return;
-    const preventNativeScroll = (e) => e.preventDefault();
+    const preventNativeScroll = (e) => {
+      if (e.target?.closest?.('[data-testid="funnel-node-menu"], .custom-funnel-scroll')) return;
+      e.preventDefault();
+    };
     const el = canvasRef.current;
     el.addEventListener('wheel', preventNativeScroll, { passive: false });
     return () => el.removeEventListener('wheel', preventNativeScroll);
@@ -118,6 +121,7 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
 
   const handleWheel = (e) => {
     if (!canvasRef.current) return;
+    if (e.target?.closest && e.target.closest('[data-testid="funnel-node-menu"]')) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const focal = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const ratio = e.deltaY < 0 ? 1.08 : 0.92;
@@ -135,7 +139,6 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
     setZoom(next.zoom);
     setPan(next.pan);
   };
-
 
   const getCanvasCoords = useCallback((clientX, clientY) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
@@ -205,7 +208,7 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
       y = Math.round(centerCoords.y - 70 + ((nodes.length % 6) * 35));
     }
 
-    const nodeType = type === 'trigger_course_interest' ? 'trigger' : type;
+    const nodeType = type.startsWith('trigger') ? 'trigger' : type;
     const newNode = { id: newId, type: nodeType, position: { x, y }, data: getInitialNodeData(type, extraData) };
     setNodes((prev) => normalizeFunnelNodes([...prev, newNode]));
     setSelectedNodeId(newId);

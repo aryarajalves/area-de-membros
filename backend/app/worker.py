@@ -44,11 +44,15 @@ def run_renewal_check_job():
         # Verificação de funis com gatilhos atrasados (ex: X dias após criação)
         try:
             from app.core.database import SessionLocal
-            from app.services.funnel_service import check_and_dispatch_delayed_student_funnels
+            from app.services.funnel_service import (
+                check_and_dispatch_delayed_student_funnels,
+                dispatch_student_inactivity_funnels,
+            )
             db_w = SessionLocal()
             try:
                 fn_count = check_and_dispatch_delayed_student_funnels(db_w)
-                logger.info(f"[WORKER] Gatilhos de funil verificados: {fn_count} disparo(s) efetuado(s).")
+                inact_count = dispatch_student_inactivity_funnels(db_w)
+                logger.info(f"[WORKER] Gatilhos de funil verificados: {fn_count + inact_count} disparo(s) efetuado(s) (Atraso: {fn_count}, Inatividade: {inact_count}).")
             finally:
                 db_w.close()
         except Exception as fn_exc:

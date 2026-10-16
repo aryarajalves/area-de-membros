@@ -61,6 +61,18 @@ export default function FunnelCanvasEdgesLayer({
         >
           <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
         </marker>
+        {/* Marcador de seta Caminho B (laranja neon) */}
+        <marker
+          id="edge-arrow-b"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+        </marker>
       </defs>
 
       {/* Arestas Estabelecidas */}
@@ -82,9 +94,17 @@ export default function FunnelCanvasEdgesLayer({
 
         const isYes = edge.sourceHandle === 'output_yes' || edge.sourceHandle === 'yes';
         const isNo = edge.sourceHandle === 'output_no' || edge.sourceHandle === 'no';
+        const isA = edge.sourceHandle === 'output_a' || edge.sourceHandle === 'a';
+        const isB = edge.sourceHandle === 'output_b' || edge.sourceHandle === 'b';
 
-        const strokeColor = isYes ? '#10b981' : isNo ? '#f43f5e' : '#38bdf8';
-        const markerEnd = isYes ? 'url(#edge-arrow-yes)' : isNo ? 'url(#edge-arrow-no)' : 'url(#edge-arrow)';
+        const strokeColor = isYes ? '#10b981' : isNo ? '#f43f5e' : isB ? '#f59e0b' : '#38bdf8';
+        const markerEnd = isYes
+          ? 'url(#edge-arrow-yes)'
+          : isNo
+          ? 'url(#edge-arrow-no)'
+          : isB
+          ? 'url(#edge-arrow-b)'
+          : 'url(#edge-arrow)';
 
         return (
           <g key={edge.id} data-testid={`funnel-edge-${edge.id}`}>
@@ -101,8 +121,8 @@ export default function FunnelCanvasEdgesLayer({
             {/* Ponto de origem */}
             <circle cx={x1} cy={y1} r="4.5" fill={strokeColor} />
 
-            {/* Badge de Ramo Condicional próximo à origem (SIM / NÃO) */}
-            {(isYes || isNo) && (
+            {/* Badge de Ramo Condicional ou Teste A/B próximo à origem */}
+            {(isYes || isNo || isA || isB) && (
               <g transform={`translate(${x1 + 18}, ${y1})`}>
                 <rect
                   x="-12"
@@ -123,7 +143,7 @@ export default function FunnelCanvasEdgesLayer({
                   fontWeight="800"
                   letterSpacing="0.04em"
                 >
-                  {isYes ? 'SIM' : 'NÃO'}
+                  {isYes ? 'SIM' : isNo ? 'NÃO' : isA ? 'A' : 'B'}
                 </text>
               </g>
             )}

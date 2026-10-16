@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   MessageSquare,
   Image,
@@ -9,6 +9,15 @@ import {
   Zap,
   Target,
   Tag,
+  Award,
+  UserX,
+  Globe,
+  Gift,
+  Swords,
+  Bell,
+  GitFork,
+  GraduationCap,
+  Octagon,
 } from 'lucide-react';
 
 const NODE_CATALOG = [
@@ -17,6 +26,9 @@ const NODE_CATALOG = [
     items: [
       { type: 'trigger', label: 'Aluno Criado', icon: Zap, color: '#eab308', defaultData: { trigger_event: 'student_created' } },
       { type: 'trigger_course_interest', label: 'Interesse em Curso', icon: Target, color: '#f59e0b', defaultData: { trigger_event: 'course_interest' } },
+      { type: 'trigger_progress_milestone', label: 'Marco de Progresso', icon: Award, color: '#a855f7', defaultData: { trigger_event: 'progress_milestone', milestone: '100' } },
+      { type: 'trigger_renewal_warning', label: 'Aviso de Expiração', icon: Hourglass, color: '#f43f5e', defaultData: { trigger_event: 'renewal_warning', days_before: 7 } },
+      { type: 'trigger_student_inactivity', label: 'Alerta de Inatividade', icon: UserX, color: '#ec4899', defaultData: { trigger_event: 'student_inactivity', inactive_days: 7 } },
     ],
   },
   {
@@ -30,19 +42,34 @@ const NODE_CATALOG = [
   {
     category: 'AÇÕES & CONTATOS',
     items: [
-      { type: 'tag', label: 'Adicionar Tag', icon: Tag, color: '#a855f7' },
+      { type: 'tag', label: 'Etiquetas / Tags', icon: Tag, color: '#a855f7' },
+      { type: 'action_webhook', label: 'Webhook Externo', icon: Globe, color: '#06b6d4', defaultData: { method: 'POST', url: '' } },
+      { type: 'action_enrollment', label: 'Matrícula Automática', icon: Gift, color: '#10b981', defaultData: { course_id: null, access_duration: 'lifetime' } },
+      { type: 'action_gamification_xp', label: 'Recompensa XP', icon: Swords, color: '#f59e0b', defaultData: { xp_amount: 50, reason: 'Recompensa do Funil' } },
+      { type: 'action_internal_notify', label: 'Notificação Interna', icon: Bell, color: '#f43f5e', defaultData: { notify_target: 'admins', message: '🔔 Alerta: O aluno {aluno} ({email}) atingiu esta etapa!' } },
     ],
   },
   {
     category: 'FLUXO E TEMPO',
     items: [
       { type: 'delay', label: 'Delay', icon: Hourglass, color: '#f59e0b' },
+      { type: 'ab_split', label: 'Teste A/B (Split)', icon: GitFork, color: '#ec4899', defaultData: { split_a_pct: 50 } },
+      { type: 'condition_course', label: 'Possui Curso?', icon: GraduationCap, color: '#06b6d4', defaultData: { course_id: 'any', course_title: 'Qualquer Curso Ativo' } },
+      { type: 'stop', label: 'Encerrar Funil', icon: Octagon, color: '#ef4444', defaultData: { cancel_other_funnels: false } },
     ],
   },
 ];
 
 export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelectNode, onClose }) {
   const [search, setSearch] = useState('');
+  const scrollRef = useRef(null);
+
+  const handleMenuWheel = (e) => {
+    e.stopPropagation();
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop += e.deltaY;
+    }
+  };
 
   const filterItems = (items) => {
     if (!search.trim()) return items;
@@ -67,6 +94,7 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
     <div
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onWheel={handleMenuWheel}
       style={{
         ...menuStyle,
         width: '260px',
@@ -129,7 +157,12 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
       </div>
 
       {/* Lista por Categorias */}
-      <div style={{ maxHeight: '280px', overflowY: 'auto', padding: '8px' }}>
+      <div
+        ref={scrollRef}
+        className="custom-funnel-scroll"
+        onWheel={handleMenuWheel}
+        style={{ maxHeight: '320px', overflowY: 'auto', padding: '8px' }}
+      >
         {NODE_CATALOG.map((cat) => {
           const matched = filterItems(cat.items);
           if (matched.length === 0) return null;

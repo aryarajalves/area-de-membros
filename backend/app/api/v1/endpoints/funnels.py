@@ -27,6 +27,7 @@ from app.services.funnel_service import (
     duplicate_funnel,
     execute_funnel_flow,
     check_and_dispatch_delayed_student_funnels,
+    dispatch_student_inactivity_funnels,
     get_funnel_executions,
     get_contact_active_funnels,
 )
@@ -195,10 +196,12 @@ def check_funnel_triggers(
     (ex: X dias após a criação do aluno).
     """
     dispatched = check_and_dispatch_delayed_student_funnels(db)
+    inactivity_dispatched = dispatch_student_inactivity_funnels(db)
+    total_dispatched = dispatched + inactivity_dispatched
     return {
         "success": True,
-        "message": f"Verificação concluída. {dispatched} funil(is) acionado(s).",
-        "dispatched_count": dispatched,
+        "message": f"Verificação concluída. {total_dispatched} funil(is) acionado(s).",
+        "dispatched_count": total_dispatched,
     }
 
 

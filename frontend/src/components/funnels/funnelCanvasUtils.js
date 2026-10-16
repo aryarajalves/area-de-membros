@@ -5,17 +5,28 @@
 
 export const getNodeWidth = (type) => {
   if (type === 'delay') return 240;
+  if (type === 'stop') return 280;
+  if (type === 'ab_split') return 300;
+  if (type === 'condition_course') return 320;
   if (type === 'trigger' || type === 'trigger_course_interest') return 320;
   if (type === 'tag') return 300;
   if (type === 'media') return 300;
   if (type === 'audio') return 290;
+  if (typeof type === 'string' && type.startsWith('action_')) return 310;
   return 320;
 };
 
 export const getDefaultNodeHeight = (node) => {
   if (!node) return 120;
   if (node.type === 'delay') return 94;
+  if (node.type === 'stop') return 150;
+  if (node.type === 'ab_split') return 190;
+  if (node.type === 'condition_course') return 165;
   if (node.type === 'tag') return 160;
+  if (node.type === 'action_webhook') return 230;
+  if (node.type === 'action_enrollment') return 250;
+  if (node.type === 'action_gamification_xp') return 245;
+  if (node.type === 'action_internal_notify') return 255;
   if (node.type === 'trigger' || node.type === 'trigger_course_interest') {
     return node.data?.trigger_event === 'course_interest' ? 220 : 215;
   }
@@ -38,13 +49,27 @@ export const getNodePortPos = (node, isOutput = false, nodeHeights = {}, portId 
   const width = getNodeWidth(node.type);
   const height = (nodeHeights && nodeHeights[node.id]) || getDefaultNodeHeight(node);
 
-  if (isOutput && node.type === 'tag' && node.data?.tag_action === 'condition') {
+  if (isOutput && (
+    (node.type === 'tag' && node.data?.tag_action === 'condition') ||
+    node.type === 'condition_course'
+  )) {
     const isYes = portId === 'output_yes' || portId === 'yes';
     const isNo = portId === 'output_no' || portId === 'no';
     if (isYes) {
       return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.35) };
     }
     if (isNo) {
+      return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.65) };
+    }
+  }
+
+  if (isOutput && node.type === 'ab_split') {
+    const isA = portId === 'output_a' || portId === 'a';
+    const isB = portId === 'output_b' || portId === 'b';
+    if (isA) {
+      return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.35) };
+    }
+    if (isB) {
       return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.65) };
     }
   }
@@ -73,6 +98,36 @@ export const getInitialNodeData = (type, extraData = {}) => {
       ...extraData,
     };
   }
+  if (type === 'trigger_progress_milestone' || (type === 'trigger' && extraData.trigger_event === 'progress_milestone')) {
+    return {
+      trigger_event: 'progress_milestone',
+      milestone: '100',
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_renewal_warning' || (type === 'trigger' && extraData.trigger_event === 'renewal_warning')) {
+    return {
+      trigger_event: 'renewal_warning',
+      days_before: 7,
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_student_inactivity' || (type === 'trigger' && extraData.trigger_event === 'student_inactivity')) {
+    return {
+      trigger_event: 'student_inactivity',
+      inactive_days: 7,
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+      ...extraData,
+    };
+  }
   if (type === 'trigger') {
     return {
       trigger_event: 'student_created',
@@ -82,6 +137,13 @@ export const getInitialNodeData = (type, extraData = {}) => {
       ...extraData,
     };
   }
+  if (type === 'action_webhook') return { method: 'POST', url: '', ...extraData };
+  if (type === 'action_enrollment') return { course_id: null, course_title: '', access_duration: 'lifetime', ...extraData };
+  if (type === 'action_gamification_xp') return { xp_amount: 50, reason: 'Recompensa do Funil', ...extraData };
+  if (type === 'action_internal_notify') return { notify_target: 'admins', message: '🔔 Alerta: O aluno {aluno} ({email}) atingiu esta etapa!', ...extraData };
+  if (type === 'ab_split') return { split_a_pct: 50, ...extraData };
+  if (type === 'condition_course') return { course_id: 'any', course_title: 'Qualquer Curso Ativo', ...extraData };
+  if (type === 'stop') return { cancel_other_funnels: false, ...extraData };
   if (type === 'tag') return { tag_id: null, tag_name: '', tag_color: '#3b82f6', ...extraData };
   if (type === 'message') return { text: 'Digite sua mensagem...', buttons: [], ...extraData };
   if (type === 'delay') return { delay_seconds: 2, ...extraData };
@@ -124,11 +186,13 @@ export const normalizeFunnelNodes = (nodes = []) => {
  * Regras:
  * - Origem e destino devem existir e ser diferentes.
  * - O nó de Gatilho/Início NUNCA pode ser destino (target), pois é o ponto de entrada do funil.
+ * - O nó de Parada (stop) NUNCA pode ser origem (source), pois é um nó terminal.
  */
 export const isValidEdgeConnection = (sourceNode, targetNode) => {
   if (!sourceNode || !targetNode) return false;
   if (sourceNode.id === targetNode.id) return false;
   if (targetNode.type === 'trigger') return false;
+  if (sourceNode.type === 'stop') return false;
   return true;
 };
 
