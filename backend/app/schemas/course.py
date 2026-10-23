@@ -171,6 +171,7 @@ class CourseBase(BaseModel):
     description: Optional[str] = None
     thumbnail_url: Optional[str] = None
     cover_image_url: Optional[str] = None
+    cover_image_position: Optional[int] = 50
     bg_color: Optional[str] = "#090d16"
     is_published: bool = True
     sales_page_url: Optional[str] = None
@@ -189,6 +190,7 @@ class CourseUpdate(BaseModel):
     description: Optional[str] = None
     thumbnail_url: Optional[str] = None
     cover_image_url: Optional[str] = None
+    cover_image_position: Optional[int] = None
     bg_color: Optional[str] = None
     is_published: Optional[bool] = None
     sales_page_url: Optional[str] = None

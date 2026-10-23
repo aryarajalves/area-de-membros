@@ -37,7 +37,6 @@ def _is_user_course_active(uc: UserCourse) -> bool:
         exp = exp.replace(tzinfo=timezone.utc)
     return exp > now
 
-
 def _verify_student_course_access(db: Session, user_id: int, course_id: int):
     """Valida se o aluno possui acesso liberado e vigente ao curso (direto ou via pacote/combo)."""
     uc = db.query(UserCourse).filter(
@@ -85,12 +84,10 @@ def _get_saved_platform_bg_color(db: Session) -> str:
         return first_course.bg_color
     return "#090d16"
 
-
 @router.get("/platform-theme", response_model=PlatformThemeResponse, tags=["Cursos e Módulos"], summary="Obter Tema Global da Plataforma")
 def get_platform_theme(db: Session = Depends(get_db)):
     """Retorna a cor de fundo global configurada para a Área de Membros."""
     return {"bg_color": _get_saved_platform_bg_color(db)}
-
 
 @router.patch("/platform-theme", response_model=PlatformThemeResponse, tags=["Cursos e Módulos"], summary="Atualizar Tema Global da Plataforma")
 def update_platform_theme(
@@ -164,6 +161,7 @@ def create_course(
         description=course_in.description,
         thumbnail_url=course_in.thumbnail_url,
         cover_image_url=course_in.cover_image_url,
+        cover_image_position=course_in.cover_image_position if course_in.cover_image_position is not None else 50,
         bg_color=course_in.bg_color or global_bg,
         is_published=course_in.is_published,
         sales_page_url=course_in.sales_page_url.strip() if course_in.sales_page_url else None,
@@ -235,6 +233,8 @@ def update_course(
         if course.cover_image_url and course.cover_image_url != course_update.cover_image_url:
             delete_media_file(course.cover_image_url)
         course.cover_image_url = course_update.cover_image_url or None
+    if course_update.cover_image_position is not None:
+        course.cover_image_position = max(0, min(100, int(course_update.cover_image_position)))
     if course_update.bg_color is not None:
         course.bg_color = course_update.bg_color or "#090d16"
     if course_update.is_published is not None:

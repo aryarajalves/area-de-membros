@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP WITHOUT TIME ZONE;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type VARCHAR DEFAULT 'course';
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS tool_url VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_position INTEGER NOT NULL DEFAULT 50;
                         CREATE TABLE IF NOT EXISTS course_bundles (
                             id SERIAL PRIMARY KEY,
                             parent_course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -180,6 +181,10 @@ async def lifespan(app: FastAPI):
                         pass
                     try:
                         conn.execute(text("ALTER TABLE courses ADD COLUMN tool_url VARCHAR"))
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("ALTER TABLE courses ADD COLUMN cover_image_position INTEGER DEFAULT 50"))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")

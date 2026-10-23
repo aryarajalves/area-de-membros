@@ -226,5 +226,25 @@ describe('NetflixHeroAndModules Component', () => {
     // O modal deve ser fechado
     expect(screen.queryByTestId('course-description-modal')).not.toBeInTheDocument();
   });
+
+  it('aplica a posição customizada cover_image_position no background do hero banner', () => {
+    const courseWithPos = { ...mockCourse, cover_image_position: 75 };
+    render(
+      <NetflixHeroAndModules
+        course={courseWithPos}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    const banner = screen.getByTestId('netflix-hero-banner');
+    expect(banner.style.backgroundPosition).toBe('center 75%');
+  });
 });
 

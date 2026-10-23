@@ -14,6 +14,7 @@ class Course(Base):
     description = Column(Text, nullable=True)
     thumbnail_url = Column(String, nullable=True)
     cover_image_url = Column(String, nullable=True)
+    cover_image_position = Column(Integer, default=50, nullable=False)
     bg_color = Column(String, default="#090d16", nullable=True)
     is_published = Column(Boolean, default=True)
     sales_page_url = Column(String, nullable=True)

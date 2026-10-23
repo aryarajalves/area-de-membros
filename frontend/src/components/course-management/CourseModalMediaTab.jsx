@@ -1,9 +1,12 @@
 import React from 'react';
 import { Upload, X, Image } from 'lucide-react';
+import BannerPositionAdjuster from './BannerPositionAdjuster';
 
 export default function CourseModalMediaTab({
   thumbnailUrl,
   coverImageUrl,
+  coverImagePosition = 50,
+  setCoverImagePosition,
   setCoverImageUrl,
   uploading,
   onUploadThumbnail,
@@ -96,9 +99,11 @@ export default function CourseModalMediaTab({
           </div>
 
           {coverImageUrl && (
-            <div className="thumbnail-preview-box" style={{ marginTop: '8px', maxHeight: '130px', overflow: 'hidden' }}>
-              <img src={coverImageUrl} alt="Pré-visualização do Banner Hero" style={{ width: '100%', objectFit: 'cover' }} data-testid="cover-preview-img" />
-            </div>
+            <BannerPositionAdjuster
+              coverImageUrl={coverImageUrl}
+              position={coverImagePosition}
+              onChange={setCoverImagePosition}
+            />
           )}
         </div>
       )}

@@ -81,6 +81,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [description, setDescription] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [coverImagePosition, setCoverImagePosition] = useState(50);
   const [salesPageUrl, setSalesPageUrl] = useState('');
   const [orderIndex, setOrderIndex] = useState(0);
   const [agentflowKbId, setAgentflowKbId] = useState(null);
@@ -131,6 +132,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setDescription('');
     setThumbnailUrl('');
     setCoverImageUrl('');
+    setCoverImagePosition(50);
     setSalesPageUrl('');
     setOrderIndex(0);
     setAgentflowKbId(null);
@@ -147,6 +149,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setDescription(course.description || '');
     setThumbnailUrl(course.thumbnail_url || '');
     setCoverImageUrl(course.cover_image_url || '');
+    setCoverImagePosition(course.cover_image_position !== undefined && course.cover_image_position !== null ? course.cover_image_position : 50);
     setSalesPageUrl(course.sales_page_url || '');
     setOrderIndex(course.order_index ?? 0);
     setAgentflowKbId(course.agentflow_kb_id || null);
@@ -218,6 +221,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       description: description.trim() || null,
       thumbnail_url: thumbnailUrl.trim() || null,
       cover_image_url: coverImageUrl.trim() || null,
+      cover_image_position: parseInt(coverImagePosition, 10) || 50,
       sales_page_url: salesPageUrl.trim() || null,
       order_index: parseInt(orderIndex, 10) || 0,
       agentflow_kb_id: agentflowKbId,
@@ -453,6 +457,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         title={title} setTitle={setTitle} description={description} setDescription={setDescription}
         thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
         coverImageUrl={coverImageUrl} setCoverImageUrl={setCoverImageUrl}
+        coverImagePosition={coverImagePosition} setCoverImagePosition={setCoverImagePosition}
         salesPageUrl={salesPageUrl} setSalesPageUrl={setSalesPageUrl}
         orderIndex={orderIndex} setOrderIndex={setOrderIndex}
         agentflowKbId={agentflowKbId} setAgentflowKbId={setAgentflowKbId}

@@ -21,6 +21,8 @@ export function CourseFormModal({
   setThumbnailUrl,
   coverImageUrl = '',
   setCoverImageUrl,
+  coverImagePosition = 50,
+  setCoverImagePosition,
   salesPageUrl = '',
   setSalesPageUrl,
   orderIndex = 0,
@@ -159,6 +161,8 @@ export function CourseFormModal({
             <CourseModalMediaTab
               thumbnailUrl={thumbnailUrl}
               coverImageUrl={coverImageUrl}
+              coverImagePosition={coverImagePosition}
+              setCoverImagePosition={setCoverImagePosition}
               setCoverImageUrl={setCoverImageUrl}
               uploading={uploading}
               onUploadThumbnail={onUploadThumbnail}

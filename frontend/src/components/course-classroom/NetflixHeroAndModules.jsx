@@ -75,7 +75,7 @@ export default function NetflixHeroAndModules({
             ? `linear-gradient(90deg, ${bgColor} 0%, rgba(9, 13, 22, 0.85) 45%, rgba(9, 13, 22, 0.35) 100%), linear-gradient(180deg, transparent 50%, ${bgColor} 100%), url(${heroBgImage})`
             : `radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.3), ${bgColor} 70%)`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: `center ${course?.cover_image_position !== undefined && course?.cover_image_position !== null ? course.cover_image_position : 50}%`,
           padding: '32px 28px',
           display: 'flex',
           flexDirection: 'column',

@@ -2,6 +2,16 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [23/10/2026] - Adição de Enquadramento e Posição do Banner Hero (cover_image_position)
+- **Objetivo:** Permitir ao administrador ajustar a posição focal/vertical do Banner Hero (0% a 100%), permitindo drag-and-drop e slider para escolher qual parte da imagem panorâmica deve aparecer no topo do curso.
+- **Tabela Afetada:** courses
+- **Nova Coluna:**
+  - cover_image_position: Posição percentual vertical da imagem de capa/banner (INTEGER NOT NULL DEFAULT 50).
+- **Script de Migração:** ackend/scripts/add_cover_image_position_to_courses.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
 ### [23/10/2026] - Adição de Card Facultativo de Próximo Nível na Barra Lateral (show_in_sidebar)
 - **Objetivo:** Permitir que o gestor configure no anúncio de Upsell se ele deve ser exibido também como um card de destaque de próximo passo na barra lateral da sala de aula (acima dos módulos).
 - **Tabela Afetada:** course_upsell_offers

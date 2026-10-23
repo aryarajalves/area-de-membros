@@ -10,6 +10,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 ### 🎓 1. Sala de Aula e Experiência do Aluno
 - **Vitrine Netflix & Banner Hero:**
   - Banner Hero cinematográfico com suporte a capa personalizada ou gradiente dark glassmorphism.
+  - **Enquadramento e Reposicionamento Vertical do Banner Hero:** Ajuste interativo arrastando a imagem diretamente com o mouse (Drag & Drop vertical) ou utilizando o slider de precisão (0% a 100%) e botões de atalho rápido (Topo 0%, Centro 50%, Base 100%), permitindo ao gestor definir com exatidão a faixa visível da imagem panorâmica no topo da sala de aula.
   - Carrossel horizontal de módulos com miniaturas (posters), contadores de aulas e barra de progresso individual.
   - Vitrine de cursos com paginação inteligente (20 cursos por página) e controle de acesso individual.
 - **Player de Vídeo Customizado HTML5 (`CustomVideoPlayer` & `VideoControls`):**
