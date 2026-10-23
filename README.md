@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.0`** | **1.312 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.2.0` / `frontend-1.2.0`**
+> **Versão Oficial: `v1.1.2`** | **Docker Hub: `backend-1.1.2` / `frontend-1.1.2`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
