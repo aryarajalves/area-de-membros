@@ -41,7 +41,7 @@ export function useUrlNavigation({ user, onSelectTab }) {
     }
 
     if (targetCourseId) {
-      setTimeout(() => {
+      const dispatchOpen = () => {
         window.dispatchEvent(
           new CustomEvent('open_course_lesson', {
             detail: {
@@ -50,7 +50,9 @@ export function useUrlNavigation({ user, onSelectTab }) {
             },
           })
         );
-      }, 250);
+      };
+      setTimeout(dispatchOpen, 250);
+      setTimeout(dispatchOpen, 600);
     }
 
     // Limpa a query string da barra de endereços para liberar a navegação livre posterior pela Sidebar

@@ -85,6 +85,7 @@ export default function CommentItem({
 
   return (
     <div
+      id={`comment-item-${comment.id}`}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -344,6 +345,7 @@ export default function CommentItem({
             return (
               <div
                 key={reply.id}
+                id={`comment-reply-${reply.id}`}
                 style={{
                   display: 'flex',
                   gap: '10px',

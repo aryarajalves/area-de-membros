@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Loader2, FileText } from 'lucide-react';
+import { Sparkles, Loader2, FileText, Paperclip } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ConfirmGenerateAiMetadataModal from './ConfirmGenerateAiMetadataModal';
 
@@ -12,7 +12,8 @@ export default function LessonOverviewTab({
   textColor = '#f8fafc',
   subTextColor = '#94a3b8',
   mutedColor = '#64748b',
-  onLessonUpdated
+  onLessonUpdated,
+  onSwitchToAttachments
 }) {
   const { addToast } = useToast();
   const [hasTranscription, setHasTranscription] = useState(false);
@@ -169,6 +170,75 @@ export default function LessonOverviewTab({
             <p style={{ fontSize: '12.5px', color: '#a5b4fc', margin: 0, fontWeight: 500 }}>
               💡 A transcrição desta aula já foi gerada! Clique no botão acima para criar o título e a descrição automaticamente com IA.
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Chamada para Materiais Complementares caso a aula possua documentos anexados */}
+      {lesson?.attachments && lesson.attachments.length > 0 && (
+        <div
+          style={{
+            marginTop: '20px',
+            padding: '14px 18px',
+            borderRadius: '10px',
+            backgroundColor: 'rgba(234, 179, 8, 0.08)',
+            border: '1px solid rgba(234, 179, 8, 0.28)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+          data-testid="lesson-overview-attachments-callout"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Paperclip size={18} style={{ color: '#eab308' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, color: textColor }}>
+                {lesson.attachments.length === 1
+                  ? '1 documento complementar disponível para esta aula'
+                  : `${lesson.attachments.length} documentos complementares disponíveis para esta aula`}
+              </div>
+              <div style={{ fontSize: '12px', color: subTextColor, marginTop: '2px' }}>
+                Apostilas, planilhas ou arquivos anexados para download e estudo.
+              </div>
+            </div>
+          </div>
+          {onSwitchToAttachments && (
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={onSwitchToAttachments}
+              style={{
+                fontSize: '12.5px',
+                fontWeight: 600,
+                padding: '7px 16px',
+                color: '#eab308',
+                borderColor: 'rgba(234, 179, 8, 0.4)',
+                backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+              data-testid="go-to-attachments-tab-btn"
+            >
+              <Paperclip size={14} />
+              <span>Ver Materiais ({lesson.attachments.length})</span>
+            </button>
           )}
         </div>
       )}

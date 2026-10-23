@@ -3,6 +3,7 @@ import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { useToast } from '../../context/ToastContext';
 import ProfileAvatarSection from './ProfileAvatarSection';
 import ProfileGamificationCard from './ProfileGamificationCard';
+import PhoneWithDdiInput from './PhoneWithDdiInput';
 
 export default function PlatformProfileTab({
   currentUser,
@@ -68,12 +69,12 @@ export default function PlatformProfileTab({
     try {
       const payload = {
         avatar_url: avatarUrl,
+        phone: (phone || '').trim(),
       };
 
       if (!isSuperAdmin) {
         payload.name = name.trim();
         payload.email = email.trim();
-        payload.phone = phone.trim();
         if (newPassword.trim()) {
           payload.password = newPassword.trim();
         }
@@ -237,18 +238,18 @@ export default function PlatformProfileTab({
           </div>
         </div>
 
-        {/* WhatsApp / Telefone */}
+        {/* WhatsApp / Telefone com Seletor de DDI */}
         <div style={{ marginBottom: '22px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: textColor }}>
             WhatsApp / Telefone de Contato
           </label>
-          <input
-            type="text"
+          <PhoneWithDdiInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="(11) 99999-9999"
-            style={inputStyle}
-            data-testid="profile-input-phone"
+            onChange={(val) => setPhone(val)}
+            isLightBg={isLightBg}
+            textColor={textColor}
+            subTextColor={subTextColor}
+            cardBorder={cardBorder}
           />
         </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlayCircle, BookOpen, Compass } from 'lucide-react';
+import ChatInternalLinkBadge from './ChatInternalLinkBadge';
 
 /**
  * Converte URLs internas (internal://...) para rotas web correspondentes.
@@ -7,30 +7,78 @@ import { PlayCircle, BookOpen, Compass } from 'lucide-react';
 export function getInternalLinkWebUrl(url) {
   if (!url) return '/';
   if (url.startsWith('internal://lesson/')) {
-    const parts = url.replace('internal://lesson/', '').split('/');
+    const raw = url.replace('internal://lesson/', '');
+    const [pathPart] = raw.split('?');
+    const parts = pathPart.split('/');
     const courseId = parts[0]?.trim();
     const lessonId = parts[1]?.trim();
     return `/?tab=courses&courseId=${courseId}&lessonId=${lessonId}`;
   }
   if (url.startsWith('internal://course/')) {
-    const courseId = url.replace('internal://course/', '').trim();
-    return `/?tab=courses&courseId=${courseId}`;
+    const raw = url.replace('internal://course/', '');
+    const [courseId] = raw.split('?');
+    return `/?tab=courses&courseId=${courseId?.trim()}`;
   }
   if (url.startsWith('internal://tab/')) {
-    const tabId = url.replace('internal://tab/', '').trim();
-    return `/?tab=${tabId}`;
+    const raw = url.replace('internal://tab/', '');
+    const [tabId] = raw.split('?');
+    return `/?tab=${tabId?.trim()}`;
   }
   return url;
 }
 
 /**
- * Abre o link interno exclusivamente em nova aba sem redirecionar a página atual.
+ * Trata navegação de links internos (internal://...) e links externos no chat.
+ * Dispara eventos de rota no próprio SPA para cursos, aulas e abas,
+ * permitindo redirecionamento imediato para a sala de aula ou vitrine/vendas.
  */
 export function handleInternalNavigation(url) {
   if (!url) return;
-  const webUrl = getInternalLinkWebUrl(url);
 
-  if (typeof window !== 'undefined' && typeof window.open === 'function') {
+  if (typeof window !== 'undefined') {
+    if (url.startsWith('internal://course/')) {
+      const raw = url.replace('internal://course/', '');
+      const [courseId] = raw.split('?');
+      const cleanCourseId = courseId?.trim();
+      if (cleanCourseId) {
+        window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open_course_lesson', {
+            detail: { courseId: Number(cleanCourseId) }
+          }));
+        }, 80);
+        return;
+      }
+    }
+
+    if (url.startsWith('internal://lesson/')) {
+      const raw = url.replace('internal://lesson/', '');
+      const [pathPart] = raw.split('?');
+      const parts = pathPart.split('/');
+      const cleanCourseId = parts[0]?.trim();
+      const cleanLessonId = parts[1]?.trim();
+      if (cleanCourseId) {
+        window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open_course_lesson', {
+            detail: { courseId: Number(cleanCourseId), lessonId: cleanLessonId ? Number(cleanLessonId) : null }
+          }));
+        }, 80);
+        return;
+      }
+    }
+
+    if (url.startsWith('internal://tab/')) {
+      const raw = url.replace('internal://tab/', '');
+      const [tabId] = raw.split('?');
+      const cleanTabId = tabId?.trim();
+      if (cleanTabId) {
+        window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: cleanTabId } }));
+        return;
+      }
+    }
+
+    const webUrl = getInternalLinkWebUrl(url);
     try {
       window.open(webUrl, '_blank', 'noopener,noreferrer');
     } catch {
@@ -62,54 +110,12 @@ export function formatMessageWithMentions(text) {
     const label = match[1];
     const internalUrl = match[2];
 
-    let Icon = Compass;
-    if (internalUrl.startsWith('internal://lesson/')) {
-      Icon = PlayCircle;
-    } else if (internalUrl.startsWith('internal://course/')) {
-      Icon = BookOpen;
-    }
-
     elements.push(
-      <button
+      <ChatInternalLinkBadge
         key={`link_${matchIndex}`}
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleInternalNavigation(internalUrl);
-        }}
-        className="chat-internal-link-badge"
-        data-testid="chat-internal-link"
-        title={`Abrir ${label}`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '5px',
-          backgroundColor: 'rgba(56, 189, 248, 0.14)',
-          border: '1px solid rgba(56, 189, 248, 0.35)',
-          color: '#38bdf8',
-          borderRadius: '8px',
-          padding: '2px 8px',
-          margin: '2px 3px',
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-          verticalAlign: 'middle',
-          transition: 'all 0.15s ease',
-          outline: 'none',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.25)';
-          e.currentTarget.style.borderColor = '#38bdf8';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.14)';
-          e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
-        }}
-      >
-        <Icon size={14} />
-        <span>{label}</span>
-      </button>
+        internalUrl={internalUrl}
+        label={label}
+      />
     );
 
     lastIndex = linkRegex.lastIndex;

@@ -606,3 +606,36 @@ def delete_lesson_note(
     return {"message": "Anotação excluída com sucesso."}
 
 
+# ============================================================================
+# CONTEXTO DE AULA PARA MENÇÕES E LINKS (CURSO + MÓDULO + AULA)
+# ============================================================================
+
+@router.get(
+    "/lessons/{lesson_id}/context",
+    summary="Obter Contexto de Curso e Módulo da Aula para Menções",
+    description="Retorna título do curso, módulo e aula para exibição enriquecida nas menções do chat."
+)
+def get_lesson_mention_context(
+    lesson_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Retorna metadados de identificação pública da aula para exibição em links do chat."""
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Aula não encontrada.")
+
+    module = db.query(Module).filter(Module.id == lesson.module_id).first()
+    course = db.query(Course).filter(Course.id == module.course_id).first() if module else None
+
+    return {
+        "lesson_id": lesson.id,
+        "lesson_title": lesson.title,
+        "module_id": module.id if module else None,
+        "module_title": module.title if module else None,
+        "course_id": course.id if course else None,
+        "course_title": course.title if course else None,
+    }
+
+
+

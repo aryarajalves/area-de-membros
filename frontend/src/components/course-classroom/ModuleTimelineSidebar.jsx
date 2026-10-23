@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
+import CourseSidebarUpsellCard from './CourseSidebarUpsellCard';
+import { fetchSidebarUpsellOffer } from '../course-management/courseUpsellApi';
 
 function ProgressRing({ percent = 0, size = 24, strokeWidth = 2.5, activeColor = '#eab308', trackColor = 'rgba(255,255,255,0.14)' }) {
   const radius = (size - strokeWidth) / 2;
@@ -36,6 +38,8 @@ function ProgressRing({ percent = 0, size = 24, strokeWidth = 2.5, activeColor =
 }
 
 export default function ModuleTimelineSidebar({
+  courseId,
+  sidebarUpsellOffer,
   modules = [],
   selectedModule,
   activeLesson,
@@ -51,6 +55,31 @@ export default function ModuleTimelineSidebar({
   onOpenEditLesson,
   onPromptDeleteLesson
 }) {
+  const [sidebarOffer, setSidebarOffer] = useState(sidebarUpsellOffer || null);
+
+  useEffect(() => {
+    if (sidebarUpsellOffer !== undefined) {
+      setSidebarOffer(sidebarUpsellOffer);
+      return;
+    }
+    if (!courseId) return;
+    let isMounted = true;
+    fetchSidebarUpsellOffer(courseId)
+      .then((data) => {
+        if (isMounted && data?.has_offer && data?.offer) {
+          setSidebarOffer({ ...data.offer, target_action_url: data.target_action_url });
+        } else if (isMounted) {
+          setSidebarOffer(null);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSidebarOffer(null);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [courseId, sidebarUpsellOffer]);
+
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
   const lineColor = isLightBg ? '#cbd5e1' : 'rgba(255, 255, 255, 0.16)';
@@ -118,6 +147,15 @@ export default function ModuleTimelineSidebar({
           </div>
         </div>
       </div>
+
+      {/* Card Facultativo de Próximo Nível (Oferta no Sidebar) */}
+      {sidebarOffer && (
+        <CourseSidebarUpsellCard
+          offer={sidebarOffer}
+          courseId={courseId}
+          isLightBg={isLightBg}
+        />
+      )}
 
       {/* Lista Vertical de Módulos e Aulas em Timeline */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

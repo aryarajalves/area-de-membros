@@ -64,7 +64,7 @@ describe('LessonComments Component', () => {
       expect(screen.getByText('Excelente aula! Ficou muito claro como criar os públicos.')).toBeInTheDocument();
 
       expect(screen.getByText('Aluno Estudioso')).toBeInTheDocument();
-      expect(screen.getByText('Aluno')).toBeInTheDocument();
+      expect(screen.getAllByText('Aluno').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Tive uma dúvida no minuto 05:20, alguém pode me ajudar?')).toBeInTheDocument();
     });
   });
@@ -334,6 +334,35 @@ describe('LessonComments Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Com certeza! Vamos agendar uma mentoria.')).toBeInTheDocument();
       expect(screen.getByText('Ocultar respostas (1)')).toBeInTheDocument();
+    });
+  });
+
+  it('scrolls into view and highlights targetCommentId when provided', async () => {
+    const scrollIntoViewMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockComments,
+    });
+
+    render(
+      <ToastProvider>
+        <LessonComments
+          courseId={1}
+          moduleId={10}
+          lessonId={101}
+          currentUser={{ id: 5, role: 'aluno' }}
+          targetCommentId={2}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      const commentEl = document.getElementById('comment-item-2');
+      expect(commentEl).toBeInTheDocument();
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+      expect(commentEl.classList.contains('comment-highlight-pulse')).toBe(true);
     });
   });
 });

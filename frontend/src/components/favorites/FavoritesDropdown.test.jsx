@@ -34,6 +34,10 @@ describe('FavoritesDropdown Component', () => {
         id: 42,
         content: 'Excelente explicação nesta aula!',
         created_at: '2026-10-05T14:00:00Z',
+        course_id: 1,
+        course_title: 'Backend Expert',
+        module_id: 101,
+        module_title: 'Módulo de Microsserviços',
         lesson_id: 25,
         lesson_title: 'Arquitetura de Microsserviços',
         author: { id: 2, name: 'Mariana Aluna' },
@@ -43,16 +47,27 @@ describe('FavoritesDropdown Component', () => {
       {
         id: 77,
         message: 'Link do material compartilhado no chat',
+        channel_type: 'course',
+        course_id: 1,
+        course_title: 'Curso de Astrologia',
         created_at: '2026-10-05T15:00:00Z',
         author: { id: 3, name: 'Instrutor Ary' },
+      },
+      {
+        id: 88,
+        message: 'Olá, podemos tirar uma dúvida rápida?',
+        channel_type: 'dm',
+        other_user: { id: 9, name: 'Lucas Colega' },
+        created_at: '2026-10-05T15:30:00Z',
+        author: { id: 9, name: 'Lucas Colega' },
       },
     ],
     counts: {
       topics: 1,
       lessons: 1,
       comments: 1,
-      messages: 1,
-      total: 4,
+      messages: 2,
+      total: 5,
     },
   };
 
@@ -84,7 +99,7 @@ describe('FavoritesDropdown Component', () => {
     expect(screen.getByText('Favoritos')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('favorites-total-count')).toHaveTextContent('4');
+      expect(screen.getByTestId('favorites-total-count')).toHaveTextContent('5');
       expect(screen.getByTestId('fav-tab-duvidas')).toBeInTheDocument();
       expect(screen.getByTestId('fav-tab-aulas')).toBeInTheDocument();
       expect(screen.getByTestId('fav-tab-comentarios')).toBeInTheDocument();
@@ -109,11 +124,11 @@ describe('FavoritesDropdown Component', () => {
 
     // Clica na aba Comentários
     fireEvent.click(screen.getByTestId('fav-tab-comentarios'));
-    expect(screen.getAllByText('Excelente explicação nesta aula!').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Excelente explicação nesta aula!/i).length).toBeGreaterThan(0);
 
     // Clica na aba Mensagens
     fireEvent.click(screen.getByTestId('fav-tab-mensagens'));
-    expect(screen.getAllByText('Link do material compartilhado no chat').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Link do material compartilhado no chat/i).length).toBeGreaterThan(0);
   });
 
   it('calls onNavigate and onClose when an item is clicked', async () => {
@@ -142,6 +157,83 @@ describe('FavoritesDropdown Component', () => {
     render(<FavoritesDropdown isOpen={true} onClose={handleClose} />);
 
     fireEvent.click(screen.getByTestId('close-favorites-dropdown-btn'));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders comment location (course > module > lesson) and navigates with correct parameters', async () => {
+    const handleNavigate = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <FavoritesDropdown
+        isOpen={true}
+        onClose={handleClose}
+        onNavigate={handleNavigate}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fav-tab-comentarios')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('fav-tab-comentarios'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fav-comment-location')).toBeInTheDocument();
+      expect(screen.getByText('Backend Expert')).toBeInTheDocument();
+      expect(screen.getByText('Módulo de Microsserviços')).toBeInTheDocument();
+      expect(screen.getByText('Arquitetura de Microsserviços')).toBeInTheDocument();
+      expect(screen.getByText('"Excelente explicação nesta aula!"')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('fav-item-comentarios-42'));
+    expect(handleNavigate).toHaveBeenCalledWith('comentarios', expect.objectContaining({
+      id: 42,
+      course_id: 1,
+      course_title: 'Backend Expert',
+      module_id: 101,
+      module_title: 'Módulo de Microsserviços',
+      lesson_id: 25,
+      lesson_title: 'Arquitetura de Microsserviços'
+    }));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders group chat origin and DM origin in messages tab and navigates correctly', async () => {
+    const handleNavigate = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <FavoritesDropdown
+        isOpen={true}
+        onClose={handleClose}
+        onNavigate={handleNavigate}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Como integrar API com n8n?')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('fav-tab-mensagens'));
+
+    await waitFor(() => {
+      // Mensagem em grupo
+      expect(screen.getByText('Curso de Astrologia')).toBeInTheDocument();
+      expect(screen.getByText('"Link do material compartilhado no chat"')).toBeInTheDocument();
+
+      // Mensagem em DM
+      expect(screen.getAllByText('Lucas Colega').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('"Olá, podemos tirar uma dúvida rápida?"')).toBeInTheDocument();
+    });
+
+    // Clica na DM para abrir conversa
+    fireEvent.click(screen.getByTestId('fav-item-mensagens-88'));
+    expect(handleNavigate).toHaveBeenCalledWith('mensagens', expect.objectContaining({
+      id: 88,
+      channel_type: 'dm',
+      other_user: expect.objectContaining({ name: 'Lucas Colega' })
+    }));
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 });

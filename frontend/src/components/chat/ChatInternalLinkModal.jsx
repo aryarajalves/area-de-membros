@@ -426,7 +426,10 @@ export default function ChatInternalLinkModal({ isOpen = true, onSelectLink, onC
                             onClick={() =>
                               onSelectLink({
                                 label: `🎥 ${lesson.title}`,
-                                url: `internal://lesson/${selectedCourseForLessons.id}/${lesson.id}`,
+                                url: `internal://lesson/${selectedCourseForLessons.id}/${lesson.id}?course=${encodeURIComponent(selectedCourseForLessons.title)}&module=${encodeURIComponent(mod.title)}`,
+                                courseTitle: selectedCourseForLessons.title,
+                                moduleTitle: mod.title,
+                                lessonTitle: lesson.title,
                               })
                             }
                             data-testid={`select-lesson-${lesson.id}`}

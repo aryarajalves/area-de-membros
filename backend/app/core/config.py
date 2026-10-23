@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     ENABLE_INTERNAL_SCHEDULER: bool = os.getenv("ENABLE_INTERNAL_SCHEDULER", "false").lower() in ("true", "1", "yes")
     WORKER_RENEWAL_CHECK_INTERVAL_HOURS: int = int(os.getenv("WORKER_RENEWAL_CHECK_INTERVAL_HOURS", "24"))
 
+    # Origens permitidas para CORS (separadas por vírgula ou '*' para desenvolvimento)
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+
+    # Configurações do Pool de Conexões do Banco de Dados (PostgreSQL)
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "10"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "15"))
+    DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
     model_config = SettingsConfigDict(case_sensitive=True)
 
 settings = Settings()

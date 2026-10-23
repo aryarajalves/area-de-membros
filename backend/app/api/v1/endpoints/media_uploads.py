@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from app.models.user import User
 from app.schemas.course import VideoUploadUrlRequest, VideoUploadUrlResponse
 from app.api.v1.endpoints.users import require_admin_or_superadmin
+from app.core.file_validation import validate_file_magic_bytes
 from app.core.logger import logger
 from app.services.storage import (
     upload_media_file,
@@ -121,6 +122,7 @@ async def upload_thumbnail(
         )
 
     content = await file.read()
+    validate_file_magic_bytes(content, filename)
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -189,6 +191,7 @@ async def upload_video(
         )
 
     content = await file.read()
+    validate_file_magic_bytes(content, filename)
     if len(content) > 2048 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -252,17 +255,18 @@ async def upload_attachment(
     current_user: User = Depends(require_admin_or_superadmin)
 ):
     """Faz upload de material complementar para Backblaze B2 ou pasta local."""
-    allowed_extensions = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".rar", ".txt"}
+    allowed_extensions = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".rar", ".txt", ".csv"}
     filename = file.filename or ""
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Formato de anexo '{ext}' não suportado. Formatos aceitos: PDF, DOC, XLS, PPT, ZIP, TXT."
+            detail=f"Formato de anexo '{ext}' não suportado. Formatos aceitos: PDF, DOC, XLS, PPT, ZIP, TXT, CSV."
         )
 
     content = await file.read()
+    validate_file_magic_bytes(content, filename)
     if len(content) > 100 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -279,7 +283,15 @@ async def upload_attachment(
         folder="AreaDeMembros/attachments/"
     )
     if b2_url:
-        return {"attachment_url": b2_url, "file_name": filename, "file_size": len(content)}
+        return {
+            "attachment_url": b2_url,
+            "file_url": b2_url,
+            "file_name": filename,
+            "title": filename,
+            "file_type": ext.lstrip("."),
+            "file_size": len(content),
+            "file_size_bytes": len(content)
+        }
 
     # 2. Fallback local
     target_path = os.path.join(ATTACHMENTS_DIR, unique_name)
@@ -288,8 +300,12 @@ async def upload_attachment(
 
     return {
         "attachment_url": f"/api/v1/courses/attachments/{unique_name}",
+        "file_url": f"/api/v1/courses/attachments/{unique_name}",
         "file_name": filename,
-        "file_size": len(content)
+        "title": filename,
+        "file_type": ext.lstrip("."),
+        "file_size": len(content),
+        "file_size_bytes": len(content)
     }
 
 

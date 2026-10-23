@@ -4,89 +4,37 @@ import secrets
 import json
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File, Request
+from app.core.limiter import limiter
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.security import (
-    verify_password,
-    get_password_hash,
-    create_access_token,
-    decode_access_token
+    verify_password, get_password_hash, create_access_token, decode_access_token
 )
 from app.models.user import User, Invite, PasswordResetToken, RegistrationVerification
 from app.models.course import UserCourse
 from app.services.course_bundle_service import grant_bundle_access_for_user
 from app.services.email import send_verification_email
 from app.schemas.user import (
-    UserLogin,
-    Token,
-    CourseAccessItem,
-    UserResponse,
-    UserUpdate,
-    UserManualCreate,
-    UserProfileUpdate,
-    BulkDeleteRequest,
-    InviteCreate,
-    InviteResponse,
-    InviteValidateResponse,
-    RegisterWithInvite,
-    RegisterInitiateResponse,
-    VerifyCodeRequest,
-    ResendCodeRequest,
-    PasswordResetRequestResponse,
-    PasswordResetConfirm,
-    PasswordResetValidateResponse,
-    validate_password_strength_func
+    UserLogin, Token, CourseAccessItem, UserResponse, UserUpdate, UserManualCreate,
+    UserProfileUpdate, BulkDeleteRequest, InviteCreate, InviteResponse,
+    InviteValidateResponse, RegisterWithInvite, RegisterInitiateResponse,
+    VerifyCodeRequest, ResendCodeRequest, PasswordResetRequestResponse,
+    PasswordResetConfirm, PasswordResetValidateResponse, validate_password_strength_func
 )
 
 router = APIRouter(prefix="/auth", tags=["Autenticação e Usuários"])
 
-ACCESS_DURATION_DAYS = {
-    "lifetime": None,
-    "1_month": 30,
-    "3_months": 90,
-    "6_months": 180,
-    "1_year": 365,
-    "2_years": 730,
-    "3_years": 1095,
-}
-
-
-def calculate_course_expiration(access_duration: str = "lifetime", base_time: datetime = None):
-    if not access_duration or access_duration == "lifetime":
-        return None
-    days = ACCESS_DURATION_DAYS.get(access_duration)
-    if not days:
-        return None
-    now = base_time or datetime.now(timezone.utc)
-    return now + timedelta(days=days)
-
-
-def _parse_invite_courses(raw_json: str):
-    """Retorna (allowed_course_ids: List[int], course_access: List[CourseAccessItem])."""
-    if not raw_json:
-        return [], []
-    try:
-        parsed = json.loads(raw_json)
-    except Exception:
-        return [], []
-    if not isinstance(parsed, list):
-        return [], []
-    c_ids = []
-    c_access = []
-    for item in parsed:
-        if isinstance(item, dict) and "course_id" in item:
-            cid = int(item["course_id"])
-            dur = item.get("access_duration") or "lifetime"
-            c_ids.append(cid)
-            c_access.append(CourseAccessItem(course_id=cid, access_duration=dur))
-        elif isinstance(item, int):
-            c_ids.append(item)
-            c_access.append(CourseAccessItem(course_id=item, access_duration="lifetime"))
-    return c_ids, c_access
-
+from app.services.course_access_utils import (
+    ACCESS_DURATION_DAYS, calculate_course_expiration, _parse_invite_courses
+)
+from app.services.auth_security_service import (
+    check_account_lockout, record_failed_login, reset_failed_login,
+    invalidate_user_sessions, enforce_single_session_on_login,
+    validate_token_version, MAX_FAILED_ATTEMPTS
+)
 
 def get_current_user(
     authorization: str = Header(None),
@@ -101,12 +49,22 @@ def get_current_user(
 
     if raw_api_key:
         from app.models.api_token import ApiToken
-        api_token = db.query(ApiToken).filter(ApiToken.token == raw_api_key, ApiToken.is_active == True).first()
+        from sqlalchemy import or_
+        import hashlib
+
+        key_hash = hashlib.sha256(raw_api_key.encode("utf-8")).hexdigest()
+        api_token = db.query(ApiToken).filter(
+            or_(ApiToken.token == key_hash, ApiToken.token == raw_api_key),
+            ApiToken.is_active == True
+        ).first()
         if not api_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Chave de API inválida ou inativa",
             )
+        if api_token.token == raw_api_key:
+            api_token.token = key_hash
+            db.commit()
         now = datetime.now(timezone.utc)
         if api_token.expires_at:
             exp = api_token.expires_at
@@ -145,6 +103,12 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário inativo ou não encontrado",
         )
+    token_ver = payload.get("token_version")
+    if not validate_token_version(user, token_ver):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessão expirada ou invalidada por alteração de credenciais. Faça login novamente.",
+        )
     return user
 
 def require_admin_or_superadmin(current_user: User = Depends(get_current_user)) -> User:
@@ -169,9 +133,29 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     summary="Realizar Login de Usuário",
     description="Autentica aluno ou administrador com e-mail e senha (Argon2id + Pepper) e retorna o Token de Acesso JWT."
 )
-def login(login_data: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, login_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
+    if user:
+        lock_minutes = check_account_lockout(user, db)
+        if lock_minutes is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Conta temporariamente bloqueada por excesso de tentativas incorretas. Tente novamente em {lock_minutes} minuto(s).",
+            )
     if not user or not verify_password(login_data.password, user.hashed_password):
+        if user:
+            fail_info = record_failed_login(user, db)
+            if fail_info["locked"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Conta temporariamente bloqueada por {fail_info['lockout_minutes']} minutos após tentativas incorretas consecutivas.",
+                )
+            remaining = fail_info["remaining_attempts"]
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Email ou senha incorretos. Tentativas restantes: {remaining}.",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
@@ -181,12 +165,30 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Usuário inativo",
         )
-    access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    reset_failed_login(user, db)
+    current_token_version = enforce_single_session_on_login(user, db)
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "role": user.role,
+        "token_version": current_token_version
+    })
     return Token(
         access_token=access_token,
         token_type="bearer",
         user=user
     )
+
+@router.post(
+    "/logout",
+    summary="Encerrar Sessão",
+    description="Invalida os tokens de acesso atuais do usuário autenticado."
+)
+def logout(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    invalidate_user_sessions(current_user, db)
+    return {"message": "Sessão encerrada com sucesso."}
 
 @router.get(
     "/me",
@@ -547,7 +549,9 @@ def validate_reset_password_token(token: str, db: Session = Depends(get_db)):
     summary="Confirmar Nova Senha com Token",
     description="Altera a senha do usuário utilizando o token de recuperação validado, aplicando hash criptográfico e invalidando o token."
 )
+@limiter.limit("5/minute")
 def confirm_password_reset(
+    request: Request,
     data: PasswordResetConfirm,
     db: Session = Depends(get_db)
 ):
@@ -575,6 +579,7 @@ def confirm_password_reset(
 
     target_user.hashed_password = get_password_hash(data.password)
     record.is_used = True
+    invalidate_user_sessions(target_user, db)
     db.commit()
 
     return {"message": "Senha redefinida com sucesso."}

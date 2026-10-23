@@ -9,6 +9,7 @@ from app.core.logger import logger
 from app.models.user import User
 from app.models.course import Course
 from app.models.webhook import Webhook, WebhookLog
+from app.core.encryption import encrypt_field, decrypt_field
 from app.api.v1.endpoints.users import get_current_user
 from app.schemas.webhook import (
     WebhookCreate,
@@ -51,7 +52,7 @@ def _format_webhook_response(webhook: Webhook, db: Session) -> WebhookResponse:
         events=events_list,
         course_id=webhook.course_id,
         course_title=course_title,
-        secret_key=webhook.secret_key,
+        secret_key=decrypt_field(webhook.secret_key),
         is_active=webhook.is_active,
         total_dispatches=total_logs,
         success_dispatches=success_logs,
@@ -109,7 +110,7 @@ def create_integration(
             url=data.url.strip(),
             events=events_str,
             course_id=data.course_id,
-            secret_key=data.secret_key.strip() if data.secret_key else None,
+            secret_key=encrypt_field(data.secret_key.strip()) if data.secret_key else None,
             is_active=data.is_active,
         )
         db.add(webhook)
@@ -180,7 +181,7 @@ def update_integration(
                     raise HTTPException(status_code=400, detail="Curso selecionado não encontrado.")
                 webhook.course_id = data.course_id
         if data.secret_key is not None:
-            webhook.secret_key = data.secret_key.strip() if data.secret_key else None
+            webhook.secret_key = encrypt_field(data.secret_key.strip()) if data.secret_key else None
         if data.is_active is not None:
             webhook.is_active = data.is_active
 
@@ -280,7 +281,7 @@ def test_integration(
         url=webhook.url,
         event="webhook.test",
         payload=sample_payload,
-        secret_key=webhook.secret_key,
+        secret_key=decrypt_field(webhook.secret_key),
         db=db,
     )
 

@@ -10,21 +10,33 @@ export default function ChatAttachedLinkPreview({ attachedLink, onRemove }) {
   let iconBg = 'rgba(56, 189, 248, 0.15)';
   let typeLabel = 'Link vinculado';
 
+  let courseMeta = attachedLink.courseTitle || null;
+  let moduleMeta = attachedLink.moduleTitle || null;
   if (url.startsWith('internal://lesson/')) {
     Icon = PlayCircle;
     iconColor = '#22c55e';
     iconBg = 'rgba(34, 197, 94, 0.15)';
-    typeLabel = 'Aula vinculada • Abre em nova aba';
+    if (!courseMeta || !moduleMeta) {
+      try {
+        const urlObj = new URL(url.replace('internal://', 'http://internal/'));
+        courseMeta = courseMeta || urlObj.searchParams.get('course') || urlObj.searchParams.get('c');
+        moduleMeta = moduleMeta || urlObj.searchParams.get('module') || urlObj.searchParams.get('m');
+      } catch {
+        // ignore
+      }
+    }
+    const contextPrefix = [courseMeta, moduleMeta].filter(Boolean).join(' › ');
+    typeLabel = contextPrefix ? `Aula vinculada • ${contextPrefix}` : 'Aula vinculada';
   } else if (url.startsWith('internal://course/')) {
     Icon = BookOpen;
     iconColor = '#38bdf8';
     iconBg = 'rgba(56, 189, 248, 0.15)';
-    typeLabel = 'Curso vinculado • Abre em nova aba';
+    typeLabel = 'Curso vinculado';
   } else if (url.startsWith('internal://tab/')) {
     Icon = Compass;
     iconColor = '#a855f7';
     iconBg = 'rgba(168, 85, 247, 0.15)';
-    typeLabel = 'Aba da plataforma vinculada • Abre em nova aba';
+    typeLabel = 'Aba da plataforma vinculada';
   }
 
   return (

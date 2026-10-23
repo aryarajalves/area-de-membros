@@ -81,8 +81,7 @@ describe('chatMentionUtils', () => {
       expect(linkBtn).toHaveTextContent('🎥 Introdução');
     });
 
-    it('opens tab link in new tab with window.open and does not dispatch navigation event on current window', () => {
-      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    it('navigates to tab by dispatching app:navigate_tab event on current window', () => {
       render(
         <div>
           {formatMessageWithMentions(
@@ -94,11 +93,12 @@ describe('chatMentionUtils', () => {
       const linkBtn = screen.getByTestId('chat-internal-link');
       fireEvent.click(linkBtn);
 
-      expect(openSpy).toHaveBeenCalledWith('/?tab=support', '_blank', 'noopener,noreferrer');
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'app:navigate_tab' })
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'app:navigate_tab',
+          detail: { tab: 'support' },
+        })
       );
-      openSpy.mockRestore();
     });
   });
 
@@ -129,51 +129,64 @@ describe('chatMentionUtils', () => {
       openSpy.mockRestore();
     });
 
-    it('opens lesson exclusively in new tab with _blank and does NOT redirect or dispatch events on current window', () => {
+    it('navigates to lesson by dispatching app:navigate_tab and open_course_lesson on current window', () => {
       handleInternalNavigation('internal://lesson/77/888');
 
-      expect(openSpy).toHaveBeenCalledWith(
-        '/?tab=courses&courseId=77&lessonId=888',
-        '_blank',
-        'noopener,noreferrer'
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'app:navigate_tab',
+          detail: { tab: 'courses' },
+        })
       );
 
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(100);
 
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'open_course_lesson' })
-      );
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'app:navigate_tab' })
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'open_course_lesson',
+          detail: { courseId: 77, lessonId: 888 },
+        })
       );
     });
 
-    it('opens course exclusively in new tab with _blank and does NOT redirect current window', () => {
+    it('navigates to course by dispatching app:navigate_tab and open_course_lesson on current window', () => {
       handleInternalNavigation('internal://course/77');
 
-      expect(openSpy).toHaveBeenCalledWith(
-        '/?tab=courses&courseId=77',
-        '_blank',
-        'noopener,noreferrer'
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'app:navigate_tab',
+          detail: { tab: 'courses' },
+        })
       );
 
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(100);
 
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'open_course_lesson' })
-      );
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'app:navigate_tab' })
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'open_course_lesson',
+          detail: { courseId: 77 },
+        })
       );
     });
 
-    it('opens tab exclusively in new tab with _blank and does NOT redirect current window', () => {
+    it('navigates to tab by dispatching app:navigate_tab on current window', () => {
       handleInternalNavigation('internal://tab/ranking');
 
-      expect(openSpy).toHaveBeenCalledWith('/?tab=ranking', '_blank', 'noopener,noreferrer');
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'app:navigate_tab',
+          detail: { tab: 'ranking' },
+        })
+      );
+    });
 
-      expect(dispatchEventSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'app:navigate_tab' })
+    it('opens external URL in new tab via window.open', () => {
+      handleInternalNavigation('https://google.com');
+
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://google.com',
+        '_blank',
+        'noopener,noreferrer'
       );
     });
   });

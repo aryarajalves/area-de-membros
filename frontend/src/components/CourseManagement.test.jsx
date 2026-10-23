@@ -288,14 +288,8 @@ describe('CourseManagement Component', () => {
     expect(searchInput).toBeInTheDocument();
   });
 
-  it('redirects to sales_page_url when open_course_lesson is triggered for a course without access', async () => {
-    let assignedHref = '';
-    const originalLocation = window.location;
-    delete window.location;
-    window.location = {
-      get href() { return assignedHref || 'http://localhost:3010/'; },
-      set href(val) { assignedHref = val; }
-    };
+  it('redirects to sales_page_url in new tab when open_course_lesson is triggered for a course without access', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
 
     const coursesWithAccess = [
       {
@@ -327,8 +321,52 @@ describe('CourseManagement Component', () => {
       })
     );
 
-    expect(assignedHref).toBe('https://vendas.com/checkout-curso-fechado');
-    window.location = originalLocation;
+    expect(windowOpenSpy).toHaveBeenCalledWith(
+      'https://vendas.com/checkout-curso-fechado',
+      '_blank',
+      'noopener,noreferrer'
+    );
+    windowOpenSpy.mockRestore();
+  });
+
+  it('shows friendly toast and stays on courses tab when course has no sales_page_url', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
+
+    const coursesWithoutSalesUrl = [
+      {
+        id: 3,
+        title: 'Curso Sem Vendas',
+        sales_page_url: null,
+        has_access: false,
+      },
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => coursesWithoutSalesUrl,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseManagement currentUser={{ role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Curso Sem Vendas')).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(
+      new CustomEvent('open_course_lesson', {
+        detail: { courseId: 3 },
+      })
+    );
+
+    expect(windowOpenSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('Você não possui acesso a este produto. Entre em contato para adquiri-lo.')).toBeInTheDocument();
+    });
+    windowOpenSpy.mockRestore();
   });
 
   it('opens classroom when open_course_lesson is triggered for a course with access', async () => {

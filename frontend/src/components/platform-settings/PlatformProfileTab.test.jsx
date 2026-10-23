@@ -240,6 +240,13 @@ describe('PlatformProfileTab Component', () => {
     const removeBtn = screen.getByTestId('btn-remove-avatar');
     fireEvent.click(removeBtn);
 
+    // Abre o popup bonito de confirmação de remoção de foto
+    expect(screen.getByTestId('delete-avatar-confirm-modal')).toBeInTheDocument();
+    expect(screen.getByText('Remover Foto de Perfil?')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByTestId('confirm-delete-avatar-btn');
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(onUserUpdated).toHaveBeenCalledWith(expect.objectContaining({ avatar_url: '' }));
     });

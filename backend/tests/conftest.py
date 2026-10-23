@@ -83,3 +83,6 @@ def setup_database():
 
 client = TestClient(app)
 
+from app.core.limiter import limiter
+limiter.enabled = False
+

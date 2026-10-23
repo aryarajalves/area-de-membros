@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.core.limiter import limiter
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.logger import logger
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/auth", tags=["Autenticação Pública"])
     summary="Criar Conta Pública de Aluno",
     description="Permite que qualquer visitante crie uma conta gratuita com perfil de Aluno sem cursos vinculados para participar da comunidade."
 )
+@limiter.limit("5/hour")
 def public_register(
+    request: Request,
     data: PublicRegisterRequest,
     db: Session = Depends(get_db)
 ):
@@ -52,7 +55,7 @@ def public_register(
         logger.error(f"[PublicRegister] Falha ao acionar funis para aluno #{user.id}: {fn_err}")
 
     # 3. Geração de token de acesso JWT
-    access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role, "token_version": user.token_version or 1})
 
     # 4. Resposta com Token e dados do usuário
     user_resp = UserResponse.model_validate(user)

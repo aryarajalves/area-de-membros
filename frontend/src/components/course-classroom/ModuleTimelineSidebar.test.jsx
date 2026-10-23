@@ -179,4 +179,30 @@ describe('ModuleTimelineSidebar', () => {
     expect(titleEl.style.overflow).toBe('hidden');
     expect(titleEl.style.textOverflow).toBe('ellipsis');
   });
+
+  it('renderiza o card de oferta de próximo nível quando sidebarUpsellOffer for informado', () => {
+    const mockOffer = {
+      id: 99,
+      title: 'Próximo Passo: Mentoria VIP',
+      description: 'Alcance novos horizontes.',
+      media_type: 'image',
+      media_url: 'https://exemplo.com/banner.png',
+      button_text: 'Garantir Vaga',
+      button_url: 'https://checkout.com/mentoria'
+    };
+
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        sidebarUpsellOffer={mockOffer}
+        completedLessonIds={[]}
+        totalLessonsCount={2}
+      />
+    );
+
+    expect(screen.getByTestId('sidebar-upsell-card')).toBeInTheDocument();
+    expect(screen.getByText('Próximo Passo: Mentoria VIP')).toBeInTheDocument();
+    expect(screen.getByText('Garantir Vaga')).toBeInTheDocument();
+  });
 });

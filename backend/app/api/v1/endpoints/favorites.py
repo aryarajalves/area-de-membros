@@ -281,6 +281,8 @@ def list_user_favorites(
                     "created_at": fc.created_at.isoformat() if fc.created_at else None,
                     "lesson_id": l.id if l else None,
                     "lesson_title": l.title if l else None,
+                    "module_id": mod.id if mod else None,
+                    "module_title": mod.title if mod else None,
                     "course_id": crs.id if crs else None,
                     "course_title": crs.title if crs else None,
                     "author": {
@@ -304,13 +306,34 @@ def list_user_favorites(
         for fm in fav_msgs:
             m = fm.message
             if m:
+                # Identifica interlocutor da DM em relação ao usuário logado
+                other_user = None
+                if m.channel_type == "dm":
+                    target_u = m.recipient if m.user_id == user_id else m.user
+                    if target_u:
+                        other_user = {
+                            "id": target_u.id,
+                            "name": target_u.name,
+                            "avatar_url": target_u.avatar_url,
+                            "role": target_u.role,
+                        }
+
                 messages_list.append({
                     "id": m.id,
                     "message": m.message or "",
                     "media_url": m.media_url,
                     "media_type": m.media_type,
-                    "channel_type": m.channel_type,
+                    "channel_type": m.channel_type or "general",
                     "course_id": m.course_id,
+                    "course_title": m.course.title if m.course else None,
+                    "recipient_id": m.recipient_id,
+                    "recipient": {
+                        "id": m.recipient.id,
+                        "name": m.recipient.name,
+                        "avatar_url": m.recipient.avatar_url,
+                        "role": m.recipient.role,
+                    } if m.recipient else None,
+                    "other_user": other_user,
                     "created_at": fm.created_at.isoformat() if fm.created_at else None,
                     "author": {
                         "id": m.user.id if m.user else 0,

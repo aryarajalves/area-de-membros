@@ -16,9 +16,10 @@ elif db_url.startswith("postgresql://") or db_url.startswith("postgresql+psycopg
 engine_kwargs = {"connect_args": connect_args}
 if not db_url.startswith("sqlite"):
     engine_kwargs["pool_pre_ping"] = True
-    engine_kwargs["pool_recycle"] = 1800
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
+    engine_kwargs["pool_recycle"] = settings.DB_POOL_RECYCLE
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+    engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
 
 engine = create_engine(db_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

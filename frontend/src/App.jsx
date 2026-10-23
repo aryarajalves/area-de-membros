@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Menu } from 'lucide-react';
 import './App.css';
 import Sidebar from './components/Sidebar';
@@ -6,6 +6,7 @@ import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 import AutomatedBackup from './components/AutomatedBackup';
 import LogManagement from './components/LogManagement';
+import { InfrastructureManagement } from './components/infrastructure';
 import CourseManagement from './components/CourseManagement';
 import LessonReportsManagement from './components/LessonReportsManagement';
 import PlatformSettings from './components/PlatformSettings';
@@ -57,6 +58,9 @@ function App() {
   });
   const [pathname, setPathname] = useState(window.location.pathname);
   const { addToast } = useToast();
+  const hasInitialUrlRoute = useRef(
+    typeof window !== 'undefined' && Boolean(window.location.search && (window.location.search.includes('tab=') || window.location.search.includes('courseId=')))
+  );
 
   const handleThemeColorChange = useCallback((newColor) => {
     if (!newColor) return;
@@ -138,9 +142,8 @@ function App() {
 
     const checkInitialTutorials = async () => {
       try {
-        const res = await fetch('/api/v1/tutorials', {
-          headers: { Authorization: `Bearer ${currentToken}` }
-        });
+        if (hasInitialUrlRoute.current) return;
+        const res = await fetch('/api/v1/tutorials', { headers: { Authorization: `Bearer ${currentToken}` } });
         if (res.ok) {
           const tutorials = await res.json();
           const savedTab = localStorage.getItem('active_tab');
@@ -149,18 +152,15 @@ function App() {
               setActiveTab('home');
               localStorage.setItem('active_tab', 'home');
             }
-          } else {
-            if (!savedTab || savedTab === 'home') {
-              setActiveTab('courses');
-              localStorage.setItem('active_tab', 'courses');
-            }
+          } else if (!savedTab || savedTab === 'home') {
+            setActiveTab('courses');
+            localStorage.setItem('active_tab', 'courses');
           }
         }
       } catch {
         // Ignora silenciosamente
       }
     };
-
     checkInitialTutorials();
   }, [token]);
 
@@ -313,7 +313,7 @@ function App() {
   const isSuperAdmin = user?.role === 'superadmin';
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
 
-  const isFullView = isInsideCourse || activeTab === 'chat';
+  const isFullView = isInsideCourse;
 
   return (
     <div
@@ -338,9 +338,10 @@ function App() {
         aria-label="Conteúdo Principal"
         style={{
           backgroundColor: memberAreaBgColor,
-          ...(isFullView || activeTab === 'courses' || activeTab === 'settings'
+          ...(isFullView || activeTab === 'courses' || activeTab === 'settings' || activeTab === 'chat'
             ? { padding: 0, width: '100%', maxWidth: '100%' }
             : {}),
+          ...(activeTab === 'chat' ? { overflow: 'hidden' } : {}),
           ...(isFullView ? { height: '100%', minHeight: '100%' } : {})
         }}
       >
@@ -432,20 +433,12 @@ function App() {
             {activeTab === 'users' && <UserManagement currentUser={user} bgColor={memberAreaBgColor} />}
             {activeTab === 'backup' && <AutomatedBackup currentUser={user} bgColor={memberAreaBgColor} />}
             {activeTab === 'logs' && <LogManagement currentUser={user} bgColor={memberAreaBgColor} />}
+            {activeTab === 'infrastructure' && <InfrastructureManagement currentUser={user} onSelectTab={handleSelectTab} bgColor={memberAreaBgColor} />}
           </>
         )}
         {!isSuperAdmin && !(
-          (activeTab === 'home' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'courses' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'support' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'chat' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'testimonials' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'introductions' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'ranking' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'lesson-reports' && ['admin', 'aluno'].includes(user?.role)) ||
-          (activeTab === 'students' && user?.role === 'admin') ||
-          (activeTab === 'funnels' && user?.role === 'admin') ||
-          (activeTab === 'integrations' && user?.role === 'admin') ||
+          (['home', 'courses', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports'].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
+          (['students', 'funnels', 'integrations'].includes(activeTab) && user?.role === 'admin') ||
           (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
         ) && (
           <div className="restricted-access-container user-welcome-container" data-testid="restricted-access-screen">

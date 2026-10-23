@@ -8,6 +8,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_password_hash
+from app.core.file_validation import validate_file_magic_bytes
+from app.services.auth_security_service import invalidate_user_sessions
 from app.models.user import User
 from app.schemas.user import UserResponse, UserProfileUpdate
 from app.api.v1.endpoints.users import get_current_user
@@ -71,6 +73,7 @@ def update_my_profile(
         clean_pw = profile_data.password.strip()
         if clean_pw:
             current_user.hashed_password = get_password_hash(clean_pw)
+            invalidate_user_sessions(current_user, db)
 
     db.commit()
     db.refresh(current_user)
@@ -98,6 +101,7 @@ async def upload_avatar(
         )
 
     content = await file.read()
+    validate_file_magic_bytes(content, filename)
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

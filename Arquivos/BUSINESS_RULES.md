@@ -35,6 +35,11 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 
 ## 1. GestÃ£o de Cursos e Controle de Acesso por Aluno
 - **Visibilidade de Cursos:** A visibilidade de um curso **NÃO** Ã© definida globalmente no curso para todos os alunos. Cada aluno tem sua prÃ³pria lista de cursos aos quais possui acesso liberado e seu respectivo prazo de validade individual por produto.
+- **Redirecionamento ao Clicar em Links de Cursos (Chat, Favoritos e Links Diretos):**
+  - **Com Acesso Liberado / Comprado (ou Administrador):** O usuário é redirecionado instantaneamente para **dentro do curso** (abrindo a sala de aula interativa `CourseClassroom` no SPA).
+  - **Sem Acesso / Não Adquirido:**
+    - Se o curso possuir **Link da Página de Vendas (`sales_page_url`)** configurado na sua edição: O usuário é redirecionado para a aba da página de vendas em nova aba (`_blank`), preservando a plataforma na tela de cursos.
+    - Se o curso **NÃO possuir link da página de vendas**: O sistema mantém o usuário na aba de Cursos (`courses`) e exibe uma notificação explicativa informando que ele não possui acesso ao produto.
 - **Perfis de Acesso na Interface:**
   - NÃ£o existe a opÃ§Ã£o "UsuÃ¡rio comum" (`user`) na interface de criaÃ§Ã£o de convites, ediÃ§Ã£o de perfil ou filtro de usuÃ¡rios. Os perfis selecionÃ¡veis nos modais sÃ£o exclusivamente **`Aluno` (`aluno`)** e **`Administrador (Admin)` (`admin`)** (alÃ©m do `Super Admin` protegido).
 - **DefiniÃ§Ã£o de Acesso e Tempo de Acesso por Produto/Curso:**
@@ -94,6 +99,26 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - Todos os produtos (cursos e ferramentas) vinculados ao mesmo pacote/combo sÃ£o renderizados visualmente agrupados dentro de uma **caixa destacada exclusiva** com estÃ©tica Neon e Glassmorphism (`border: 1.5px solid rgba(16, 185, 129, 0.45)`).
     - O container de pacote conta com cabeÃ§alho ilustrado com Ã­cone de pacote (`Package`), badge "PACOTE / COMBO", contadores de produtos inclusos (cursos e ferramentas), status de liberaÃ§Ã£o do pacote (`Acesso Liberado` vs `Combo Bloqueado`) e grade interna contendo os cards dos produtos inclusos (`CourseCard` com badge `Item do Combo`).
     - Cursos e produtos avulsos nÃ£o vinculados a pacotes continuam sendo exibidos individualmente na grade regular de cursos.
+
+---
+
+- **Anúncios e Ofertas de Upsell / Cross-sell por Progresso de Curso (`course_upsell_offers`):**
+  - **Localização:** Aba **"Anúncios & Upsell"** (`Megaphone`) dentro do modal de edição do curso (`CourseFormModal`), acessível para administradores e superadmins.
+  - **Marcos de Disparo:** O gestor configura uma ou mais ofertas definindo a porcentagem de conclusão do curso em que o anúncio deve surgir (ex: `35%`, `50%`, `75%`).
+  - **Formatos de Mídia Suportados:**
+    - `Imagem / Banner`: Exibe banner promocional (JPG, PNG, WEBP) com bordas suaves e destaque neon.
+    - `Vídeo Promocional`: Exibe player de vídeo responsivo (arquivo MP4 nativo ou embed do YouTube/Vimeo).
+  - **Regra de Posse (Não Exibir para Alunos que já Compraram):**
+    - Antes de exibir a oferta, o sistema valida se o aluno autenticado já possui acesso ativo ao curso ou ferramenta promovido (`UserCourse`). Se o aluno já adquiriu o produto, a oferta é ignorada.
+  - **Regra de Exibição Única (Anti-Spam):**
+    - Cada oferta é exibida no máximo 1 única vez para o aluno. Ao fechar o modal ("X" ou "Continuar estudando"), o sistema registra a dispensa em `course_upsell_views(offer_id, user_id)` e a oferta nunca mais reaparece para aquele aluno.
+  - **Rastreamento de Cliques e Integração com Histórico de Vendas:**
+    - Ao clicar no botão de CTA (ex: *"Garantir Minha Vaga"*), o aluno é direcionado para a página de vendas ou checkout configurada em nova aba (`_blank`), e o clique é registrado tanto em `course_upsell_views.clicked_at` quanto em `course_sales_clicks`, alimentando automaticamente o modal de histórico de interesse de vendas (`CourseSalesHistoryModal`).
+  - **Card Facultativo de Próximo Nível na Barra Lateral Direita (`show_in_sidebar`):**
+    - **Controle Facultativo:** No formulário do anúncio de upsell, há a opção de marcar se aquela oferta deve ser exibida também na barra lateral da sala de aula (`show_in_sidebar: true`).
+    - **Posicionamento:** Fica fixado no topo da barra lateral direita, logo abaixo do bloco "Meu Progresso" e antes da lista de módulos.
+    - **Inteligência de Posse:** Se o aluno já comprou o produto promovido, o card não é exibido.
+    - **Ação e Métricas:** O botão direciona o aluno para a página de vendas/checkout e registra o clique no histórico de vendas.
 
 ---
 
@@ -225,6 +250,7 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - **NavegaÃ§Ã£o:** O player permite avanÃ§ar para a "PrÃ³xima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
 - **Aba de ComentÃ¡rios da Aula:**
   - Aba dedicada abaixo do player de cada aula.
+  - **Caixa de Envio Premium (NewCommentBox):** Card com Glassmorphism, degradê suave, bordas translúcidas e anel de foco dinâmico em azul (#3b82f6). Exibe avatar com iniciais do usuário logado, badge de perfil, atalho Ctrl+Enter e botão Limpar.
   - Alunos e administradores podem enviar comentÃ¡rios com dÃºvidas ou feedbacks.
   - Cada comentÃ¡rio exibe o nome do autor, badge de perfil (Aluno, Admin, Super Admin), avatar e data/hora no formato de BrasÃ­lia.
   - **PaginaÃ§Ã£o de ComentÃ¡rios:**
@@ -247,6 +273,7 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - Quando um aluno curte o comentÃ¡rio de outro aluno, o sistema de gamificaÃ§Ã£o bonifica o autor do comentÃ¡rio com pontos de engajamento comunitÃ¡rio.
 - **Aba de Materiais Complementares e Anexos da Aula:**
   - Aba dedicada **"Materiais Complementares"** abaixo do player da aula, exibindo contador em badge de quantos arquivos estÃ£o disponÃ­veis.
+  - **Upload Direto na Sala de Aula (Admin/Super Admin):** Quando logado como admin ou superadmin, a aba "Materiais Complementares" exibe no topo a barra de ferramentas de gestão com o botão em destaque "+ Anexar Arquivo do PC". O arquivo é enviado diretamente ao storage e associado à aula em tempo real, atualizando o contador em badge e a lista instantaneamente, além de disponibilizar botão de exclusão de cada documento com confirmação em modal escuro.
   - **Upload e GestÃ£o:** No modal de criar ou editar aula, o instrutor pode anexar arquivos do seu computador de atÃ© 100 MB (PDF, Word, Excel, PowerPoint, ZIP, RAR, TXT, CSV), armazenados no Backblaze B2 (`AreaDeMembros/attachments/`).
   - **TÃ­tulo e DescriÃ§Ã£o do Documento:** Para cada arquivo anexado, o instrutor pode definir tanto o **nome exibido** quanto uma **descriÃ§Ã£o textual explicativa** (ex: instruÃ§Ãµes de uso da planilha, exercÃ­cios da apostila, etc.).
   - **Acesso pelos Alunos:** Os alunos visualizam cada material com seu Ã­cone correspondente (PDF em vermelho, planilhas em verde, compactados em amarelo, etc.), tÃ­tulo, descriÃ§Ã£o explicativa quando informada, tamanho formatado (KB/MB) e o botÃ£o **"Acessar"** para abrir/baixar o arquivo.
@@ -638,9 +665,9 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - Suporte a tecla `Enter` para envio imediato e `Shift + Enter` para pular linha.
     - ValidaÃ§Ã£o de mensagens vazias e limite de atÃ© 3.000 caracteres.
     - Estado de carregamento com spinner no botÃ£o de envio enquanto a mensagem Ã© persistida.
-  - **ExperiÃªncia Imersiva em Tela Cheia (Fullscreen):**
-    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema e o cabeÃ§alho mobile sÃ£o ocultados automaticamente, exatamente como na sala de aula dos cursos. O chat e sua listagem de canais preenchem 100% da viewport (`100vw Ã 100vh`).
-    - Para alternar ou sair do chat, hÃ¡ botÃµes destacados **"Voltar aos Cursos"** (`ArrowLeft`) tanto no topo da lista de canais (`ChatSidebar`) quanto nas aÃ§Ãµes do cabeÃ§alho da conversa (`ChatHeader`).
+  - **Integração Completa ao Layout da Plataforma (Sidebar e TopNavbar Contínuos):**
+    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema (`Sidebar`) e a barra superior global (`TopNavbar`) permanecem **100% visíveis e ativas**, permitindo que o usuário alterne livremente entre as abas da plataforma (Início, Cursos, Alunos, Suporte, Configurações, etc.) sem perda de navegação.
+    - O painel do Chat é renderizado dentro da área de conteúdo principal com altura perfeitamente ajustada (`calc(100vh - 64px)`), eliminando o efeito de "tela azul" isolada e mantendo a identidade visual integrada e consistente da Área de Membros.
   - **SincronizaÃ§Ã£o InstantÃ¢nea em Tempo Real via WebSocket (`/api/v1/chat/ws`):**
     - ConexÃ£o nativa e persistente via WebSocket com autenticaÃ§Ã£o por token JWT.
     - Novas mensagens enviadas por qualquer aluno ou administrador sÃ£o entregues instantaneamente na tela dos participantes conectados sem necessidade de recarregar a pÃ¡gina ou aguardar polling.
@@ -663,6 +690,13 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - **Envio de MÃ­dias no Chat (Imagens e Documentos):**
     - BotÃ£o de anexo (`Paperclip`) na barra de entrada (`ChatInputBar`) permitindo selecionar imagens (JPG, PNG, WEBP, GIF) ou documentos (PDF, DOCX, XLSX, TXT, ZIP) de atÃ© 25 MB.
     - Suporte a upload em nuvem no Backblaze B2 (`AreaDeMembros/chat_media/`) com fallback em servidor local.
+  - **Menções e Links Internos de Aulas no Chat (ChatInternalLinkBadge, parseLessonUrl):**
+    - Ao anexar ou mencionar uma aula no chat (internal://lesson/:courseId/:lessonId), o sistema obrigatoriamente exibe de forma clara e destacada **qual é o Curso** e **qual é o Módulo** em que aquela aula se encontra antes do usuário clicar para assistir.
+    - **Parâmetros e Cache de Contexto:** A URL da menção inclui os parâmetros de consulta course e module codificados (internal://lesson/:courseId/:lessonId?course=...&module=...). Para links legados ou gerados externamente sem parâmetros, o frontend consulta o endpoint seguro /api/v1/courses/lessons/{lesson_id}/context e armazena os metadados em cache em memória compartilhado (lessonContextCache), evitando requisições repetidas.
+    - **Visual do Badge / Card:** Renderiza título da aula com ícone PlayCircle verde esmeralda, acompanhado de subtítulo estilizado com tags coloridas: 📚 Nome do Curso (em azul neon) e 📂 Nome do Módulo (em lilás neon).
+    - **Tooltip Explicativo:** Ao passar o mouse sobre a menção, o atributo 	itle apresenta: Curso: {Curso} • Módulo: {Módulo} • Aula: {Aula} (Clique para assistir).
+    - **Pré-visualização Antes do Envio (ChatAttachedLinkPreview):** O preview de anexo no rodapé da barra de mensagens exibe o contexto com formato Aula vinculada • {Curso} › {Módulo}.
+    - **Redirecionamento Inteligente:** O clique na menção executa navegação interna no SPA direcionando para a sala de aula do curso de forma transparente.
   - **Barra Lateral Direita de Membros do Chat (`ChatMembersSidebar`):**
     - Exibe a lista completa de usuÃ¡rios com permissÃ£o de acesso e visualizaÃ§Ã£o no canal atual:
       - **Comunidade Geral (`general`):** Lista todos os alunos, instrutores e administradores ativos cadastrados no sistema.
@@ -694,6 +728,11 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
         - Ãudios com player de Ã¡udio estilizado e Ã­cone de microfone verde.
         - Documentos e PDFs em card com Ã­cone de documento, nome e link direto para visualizaÃ§Ã£o/download.
       - **PrÃ©-visualizaÃ§Ã£o SemÃ¢ntica na Inbox de DMs:** Quando uma mensagem enviada na DM nÃ£o possui texto (apenas mÃ­dia anexada), a listagem de conversas exibe preview descritivo (`ð· [Foto/GIF]`, `ð¥ [VÃ­deo]`, `ð¤ [Ãudio]`, `ð [Documento]`, `ð [MÃ­dia]`).
+      - **Paginação de DMs Ativas (`ChatDmPagination`):**
+        - A lista de conversas ativas no modal de DMs (`Inbox` e `Não lidas`) exibe no máximo **20 conversas por página**.
+        - Apresenta barra de paginação no rodapé informando a contagem de conversas exibidas (`Exibindo X–Y de Z DMs`), indicador da página atual e botões de navegação (*"Anterior"* e *"Próxima"*).
+        - Os botões de navegação são desativados de forma reativa nos limites (primeira e última página).
+        - Ao alternar entre as abas (*Inbox* e *Não lidas*), o estado de paginação é reiniciado automaticamente para a página 1.
     - Miniatura de prÃ©-visualizaÃ§Ã£o antes do envio com botÃ£o de remoÃ§Ã£o rÃ¡pida.
     - Permite envio de mensagem de texto com mÃ­dia vinculada, ou somente a mÃ­dia isolada.
     - Imagens sÃ£o renderizadas no chat com zoom ao clicar, e documentos em card seguro com link de abertura.
@@ -993,13 +1032,20 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     1. **DÃºvidas:** Lista os tÃ³picos de suporte favoritados pelo aluno/administrador. Exibe tÃ­tulo da dÃºvida, status e autor.
     2. **Aulas:** Lista as aulas marcadas como favoritas pelo aluno. Exibe tÃ­tulo da aula, nome do curso e duraÃ§Ã£o estimada.
     3. **ComentÃ¡rios:** Lista os comentÃ¡rios de aulas favoritados pelo usuÃ¡rio. Exibe o comentÃ¡rio, autor e aula de origem.
-    4. **Mensagens:** Lista as mensagens favoritadas no Chat da Comunidade. Exibe autor e trecho da mensagem.
-  - **Contadores por Aba:** Cada aba exibe um badge numÃ©rico discreto com a quantidade de itens favoritados naquele tipo.
-  - **NavegaÃ§Ã£o Direta:**
-    - Ao clicar em um tÃ³pico de dÃºvida favoritado, o sistema navega automaticamente para a aba de Suporte e abre o tÃ³pico.
+    4. **Mensagens:** Lista as mensagens favoritadas no Chat da Comunidade e em DMs (Mensagens Diretas).
+       - **Identificação da Origem (Local):**
+         - Se a mensagem for de um **Chat em Grupo de Curso**: Exibe badge 👥 Grupo: {Nome do Curso}.
+         - Se a mensagem for de um **Chat em Grupo Geral**: Exibe badge 👥 Grupo: Comunidade Geral.
+         - Se a mensagem for de uma **DM (Mensagem Direta)**: Exibe badge 💬 DM com {Nome do Interlocutor} (mostra com quem o usuário estava conversando).
+       - Exibe o trecho da mensagem entre aspas, o nome do autor original e o tempo relativo do envio.
+  - **Contadores por Aba:** Cada aba exibe um badge numérico discreto com a quantidade de itens favoritados naquele tipo.
+  - **Navegação Direta:**
+    - Ao clicar em um tópico de dúvida favoritado, o sistema navega automaticamente para a aba de Suporte e abre o tópico.
     - Ao clicar em uma aula favoritada, o sistema navega diretamente para a sala de aula correspondente.
-    - Ao clicar em um comentÃ¡rio favoritado, o sistema navega para a aula e centraliza a visualizaÃ§Ã£o no comentÃ¡rio.
-    - Ao clicar em uma mensagem favoritada, o sistema navega para o Chat da Comunidade.
+    - Ao clicar em um comentário favoritado, o sistema navega para a aula e centraliza a visualização no comentário.
+    - Ao clicar em uma mensagem favoritada:
+      - **Se for DM:** Abre diretamente o modal de DMs (ChatDmModal) na conversa com o contato correspondente.
+      - **Se for Chat em Grupo:** Navega para o Chat da Comunidade (ChatManagement), seleciona o canal (geral ou curso) e faz scroll até a mensagem com highlight.
   - **RemoÃ§Ã£o RÃ¡pida:** Cada card na listagem possui botÃ£o `X` discreto para desfavoritar o item diretamente de dentro do menu, com sincronizaÃ§Ã£o imediata nos contadores.
   - **Mecanismos de Favoritar no Sistema:**
     - **Aulas:** BotÃ£o "Favoritar / Favoritada" (`Bookmark`) na barra de aÃ§Ãµes inferior da aula (`LessonActionToolbar`).
@@ -1145,3 +1191,88 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     11. **Delay com Janela de Horário Comercial:**
        - Integrado ao nó de **Delay**: além do tempo base (segundos, minutos, horas ou dias), permite ativar **"Janela de Horário Comercial"** com horários de início e término (padrão 09:00 às 20:00 no Horário de Brasília) e filtro opcional para apenas dias úteis (Segunda a Sexta).
        - Caso o tempo de espera expire fora do intervalo ou de madrugada, o envio é ajustado para as 09:00 do próximo dia útil elegível.
+
+
+---
+
+## 26. Diretrizes de Segurança da API, Rate Limiting e CORS
+- **Rate Limiting (Limitação de Requisições contra Força Bruta e DoS):**
+  - Gerenciado centralmente via biblioteca `slowapi` (`Limiter` com chave baseada em IP remoto).
+  - **Rotas com Limitação Ativa:**
+    - `POST /api/v1/auth/login`: **Máximo de 5 requisições por minuto** por IP. Bloqueia tentativas massivas de força bruta e protege o consumo de CPU/RAM do algoritmo de hash Argon2id (64 MB de memória).
+    - `POST /api/v1/auth/reset-password/confirm`: **Máximo de 5 requisições por minuto** por IP para confirmação de redefinição de senha.
+    - `POST /api/v1/auth/public-register`: **Máximo de 5 cadastros por hora** por IP para prevenir criação automatizada de contas falsas (bots/spam).
+    - `POST /api/v1/chat/messages`: **Máximo de 60 mensagens por minuto** por usuário para mitigar flooding e spam nos canais de conversa.
+  - **Resposta Padronizada ao Exceder Limite:**
+    - Retorna `HTTP 429 Too Many Requests` com JSON padronizado `{"detail": "Muitas tentativas em pouco tempo. Por favor, aguarde alguns instantes antes de tentar novamente."}` tratado de forma consistente pelo frontend.
+- **Configuração de CORS (Cross-Origin Resource Sharing):**
+  - Controlado pela variável de ambiente `CORS_ORIGINS` no `.env` (lista de origens separadas por vírgula).
+  - Em ambiente de desenvolvimento local, o valor padrão `*` permite acesso local simplificado.
+  - Em ambiente de produção, é obrigatório definir os domínios oficiais (ex: `https://suaplataforma.com.br`) garantindo que apenas o frontend autorizado acesse a API com credenciais de autenticação (`allow_credentials=True`).
+- **Armazenamento Seguro de Chaves de API (Hashing SHA-256):**
+  - Chaves de API (`sk_live_...`) nunca são gravadas em texto puro no banco de dados.
+  - Ao criar um token em `POST /api/v1/api-tokens`, a chave original é exibida apenas uma vez ao administrador e seu hash criptográfico `SHA-256` é persistido na coluna `token`.
+  - Ao receber requisições com `X-API-Key` ou `Authorization: Bearer sk_live_...`, o sistema calcula o SHA-256 e busca no banco.
+  - **Migração Transparente:** Tokens legados gravados em texto plano continuam funcionando e são automaticamente atualizados para hash SHA-256 no primeiro uso.
+- **Criptografia de Segredos de Webhooks e Integrações em Repouso:**
+  - Segredos e chaves de assinatura de webhooks (`secret_key`) são criptografados em repouso no banco via **Fernet (AES-128-CBC + HMAC-SHA256)** sob o prefixo `enc:v1:`, utilizando a chave mestra do sistema (`app.core.encryption`).
+  - No disparo de eventos e cálculo de assinaturas HMAC, os segredos são descriptografados transparentemente em memória.
+- **Cabeçalhos de Segurança HTTP (Security Headers OWASP):**
+  - Configurados no proxy reverso Nginx e reforçados via middleware no FastAPI:
+    - `X-Frame-Options: SAMEORIGIN`: Impede ataques de Clickjacking.
+    - `X-Content-Type-Options: nosniff`: Neutraliza ataques de MIME-sniffing.
+    - `Referrer-Policy: strict-origin-when-cross-origin`: Protege o vazamento de caminhos de URL em requisições externas.
+    - `Permissions-Policy: geolocation=(), camera=(self), microphone=(self)`: Restringe permissões de dispositivos sensíveis apenas à própria plataforma.
+- **Parametrização e Resiliência do Pool de Banco de Dados (PostgreSQL):**
+  - O pool de conexões do SQLAlchemy é parametrizado via variáveis de ambiente com defaults resilientes:
+    - `DB_POOL_SIZE`: Conexões permanentes abertas no pool base (padrão: `10`).
+    - `DB_MAX_OVERFLOW`: Conexões temporárias extras permitidas para absorver picos de tráfego (padrão: `20`, totalizando até 30 conexões simultâneas).
+    - `DB_POOL_TIMEOUT`: Tempo limite em segundos de espera por conexão livre antes de timeout (padrão: `15s`), evitando filas travadas indefinidamente.
+    - `DB_POOL_RECYCLE`: Intervalo de reciclagem de conexões inativas (padrão: `1800s` / 30 minutos) para prevenir desconexões silenciosas (*idle disconnects*).
+    - `pool_pre_ping=True`: Validação automática de integridade da conexão antes de entregá-la à requisição.
+
+---
+
+## 15. Políticas de Segurança Avançada, Proteção Anti-Pirataria e Lockout
+
+### 15.1. Bloqueio Temporário por Tentativas Incorretas (Account Lockout)
+- **Regra:** Se um usuário digitar a senha incorreta por 5 vezes consecutivas, a conta é automaticamente bloqueada por 15 minutos.
+- **Mensagem Amigável:** O sistema informa quantas tentativas restam a cada erro e, ao bloquear, avisa quantos minutos o usuário precisa aguardar.
+- **Desbloqueio:** O bloqueio expira automaticamente após 15 minutos ou é redefinido imediatamente se o usuário redefinir sua senha com sucesso.
+
+### 15.2. Invalidação Imediata de Sessões JWT (	oken_version)
+- **Regra:** Todo token de acesso emitido carrega uma claim 	oken_version.
+- **Gatilhos de Invalidação:** Quando o usuário altera sua senha (seja pelo perfil ou via link de recuperação) ou efetua logout (/logout), o 	oken_version no banco é incrementado, invalidando instantaneamente qualquer token antigo em circulação.
+
+### 15.3. Proteção Anti-Pirataria (Single-Session Enforcement para Alunos)
+- **Regra para Alunos:** Alunos têm enforced a política de sessão única. Ao realizar um novo login em outro computador, navegador ou dispositivo móvel, a sessão anterior é automaticamente deslogada na requisição seguinte com erro 401.
+- **Exceção para Administradores:** Administradores e Super Admins mantêm permissão para sessões simultâneas para monitoramento e gestão operacional de múltiplos dispositivos.
+
+### 15.4. Validação de Conteúdo Real de Arquivos em Uploads (Magic Bytes)
+- **Regra:** Toda rota de upload (fotos de perfil, thumbnails de cursos, vídeos de aulas e documentos anexos) valida não apenas a extensão nominal do arquivo, mas inspeciona a assinatura binária real (Magic Bytes) no início do buffer. Arquivos executáveis ou scripts maliciosos renomeados com extensões permitidas (.jpg, .png, .pdf) são rejeitados com HTTP 400.
+
+### 15.5. Trava de Inicialização contra Credenciais Padrão (Startup Security Check)
+- **Regra:** No startup da aplicação (lifespan), o sistema inspeciona se a SECRET_KEY ou SECURITY_PASSWORD_PEPPER utilizam chaves padrão ou possuem entropia insuficiente (< 32 caracteres para JWT e < 16 para pepper), emitindo alerta de alta prioridade nos logs do servidor.
+
+---
+
+## 16. Monitoramento de Infraestrutura, Recursos do Servidor e Alertas por Webhook
+
+### 16.1. Acesso e Visibilidade
+- **Permissão de Acesso:** O painel de **Infraestrutura & Recursos** é restrito ao perfil superadmin (e administradores autorizados), posicionado no menu de Sistema da Barra Lateral (Sidebar) e navegável pelas abas administrativas de topo.
+
+### 16.2. Recursos de Hardware e Diretrizes
+- **Métricas Coletadas:** Leitura em tempo real de Memória RAM (total, livre, utilizada e porcentagem), Processamento de CPU e consumo de memória RSS do container da API (rea_de_membros_backend).
+- **Picos de Hardware (24h):** O sistema registra e atualiza automaticamente os maiores picos de RAM e CPU registrados no dia, com timestamp formatado no Horário Oficial de Brasília (UTC-3).
+- **Proteção contra Sobrecarga (OOM Killer):** O limite configurado para alerta de RAM atua de forma preventiva antes que o sistema operacional encerre processos por falta de memória.
+
+### 16.3. Conexões e Pool do PostgreSQL
+- **Métricas do Pool:** Monitora conexões ativas em uso instantâneo, conexões ociosas prontas no pool, ocupação percentual e capacidade total (DB_POOL_SIZE + DB_MAX_OVERFLOW).
+- **Histórico Horário:** Armazena e exibe a tabela de histórico de conexões das últimas 24 horas com classificação de status (Normal, Atenção, Crítico).
+
+### 16.4. Alertas e Notificações por Webhook
+- **Disparo Automático:** Quando o percentual de ocupação do Pool, de RAM ou de CPU ultrapassar os limites configurados (sliders), o backend dispara imediatamente um payload JSON para o Webhook configurado.
+- **Intervalo Anti-Spam (Cooldown):** Respeita o intervalo configurado (5, 15, 30 ou 60 minutos) para evitar envios repetitivos durante picos prolongados.
+- **Notificação de Normalização:** Caso configurado, envia um aviso confirmando que o tráfego e os recursos retornaram aos patamares seguros.
+- **Teste de Webhook:** O administrador pode testar a entrega a qualquer momento através do botão *Testar Webhook*.
+

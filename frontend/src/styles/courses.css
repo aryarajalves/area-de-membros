@@ -342,3 +342,33 @@
 }
 
 
+
+
+/* Efeito de destaque para comentário favoritado ou referenciado */
+@keyframes commentPulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
+    border-color: #38bdf8;
+  }
+  50% {
+    box-shadow: 0 0 25px 4px rgba(56, 189, 248, 0.5);
+    border-color: #0284c7;
+    background-color: rgba(56, 189, 248, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+  }
+}
+
+.comment-highlight-pulse {
+  animation: commentPulseGlow 1.8s ease-in-out infinite;
+  border-color: #38bdf8 !important;
+}
+.classroom-dark-theme .password-rules-card,
+.modal-overlay .password-rules-card,
+.custom-modal-overlay .password-rules-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+

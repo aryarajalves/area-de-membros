@@ -15,6 +15,7 @@ export default function TopNavbar({
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [isDmOpen, setIsDmOpen] = useState(false);
+  const [dmTargetContact, setDmTargetContact] = useState(null);
   const [unreadDmCount, setUnreadDmCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -132,7 +133,22 @@ export default function TopNavbar({
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('open_support_topic', { detail: { topicId: item.id } }));
       }, 100);
-    } else if (type === 'aulas' || type === 'comentarios') {
+    } else if (type === 'comentarios') {
+      if (onNavigateTab) onNavigateTab('courses');
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('open_course_lesson', {
+            detail: {
+              courseId: item.course_id,
+              moduleId: item.module_id,
+              lessonId: item.lesson_id,
+              commentId: item.id,
+              activeTab: 'comments',
+            },
+          })
+        );
+      }, 100);
+    } else if (type === 'aulas') {
       if (onNavigateTab) onNavigateTab('courses');
       setTimeout(() => {
         window.dispatchEvent(
@@ -146,10 +162,23 @@ export default function TopNavbar({
         );
       }, 100);
     } else if (type === 'mensagens') {
-      if (onNavigateTab) onNavigateTab('chat');
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('jump_to_chat_message', { detail: { messageId: item.id } }));
-      }, 100);
+      if (item.channel_type === 'dm') {
+        setDmTargetContact(item.other_user || item.recipient || item.author);
+        setIsDmOpen(true);
+      } else {
+        if (onNavigateTab) onNavigateTab('chat');
+        setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent('jump_to_chat_message', {
+              detail: {
+                messageId: item.id,
+                channelType: item.channel_type,
+                courseId: item.course_id,
+              },
+            })
+          );
+        }, 120);
+      }
     }
   };
 
@@ -360,8 +389,10 @@ export default function TopNavbar({
         {/* Modal de DMs / Inbox */}
         <ChatDmModal
           isOpen={isDmOpen}
+          targetContact={dmTargetContact}
           onClose={() => {
             setIsDmOpen(false);
+            setDmTargetContact(null);
             fetchUnreadDms();
           }}
           currentUser={user}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChat } from './useChat';
 import ChatSidebar from './ChatSidebar';
 import ChatHeader from './ChatHeader';
@@ -58,14 +58,33 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
     }
   };
 
+  useEffect(() => {
+    const handleJumpEvent = (e) => {
+      const { messageId, channelType, courseId } = e.detail || {};
+      if (channelType === 'course' && courseId && channels.length > 0) {
+        const found = channels.find((c) => c.course_id === Number(courseId));
+        if (found) setSelectedChannel(found);
+      } else if (channelType === 'general' && channels.length > 0) {
+        const gen = channels.find((c) => c.type === 'general');
+        if (gen) setSelectedChannel(gen);
+      }
+      setTimeout(() => {
+        handleJumpToMessage(messageId);
+      }, 350);
+    };
+    window.addEventListener('jump_to_chat_message', handleJumpEvent);
+    return () => window.removeEventListener('jump_to_chat_message', handleJumpEvent);
+  }, [channels, setSelectedChannel]);
+
   return (
     <div
       className={`chat-management-view mobile-chat-view-${mobileTab}`}
       data-testid="chat-management-view"
       style={{
         display: 'flex',
-        height: '100%',
-        minHeight: '100%',
+        height: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 64px)',
+        maxHeight: 'calc(100vh - 64px)',
         width: '100%',
         backgroundColor: '#070b13',
         borderRadius: 0,

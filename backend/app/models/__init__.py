@@ -22,6 +22,7 @@ from app.models.course import (
     LessonCommentFavorite,
     CourseSalesClick,
 )
+from app.models.course_upsell import CourseUpsellOffer, CourseUpsellView
 from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
 from app.models.chat import ChatMessage
 from app.models.testimonial import Testimonial
@@ -80,4 +81,6 @@ __all__ = [
     "IntroductionComment",
     "IntroductionLike",
     "CourseSalesClick",
+    "CourseUpsellOffer",
+    "CourseUpsellView",
 ]

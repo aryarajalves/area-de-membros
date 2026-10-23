@@ -61,3 +61,47 @@ def decode_access_token(token: str) -> Optional[dict]:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except Exception:
         return None
+
+def perform_startup_security_check(secret_key: Optional[str] = None, pepper: Optional[str] = None) -> dict:
+    """
+    Inspeciona as configurações de ambiente no startup para alertar sobre credenciais padrão e fracas.
+    Retorna um dicionário com o diagnóstico de segurança.
+    """
+    from app.core.logger import logger
+
+    warnings = []
+    insecure_keys = {
+        "supersecret-jwt-key-projeto-base-981273491",
+        "supersecret",
+        "secret",
+        "changeme",
+        "123456",
+        "secret-key",
+        "default"
+    }
+
+    raw_jwt = (secret_key if secret_key is not None else settings.SECRET_KEY or "").strip()
+    if raw_jwt in insecure_keys or len(raw_jwt) < 32:
+        msg = (
+            "[SEGURANÇA] ATENÇÃO: A variável SECRET_KEY utiliza uma chave padrão ou fraca. "
+            "Em produção, defina uma chave forte aleatória com pelo menos 32 caracteres no seu arquivo .env "
+            "(ex: openssl rand -hex 32)."
+        )
+        logger.warning(msg)
+        warnings.append("SECRET_KEY_INSECURE")
+
+    raw_pepper = (pepper if pepper is not None else settings.SECURITY_PASSWORD_PEPPER or "").strip()
+    if raw_pepper in insecure_keys or len(raw_pepper) < 16:
+        msg = (
+            "[SEGURANÇA] ATENÇÃO: A variável SECURITY_PASSWORD_PEPPER não está configurada ou é fraca. "
+            "Defina uma string aleatória única no .env para blindar o hash das senhas."
+        )
+        logger.warning(msg)
+        warnings.append("PEPPER_INSECURE")
+
+    if not warnings:
+        logger.info("[SEGURANÇA] Verificação de segurança de inicialização: Chaves criptográficas em conformidade.")
+        return {"status": "ok", "warnings": []}
+
+    return {"status": "warning", "warnings": warnings}
+

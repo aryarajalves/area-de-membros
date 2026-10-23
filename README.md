@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.1`** | **1.200 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.1.1` / `frontend-1.1.1`**
+> **Versão Oficial: `v1.2.0`** | **1.312 Testes Unitários Automatizados (100% Passing)** | **Docker Hub: `backend-1.2.0` / `frontend-1.2.0`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -319,6 +319,22 @@ Area de Membros - Alunos/
     └── audit_security.py          # Auditoria unificada de dependências (pip-audit + npm audit)
 ```
 
+### 🖥️ 19. Monitoramento de Infraestrutura e Alertas de Hardware (`/infrastructure`)
+- **Dashboard de Hardware em Tempo Real:**
+  - Acompanhamento em tempo real do uso de memória RAM, CPU do servidor e taxa de ocupação do Pool de Conexões do PostgreSQL.
+  - Histórico de ocupação horária do pool com percentuais e status (`Normal`, `Atenção`, `Crítico`).
+  - Histórico persistente de picos máximos de hardware com data, hora e especificações detalhadas do consumo.
+  - **Sistema de Alertas Automáticos via Webhook:** Configuração de thresholds de notificação, tempo de cooldown para evitar spam, teste imediato de disparo com simulação de payload e notificações de normalização de serviço.
+
+### 🎯 20. Anúncios de Upsell por Progresso de Curso e Card de Próximo Nível
+- **Ofertas e Anúncios por Porcentagem de Conclusão (`/courses`):**
+  - Configuração de anúncios disparados automaticamente quando o aluno atinge marcos do curso (ex: 35%, 50%, 75%).
+  - Suporte a upload direto de imagem (JPG, PNG, WEBP) e vídeo (MP4, WebM), com pré-visualização instantânea e player embutido no modal.
+  - **Card Facultativo de Próximo Nível na Barra Lateral Direita (`show_in_sidebar`):**
+    - Opção ativável no próprio anúncio para fixar um card de destaque na coluna lateral da sala de aula, posicionado estrategicamente entre "Meu Progresso" e o início dos módulos.
+  - **Regra de Posse Inteligente:** O sistema valida os cursos já comprados pelo aluno e nunca exibe ofertas de produtos aos quais ele já possui acesso liberado.
+  - **Integração com Histórico de Vendas:** Cliques no CTA do anúncio ou card alimentam automaticamente o painel de interesse de vendas (`CourseSalesHistoryModal`).
+
 ---
 
 ## 🚀 Como Executar com Docker
@@ -353,14 +369,14 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## 🧪 Suíte de Testes Unitários
 
-> 🏆 **Total de 1.200 testes unitários automatizados (100% de aprovação)** cobrindo ponta a ponta as regras de negócio da plataforma.
+> 🏆 **Total de 1.312 testes unitários automatizados (100% de aprovação)** cobrindo ponta a ponta as regras de negócio da plataforma.
 
 ### Frontend (Vitest + React Testing Library)
 ```bash
 cd frontend
 npm test -- --run
 ```
-> **964 testes unitários passando (100% de aprovação)** cobrindo WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento, novos nós lógicos de Teste A/B (`FunnelNodeAbSplit`), condicional de curso (`FunnelNodeCourseCondition`), nó terminal (`FunnelNodeStop`), delay comercial com fuso de Brasília, nós de ação pedagógica (Webhook, Matrícula Automática, Recompensa XP, Notificação Interna), novos gatilhos pedagógicos com modais de configuração dedicados, nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`), redirecionamento inteligente de convites já utilizados e redirecionamento automático de convites expirados.
+> **1.042 testes unitários passando (100% de aprovação)** cobrindo Card de Próximo Nível (`CourseSidebarUpsellCard`), upload e preview de mídias de upsell (`CourseUpsellMediaUploader`), gerenciamento de anúncios por progresso (`CourseUpsellManager` e `CourseModalUpsellTab`), monitoramento de infraestrutura (`/infrastructure`), WhiteLabel customizado (`PlatformWhiteLabelTab`), tutoriais de início e onboarding com IA, editor de funis com auto-enquadramento, novos nós lógicos de Teste A/B (`FunnelNodeAbSplit`), condicional de curso (`FunnelNodeCourseCondition`), nó terminal (`FunnelNodeStop`), delay comercial com fuso de Brasília, nós de ação pedagógica (Webhook, Matrícula Automática, Recompensa XP, Notificação Interna), novos gatilhos pedagógicos com modais de configuração dedicados, nós de tags (Adicionar, Remover, Verificar AND/OR), modais de duplicação/exclusão de nós e fluxos com backdrop, histórico de execuções com rastreamento de leads no funil (`FunnelExecutionFlowProgress`), chat privado criptografado com DMs seguras, gravador de vídeo embutido, links internos/externos com preview, vitrine com combos/bundles e histórico de vendas, cópia de link de convite em todos os status (`InviteTableTab`), redirecionamento inteligente de convites já utilizados e redirecionamento automático de convites expirados.
 
 ### Backend (Pytest)
 ```bash
@@ -369,7 +385,7 @@ docker exec area_de_membros_backend pytest tests
 cd backend
 pytest
 ```
-> **236 testes unitários passando (100% de aprovação)** cobrindo execução e validação dos novos nós lógicos (`test_funnel_logic_nodes.py`: Teste A/B com split percentual, condicional de posse de curso com verificação de bundles, nó stop com cancelamento de fluxos paralelos e delay com janela de horário comercial), execução dos nós de ação de funil (`test_funnel_action_nodes.py`: webhook com headers, matrícula automática com prazos, gamificação XP e notificação interna), gatilhos pedagógicos (`test_funnel_pedagogical_triggers.py`: interesse em curso, criação de aluno, inatividade, marcos de progresso e alertas de expiração), auto-migrações preventivas no startup (`main.py`), validação de convites expirados com flag `is_expired` (`test_invite_phone.py`), criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
+> **270 testes unitários passando (100% de aprovação)** cobrindo anúncios de upsell e card de próximo nível (`test_course_upsell.py`), serviços e endpoints de infraestrutura e alertas de hardware (`test_infrastructure.py`), pool de conexões do PostgreSQL (`test_database_pool.py`), segurança avançada com account lockout e invalidação de sessões simultâneas (`test_advanced_security.py` e `test_security_level2.py`), rate limiting (`test_rate_limiting.py`), execução e validação dos novos nós lógicos (`test_funnel_logic_nodes.py`: Teste A/B com split percentual, condicional de posse de curso com verificação de bundles, nó stop com cancelamento de fluxos paralelos e delay com janela de horário comercial), execução dos nós de ação de funil (`test_funnel_action_nodes.py`: webhook com headers, matrícula automática com prazos, gamificação XP e notificação interna), gatilhos pedagógicos (`test_funnel_pedagogical_triggers.py`), auto-migrações preventivas no startup (`main.py`), validação de convites expirados com flag `is_expired` (`test_invite_phone.py`), criptografia simétrica Fernet/AES-128 para DMs (`test_chat_encryption.py`), gerenciamento de membros de chat (`test_chat_members.py`), rastreamento de leads e cliques de vendas (`test_course_sales_clicks.py`), combos/bundles e ferramentas (`test_course_tools_and_bundles.py`), nós de etiquetas e regras de funis (`test_funnel_tag_processor.py`), rotas e validações de convites e registro público (`test_public_register.py`), criação de usuários com senha de 12+ caracteres, tutoriais IA, gamificação RPG, Favoritos, uploads S3 e handler global de exceções.
 
 ---
 
@@ -380,7 +396,7 @@ O projeto conta com um script de auditoria unificado que inspeciona pacotes do P
 ```bash
 python scripts/audit_security.py
 ```
-> **Aprovado com 0 vulnerabilidades no Backend e 0 vulnerabilidades no Frontend** (incluindo o pacote de criptografia `cryptography==50.0.2` atualizado e auditado).
+> **Aprovado com 0 vulnerabilidades no Backend e 0 vulnerabilidades no Frontend** (incluindo dependências de build e testes atualizadas com `vite >= 8.3.3`, `vitest >= 5.0.3` e `cryptography==50.0.2` auditadas).
 
 ---
 

@@ -2,6 +2,48 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [23/10/2026] - Adição de Card Facultativo de Próximo Nível na Barra Lateral (show_in_sidebar)
+- **Objetivo:** Permitir que o gestor configure no anúncio de Upsell se ele deve ser exibido também como um card de destaque de próximo passo na barra lateral da sala de aula (acima dos módulos).
+- **Tabela Afetada:** course_upsell_offers
+- **Nova Coluna:**
+  - show_in_sidebar: Booleano indicando se a oferta deve figurar no card fixo da barra lateral da sala de aula (BOOLEAN NOT NULL DEFAULT FALSE).
+- **Script de Migração:** ackend/scripts/add_show_in_sidebar_to_upsell.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
+### [23/10/2026] - Criação das Tabelas de Anúncios e Ofertas de Upsell no Curso
+- **Objetivo:** Armazenar configurações de anúncios de próximos cursos/ferramentas por porcentagem de progresso de curso (ex: 35%, 50%, 75%) e rastrear visualizações por aluno para garantir exibição única anti-spam e sem exibir cursos já adquiridos.
+- **Tabelas Criadas:**
+  - `course_upsell_offers`: Configuração da oferta com curso de origem, curso alvo, porcentagem de disparo, tipo de mídia (imagem/vídeo), URL da mídia, título, descrição, texto do botão e URL de destino.
+  - `course_upsell_views`: Registro de visualização e dispensa da oferta por aluno com restrição de unicidade `uq_course_upsell_view_user` em `(offer_id, user_id)`.
+- **Script de Migração:** `backend/scripts/migrate_course_upsell_tables.py`
+- **Auto-migração no Startup:** Incluída na rotina `lifespan` de `backend/app/main.py`.
+
+---
+
+### [22/10/2026] - Criação das Tabelas de Infraestrutura e Alertas de Webhook
+- **Objetivo:** Armazenar configurações de limites de alerta (thresholds de RAM, CPU e Pool de conexões), histórico de picos de hardware e histórico horário de conexões do banco.
+- **Tabelas Criadas:**
+  - system_alert_configs: Configuração de thresholds, cooldown, URL de webhook e status crítico.
+  - system_peak_metrics: Registro de picos máximos de RAM, CPU e Pool com timestamp e detalhes.
+  - system_connection_histories: Histórico de ocupação do pool por hora com status (Normal, Atenção, Crítico).
+- **Script de Migração:** ackend/scripts/migrate_infrastructure_tables.py
+
+---
+
+### [22/10/2026] - Colunas de Segurança Avançada em Users (Account Lockout e Invalidação de Sessão)
+- **Objetivo:** Suportar bloqueio temporário após 5 falhas consecutivas de login (Account Lockout), controle de versão de token para invalidação imediata em logout/troca de senha, e anti-pirataria para alunos (Single-Session Enforcement).
+- **Tabela Afetada:** users
+- **Novas Colunas:**
+  - 	oken_version: Versão do token JWT do usuário (INTEGER DEFAULT 1 NOT NULL). Incrementada a cada logout, troca de senha ou novo login de aluno.
+  - ailed_login_attempts: Contador de tentativas incorretas consecutivas (INTEGER DEFAULT 0 NOT NULL).
+  - locked_until: Data e hora até quando a conta está bloqueada (TIMESTAMP WITHOUT TIME ZONE NULL).
+- **Script de Migração:** ackend/scripts/migrate_user_security_columns.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
 ### [15/10/2026] - Auto-Migrações Preventivas no Startup da Aplicação (Lifespan FastAPI)
 - **Objetivo:** Prevenir erros de coluna ausente (`UndefinedColumn: column courses.item_type does not exist`) em ambientes de produção após deploys sem migração manual.
 - **Tabelas e Colunas Asseguradas Automaticamente:**

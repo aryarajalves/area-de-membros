@@ -1,3 +1,4 @@
+import hashlib
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
@@ -46,6 +47,14 @@ def test_create_and_list_api_tokens(auth_headers):
     token_id = data["id"]
     raw_token = data["raw_token"]
 
+    # Validação de segurança: o token no banco NÃO pode estar em texto puro
+    db = SessionLocal()
+    token_record = db.query(ApiToken).filter(ApiToken.id == token_id).first()
+    assert token_record.token != raw_token, "O token de API não pode ser salvo em texto puro no banco de dados!"
+    expected_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    assert token_record.token == expected_hash, "O token de API deve ser salvo como hash SHA-256 no banco de dados!"
+    db.close()
+
     # 2. Lista os tokens e valida se está presente
     res_list = client.get("/api/v1/api-tokens", headers=auth_headers)
     assert res_list.status_code == 200
@@ -73,3 +82,39 @@ def test_create_and_list_api_tokens(auth_headers):
     # 7. Exclui/revoga o token
     res_del = client.delete(f"/api/v1/api-tokens/{token_id}", headers=auth_headers)
     assert res_del.status_code == 200
+
+
+def test_legacy_api_token_automatic_upgrade_to_sha256(auth_headers):
+    """
+    Testa retrocompatibilidade com tokens legados que estavam salvos em texto claro.
+    Ao realizar a primeira autenticação, a chave deve ser atualizada transparentemente
+    para hash SHA-256 no banco de dados.
+    """
+    db = SessionLocal()
+    user = db.query(User).filter(User.role == "superadmin").first()
+    plain_token = "sk_live_legacy_plain_token_1234567890abcdef"
+    legacy_token = ApiToken(
+        user_id=user.id,
+        name="Token Legado em Texto Puro",
+        token=plain_token,
+        masked_token="sk_live_••••••••cdef",
+        is_active=True
+    )
+    db.add(legacy_token)
+    db.commit()
+    db.refresh(legacy_token)
+    token_id = legacy_token.id
+    db.close()
+
+    # Autentica com o token legado
+    res = client.get("/api/v1/auth/me", headers={"X-API-Key": plain_token})
+    assert res.status_code == 200
+
+    # Verifica se no banco o token foi automaticamente migrado para hash SHA-256
+    db = SessionLocal()
+    migrated_record = db.query(ApiToken).filter(ApiToken.id == token_id).first()
+    expected_hash = hashlib.sha256(plain_token.encode("utf-8")).hexdigest()
+    assert migrated_record.token == expected_hash
+    db.delete(migrated_record)
+    db.commit()
+    db.close()

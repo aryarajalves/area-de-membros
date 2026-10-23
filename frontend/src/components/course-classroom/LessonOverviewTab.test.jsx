@@ -178,4 +178,40 @@ describe('LessonOverviewTab Component', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1); // Apenas a checagem inicial de transcrição
     expect(mockOnLessonUpdated).not.toHaveBeenCalled();
   });
+
+  it('exibe callout de materiais complementares quando a aula possui anexos e permite alternar para a aba', () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: 'not_started', full_transcript: '' })
+    });
+
+    const mockSwitchTab = vi.fn();
+    const lessonWithAtts = {
+      ...mockLesson,
+      attachments: [
+        { id: 1, title: 'Documento 1.pdf', file_url: 'https://b2.com/doc1.pdf' },
+        { id: 2, title: 'Planilha 2.xlsx', file_url: 'https://b2.com/planilha2.xlsx' }
+      ]
+    };
+
+    render(
+      <LessonOverviewTab
+        lesson={lessonWithAtts}
+        courseId={1}
+        moduleId={2}
+        currentDescription={mockLesson.description}
+        isManager={false}
+        onLessonUpdated={mockOnLessonUpdated}
+        onSwitchToAttachments={mockSwitchTab}
+      />
+    );
+
+    expect(screen.getByTestId('lesson-overview-attachments-callout')).toBeInTheDocument();
+    expect(screen.getByText(/2 documentos complementares disponíveis para esta aula/i)).toBeInTheDocument();
+
+    const switchBtn = screen.getByTestId('go-to-attachments-tab-btn');
+    expect(switchBtn).toBeInTheDocument();
+    fireEvent.click(switchBtn);
+    expect(mockSwitchTab).toHaveBeenCalledTimes(1);
+  });
 });

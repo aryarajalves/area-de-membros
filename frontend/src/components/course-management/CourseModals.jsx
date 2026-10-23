@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Upload, X, Image, Globe, ListOrdered, Sparkles, Loader2 } from 'lucide-react';
 import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackModals';
-import ExpandableTextarea from '../common/ExpandableTextarea';
 import ConfirmGenerateAiMetadataModal from '../course-classroom/ConfirmGenerateAiMetadataModal';
-import AgentFlowKbSelector from './AgentFlowKbSelector';
-import CourseTypeSelector from './CourseTypeSelector';
-import CourseBundleSelector from './CourseBundleSelector';
+import CourseModalTabs from './CourseModalTabs';
+import CourseModalInfoTab from './CourseModalInfoTab';
+import CourseModalMediaTab from './CourseModalMediaTab';
+import CourseModalAccessTab from './CourseModalAccessTab';
+import CourseModalAiTab from './CourseModalAiTab';
+import CourseModalUpsellTab from './CourseModalUpsellTab';
 import { useToast } from '../../context/ToastContext';
 
 export function CourseFormModal({
@@ -42,6 +43,7 @@ export function CourseFormModal({
   onUploadCoverImage,
   onSaveCourse
 }) {
+  const [activeTab, setActiveTab] = useState('info');
   const [showThumbnailDeleteConfirm, setShowThumbnailDeleteConfirm] = useState(false);
   const [showCoverDeleteConfirm, setShowCoverDeleteConfirm] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -81,6 +83,15 @@ export function CourseFormModal({
     }
   };
 
+  const handleSubmit = (e) => {
+    if (!title || !title.trim()) {
+      setActiveTab('info');
+    }
+    if (onSaveCourse) {
+      onSaveCourse(e);
+    }
+  };
+
   if (!isOpen) return null;
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
@@ -93,7 +104,7 @@ export function CourseFormModal({
       <div
         className={`modal-content ${!isLightBg ? 'classroom-dark-theme' : ''}`}
         style={{
-          maxWidth: '580px',
+          maxWidth: '640px',
           maxHeight: '90vh',
           overflowY: 'auto',
           backgroundColor: modalBg,
@@ -115,255 +126,105 @@ export function CourseFormModal({
           </button>
         </div>
 
-        <form onSubmit={onSaveCourse} className="modal-form">
-          {/* Seletor de Tipo de Item (Curso ou Ferramenta) */}
-          {setItemType && (
-            <CourseTypeSelector
+        {/* Barra de Abas do Modal */}
+        <CourseModalTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isLightBg={isLightBg}
+        />
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          {/* Aba 1: Dados Gerais */}
+          <div style={{ display: activeTab === 'info' ? 'block' : 'none' }}>
+            <CourseModalInfoTab
               itemType={itemType}
-              onChangeItemType={setItemType}
+              setItemType={setItemType}
               toolUrl={toolUrl}
-              onChangeToolUrl={setToolUrl}
-              isLightBg={isLightBg}
-            />
-          )}
-
-          <div className="form-group">
-            <label htmlFor="course-title">
-              {itemType === 'tool' ? 'Nome da Ferramenta / Aplicativo *' : 'Título do Curso *'}
-            </label>
-            <input
-              id="course-title"
-              type="text"
-              required
-              placeholder={itemType === 'tool' ? 'Ex: ZapVoice - Disparador WhatsApp' : 'Ex: Formação em Tráfego Direto'}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              data-testid="course-title-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <ExpandableTextarea
-              id="course-description"
-              label="Descrição"
-              placeholder="Descrição do conteúdo e objetivos do curso..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              testId="course-description-input"
+              setToolUrl={setToolUrl}
+              title={title}
+              setTitle={setTitle}
+              description={description}
+              setDescription={setDescription}
+              editingCourse={editingCourse}
               textColor={textColor}
-              extraActions={
-                editingCourse?.id ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAiConfirmModal(true)}
-                    disabled={aiLoading || saving}
-                    data-testid="generate-course-ai-description-btn"
-                    title="Analisar módulos do curso e gerar descrição automaticamente com IA"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(168, 85, 247, 0.22) 100%)',
-                      border: '1px solid rgba(168, 85, 247, 0.45)',
-                      color: '#c084fc',
-                      cursor: aiLoading || saving ? 'not-allowed' : 'pointer',
-                      padding: '3px 9px',
-                      borderRadius: '6px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      transition: 'all 0.2s ease',
-                      outline: 'none',
-                      opacity: aiLoading || saving ? 0.6 : 1
-                    }}
-                  >
-                    {aiLoading ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        <span>Gerando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={12} />
-                        <span>Gerar com IA</span>
-                      </>
-                    )}
-                  </button>
-                ) : null
-              }
+              isLightBg={isLightBg}
+              aiLoading={aiLoading}
+              saving={saving}
+              onOpenAiConfirm={() => setShowAiConfirmModal(true)}
             />
           </div>
 
-          {/* Upload de Capa Principal (Card do Curso) */}
-          <div className="form-group">
-            <label>Imagem de Capa do Card (Thumbnail do Curso)</label>
-            <div className="thumbnail-size-notice" style={{ marginBottom: '10px' }}>
-              <strong>Dimensões recomendadas:</strong> 1280 × 720 pixels (Proporção 16:9).<br />
-              <strong>Formatos aceitos:</strong> JPG, PNG, WEBP (Até 5 MB).
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label className="primary-btn" style={{ cursor: 'pointer', padding: '8px 14px', fontSize: '13px' }}>
-                <Upload size={16} />
-                <span>{uploading ? 'Enviando imagem...' : 'Escolher do Computador'}</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={onUploadThumbnail}
-                  style={{ display: 'none' }}
-                  disabled={uploading}
-                  data-testid="upload-thumbnail-input"
-                />
-              </label>
-
-              {thumbnailUrl && (
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setShowThumbnailDeleteConfirm(true)}
-                  style={{ padding: '8px 12px', fontSize: '12px', color: '#ef4444' }}
-                  data-testid="remove-course-thumbnail-btn"
-                >
-                  <X size={14} /> Remover Capa
-                </button>
-              )}
-            </div>
-
-            {thumbnailUrl && (
-              <div className="thumbnail-preview-box" style={{ marginTop: '12px' }}>
-                <img src={thumbnailUrl} alt="Pré-visualização da Capa" data-testid="thumbnail-preview-img" />
-              </div>
-            )}
-          </div>
-
-          {/* Imagem de Banner Hero do Topo (Opcional - Estilo Netflix) */}
-          {setCoverImageUrl && (
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Image size={15} style={{ color: '#2563eb' }} />
-                <span>Banner Hero de Fundo do Curso (Estilo Netflix - Opcional)</span>
-              </label>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
-                Imagem panorâmica exibida no topo da sala de aula com degradê cinemático. Se não informada, usará a capa principal.
-              </p>
-
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
-                {onUploadCoverImage && (
-                  <label className="secondary-btn" style={{ cursor: 'pointer', padding: '7px 12px', fontSize: '12.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <Upload size={14} />
-                    <span>Enviar Banner do PC</span>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={onUploadCoverImage}
-                      style={{ display: 'none' }}
-                      disabled={uploading}
-                      data-testid="upload-cover-input"
-                    />
-                  </label>
-                )}
-
-                {coverImageUrl && (
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setShowCoverDeleteConfirm(true)}
-                    style={{ padding: '7px 10px', fontSize: '12px', color: '#ef4444' }}
-                    data-testid="remove-course-cover-btn"
-                  >
-                    <X size={14} /> Remover Banner
-                  </button>
-                )}
-              </div>
-
-              {coverImageUrl && (
-                <div className="thumbnail-preview-box" style={{ marginTop: '8px', maxHeight: '130px', overflow: 'hidden' }}>
-                  <img src={coverImageUrl} alt="Pré-visualização do Banner Hero" style={{ width: '100%', objectFit: 'cover' }} data-testid="cover-preview-img" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Link da Página de Vendas / Mais Informações */}
-          <div className="form-group">
-            <label htmlFor="course-sales-page-url" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Globe size={15} style={{ color: '#3b82f6' }} />
-              <span>Link da Página de Vendas / Mais Informações (Opcional)</span>
-            </label>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
-              Página para onde alunos que ainda não possuem acesso ao curso serão redirecionados ao clicar em "Ver Mais Informações".
-            </p>
-            <input
-              id="course-sales-page-url"
-              type="url"
-              placeholder="Ex: https://seusite.com/curso-bussola"
-              value={salesPageUrl}
-              onChange={(e) => setSalesPageUrl && setSalesPageUrl(e.target.value)}
-              data-testid="course-sales-page-url-input"
+          {/* Aba 2: Capas & Mídia */}
+          <div style={{ display: activeTab === 'media' ? 'block' : 'none' }}>
+            <CourseModalMediaTab
+              thumbnailUrl={thumbnailUrl}
+              coverImageUrl={coverImageUrl}
+              setCoverImageUrl={setCoverImageUrl}
+              uploading={uploading}
+              onUploadThumbnail={onUploadThumbnail}
+              onUploadCoverImage={onUploadCoverImage}
+              onPromptDeleteThumbnail={() => setShowThumbnailDeleteConfirm(true)}
+              onPromptDeleteCover={() => setShowCoverDeleteConfirm(true)}
             />
           </div>
 
-          {/* Ordem de Posição do Curso */}
-          <div className="form-group">
-            <label htmlFor="course-order-index" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ListOrdered size={15} style={{ color: '#eab308' }} />
-              <span>Ordem de Posição / Exibição</span>
-            </label>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
-              Define a ordem do curso na vitrine (ordem crescente: 1 aparece antes de 2, 3...).
-            </p>
-            <input
-              id="course-order-index"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-              value={orderIndex}
-              onChange={(e) => setOrderIndex && setOrderIndex(e.target.value)}
-              data-testid="course-order-index-input"
-            />
-          </div>
-
-          {/* Integração AgentFlow - Base de Conhecimento RAG */}
-          <AgentFlowKbSelector
-            selectedKbId={agentflowKbId}
-            selectedKbName={agentflowKbName}
-            onChangeKb={(id, name) => {
-              if (setAgentflowKbId) setAgentflowKbId(id);
-              if (setAgentflowKbName) setAgentflowKbName(name);
-            }}
-            courseTitle={title}
-            isLightBg={isLightBg}
-          />
-
-          {/* Seletor de Cursos/Ferramentas Inclusos neste Pacote */}
-          {setBundledCourseIds && (
-            <CourseBundleSelector
+          {/* Aba 3: Vendas & Vitrine */}
+          <div style={{ display: activeTab === 'sales_access' ? 'block' : 'none' }}>
+            <CourseModalAccessTab
+              salesPageUrl={salesPageUrl}
+              setSalesPageUrl={setSalesPageUrl}
+              orderIndex={orderIndex}
+              setOrderIndex={setOrderIndex}
+              setBundledCourseIds={setBundledCourseIds}
+              bundledCourseIds={bundledCourseIds}
               availableCourses={availableCourses}
-              currentCourseId={editingCourse?.id}
-              selectedCourseIds={bundledCourseIds}
-              onChangeSelectedCourseIds={setBundledCourseIds}
+              editingCourse={editingCourse}
               isLightBg={isLightBg}
             />
-          )}
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={onClose}
-              disabled={saving || uploading}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="primary-btn"
-              disabled={saving || uploading}
-              data-testid="submit-course-btn"
-            >
-              {saving ? 'Salvando...' : (editingCourse ? 'Salvar Alterações' : (itemType === 'tool' ? 'Criar Ferramenta' : 'Criar Curso'))}
-            </button>
           </div>
+
+          {/* Aba 4: Anúncios & Upsell */}
+          <div style={{ display: activeTab === 'upsell' ? 'block' : 'none' }}>
+            <CourseModalUpsellTab
+              editingCourse={editingCourse}
+              availableCourses={availableCourses}
+              isLightBg={isLightBg}
+              addToast={addToast}
+            />
+          </div>
+
+          {/* Aba 5: Inteligência Artificial */}
+          <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }}>
+            <CourseModalAiTab
+              agentflowKbId={agentflowKbId}
+              setAgentflowKbId={setAgentflowKbId}
+              agentflowKbName={agentflowKbName}
+              setAgentflowKbName={setAgentflowKbName}
+              title={title}
+              isLightBg={isLightBg}
+            />
+          </div>
+
+          {activeTab !== 'upsell' && (
+            <div className="modal-actions" style={{ marginTop: '20px' }}>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={onClose}
+                disabled={saving || uploading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="primary-btn"
+                disabled={saving || uploading}
+                data-testid="submit-course-btn"
+              >
+                {saving ? 'Salvando...' : (editingCourse ? 'Salvar Alterações' : (itemType === 'tool' ? 'Criar Ferramenta' : 'Criar Curso'))}
+              </button>
+            </div>
+          )}
         </form>
       </div>
 

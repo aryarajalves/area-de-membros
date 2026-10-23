@@ -113,10 +113,15 @@ describe('ChatInternalLinkModal Component', () => {
     });
 
     fireEvent.click(screen.getByTestId('select-lesson-301'));
-    expect(mockOnSelectLink).toHaveBeenCalledWith({
-      label: '🎥 Aula 1: Boas-vindas',
-      url: 'internal://lesson/101/301',
-    });
+    expect(mockOnSelectLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: '🎥 Aula 1: Boas-vindas',
+        url: expect.stringContaining('internal://lesson/101/301?course='),
+        courseTitle: 'Curso Completo de React',
+        moduleTitle: 'Módulo 1: Começando',
+        lessonTitle: 'Aula 1: Boas-vindas',
+      })
+    );
   });
 
   it('calls onClose when close button is clicked', () => {

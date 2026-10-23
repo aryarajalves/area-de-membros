@@ -7,6 +7,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.core.encryption import decrypt_field
 from app.core.logger import logger
 from app.models.user import User
 from app.models.webhook import Webhook, WebhookLog
@@ -54,8 +55,9 @@ def execute_webhook_request(
             "X-Webhook-Delivery": datetime.now(timezone.utc).isoformat(),
         }
 
-        if secret_key:
-            signature = calculate_hmac_signature(secret_key, payload_bytes)
+        effective_secret = decrypt_field(secret_key)
+        if effective_secret:
+            signature = calculate_hmac_signature(effective_secret, payload_bytes)
             headers["X-Webhook-Signature"] = signature
 
         logger.info(f"Disparando webhook ID {webhook_id} ({event}) para {url}")

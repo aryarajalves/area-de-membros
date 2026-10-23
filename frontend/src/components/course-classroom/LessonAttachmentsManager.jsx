@@ -37,55 +37,88 @@ export default function LessonAttachmentsManager({
 
   const textColor = isLightBg ? '#1e293b' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const rowBg = isLightBg ? '#ffffff' : 'rgba(15, 23, 42, 0.55)';
   const rowBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)';
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = Array.from(e.target.files || []);
+    if (fileList.length === 0) return;
 
-    if (file.size > 100 * 1024 * 1024) {
-      addToast('O documento excede o tamanho máximo de 100 MB.', 'error');
+    const validFiles = [];
+    for (const f of fileList) {
+      if (f.size > 100 * 1024 * 1024) {
+        addToast(`O documento "${f.name}" excede o tamanho máximo de 100 MB.`, 'error');
+      } else {
+        validFiles.push(f);
+      }
+    }
+
+    if (validFiles.length === 0) {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    setUploadFileName(file.name);
     setUploading(true);
+    setUploadProgress({ current: 0, total: validFiles.length });
     const token = localStorage.getItem('auth_token');
-    const formData = new FormData();
-    formData.append('file', file);
+    const newAttachmentsList = [];
+    let lastError = null;
 
-    try {
-      const res = await fetch('/api/v1/courses/upload-attachment', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      setUploadFileName(file.name);
+      setUploadProgress({ current: i + 1, total: validFiles.length });
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Erro ao enviar anexo.');
+      try {
+        const res = await fetch('/api/v1/courses/upload-attachment', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Erro ao enviar "${file.name}".`);
+        }
+
+        const data = await res.json();
+        const resolvedFileUrl = data.file_url || data.attachment_url;
+        if (!resolvedFileUrl) {
+          throw new Error(`Servidor não retornou a URL para "${file.name}".`);
+        }
+
+        newAttachmentsList.push({
+          title: data.title || data.file_name || file.name,
+          description: '',
+          file_url: resolvedFileUrl,
+          file_type: data.file_type || file.name.split('.').pop() || '',
+          file_size_bytes: data.file_size_bytes || data.file_size || file.size
+        });
+      } catch (err) {
+        lastError = err.message;
       }
-
-      const data = await res.json();
-      const newAttachment = {
-        title: data.title || file.name,
-        description: '',
-        file_url: data.file_url,
-        file_type: data.file_type || file.name.split('.').pop() || '',
-        file_size_bytes: data.file_size_bytes || file.size
-      };
-
-      onChange([...attachments, newAttachment]);
-      addToast('Documento anexado com sucesso!', 'success');
-    } catch (err) {
-      addToast(err.message || 'Falha ao enviar arquivo.', 'error');
-    } finally {
-      setUploading(false);
-      setUploadFileName('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+
+    if (newAttachmentsList.length > 0) {
+      onChange([...attachments, ...newAttachmentsList]);
+      if (newAttachmentsList.length === 1) {
+        addToast('Documento anexado com sucesso!', 'success');
+      } else {
+        addToast(`${newAttachmentsList.length} documentos anexados com sucesso!`, 'success');
+      }
+    }
+
+    if (lastError && newAttachmentsList.length < validFiles.length) {
+      addToast(lastError, 'error');
+    }
+
+    setUploading(false);
+    setUploadFileName('');
+    setUploadProgress({ current: 0, total: 0 });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handlePromptDelete = (index) => {
@@ -159,7 +192,11 @@ export default function LessonAttachmentsManager({
           {uploading ? (
             <>
               <Loader2 size={13} className="spin-animation" />
-              <span>Enviando...</span>
+              <span>
+                {uploadProgress.total > 1
+                  ? `Enviando (${uploadProgress.current}/${uploadProgress.total})...`
+                  : 'Enviando...'}
+              </span>
             </>
           ) : (
             <>
@@ -173,6 +210,7 @@ export default function LessonAttachmentsManager({
           type="file"
           ref={fileInputRef}
           onChange={handleFileUpload}
+          multiple
           style={{ display: 'none' }}
           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,.png,.jpg,.jpeg,.webp"
           data-testid="attachment-file-input"

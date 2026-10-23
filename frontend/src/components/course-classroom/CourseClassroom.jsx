@@ -8,6 +8,7 @@ import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
 import BatchCourseImportModal from './BatchCourseImportModal';
+import CourseUpsellManager from './CourseUpsellManager';
 import { scrollToClassroomSection } from './lessonUtils';
 
 export default function CourseClassroom({
@@ -15,6 +16,8 @@ export default function CourseClassroom({
   currentUser,
   initialModuleId = null,
   initialLessonId = null,
+  initialCommentId = null,
+  initialTab = null,
   onBack,
 }) {
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
@@ -343,6 +346,7 @@ export default function CourseClassroom({
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
                   rightSidebar={
                     <ModuleTimelineSidebar
+                      courseId={course?.id || initialCourse.id}
                       modules={modules}
                       selectedModule={selectedModule}
                       activeLesson={activeLesson}
@@ -378,6 +382,7 @@ export default function CourseClassroom({
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
                   rightSidebar={
                     <ModuleTimelineSidebar
+                      courseId={course?.id || initialCourse.id}
                       modules={modules}
                       selectedModule={selectedModule}
                       activeLesson={activeLesson}
@@ -407,6 +412,8 @@ export default function CourseClassroom({
                   currentUser={currentUser}
                   prevLesson={prevLesson}
                   nextLesson={nextLesson}
+                  initialTab={initialTab || (initialCommentId ? 'comments' : 'overview')}
+                  targetCommentId={initialCommentId}
                   onSelectLesson={handleSelectLessonAndModule}
                   isCompleted={completedLessonIds?.includes(activeLesson?.id)}
                   onToggleComplete={handleToggleLessonComplete}
@@ -419,6 +426,7 @@ export default function CourseClassroom({
                   }}
                   rightSidebar={
                     <ModuleTimelineSidebar
+                      courseId={course?.id || initialCourse.id}
                       modules={modules}
                       selectedModule={selectedModule}
                       activeLesson={activeLesson}
@@ -444,14 +452,9 @@ export default function CourseClassroom({
 
       {/* Modais de Módulo e Aula */}
       <ModuleModal
-        isOpen={moduleModalOpen}
-        onClose={() => setModuleModalOpen(false)}
-        editingModule={editingModule}
-        courseId={course?.id || initialCourse.id}
-        onModuleUpdated={fetchCourseData}
-        loading={actionLoading}
-        bgColor={bgColor}
-        onUploadThumbnail={uploadLessonThumbnail}
+        isOpen={moduleModalOpen} onClose={() => setModuleModalOpen(false)} editingModule={editingModule}
+        courseId={course?.id || initialCourse.id} onModuleUpdated={fetchCourseData} loading={actionLoading}
+        bgColor={bgColor} onUploadThumbnail={uploadLessonThumbnail}
         onSave={async (payload) => {
           const ok = await handleSaveModule(editingModule?.id, payload);
           if (ok) setModuleModalOpen(false);
@@ -459,16 +462,9 @@ export default function CourseClassroom({
       />
 
       <LessonModal
-        isOpen={lessonModalOpen}
-        onClose={() => setLessonModalOpen(false)}
-        editingLesson={editingLesson}
-        moduleTitle={targetModuleTitle}
-        courseId={course?.id || initialCourse.id}
-        moduleId={targetModuleId}
-        loading={actionLoading}
-        bgColor={bgColor}
-        onUploadVideo={uploadLessonVideo}
-        onUploadThumbnail={uploadLessonThumbnail}
+        isOpen={lessonModalOpen} onClose={() => setLessonModalOpen(false)} editingLesson={editingLesson}
+        moduleTitle={targetModuleTitle} courseId={course?.id || initialCourse.id} moduleId={targetModuleId}
+        loading={actionLoading} bgColor={bgColor} onUploadVideo={uploadLessonVideo} onUploadThumbnail={uploadLessonThumbnail}
         onSave={async (payload) => {
           const ok = await handleSaveLesson(targetModuleId, editingLesson?.id, payload);
           if (ok) {
@@ -485,13 +481,17 @@ export default function CourseClassroom({
 
       {batchImportOpen && (
         <BatchCourseImportModal
-          isOpen={batchImportOpen}
-          onClose={() => setBatchImportOpen(false)}
-          courseId={course?.id || initialCourse.id}
-          existingModules={modules}
-          onImportCompleted={fetchCourseData}
+          isOpen={batchImportOpen} onClose={() => setBatchImportOpen(false)}
+          courseId={course?.id || initialCourse.id} existingModules={modules} onImportCompleted={fetchCourseData}
         />
       )}
+
+      {/* Gerenciador de Anúncios e Ofertas de Upsell no Curso */}
+      <CourseUpsellManager
+        courseId={course?.id || initialCourse.id}
+        completedCount={completedLessonIds?.length || 0}
+        totalCount={totalLessonsCount || 0}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import secrets
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -60,6 +61,7 @@ def create_api_token(
     """Gera um novo token de API seguro."""
     try:
         raw_key = f"sk_live_{secrets.token_urlsafe(32)}"
+        token_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
         masked_key = f"sk_live_••••••••{raw_key[-4:]}"
 
         expires_at = None
@@ -69,7 +71,7 @@ def create_api_token(
         api_token = ApiToken(
             user_id=current_user.id,
             name=data.name.strip(),
-            token=raw_key,
+            token=token_hash,
             masked_token=masked_key,
             is_active=True,
             expires_at=expires_at,

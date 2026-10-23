@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle,
   Settings, UserCheck, Webhook, HelpCircle, X, MessagesSquare,
-  MessageSquareQuote, Trophy, ExternalLink, GitBranch, Home, Handshake
+  MessageSquareQuote, Trophy, ExternalLink, GitBranch, Home, Handshake, Server
 } from 'lucide-react';
 import { getLinkIcon, getLinkColor } from './platform-settings/linkIcons';
 
@@ -133,6 +133,7 @@ export default function Sidebar({
               { id: 'users', label: 'Gestão de Usuários', icon: Users },
               { id: 'backup', label: 'Backup Automático', icon: Database },
               { id: 'logs', label: 'Logs do Sistema', icon: Terminal },
+              { id: 'infrastructure', label: 'Infraestrutura & Recursos', icon: Server },
             ]
           : []),
       ],

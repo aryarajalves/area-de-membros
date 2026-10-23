@@ -53,3 +53,42 @@ def test_effective_b2_endpoint_url_derivation(monkeypatch):
     monkeypatch.setattr(settings, "B2_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com")
     assert settings.EFFECTIVE_B2_ENDPOINT_URL == "https://s3.us-east-005.backblazeb2.com"
 
+
+def test_upload_attachment_requires_auth():
+    response = client.post(
+        "/api/v1/courses/upload-attachment",
+        files={"file": ("documento.pdf", b"%PDF-1.4 mock content", "application/pdf")}
+    )
+    assert response.status_code == 401
+
+
+def test_upload_attachment_invalid_extension():
+    headers = get_superadmin_headers()
+    response = client.post(
+        "/api/v1/courses/upload-attachment",
+        headers=headers,
+        files={"file": ("virus.exe", b"binary content", "application/octet-stream")}
+    )
+    assert response.status_code == 400
+    assert "não suportado" in response.json()["detail"]
+
+
+def test_upload_attachment_success():
+    headers = get_superadmin_headers()
+    response = client.post(
+        "/api/v1/courses/upload-attachment",
+        headers=headers,
+        files={"file": ("Apostila_Modulo1.pdf", b"%PDF-1.4 mock content for lesson", "application/pdf")}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "file_url" in data
+    assert "attachment_url" in data
+    assert data["file_url"] == data["attachment_url"]
+    assert data["file_name"] == "Apostila_Modulo1.pdf"
+    assert data["title"] == "Apostila_Modulo1.pdf"
+    assert data["file_type"] == "pdf"
+    assert data["file_size"] > 0
+    assert data["file_size_bytes"] == data["file_size"]
+
+

@@ -4,7 +4,7 @@ from app.api.v1.endpoints import (
     integrations, support, quiz, api_tokens, media_uploads, chat,
     profile, testimonials, gamification, lesson_transcriptions, platform_links,
     favorites, student_tags, chat_broadcast, funnels, agentflow, tutorials,
-    whitelabel, introductions, public_register, chat_members, course_sales
+    whitelabel, introductions, public_register, chat_members, course_sales, infrastructure, course_upsell
 )
 
 api_router = APIRouter()
@@ -37,8 +37,5 @@ api_router.include_router(agentflow.router)
 api_router.include_router(tutorials.router, prefix="/tutorials", tags=["tutorials"])
 api_router.include_router(whitelabel.router, prefix="/whitelabel", tags=["whitelabel"])
 api_router.include_router(introductions.router, prefix="/introductions", tags=["introductions"])
-
-
-
-
-
+api_router.include_router(infrastructure.router)
+api_router.include_router(course_upsell.router)

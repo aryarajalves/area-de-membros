@@ -3,6 +3,7 @@ import { Send, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmDeleteModal } from './ModuleLessonModals';
 import CommentItem from './CommentItem';
+import NewCommentBox from './NewCommentBox';
 
 const COMMENTS_PER_PAGE = 20;
 
@@ -28,7 +29,8 @@ export default function LessonComments({
   moduleId,
   lessonId,
   currentUser,
-  isLightBg = false
+  isLightBg = false,
+  targetCommentId = null
 }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -81,6 +83,39 @@ export default function LessonComments({
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  // Se houver um targetCommentId, ajusta a página para onde o comentário está
+  useEffect(() => {
+    if (!targetCommentId || commentsList.length === 0) return;
+    const targetNum = Number(targetCommentId);
+    const targetIdx = commentsList.findIndex(
+      (c) => c.id === targetNum || (c.replies && c.replies.some((r) => r.id === targetNum))
+    );
+    if (targetIdx !== -1) {
+      const targetPage = Math.floor(targetIdx / COMMENTS_PER_PAGE) + 1;
+      if (currentPage !== targetPage) {
+        setCurrentPage(targetPage);
+      }
+    }
+  }, [targetCommentId, commentsList, currentPage]);
+
+  // Scroll suave e destaque com efeito neon até o comentário favoritado
+  useEffect(() => {
+    if (!targetCommentId || loading || paginatedComments.length === 0) return;
+    const timer = setTimeout(() => {
+      const el =
+        document.getElementById(`comment-item-${targetCommentId}`) ||
+        document.getElementById(`comment-reply-${targetCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('comment-highlight-pulse');
+        setTimeout(() => {
+          el.classList.remove('comment-highlight-pulse');
+        }, 4000);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [targetCommentId, loading, paginatedComments]);
 
   const handleSendComment = async (e) => {
     e.preventDefault();
@@ -263,36 +298,15 @@ export default function LessonComments({
     return (
     <div style={{ marginTop: '16px' }} data-testid="lesson-comments-container">
       {/* Formulário de Envio de Novo Comentário */}
-      <form onSubmit={handleSendComment} style={{ marginBottom: '24px' }}>
-        <div style={{
-          backgroundColor: formBg,
-          border: formBorder,
-          borderRadius: '8px',
-          padding: '12px'
-        }}>
-          <textarea
-            rows={3}
-            placeholder="Deixe sua dúvida, feedback ou comentário sobre esta aula..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="form-control-modern"
-            style={{ width: '100%', resize: 'vertical', border: 'none', backgroundColor: 'transparent', padding: '0', fontSize: '13.5px', color: textColor }}
-            data-testid="comment-input"
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-            <button
-              type="submit"
-              disabled={submitting || !newComment.trim()}
-              className="primary-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', fontSize: '12.5px' }}
-              data-testid="submit-comment-btn"
-            >
-              <Send size={14} />
-              <span>{submitting ? 'Enviando...' : 'Comentar'}</span>
-            </button>
-          </div>
-        </div>
-      </form>
+      <NewCommentBox
+        currentUser={currentUser}
+        newComment={newComment}
+        setNewComment={setNewComment}
+        onSubmit={handleSendComment}
+        submitting={submitting}
+        isLightBg={isLightBg}
+        getRoleBadge={getRoleBadge}
+      />
 
       {/* Lista de Comentários */}
       {loading ? (

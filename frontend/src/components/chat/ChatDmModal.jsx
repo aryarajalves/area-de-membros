@@ -4,6 +4,9 @@ import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock }
 import ChatDmConversationView from './ChatDmConversationView';
 import ChatDmConversationItem from './ChatDmConversationItem';
 import ChatDmNewContactSelector from './ChatDmNewContactSelector';
+import ChatDmPagination from './ChatDmPagination';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ChatDmModal({
   isOpen,
@@ -18,6 +21,11 @@ export default function ChatDmModal({
   const [isSelectingNewContact, setIsSelectingNewContact] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // Bloqueio do scroll do fundo quando o modal estiver aberto
   useEffect(() => {
@@ -92,35 +100,18 @@ export default function ChatDmModal({
     }
   }, [selectedContact?.id]);
 
-  // Enviar mensagem direta (com suporte a mídias, áudio, vídeo, imagens, GIFs e PDFs)
-  const handleSendDmMessage = async (
-    cleanText,
-    mediaUrl = null,
-    mediaType = null,
-    buttonText = null,
-    buttonUrl = null,
-    buttonActionType = 'url'
-  ) => {
+  // Enviar mensagem direta (com mídias, áudio, vídeo, imagens, GIFs e PDFs)
+  const handleSendDmMessage = async (cleanText, mediaUrl = null, mediaType = null, buttonText = null, buttonUrl = null, buttonActionType = 'url') => {
     if ((!cleanText && !mediaUrl) || !selectedContact?.id) return false;
     const token = getAuthToken();
     try {
-      const payload = {
-        channel_type: 'dm',
-        recipient_id: selectedContact.id,
-        message: cleanText || '',
-        media_url: mediaUrl,
-        media_type: mediaType,
-        button_text: buttonText,
-        button_url: buttonUrl,
-        button_action_type: buttonActionType,
-      };
       const res = await fetch('/api/v1/chat/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          channel_type: 'dm', recipient_id: selectedContact.id, message: cleanText || '',
+          media_url: mediaUrl, media_type: mediaType, button_text: buttonText, button_url: buttonUrl, button_action_type: buttonActionType
+        }),
       });
       if (res.ok) {
         const newMsg = await res.json();
@@ -385,91 +376,78 @@ export default function ChatDmModal({
             }}
             onClose={() => setIsSelectingNewContact(false)}
           />
-        ) : !selectedContact ? (
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '12px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-            data-testid="dm-conversations-list"
-          >
-            {loading ? (
-              <div
-                style={{
-                  padding: '40px 0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  color: '#94a3b8',
-                }}
-              >
-                <Loader2 size={28} className="animate-spin" color="#38bdf8" />
-                <span style={{ fontSize: '0.85rem' }}>Carregando conversas...</span>
-              </div>
-            ) : conversations.length === 0 ? (
-              <div
-                style={{
-                  padding: '48px 16px',
-                  textAlign: 'center',
-                  color: '#64748b',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px',
-                }}
-              >
-                <Sparkles size={36} style={{ opacity: 0.5 }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', fontWeight: 600 }}>
-                    {activeTab === 'unread' ? 'Nenhuma mensagem não lida.' : 'Nenhuma conversa na Inbox ainda.'}
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.78rem' }}>
-                    Inicie uma conversa privada chamando qualquer membro da plataforma.
-                  </p>
-                </div>
+        ) : !selectedContact ? (() => {
+          const totalPages = Math.max(1, Math.ceil(conversations.length / ITEMS_PER_PAGE));
+          const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+          const paginatedConversations = conversations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-                {/* Opção 2: Ação Destacada no Empty State */}
-                <button
-                  type="button"
-                  onClick={() => setIsSelectingNewContact(true)}
-                  data-testid="dm-empty-state-new-conversation-btn"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0284c7',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    marginTop: '8px',
-                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
-                  }}
-                >
-                  <UserPlus size={16} />
-                  <span>Iniciar Nova Conversa</span>
-                </button>
+          return (
+            <>
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+                data-testid="dm-conversations-list"
+              >
+                {loading ? (
+                  <div style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#94a3b8' }}>
+                    <Loader2 size={28} className="animate-spin" color="#38bdf8" />
+                    <span style={{ fontSize: '0.85rem' }}>Carregando conversas...</span>
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ padding: '48px 16px', textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                    <Sparkles size={36} style={{ opacity: 0.5 }} />
+                    <div>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', fontWeight: 600 }}>
+                        {activeTab === 'unread' ? 'Nenhuma mensagem não lida.' : 'Nenhuma conversa na Inbox ainda.'}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.78rem' }}>
+                        Inicie uma conversa privada chamando qualquer membro da plataforma.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsSelectingNewContact(true)}
+                      data-testid="dm-empty-state-new-conversation-btn"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px',
+                        backgroundColor: '#0284c7', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.82rem',
+                        cursor: 'pointer', marginTop: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
+                      }}
+                    >
+                      <UserPlus size={16} />
+                      <span>Iniciar Nova Conversa</span>
+                    </button>
+                  </div>
+                ) : (
+                  paginatedConversations.map((item) => (
+                    <ChatDmConversationItem
+                      key={item.contact.id}
+                      item={item}
+                      onSelect={setSelectedContact}
+                    />
+                  ))
+                )}
               </div>
-            ) : (
-              conversations.map((item) => (
-                <ChatDmConversationItem
-                  key={item.contact.id}
-                  item={item}
-                  onSelect={setSelectedContact}
+
+              {!loading && conversations.length > 0 && (
+                <ChatDmPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={conversations.length}
+                  startIndex={startIndex}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  onPageChange={setCurrentPage}
                 />
-              ))
-            )}
-          </div>
-        ) : (
+              )}
+            </>
+          );
+        })() : (
           <ChatDmConversationView
             selectedContact={selectedContact}
             currentUser={currentUser}

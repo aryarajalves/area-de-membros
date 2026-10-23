@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import DeleteAvatarConfirmModal from './DeleteAvatarConfirmModal';
 
 export default function ProfileAvatarSection({
   avatarUrl,
@@ -15,6 +16,7 @@ export default function ProfileAvatarSection({
   const fileInputRef = useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [removingAvatar, setRemovingAvatar] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -85,6 +87,7 @@ export default function ProfileAvatarSection({
         if (onUserUpdated) {
           onUserUpdated(updated);
         }
+        setDeleteModalOpen(false);
         addToast('Foto de perfil removida com sucesso!', 'success');
       } else {
         const err = await res.json().catch(() => ({}));
@@ -200,7 +203,7 @@ export default function ProfileAvatarSection({
           {avatarUrl && (
             <button
               type="button"
-              onClick={handleRemoveAvatar}
+              onClick={() => setDeleteModalOpen(true)}
               disabled={uploadingAvatar || removingAvatar}
               style={{
                 display: 'inline-flex',
@@ -218,11 +221,20 @@ export default function ProfileAvatarSection({
               data-testid="btn-remove-avatar"
             >
               <Trash2 size={13} />
-              <span>{removingAvatar ? 'Removendo...' : 'Remover'}</span>
+              <span>Remover</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Modal de Confirmação de Remoção de Foto */}
+      <DeleteAvatarConfirmModal
+        isOpen={deleteModalOpen}
+        loading={removingAvatar}
+        onConfirm={handleRemoveAvatar}
+        onClose={() => setDeleteModalOpen(false)}
+        avatarUrl={avatarUrl}
+      />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+from app.core.limiter import limiter
+from fastapi import Request
 import json
 import os
 import uuid
@@ -327,7 +329,9 @@ def get_pinned_message(
     summary="Enviar Mensagem no Chat",
     description="Publica uma nova mensagem com texto e/ou mídia no canal informado."
 )
+@limiter.limit("60/minute")
 def send_chat_message(
+    request: Request,
     payload: ChatMessageCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

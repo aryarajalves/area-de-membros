@@ -111,4 +111,85 @@ describe('LessonAttachmentsManager Component', () => {
       ]);
     });
   });
+
+  it('handles uploading when server responds with attachment_url and file_name', async () => {
+    const handleChange = vi.fn();
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        attachment_url: 'https://b2.com/attachments/att_123.pdf',
+        file_name: 'Documento_Importante.pdf',
+        file_size: 204800
+      })
+    });
+
+    render(
+      <ToastProvider>
+        <LessonAttachmentsManager
+          attachments={[]}
+          onChange={handleChange}
+        />
+      </ToastProvider>
+    );
+
+    const fileInput = screen.getByTestId('attachment-file-input');
+    const fakeFile = new File(['pdf-data'], 'Documento_Importante.pdf', { type: 'application/pdf' });
+
+    fireEvent.change(fileInput, { target: { files: [fakeFile] } });
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalledWith([
+        expect.objectContaining({
+          title: 'Documento_Importante.pdf',
+          file_url: 'https://b2.com/attachments/att_123.pdf',
+          file_size_bytes: 204800
+        })
+      ]);
+    });
+  });
+
+  it('handles multiple files upload in a single action', async () => {
+    const handleChange = vi.fn();
+    let count = 0;
+
+    global.fetch = vi.fn().mockImplementation(() => {
+      count++;
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          title: `Arquivo_${count}.pdf`,
+          file_url: `https://b2.com/doc_${count}.pdf`,
+          file_type: 'pdf',
+          file_size_bytes: 50000
+        })
+      });
+    });
+
+    render(
+      <ToastProvider>
+        <LessonAttachmentsManager
+          attachments={[]}
+          onChange={handleChange}
+        />
+      </ToastProvider>
+    );
+
+    const fileInput = screen.getByTestId('attachment-file-input');
+    expect(fileInput).toHaveAttribute('multiple');
+
+    const f1 = new File(['a'], 'Doc1.pdf', { type: 'application/pdf' });
+    const f2 = new File(['b'], 'Doc2.pdf', { type: 'application/pdf' });
+
+    fireEvent.change(fileInput, { target: { files: [f1, f2] } });
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ title: 'Arquivo_1.pdf' }),
+          expect.objectContaining({ title: 'Arquivo_2.pdf' })
+        ])
+      );
+    });
+  });
 });

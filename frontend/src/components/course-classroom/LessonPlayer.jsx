@@ -11,6 +11,7 @@ import LessonNotes from './LessonNotes';
 import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
 import LessonOverviewTab from './LessonOverviewTab';
 import LessonTabsNavBar from './LessonTabsNavBar';
+import LessonNavigationBar from './LessonNavigationBar';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
@@ -45,10 +46,13 @@ export default function LessonPlayer({
   onCloseModule,
   onEditLesson,
   onLessonUpdated,
-  rightSidebar
+  rightSidebar,
+  initialTab = 'overview',
+  targetCommentId = null
 }) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [visitedTabs, setVisitedTabs] = useState(['overview']);
+  const initialActive = initialTab || (targetCommentId ? 'comments' : 'overview');
+  const [activeTab, setActiveTab] = useState(initialActive);
+  const [visitedTabs, setVisitedTabs] = useState(['overview', ...(initialActive === 'comments' ? ['comments'] : [])]);
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
 
   const handleTabChange = (tabId) => {
@@ -56,10 +60,27 @@ export default function LessonPlayer({
     setVisitedTabs((prev) => (prev.includes(tabId) ? prev : [...prev, tabId]));
   };
 
+  const handleAttachmentAdded = (newAtt) => {
+    const currentList = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
+    const updated = [...currentList, newAtt];
+    if (onLessonUpdated) {
+      onLessonUpdated({ ...lesson, attachments: updated });
+    }
+  };
+
+  const handleAttachmentDeleted = (deletedId) => {
+    const currentList = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
+    const updated = currentList.filter((a) => a.id !== deletedId);
+    if (onLessonUpdated) {
+      onLessonUpdated({ ...lesson, attachments: updated });
+    }
+  };
+
   useEffect(() => {
-    setVisitedTabs(['overview']);
-    setActiveTab('overview');
-  }, [lesson?.id]);
+    const target = initialTab || (targetCommentId ? 'comments' : 'overview');
+    setActiveTab(target);
+    setVisitedTabs((prev) => (prev.includes(target) ? prev : [...prev, target]));
+  }, [lesson?.id, initialTab, targetCommentId]);
 
   const videos = (lesson?.videos && lesson.videos.length > 0)
     ? lesson.videos
@@ -396,7 +417,18 @@ export default function LessonPlayer({
           <div style={{ minHeight: '280px', marginTop: '16px' }} data-testid="lesson-tabs-content-container">
             <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
               {visitedTabs.includes('overview') && (
-                <LessonOverviewTab lesson={lesson} courseId={courseId} moduleId={moduleId || lesson.module_id} currentDescription={currentDescription} isManager={isManager} textColor={textColor} subTextColor={subTextColor} mutedColor={mutedColor} onLessonUpdated={onLessonUpdated} />
+                <LessonOverviewTab
+                  lesson={lesson}
+                  courseId={courseId}
+                  moduleId={moduleId || lesson.module_id}
+                  currentDescription={currentDescription}
+                  isManager={isManager}
+                  textColor={textColor}
+                  subTextColor={subTextColor}
+                  mutedColor={mutedColor}
+                  onLessonUpdated={onLessonUpdated}
+                  onSwitchToAttachments={() => handleTabChange('attachments')}
+                />
               )}
             </div>
             <div style={{ display: activeTab === 'transcription' ? 'block' : 'none' }}>
@@ -407,7 +439,16 @@ export default function LessonPlayer({
             <div style={{ display: activeTab === 'attachments' ? 'block' : 'none' }}>
               {visitedTabs.includes('attachments') && (
                 <div style={{ marginTop: '20px' }}>
-                  <LessonAttachmentsList attachments={lesson.attachments || []} isLightBg={isLightBg} />
+                  <LessonAttachmentsList
+                    attachments={lesson.attachments || []}
+                    isLightBg={isLightBg}
+                    courseId={courseId}
+                    moduleId={moduleId || lesson.module_id}
+                    lessonId={lesson.id}
+                    isManager={isManager}
+                    onAttachmentAdded={handleAttachmentAdded}
+                    onAttachmentDeleted={handleAttachmentDeleted}
+                  />
                 </div>
               )}
             </div>
@@ -418,7 +459,14 @@ export default function LessonPlayer({
             </div>
             <div style={{ display: activeTab === 'comments' ? 'block' : 'none' }}>
               {visitedTabs.includes('comments') && (
-                <LessonComments courseId={courseId} moduleId={moduleId || lesson.module_id} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} />
+                <LessonComments
+                  courseId={courseId}
+                  moduleId={moduleId || lesson.module_id}
+                  lessonId={lesson.id}
+                  currentUser={currentUser}
+                  isLightBg={isLightBg}
+                  targetCommentId={targetCommentId}
+                />
               )}
             </div>
           </div>
@@ -432,21 +480,15 @@ export default function LessonPlayer({
             currentUser={currentUser}
           />
 
-          {/* Navegação Anterior */}
-          {prevLesson && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flexWrap: 'wrap', gap: '10px', marginTop: '24px' }}>
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => onSelectLesson(prevLesson)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '12.5px', backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)', color: textColor, borderColor }}
-                data-testid="prev-lesson-btn"
-              >
-                <ChevronLeft size={15} />
-                <span>Aula Anterior</span>
-              </button>
-            </div>
-          )}
+          {/* Navegação entre Aulas (Aula Anterior e Próxima Aula) */}
+          <LessonNavigationBar
+            prevLesson={prevLesson}
+            nextLesson={nextLesson}
+            onSelectLesson={onSelectLesson}
+            isLightBg={isLightBg}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
         </div>
 
         {/* Coluna Direita: Timeline de Progresso, Módulos e Aulas */}

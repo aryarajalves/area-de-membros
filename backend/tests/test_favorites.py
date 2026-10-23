@@ -1,8 +1,9 @@
 import pytest
 from app.core.security import get_password_hash
 from app.models.user import User
-from app.models.course import Course, Module, Lesson, LessonComment, LessonFavorite, LessonCommentFavorite
+from app.models.course import Course, Module, Lesson, LessonComment, LessonFavorite, LessonCommentFavorite, UserCourse
 from app.models.support import SupportTopic, SupportTopicPin
+from app.models.chat import ChatMessage, ChatMessageFavorite
 from tests.conftest import TestingSessionLocal, client
 
 
@@ -39,6 +40,13 @@ def setup_favorites_data():
         db.commit()
         db.refresh(course)
 
+    # Vínculo de acesso ao curso para o aluno
+    uc = db.query(UserCourse).filter(UserCourse.user_id == user.id, UserCourse.course_id == course.id).first()
+    if not uc:
+        uc = UserCourse(user_id=user.id, course_id=course.id)
+        db.add(uc)
+        db.commit()
+
     mod = db.query(Module).filter(Module.course_id == course.id).first()
     if not mod:
         mod = Module(title="Módulo 1", course_id=course.id, order_index=1)
@@ -67,12 +75,55 @@ def setup_favorites_data():
         db.commit()
         db.refresh(topic)
 
+    # Segundo usuário para DM
+    user_dm = db.query(User).filter(User.email == "outro_aluno_dm@test.com").first()
+    if not user_dm:
+        user_dm = User(
+            email="outro_aluno_dm@test.com",
+            name="Mariana Contato DM",
+            role="aluno",
+            hashed_password=get_password_hash("Pass123!"),
+            is_active=True
+        )
+        db.add(user_dm)
+        db.commit()
+        db.refresh(user_dm)
+
+    # Mensagem de grupo (curso)
+    group_msg = db.query(ChatMessage).filter(ChatMessage.message == "Mensagem no grupo do curso").first()
+    if not group_msg:
+        group_msg = ChatMessage(
+            channel_type="course",
+            course_id=course.id,
+            user_id=user.id,
+            message="Mensagem no grupo do curso"
+        )
+        db.add(group_msg)
+        db.commit()
+        db.refresh(group_msg)
+
+    # Mensagem de DM
+    dm_msg = db.query(ChatMessage).filter(ChatMessage.message == "Mensagem privada em DM").first()
+    if not dm_msg:
+        dm_msg = ChatMessage(
+            channel_type="dm",
+            user_id=user_dm.id,
+            recipient_id=user.id,
+            message="Mensagem privada em DM"
+        )
+        db.add(dm_msg)
+        db.commit()
+        db.refresh(dm_msg)
+
     yield {
         "user": user,
+        "user_dm": user_dm,
         "course": course,
         "lesson": lesson,
         "comment": comment,
         "topic": topic,
+        "group_msg": group_msg,
+        "dm_msg": dm_msg,
     }
 
 
@@ -145,7 +196,14 @@ def test_list_all_favorites(setup_favorites_data):
     assert data["counts"]["total"] >= 3
 
     assert any(l["id"] == lesson_id for l in data["lessons"])
-    assert any(c["id"] == comment_id for c in data["comments"])
+    fav_comment_item = next((c for c in data["comments"] if c["id"] == comment_id), None)
+    assert fav_comment_item is not None
+    assert fav_comment_item["lesson_id"] == lesson_id
+    assert fav_comment_item["lesson_title"] == "Aula 1 Teste"
+    assert fav_comment_item["module_id"] is not None
+    assert fav_comment_item["module_title"] == "Módulo 1"
+    assert fav_comment_item["course_id"] is not None
+    assert fav_comment_item["course_title"] == "Curso Favoritos Teste"
     assert any(t["id"] == topic_id for t in data["topics"])
 
 
@@ -167,4 +225,36 @@ def test_toggle_and_status_topic_favorite(setup_favorites_data):
     res_toggle2 = client.post(f"/api/v1/favorites/topics/{topic_id}/toggle", headers=headers)
     assert res_toggle2.status_code == 200
     assert res_toggle2.json()["is_favorited"] is False
+
+
+def test_favorite_messages_group_and_dm(setup_favorites_data):
+    headers = get_headers("aluno_fav@test.com", "Pass123!")
+    group_msg = setup_favorites_data["group_msg"]
+    dm_msg = setup_favorites_data["dm_msg"]
+
+    # Favoritar as duas mensagens
+    client.post(f"/api/v1/chat/messages/{group_msg.id}/favorite", headers=headers)
+    client.post(f"/api/v1/chat/messages/{dm_msg.id}/favorite", headers=headers)
+
+    res = client.get("/api/v1/favorites?category=messages", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+
+    fav_messages = data["messages"]
+    assert len(fav_messages) >= 2
+
+    # Verifica mensagem de grupo
+    found_group = next((m for m in fav_messages if m["id"] == group_msg.id), None)
+    assert found_group is not None
+    assert found_group["channel_type"] == "course"
+    assert found_group["course_id"] == setup_favorites_data["course"].id
+    assert found_group["course_title"] == "Curso Favoritos Teste"
+
+    # Verifica mensagem de DM
+    found_dm = next((m for m in fav_messages if m["id"] == dm_msg.id), None)
+    assert found_dm is not None
+    assert found_dm["channel_type"] == "dm"
+    assert found_dm["other_user"] is not None
+    assert found_dm["other_user"]["name"] == "Mariana Contato DM"
+
 

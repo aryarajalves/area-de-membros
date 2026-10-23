@@ -224,4 +224,101 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       expect(screen.getByText('Criptografada')).toBeInTheDocument();
     });
   });
+
+  it('paginates active conversations to 20 per page and allows page navigation', async () => {
+    const mockConversations = Array.from({ length: 25 }, (_, i) => ({
+      contact: { id: i + 1, name: `Contato ${i + 1}`, role: 'aluno', avatar_url: null },
+      last_message: `Mensagem ${i + 1}`,
+      last_message_at: '2026-10-06T10:00:00Z',
+      unread_count: 0,
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockConversations,
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
+    );
+
+    // Página 1: deve exibir Contato 1 até Contato 20
+    await waitFor(() => {
+      expect(screen.getByText('Contato 1')).toBeInTheDocument();
+      expect(screen.getByText('Contato 20')).toBeInTheDocument();
+      expect(screen.queryByText('Contato 21')).not.toBeInTheDocument();
+      expect(screen.getByTestId('dm-pagination-info')).toHaveTextContent('Exibindo 1–20 de 25 DMs');
+      expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('1 / 2');
+    });
+
+    // Clica para ir para a página 2
+    fireEvent.click(screen.getByTestId('dm-pagination-next-btn'));
+
+    // Página 2: deve exibir Contato 21 até Contato 25 e não mais o Contato 1
+    await waitFor(() => {
+      expect(screen.queryByText('Contato 1')).not.toBeInTheDocument();
+      expect(screen.getByText('Contato 21')).toBeInTheDocument();
+      expect(screen.getByText('Contato 25')).toBeInTheDocument();
+      expect(screen.getByTestId('dm-pagination-info')).toHaveTextContent('Exibindo 21–25 de 25 DMs');
+      expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('2 / 2');
+    });
+
+    // Clica no botão anterior para retornar à página 1
+    fireEvent.click(screen.getByTestId('dm-pagination-prev-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Contato 1')).toBeInTheDocument();
+      expect(screen.queryByText('Contato 21')).not.toBeInTheDocument();
+      expect(screen.getByTestId('dm-pagination-info')).toHaveTextContent('Exibindo 1–20 de 25 DMs');
+      expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('1 / 2');
+    });
+  });
+
+  it('resets to page 1 when switching between inbox and unread tabs', async () => {
+    const mockConversations = Array.from({ length: 25 }, (_, i) => ({
+      contact: { id: i + 1, name: `Contato ${i + 1}`, role: 'aluno', avatar_url: null },
+      last_message: `Mensagem ${i + 1}`,
+      last_message_at: '2026-10-06T10:00:00Z',
+      unread_count: 0,
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockConversations,
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
+    );
+
+    // Navega para a página 2
+    await waitFor(() => {
+      expect(screen.getByText('Contato 1')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('dm-pagination-next-btn'));
+    await waitFor(() => {
+      expect(screen.getByText('Contato 25')).toBeInTheDocument();
+      expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('2 / 2');
+    });
+
+    // Muda para a aba não lidas
+    fireEvent.click(screen.getByTestId('dm-tab-unread'));
+
+    // Deve resetar para a página 1
+    await waitFor(() => {
+      expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('1 / 2');
+    });
+  });
 });

@@ -271,6 +271,46 @@ describe('CourseModals Components', () => {
         expect(setDescription).toHaveBeenCalledWith(mockAiResponse.description);
       });
     });
+
+    it('switches tabs between info, media, sales_access, and ai', () => {
+      render(
+        <CourseFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          editingCourse={null}
+          title="Curso Abas"
+          setTitle={vi.fn()}
+          description="Desc"
+          setDescription={vi.fn()}
+          thumbnailUrl=""
+          setThumbnailUrl={vi.fn()}
+          salesPageUrl="https://site.com"
+          setSalesPageUrl={vi.fn()}
+          orderIndex={1}
+          setOrderIndex={vi.fn()}
+          uploading={false}
+          saving={false}
+          onSaveCourse={vi.fn()}
+        />
+      );
+
+      // Initially active tab is info
+      expect(screen.getByTestId('course-modal-tab-panel-info').parentElement).toHaveStyle({ display: 'block' });
+      expect(screen.getByTestId('course-modal-tab-panel-media').parentElement).toHaveStyle({ display: 'none' });
+
+      // Click media tab
+      fireEvent.click(screen.getByTestId('course-tab-media'));
+      expect(screen.getByTestId('course-modal-tab-panel-info').parentElement).toHaveStyle({ display: 'none' });
+      expect(screen.getByTestId('course-modal-tab-panel-media').parentElement).toHaveStyle({ display: 'block' });
+
+      // Click sales tab
+      fireEvent.click(screen.getByTestId('course-tab-sales'));
+      expect(screen.getByTestId('course-modal-tab-panel-access').parentElement).toHaveStyle({ display: 'block' });
+
+      // Click ai tab
+      fireEvent.click(screen.getByTestId('course-tab-ai'));
+      expect(screen.getByTestId('course-modal-tab-panel-ai').parentElement).toHaveStyle({ display: 'block' });
+    });
   });
 
   describe('CourseDeleteModal', () => {

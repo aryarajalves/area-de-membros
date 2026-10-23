@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, BookOpen, Search, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import CourseClassroom from './course-classroom/CourseClassroom';
@@ -18,57 +18,48 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const { addToast } = useToast();
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
 
+  const navigateToCourseTarget = useCallback((course, targetInfo) => {
+    if (!course) return;
+    const hasAccess = isManager || course.has_access !== false;
+    if (!hasAccess) {
+      if (course.sales_page_url) {
+        window.open(course.sales_page_url, '_blank', 'noopener,noreferrer');
+        addToast('Redirecionando para a página de vendas do curso...', 'info');
+        return;
+      }
+      addToast('Você não possui acesso a este produto. Entre em contato para adquiri-lo.', 'info');
+      return;
+    }
+    const { moduleId, lessonId, commentId, activeTab } = targetInfo || {};
+    setInitialTargetLesson({ moduleId, lessonId, commentId, activeTab });
+    setSelectedCourse(course);
+  }, [isManager, addToast]);
+
   useEffect(() => {
     const handleOpenCourseLesson = (e) => {
-      const { courseId, moduleId, lessonId } = e.detail || {};
+      const { courseId, moduleId, lessonId, commentId, activeTab } = e.detail || {};
       if (!courseId) return;
-
       const targetId = Number(courseId);
       const found = courses.find((c) => c.id === targetId);
-
       if (found) {
-        const hasAccess = isManager || found.has_access !== false;
-        if (!hasAccess) {
-          if (found.sales_page_url) {
-            window.location.href = found.sales_page_url;
-            return;
-          }
-          addToast('Você não possui acesso a este produto. Entre em contato para adquiri-lo.', 'info');
-          return;
-        }
-        setInitialTargetLesson({ moduleId, lessonId });
-        setSelectedCourse(found);
+        navigateToCourseTarget(found, { moduleId, lessonId, commentId, activeTab });
       } else {
-        setPendingLessonTarget({ courseId: targetId, moduleId, lessonId });
+        setPendingLessonTarget({ courseId: targetId, moduleId, lessonId, commentId, activeTab });
       }
     };
-
     window.addEventListener('open_course_lesson', handleOpenCourseLesson);
-    return () => {
-      window.removeEventListener('open_course_lesson', handleOpenCourseLesson);
-    };
-  }, [courses, isManager, addToast]);
+    return () => window.removeEventListener('open_course_lesson', handleOpenCourseLesson);
+  }, [courses, navigateToCourseTarget]);
 
   useEffect(() => {
     if (!pendingLessonTarget || courses.length === 0) return;
-    const { courseId, moduleId, lessonId } = pendingLessonTarget;
+    const { courseId, moduleId, lessonId, commentId, activeTab } = pendingLessonTarget;
     const found = courses.find((c) => c.id === courseId);
     setPendingLessonTarget(null);
-
     if (found) {
-      const hasAccess = isManager || found.has_access !== false;
-      if (!hasAccess) {
-        if (found.sales_page_url) {
-          window.location.href = found.sales_page_url;
-          return;
-        }
-        addToast('Você não possui acesso a este produto. Entre em contato para adquiri-lo.', 'info');
-        return;
-      }
-      setInitialTargetLesson({ moduleId, lessonId });
-      setSelectedCourse(found);
+      navigateToCourseTarget(found, { moduleId, lessonId, commentId, activeTab });
     }
-  }, [courses, pendingLessonTarget, isManager, addToast]);
+  }, [courses, pendingLessonTarget, navigateToCourseTarget]);
 
   useEffect(() => {
     if (onCourseViewChange) {
@@ -307,6 +298,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         currentUser={currentUser}
         initialModuleId={initialTargetLesson?.moduleId}
         initialLessonId={initialTargetLesson?.lessonId}
+        initialCommentId={initialTargetLesson?.commentId}
+        initialTab={initialTargetLesson?.activeTab}
         onBack={() => {
           setSelectedCourse(null);
           setInitialTargetLesson(null);
