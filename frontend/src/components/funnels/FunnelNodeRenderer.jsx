@@ -23,6 +23,7 @@ export default function FunnelNodeRenderer({
   onConnectTarget,
   isTargetActive,
   availableSenders = [],
+  courses = [],
 }) {
   const commonProps = {
     node,
@@ -34,6 +35,7 @@ export default function FunnelNodeRenderer({
     onConnectTarget,
     isTargetActive,
     availableSenders,
+    courses,
   };
 
   switch (node.type) {

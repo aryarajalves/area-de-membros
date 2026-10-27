@@ -18,6 +18,10 @@ import {
   GitFork,
   GraduationCap,
   Octagon,
+  MessageSquareText,
+  Users,
+  Trophy,
+  CalendarCheck,
 } from 'lucide-react';
 
 const NODE_CATALOG = [
@@ -29,6 +33,10 @@ const NODE_CATALOG = [
       { type: 'trigger_progress_milestone', label: 'Marco de Progresso', icon: Award, color: '#a855f7', defaultData: { trigger_event: 'progress_milestone', milestone: '100' } },
       { type: 'trigger_renewal_warning', label: 'Aviso de Expiração', icon: Hourglass, color: '#f43f5e', defaultData: { trigger_event: 'renewal_warning', days_before: 7 } },
       { type: 'trigger_student_inactivity', label: 'Alerta de Inatividade', icon: UserX, color: '#ec4899', defaultData: { trigger_event: 'student_inactivity', inactive_days: 7 } },
+      { type: 'trigger_first_testimonial', label: 'Primeiro Depoimento', icon: MessageSquareText, color: '#38bdf8', defaultData: { trigger_event: 'first_testimonial', course_id: null, course_title: 'Todos os Cursos' } },
+      { type: 'trigger_first_presentation', label: 'Primeira Apresentação', icon: Users, color: '#10b981', defaultData: { trigger_event: 'first_presentation' } },
+      { type: 'trigger_level_up', label: 'Subida de Nível (Level Up)', icon: Trophy, color: '#c084fc', defaultData: { trigger_event: 'level_up', target_level: 'any' } },
+      { type: 'trigger_event_attendance', label: 'Presença em Evento', icon: CalendarCheck, color: '#f472b6', defaultData: { trigger_event: 'event_attendance', event_id: 'any', event_title: 'Qualquer Evento' } },
     ],
   },
   {
@@ -66,9 +74,6 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
 
   const handleMenuWheel = (e) => {
     e.stopPropagation();
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop += e.deltaY;
-    }
   };
 
   const filterItems = (items) => {
@@ -161,7 +166,13 @@ export default function FunnelNodeMenu({ position = { x: 300, y: 150 }, onSelect
         ref={scrollRef}
         className="custom-funnel-scroll"
         onWheel={handleMenuWheel}
-        style={{ maxHeight: '320px', overflowY: 'auto', padding: '8px' }}
+        style={{
+          maxHeight: '320px',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          scrollBehavior: 'smooth',
+          padding: '8px',
+        }}
       >
         {NODE_CATALOG.map((cat) => {
           const matched = filterItems(cat.items);

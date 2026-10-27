@@ -196,7 +196,7 @@ export default function TopNavbar({
         backgroundColor: 'rgba(15, 23, 42, 0.75)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        zIndex: 50,
+        zIndex: isFavoritesOpen ? 999999 : 1000,
         position: 'sticky',
         top: 0,
         flexShrink: 0,

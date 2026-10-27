@@ -26,6 +26,7 @@ export default function FunnelCanvasWorld({
   nodeHeights = {},
   onNodeHeightMeasured,
   availableSenders = [],
+  courses = [],
 }) {
   return (
     <div
@@ -59,7 +60,13 @@ export default function FunnelCanvasWorld({
             }
           }}
           onClick={() => onNodeClick(node.id)}
-          onMouseDown={(e) => onMouseDownNode(e, node)}
+          onMouseDown={(e) => {
+            // Não inicia o arraste do nó se a interação do usuário for em campos interativos (select, input, textarea, button, a)
+            if (e.target?.closest && e.target.closest('input, textarea, select, option, button, a')) {
+              return;
+            }
+            onMouseDownNode(e, node);
+          }}
           onMouseUp={(e) => {
             if (activeConnectingSource && activeConnectingSource !== node.id) {
               e.stopPropagation();
@@ -84,6 +91,7 @@ export default function FunnelCanvasWorld({
             onConnectTarget={onConnectTarget}
             isTargetActive={Boolean(activeConnectingSource && activeConnectingSource !== node.id && node.type !== 'trigger')}
             availableSenders={availableSenders}
+            courses={courses}
           />
         </div>
       ))}

@@ -33,6 +33,37 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 
 ---
 
+
+## 0.1. Módulo de Eventos, Lives e Mentorias
+- **Posicionamento na Barra Lateral (`Sidebar`):**
+  - Posicionado na categoria pedagógica (*"Meu Aprendizado"* para alunos e *"Área Pedagógica"* para administradores), imediatamente após o item **Cursos**, com o ícone `Calendar`.
+  - Acesso liberado para todos os perfis (`aluno`, `admin`, `superadmin`).
+- **Campos e Informações do Evento:**
+  - **Título/Nome do Evento:** Nome descritivo da live, encontro ou mentoria (obrigatório).
+  - **Thumbnail / Imagem de Capa:** Suporte a upload direto de imagem (JPG, PNG, WEBP até 5 MB) ou link de URL externa.
+  - **Data e Horário de Início:** Obrigatório, exibido e interpretado no **Horário Oficial de Brasília (America/Sao_Paulo - UTC-3)**.
+  - **Data e Horário de Término:** Opcional (se informado, deve ser posterior ao início).
+  - **Link da Transmissão Ao Vivo:** URL da sala (Zoom, Google Meet, YouTube Live, etc.).
+  - **Link da Gravação (Pós-Evento):** URL para os alunos assistirem ao replay após a realização do evento.
+  - **Descrição e Orientações:** Texto com os tópicos a serem abordados, preparação e materiais.
+- **Regras de Visibilidade e Upsell Pedagógico:**
+  - **Liberado para Todos (`target_type = 'all'`):** Todos os alunos matriculados na plataforma visualizam o evento e possuem acesso irrestrito aos links de transmissão e gravação.
+  - **Exclusivo por Curso (`target_type = 'course'`):**
+    - **Aluno Matriculado no Curso:** Vê o evento completo, links de transmissão e gravação disponíveis.
+    - **Aluno SEM Matrícula no Curso:** O card é exibido como vitrine com o selo *"Exclusivo: [Nome do Curso]"* e badge de produto fechado. Os links da sala e gravação permanecem ocultos/protegidos no backend (`meeting_url: null`). O aluno visualiza o botão de upsell *"Desbloquear Acesso ao Curso"* direcionando para a página de vendas (`sales_page_url`) ou tela de cursos.
+- **Integração com Google Agenda:**
+  - O card do evento oferece o botão direto *"Adicionar ao Google Agenda"* gerando link universal (`https://calendar.google.com/calendar/render?action=TEMPLATE...`), já com título, descrição, link da transmissão e horário devidamente convertidos para UTC.
+- **Ciclo de Vida e Badges de Status:**
+  - 🔴 **AO VIVO AGORA:** Exibido quando a data e hora atual estiver entre o início e o término da live, com animação pulsante neon e botão direto para entrar.
+  - 🔵 **EM BREVE:** Para eventos futuros com contagem regressiva e data formatada.
+  - ⚪ **ENCERRADO:** Para eventos que já aconteceram, destacando o botão de gravação caso preenchido.
+- **Permissões de Gestão (Admin / Super Admin):**
+  - Botão **"+ Novo Evento"** no cabeçalho.
+  - Ações de **Editar** e **Excluir** diretamente em cada card.
+  - A exclusão exige confirmação obrigatória via popup modal centralizado com fundo escuro (`DeleteEventConfirmModal`), prevenindo deleções acidentais.
+
+---
+
 ## 1. GestÃ£o de Cursos e Controle de Acesso por Aluno
 - **Visibilidade de Cursos:** A visibilidade de um curso **NÃO** Ã© definida globalmente no curso para todos os alunos. Cada aluno tem sua prÃ³pria lista de cursos aos quais possui acesso liberado e seu respectivo prazo de validade individual por produto.
 - **Redirecionamento ao Clicar em Links de Cursos (Chat, Favoritos e Links Diretos):**
@@ -1158,7 +1189,15 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
        - **Bloqueio de ConexÃµes de Entrada (Target):** Como o Gatilho Ã© o ponto inicial disparado por eventos externos, ele **possui exclusivamente porta de saÃ­da (output)** e Ã© **terminantemente proibido de receber conexÃµes de entrada**. O sistema bloqueia tentativas de conectar qualquer nÃ³ apontando para trÃ¡s em direÃ§Ã£o ao gatilho, exibe notificaÃ§Ã£o explicativa e expurga automaticamente conexÃµes reversas.
        - **ConfiguraÃ§Ã£o de Tempo / Atraso:** Permite disparar **imediatamente** (`0 dias`) ou com delay de **X dias apÃ³s a criaÃ§Ã£o do aluno** (presets rÃ¡pidos: `Imediatamente (0d)`, `7 dias`, `14 dias`, `21 dias`, alÃ©m de campo numÃ©rico customizado).
        - **ExecuÃ§Ã£o AutomÃ¡tica no Backend:** Quando um aluno Ã© cadastrado (seja via cadastro pÃºblico, convite com cÃ³digo OTP ou criaÃ§Ã£o manual pelo administrador), o sistema localiza os funis ativos com gatilho imediato (`0d`) e inicia a sequÃªncia. Para gatilhos com atraso (`days_after > 0`), a rotina periÃ³dica do worker e o endpoint `POST /api/v1/funnels/check-triggers` verificam e disparam o fluxo uma Ãºnica vez por aluno.
-    2. **Categoria Mensagens (`message`):** Envia mensagem privada (DM) para o aluno com suporte a tags dinÃ¢micas `{aluno}`, variaÃ§Ãµes Spintax (ex: `{OlÃ¡|Oi|E aÃ­}`) sorteadas a cada execuÃ§Ã£o, e atÃ© 3 botÃµes de aÃ§Ã£o interativos.
+       - **Gatilhos da Comunidade & Eventos:**
+         - **Primeiro Depoimento (`first_testimonial`):** Dispara automaticamente assim que o aluno posta sua primeira avaliação/depoimento na plataforma, com filtro opcional por curso específico.
+         - **Primeira Apresentação (`first_presentation`):** Dispara quando o aluno publica seu primeiro post de apresentação na comunidade, ideal para boas-vindas e acolhimento.
+         - **Subida de Nível / Level Up (`level_up`):** Dispara quando o aluno sobe de nível de RPG ao ganhar XP por aulas concluídas, suporte ou interação, permitindo escolher "Qualquer Nível" ou um nível alvo específico (Níveis 2 a 20).
+         - **Presença em Evento (`event_attendance`):** Dispara quando o aluno clica no botão de confirmação de presença no card do evento, permitindo filtrar por qualquer evento ou evento específico.
+    2. **Categoria Mensagens (`message`):** Envia mensagem com suporte a tags dinâmicas `{aluno}`, variações Spintax (ex: `{Olá|Oi|E aí}`) sorteadas a cada execução, até 3 botões de ação interativos e **seleção flexível do destino de disparo**:
+       - **DM Privada (`dm` - Padrão):** Disparo privado direto no chat do aluno com seleção de remetente (Admin, Tutor, etc.) e criptografia.
+       - **Comunidade Geral (`community_general`):** Publicação automática no canal público Geral da Comunidade com broadcast via WebSocket em tempo real.
+       - **Grupo do Curso (`community_course`):** Publicação automática no canal/grupo da comunidade vinculado ao curso selecionado no dropdown.
     3. **Categoria MÃ­dias (`media`):** Envia imagens, vÃ­deos ou documentos via URL direta com legenda opcional e suporte a Spintax.
     4. **Categoria Ãudio (`audio`):** Envia mensagens de Ã¡udio (MP3/WebM) com opÃ§Ã£o de simular gravaÃ§Ã£o de voz na hora.
     5. **Categoria Controle de Fluxo (`delay`):** Aplica uma pausa temporizada em segundos (`seconds`) antes de avanÃ§ar para o prÃ³ximo nÃ³ do fluxo.
@@ -1172,7 +1211,9 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
        - **Unicidade de Portas na Bifurcação:** Permite conectar simultaneamente 1 nó na saída SIM e 1 nó na saída NÃO, mantendo a regra 1:1 por porta (`sourceHandle`).
        - **Criação Rápida com Paleta de Cores:** Busca em tempo real com criação de etiqueta via modal popup com escolha de cores.
     7. **Categoria Ações & Contatos (`action_*`):**
-       - **Webhook Externo (`action_webhook`):** Dispara requisições HTTP (GET/POST/PUT) com payload JSON dinâmico contendo dados do aluno.
+       - **Webhook Externo (`action_webhook`):** Dispara requisições HTTP (GET/POST) com suporte a dois modos:
+         - **Padrão (Full Payload):** Envia JSON padrão contendo os dados do aluno (`id`, `nome`, `email`, `telefone`).
+         - **JSON Personalizado (Estilo ManyChat):** Modal com editor JSON monoespaçado, validação de sintaxe em tempo real, pílulas de inserção com um clique para tags dinâmicas (`{{nome}}`, `{{email}}`, `{{telefone}}`, `{{id}}`, `{{funnel_id}}`, `{{timestamp}}`) e configuração de headers customizados (ex: `Authorization: Bearer ...`).
        - **Matrícula Automática (`action_enrollment`):** Concede matrícula imediata em um curso ou pacote da plataforma com tempo de acesso configurável.
        - **Recompensa XP (`action_gamification_xp`):** Credita pontos de gamificação (XP) e histórico de recompensa diretamente ao aluno.
        - **Notificação Interna (`action_internal_notify`):** Envia alerta interno para administradores ou canais quando o aluno atinge determinada etapa.

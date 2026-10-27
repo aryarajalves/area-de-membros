@@ -15,6 +15,7 @@ describe('Sidebar Component', () => {
     const { unmount } = render(<Sidebar user={superAdminUser} />);
     expect(screen.getByText('Início')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
+    expect(screen.getByText('Eventos')).toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
@@ -28,6 +29,7 @@ describe('Sidebar Component', () => {
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
     expect(screen.getByText('Início')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
+    expect(screen.getByText('Eventos')).toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();

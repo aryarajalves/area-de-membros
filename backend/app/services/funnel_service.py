@@ -399,12 +399,69 @@ async def execute_funnel_flow(
                     btn_url = first_btn.get("url") or first_btn.get("target_node_id")
                     btn_action = first_btn.get("action_type", "url")
 
-                # Salvar mensagem no chat DM
+                # Determinar o destino: DM privada ou Canal da Comunidade
+                destination_type = node_data.get("destination_type", "dm")
+                target_course_id = node_data.get("target_course_id") or node_data.get("course_id")
+
+                if destination_type == "community_general":
+                    ch_type = "general"
+                    rec_id = None
+                    c_id = None
+                    msg_text = final_text
+                    log_label = f"Mensagem enviada para Comunidade Geral (Nó {current_node_id})"
+                    ws_event = "new_message"
+                    ws_data = {
+                        "id": None,
+                        "channel_type": "general",
+                        "course_id": None,
+                        "user_id": effective_sender_id,
+                        "message": final_text,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "button_text": btn_text,
+                        "button_url": btn_url,
+                        "button_action_type": btn_action,
+                    }
+                elif destination_type == "community_course" and target_course_id:
+                    ch_type = "course"
+                    rec_id = None
+                    c_id = int(target_course_id)
+                    msg_text = final_text
+                    log_label = f"Mensagem enviada para Comunidade no Curso #{c_id} (Nó {current_node_id})"
+                    ws_event = "new_message"
+                    ws_data = {
+                        "id": None,
+                        "channel_type": "course",
+                        "course_id": c_id,
+                        "user_id": effective_sender_id,
+                        "message": final_text,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "button_text": btn_text,
+                        "button_url": btn_url,
+                        "button_action_type": btn_action,
+                    }
+                else:
+                    ch_type = "dm"
+                    rec_id = student_id
+                    c_id = None
+                    msg_text = encrypt_dm_message(final_text)
+                    log_label = f"Mensagem enviada (Nó {current_node_id})"
+                    ws_event = "new_dm"
+                    ws_data = {
+                        "recipient_id": student_id,
+                        "sender_id": effective_sender_id,
+                        "message_id": None,
+                        "text": final_text,
+                        "button_text": btn_text,
+                        "button_url": btn_url,
+                        "button_action_type": btn_action,
+                    }
+
                 msg = ChatMessage(
-                    channel_type="dm",
+                    channel_type=ch_type,
+                    course_id=c_id,
                     user_id=effective_sender_id,
-                    recipient_id=student_id,
-                    message=encrypt_dm_message(final_text),
+                    recipient_id=rec_id,
+                    message=msg_text,
                     button_text=btn_text,
                     button_url=btn_url,
                     button_action_type=btn_action,
@@ -416,23 +473,21 @@ async def execute_funnel_flow(
 
                 # Disparar evento WebSocket em tempo real
                 try:
+                    if ws_event == "new_dm":
+                        ws_data["message_id"] = msg.id
+                    else:
+                        ws_data["id"] = msg.id
+
                     await chat_manager.broadcast_event(
-                        event_type="new_dm",
-                        data={
-                            "recipient_id": student_id,
-                            "sender_id": effective_sender_id,
-                            "message_id": msg.id,
-                            "text": final_text,
-                            "button_text": btn_text,
-                            "button_url": btn_url,
-                            "button_action_type": btn_action,
-                        },
-                        channel_type="dm",
+                        event_type=ws_event,
+                        data=ws_data,
+                        channel_type=ch_type,
+                        course_id=c_id,
                     )
                 except Exception as ws_err:
                     logger.warning(f"[FUNNEL #{funnel_id}] Falha ao emitir evento WS: {ws_err}")
 
-                execution_logs.append(f"Mensagem enviada (Nó {current_node_id})")
+                execution_logs.append(log_label)
 
             elif node_type == "delay":
                 from app.services.funnel_logic_node_service import calculate_delay_with_business_hours

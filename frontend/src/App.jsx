@@ -24,11 +24,12 @@ import TopNavbar from './components/navigation/TopNavbar';
 import FunnelManagement from './components/funnels/FunnelManagement';
 import { HomeTutorials } from './components/home-tutorials';
 import { IntroductionManagement } from './components/introductions';
+import { EventsManagement } from './components/events';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 import { useUrlNavigation } from './hooks/useUrlNavigation';
 
-const ALUNO_ALLOWED_TABS = ['home', 'courses', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
+const ALUNO_ALLOWED_TABS = ['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
 
 function App() {
   const [user, setUser] = useState(null);
@@ -37,6 +38,7 @@ function App() {
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [isInsideCourse, setIsInsideCourse] = useState(false);
+  const [isInsideFunnel, setIsInsideFunnel] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
     return localStorage.getItem('member_area_bg_color') || '#090d16';
@@ -70,6 +72,7 @@ function App() {
 
   const handleSelectTab = useCallback((tabId) => {
     setIsInsideCourse(false);
+    setIsInsideFunnel(false);
     setIsMobileMenuOpen(false);
     setActiveTab(tabId);
     localStorage.setItem('active_tab', tabId);
@@ -314,13 +317,14 @@ function App() {
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
 
   const isFullView = isInsideCourse;
+  const isHideSidebar = isFullView || isInsideFunnel;
 
   return (
     <div
       className={`app-container ${!isLightBg ? 'app-dark-theme classroom-dark-theme' : ''}`}
       style={{ backgroundColor: memberAreaBgColor, '--classroom-modal-bg': memberAreaBgColor }}
     >
-      {!isFullView && (
+      {!isHideSidebar && (
         <Sidebar
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
@@ -341,7 +345,7 @@ function App() {
           ...(isFullView || activeTab === 'courses' || activeTab === 'settings' || activeTab === 'chat'
             ? { padding: 0, width: '100%', maxWidth: '100%' }
             : {}),
-          ...(activeTab === 'chat' ? { overflow: 'hidden' } : {}),
+          ...(activeTab === 'chat' || isInsideFunnel ? { overflow: 'hidden' } : {}),
           ...(isFullView ? { height: '100%', minHeight: '100%' } : {})
         }}
       >
@@ -359,6 +363,9 @@ function App() {
             addToast={addToast}
             onGoToCourses={() => handleSelectTab('courses')}
           />
+        )}
+        {activeTab === 'events' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <EventsManagement currentUser={user} bgColor={memberAreaBgColor} addToast={addToast} onNavigateTab={handleSelectTab} />
         )}
         {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <CourseManagement
@@ -411,7 +418,7 @@ function App() {
           <StudentManagement bgColor={memberAreaBgColor} />
         )}
         {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && (
-          <FunnelManagement />
+          <FunnelManagement onFunnelViewChange={setIsInsideFunnel} />
         )}
         {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && (
           <IntegrationManagement bgColor={memberAreaBgColor} />

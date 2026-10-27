@@ -37,46 +37,104 @@ async def execute_action_node(
     return f"Ação desconhecida '{node_type}' (Nó {node_id})"
 
 
+def interpolate_webhook_text(template: str, student: User, funnel_id: int, node_id: str) -> str:
+    """
+    Substitui variáveis dinâmicas (estilo ManyChat) no texto ou JSON do webhook.
+    Ex: {{nome}}, {{email}}, {{telefone}}, {{id}}, {{funnel_id}}.
+    """
+    if not template:
+        return ""
+    replacements = {
+        "{{nome}}": student.name or "",
+        "{{aluno.nome}}": student.name or "",
+        "{{name}}": student.name or "",
+        "{{email}}": student.email or "",
+        "{{aluno.email}}": student.email or "",
+        "{{telefone}}": getattr(student, "phone", "") or "",
+        "{{aluno.telefone}}": getattr(student, "phone", "") or "",
+        "{{phone}}": getattr(student, "phone", "") or "",
+        "{{id}}": str(student.id),
+        "{{aluno.id}}": str(student.id),
+        "{{funnel_id}}": str(funnel_id),
+        "{{funil.id}}": str(funnel_id),
+        "{{node_id}}": str(node_id),
+        "{{timestamp}}": datetime.now(timezone.utc).isoformat(),
+    }
+    result = template
+    for key, val in replacements.items():
+        result = result.replace(key, str(val))
+    return result
+
+
 async def execute_webhook_node(
     student: User,
     node_data: Dict[str, Any],
     node_id: str,
     funnel_id: int,
 ) -> str:
-    """Dispara uma requisição HTTP externa (POST ou GET) para a URL configurada."""
+    """Dispara uma requisição HTTP externa (POST ou GET) para a URL configurada, com suporte a JSON customizado (ManyChat style)."""
     url = (node_data.get("url") or "").strip()
     if not url:
         return f"[WEBHOOK] Ignorado: URL não informada no Nó {node_id}"
 
     method = (node_data.get("method") or "POST").upper()
-    payload = {
-        "event": "funnel_webhook",
-        "funnel_id": funnel_id,
-        "node_id": node_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "student": {
-            "id": student.id,
-            "name": student.name,
-            "email": student.email,
-            "phone": getattr(student, "phone", None),
-            "role": student.role,
-        },
-    }
+    payload_type = node_data.get("payload_type", "default")
+    custom_json_raw = node_data.get("custom_json")
+
+    # Monta headers padrão e customizados
+    headers = {"Content-Type": "application/json"}
+    custom_headers = node_data.get("custom_headers")
+    if isinstance(custom_headers, dict):
+        for k, v in custom_headers.items():
+            headers[k] = interpolate_webhook_text(str(v), student, funnel_id, node_id)
+    elif isinstance(custom_headers, str) and custom_headers.strip():
+        for line in custom_headers.strip().split("\n"):
+            if ":" in line:
+                hk, hv = line.split(":", 1)
+                headers[hk.strip()] = interpolate_webhook_text(hv.strip(), student, funnel_id, node_id)
+
+    # Determina o payload (Padrão ou Customizado ManyChat)
+    post_json = None
+    post_content = None
+
+    if payload_type == "custom" and custom_json_raw and custom_json_raw.strip():
+        interpolated = interpolate_webhook_text(custom_json_raw.strip(), student, funnel_id, node_id)
+        try:
+            post_json = json.loads(interpolated)
+        except Exception:
+            post_content = interpolated
+    else:
+        post_json = {
+            "event": "funnel_webhook",
+            "funnel_id": funnel_id,
+            "node_id": node_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "student": {
+                "id": student.id,
+                "name": student.name,
+                "email": student.email,
+                "phone": getattr(student, "phone", None),
+                "role": student.role,
+            },
+        }
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             if method == "GET":
                 params = {
                     "student_id": str(student.id),
                     "email": student.email or "",
                     "funnel_id": str(funnel_id),
                 }
-                res = await client.get(url, params=params)
+                res = await client.get(url, params=params, headers=headers)
             else:
-                res = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                if post_json is not None:
+                    res = await client.post(url, json=post_json, headers=headers)
+                else:
+                    res = await client.post(url, content=post_content, headers=headers)
 
         status_code = res.status_code
-        logger.info(f"[FUNNEL #{funnel_id}] Webhook Nó {node_id} disparado para {url} -> Status {status_code}")
+        logger.info(f"[FUNNEL #{funnel_id}] Webhook Nó {node_id} ({payload_type}) disparado para {url} -> Status {status_code}")
         return f"[WEBHOOK] Disparado ({method} {url}) - HTTP {status_code} (Nó {node_id})"
     except Exception as exc:
         logger.warning(f"[FUNNEL #{funnel_id}] Falha na chamada webhook do Nó {node_id} ({url}): {exc}")

@@ -128,6 +128,39 @@ export const getInitialNodeData = (type, extraData = {}) => {
       ...extraData,
     };
   }
+  if (type === 'trigger_first_testimonial' || (type === 'trigger' && extraData.trigger_event === 'first_testimonial')) {
+    return {
+      trigger_event: 'first_testimonial',
+      course_id: null,
+      course_title: 'Todos os Cursos',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_first_presentation' || (type === 'trigger' && extraData.trigger_event === 'first_presentation')) {
+    return {
+      trigger_event: 'first_presentation',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_level_up' || (type === 'trigger' && extraData.trigger_event === 'level_up')) {
+    return {
+      trigger_event: 'level_up',
+      target_level: 'any',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_event_attendance' || (type === 'trigger' && extraData.trigger_event === 'event_attendance')) {
+    return {
+      trigger_event: 'event_attendance',
+      event_id: 'any',
+      event_title: 'Qualquer Evento',
+      is_start: true,
+      ...extraData,
+    };
+  }
   if (type === 'trigger') {
     return {
       trigger_event: 'student_created',

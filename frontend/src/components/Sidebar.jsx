@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Database, Users, LogOut, Terminal, GraduationCap, AlertTriangle,
   Settings, UserCheck, Webhook, HelpCircle, X, MessagesSquare,
-  MessageSquareQuote, Trophy, ExternalLink, GitBranch, Home, Handshake, Server
+  MessageSquareQuote, Trophy, ExternalLink, GitBranch, Home, Handshake, Server, Calendar
 } from 'lucide-react';
 import { getLinkIcon, getLinkColor } from './platform-settings/linkIcons';
 
@@ -79,6 +79,9 @@ export default function Sidebar({
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'courses', label: 'Cursos', icon: GraduationCap }]
+          : []),
+        ...(isSuperAdmin || isAdmin || isAluno
+          ? [{ id: 'events', label: 'Eventos', icon: Calendar }]
           : []),
         ...(isSuperAdmin || isAdmin
           ? [{ id: 'students', label: 'Alunos', icon: UserCheck }]

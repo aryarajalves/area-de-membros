@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.2`** | **Docker Hub: `backend-1.1.2` / `frontend-1.1.2`**
+> **Versão Oficial: `v1.1.3`** | **Docker Hub: `backend-1.1.3` / `frontend-1.1.3`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -258,6 +258,29 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Convite expirado (`is_expired`):** Ao acessar um link de convite com validade esgotada, o sistema detecta a flag no backend (`GET /api/v1/users/invites/validate`), limpa o token da URL e redireciona de imediato para a tela de login (ou home se já autenticado), disparando notificação Toast explicativa (*"Este convite expirou. Entre em contato com o suporte para receber um novo link."*), eliminando telas de erro travadas.
 - **Auto-Migrações Preventivas no Startup (`main.py`):**
   - No evento `lifespan` do FastAPI, a aplicação executa checagens e comandos SQL automáticos e idempotentes (`ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type/tool_url` e criação de `course_bundles`/`course_sales_clicks`). Isso assegura total resiliência entre o ORM e instâncias PostgreSQL de produção, prevenindo incidentes de colunas ausentes (`UndefinedColumn`) sem exigir intervenção manual via terminal.
+
+### 📅 18. Módulo de Eventos, Lives e Mentorias (`/events`)
+- **Gestão Pedagógica de Encontros e Aulas Ao Vivo:**
+  - Posicionamento dedicado na barra lateral para administradores e alunos.
+  - Informações completas com thumbnail, data/horário oficial de Brasília (America/Sao_Paulo - UTC-3), links de transmissão ao vivo (Zoom, Meet, YouTube) e gravação pós-evento.
+  - **Regras de Acesso e Upsell Inteligente:** Eventos exclusivos por curso bloqueiam links para alunos sem matrícula e exibem botão direto de upsell para desbloqueio do curso.
+  - **Integração Google Agenda:** Botão de 1 clique para adicionar o evento ao Google Agenda com data/hora em UTC e links inclusos.
+  - **Modal de Confirmação de Presença (`ConfirmAttendanceModal`):** Popup modal centralizado com backdrop escuro que previne cliques acidentais e registra a participação dos alunos, ativando gatilhos automáticos nos funis de mensagens.
+  - **Exclusão Segura com Modal (`DeleteEventConfirmModal`):** Proteção centralizada contra exclusões não intencionais de eventos.
+
+### ⚡ 19. Evolução dos Funis de Mensagens e Integrações
+- **Novos Gatilhos da Comunidade & Gamificação:**
+  - **Primeiro Depoimento (`first_testimonial`):** Disparo automático quando o aluno posta seu primeiro depoimento ou avaliação na plataforma.
+  - **Primeira Apresentação (`first_presentation`):** Disparo assim que o aluno faz sua primeira publicação no mural social.
+  - **Subida de Nível (`level_up`):** Disparo quando o aluno avança nos níveis RPG de XP, com suporte a qualquer nível ou seleção de múltiplos níveis específicos (Níveis 2 a 20).
+  - **Presença em Evento (`event_attendance`):** Disparo quando o aluno confirma presença em um evento.
+- **Personalizador de JSON em Webhooks (Estilo ManyChat):**
+  - Modal com editor JSON monoespaçado, validação de sintaxe em tempo real, pílulas de inserção com um clique para tags dinâmicas (`{{nome}}`, `{{email}}`, `{{telefone}}`, `{{id}}`, `{{funnel_id}}`, `{{timestamp}}`) e suporte a headers customizados.
+- **Disparo Flexível de Mensagens:**
+  - Seleção flexível de destino: DM privada com escolha de remetente ou publicação automática em canais da comunidade (Geral ou por Curso).
+- **Interface e Ergonomia:**
+  - Ocultação automática da barra lateral (`Sidebar`) em tela cheia ao editar funis no canvas.
+  - Elevação inteligente de `z-index` nos popups de Favoritos, DMs e Notificações, garantindo que permaneçam sempre acima de qualquer canvas ou menu.
 - **Criação Manual e Registro Público Seguro:**
   - Cadastro de alunos e administradores com vinculação de cursos, validação rigorosa de senha com 12+ caracteres e fuso horário oficial de Brasília.
 - **Handler Global de Exceções no FastAPI:**
@@ -346,8 +369,8 @@ As imagens oficiais de produção estão publicadas no Docker Hub com versioname
 
 | Serviço | Imagem Docker Oficial | Descrição |
 | :--- | :--- | :--- |
-| **Backend API & Worker** | `aryalvesfernandes/area-de-membros:backend-1.1.1` | API FastAPI em Python 3.11 com worker periódico e auto-migrações preventivas no startup. |
-| **Frontend Web** | `aryalvesfernandes/area-de-membros:frontend-1.1.1` | Interface React + Vite de alta performance servida por Nginx otimizado. |
+| **Backend API & Worker** | `aryalvesfernandes/area-de-membros:backend-1.1.3` | API FastAPI em Python 3.11 com worker periódico e auto-migrações preventivas no startup. |
+| **Frontend Web** | `aryalvesfernandes/area-de-membros:frontend-1.1.3` | Interface React + Vite de alta performance servida por Nginx otimizado. |
 
 #### Deploy em Produção (Docker Swarm / Traefik):
 ```bash

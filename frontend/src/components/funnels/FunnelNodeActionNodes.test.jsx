@@ -56,6 +56,71 @@ describe('Funnel Action Nodes Components', () => {
       fireEvent.change(urlInput, { target: { value: 'https://n8n.webhook.com/receber' } });
       expect(onUpdateData).toHaveBeenCalledWith('webhook_1', expect.objectContaining({ url: 'https://n8n.webhook.com/receber' }));
     });
+
+    it('abre o modal estilo ManyChat e permite salvar JSON e headers customizados', () => {
+      const onUpdateData = vi.fn();
+      render(
+        <FunnelNodeWebhook
+          node={node}
+          isSelected={false}
+          onUpdateData={onUpdateData}
+        />
+      );
+
+      const btnConfig = screen.getByTestId('btn-configure-webhook-json-webhook_1');
+      expect(btnConfig).toHaveTextContent('Personalizar JSON (ManyChat)');
+      fireEvent.click(btnConfig);
+
+      // Modal deve abrir
+      expect(screen.getByTestId('webhook-config-modal')).toBeInTheDocument();
+
+      // Alternar para modo customizado
+      const tabCustom = screen.getByTestId('payload-type-custom');
+      fireEvent.click(tabCustom);
+
+      // Inserir tag de variável
+      const tagNomeBtn = screen.getByTestId('btn-insert-var-{{nome}}');
+      fireEvent.click(tagNomeBtn);
+
+      // Digitar headers
+      const headersInput = screen.getByTestId('custom-headers-textarea');
+      fireEvent.change(headersInput, { target: { value: 'Authorization: Bearer secret-123' } });
+
+      // Salvar
+      const btnSave = screen.getByTestId('save-webhook-config-btn');
+      fireEvent.click(btnSave);
+
+      expect(onUpdateData).toHaveBeenCalledWith(
+        'webhook_1',
+        expect.objectContaining({
+          payload_type: 'custom',
+          custom_headers: 'Authorization: Bearer secret-123',
+        })
+      );
+    });
+
+    it('exibe badge de JSON Customizado Ativo quando configurado', () => {
+      const customNode = {
+        ...node,
+        data: {
+          ...node.data,
+          payload_type: 'custom',
+          custom_headers: 'X-Header: teste',
+        },
+      };
+
+      render(
+        <FunnelNodeWebhook
+          node={customNode}
+          isSelected={false}
+          onUpdateData={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('JSON Customizado Ativo')).toBeInTheDocument();
+      expect(screen.getByText('Corpo JSON Personalizado (Tags ativas)')).toBeInTheDocument();
+      expect(screen.getByText('+ Headers customizados definidos')).toBeInTheDocument();
+    });
   });
 
   describe('FunnelNodeEnrollment Component', () => {

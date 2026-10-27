@@ -210,6 +210,14 @@ def create_testimonial(
 
     logger.info(f"Depoimento #{testimonial.id} cadastrado com sucesso pelo usuário #{current_user.id} para o curso #{course.id}")
 
+    # Dispara funis ativos com gatilho de Primeiro Depoimento se for o 1º depoimento do aluno
+    try:
+        total_user_testimonials = db.query(Testimonial).filter(Testimonial.user_id == current_user.id).count()
+        if total_user_testimonials == 1:
+            from app.services.funnel_community_triggers_service import dispatch_first_testimonial_funnels
+            dispatch_first_testimonial_funnels(db, current_user.id, course.id)
+    except Exception as t_err:
+        logger.error(f"[Gatilho Depoimento] Erro ao verificar e disparar funis: {t_err}")
 
     is_manager = current_user.role in ["admin", "superadmin"]
     return TestimonialResponse(

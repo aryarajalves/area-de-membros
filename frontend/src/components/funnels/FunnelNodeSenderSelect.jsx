@@ -30,6 +30,8 @@ export default function FunnelNodeSenderSelect({
           const val = e.target.value;
           onChange(val ? Number(val) : null);
         }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         data-testid={`funnel-node-sender-select-${nodeId}`}
         style={{
           width: '100%',

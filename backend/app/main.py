@@ -163,6 +163,24 @@ async def lifespan(app: FastAPI):
                         );
                         CREATE INDEX IF NOT EXISTS ix_course_upsell_views_offer_id ON course_upsell_views(offer_id);
                         CREATE INDEX IF NOT EXISTS ix_course_upsell_views_user_id ON course_upsell_views(user_id);
+                        CREATE TABLE IF NOT EXISTS events (
+                            id SERIAL PRIMARY KEY,
+                            title VARCHAR(255) NOT NULL,
+                            description TEXT,
+                            start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+                            end_time TIMESTAMP WITH TIME ZONE,
+                            meeting_url VARCHAR(1024),
+                            recording_url VARCHAR(1024),
+                            thumbnail_url VARCHAR(1024),
+                            target_type VARCHAR(20) NOT NULL DEFAULT 'all',
+                            course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+                            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_events_start_time ON events(start_time);
+                        CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id);
+
                     """))
                 else:
                     for col_sql in [

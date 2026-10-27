@@ -1,6 +1,6 @@
 import React from 'react';
-import { MessageSquare, Copy, Trash2, Plus, Sparkles } from 'lucide-react';
-import FunnelNodeSenderSelect from './FunnelNodeSenderSelect';
+import { MessageSquare, Globe, GraduationCap, Copy, Trash2, Plus, Sparkles } from 'lucide-react';
+import FunnelNodeMessageDestination from './FunnelNodeMessageDestination';
 
 export default function FunnelNodeMessage({
   node,
@@ -12,6 +12,7 @@ export default function FunnelNodeMessage({
   onConnectTarget,
   isTargetActive = false,
   availableSenders = [],
+  courses = [],
 }) {
   const data = node.data || {};
   const buttons = data.buttons || [];
@@ -134,10 +135,31 @@ export default function FunnelNodeMessage({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ color: '#38bdf8' }}>
-            <MessageSquare size={16} />
+          <div style={{ color: data.destination_type === 'community_general' ? '#34d399' : data.destination_type === 'community_course' ? '#c084fc' : '#38bdf8' }}>
+            {data.destination_type === 'community_general' ? (
+              <Globe size={16} />
+            ) : data.destination_type === 'community_course' ? (
+              <GraduationCap size={16} />
+            ) : (
+              <MessageSquare size={16} />
+            )}
           </div>
-          <span style={{ fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.04em' }}>MENSAGEM</span>
+          <span style={{ fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+            MENSAGEM
+          </span>
+          {data.destination_type === 'community_general' ? (
+            <span style={{ fontSize: '0.65rem', backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+              GERAL
+            </span>
+          ) : data.destination_type === 'community_course' ? (
+            <span style={{ fontSize: '0.65rem', backgroundColor: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+              CURSO
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.65rem', backgroundColor: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+              DM
+            </span>
+          )}
           {data.is_start && (
             <span
               style={{
@@ -179,13 +201,19 @@ export default function FunnelNodeMessage({
         VERSÃO 1 (PRINCIPAL)
       </div>
 
-      {/* Remetente da DM */}
-      <FunnelNodeSenderSelect
-        value={data.sender_id}
-        onChange={(senderId) => onUpdateData(node.id, { ...data, sender_id: senderId })}
+      {/* Destino do Disparo (DM Aluno vs Comunidade Geral vs Curso) */}
+      <FunnelNodeMessageDestination
+        destinationType={data.destination_type || 'dm'}
+        courseId={data.course_id}
+        onSelectDestination={(destType) => onUpdateData(node.id, { ...data, destination_type: destType })}
+        onSelectCourse={(courseId, courseTitle) =>
+          onUpdateData(node.id, { ...data, course_id: courseId, course_title: courseTitle })
+        }
+        senderId={data.sender_id}
+        onSelectSender={(senderId) => onUpdateData(node.id, { ...data, sender_id: senderId })}
         availableSenders={availableSenders}
         nodeId={node.id}
-        accentColor="#38bdf8"
+        propCourses={courses}
       />
 
       {/* Textarea */}

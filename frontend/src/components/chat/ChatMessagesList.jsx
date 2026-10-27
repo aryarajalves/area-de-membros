@@ -17,13 +17,29 @@ export default function ChatMessagesList({
   highlightedMessageId = null,
 }) {
   const bottomRef = useRef(null);
+  const prevChannelIdRef = useRef(null);
+  const prevMessagesCountRef = useRef(0);
 
-  // Rola até o final ao receber novas mensagens
+  // Rola até o final ao receber novas mensagens ou carregar o canal
   useEffect(() => {
-    if (!loading && bottomRef.current && typeof bottomRef.current.scrollIntoView === 'function') {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (loading || !bottomRef.current || typeof bottomRef.current.scrollIntoView !== 'function') {
+      return;
     }
-  }, [messages, loading]);
+
+    const currentChannelId = selectedChannel?.id || 'default';
+    const isChannelChanged = prevChannelIdRef.current !== currentChannelId;
+    const isInitialChannelLoad = isChannelChanged || prevMessagesCountRef.current === 0;
+
+    // Se é a primeira carga do canal ou troca de canal, rola instantaneamente ('auto')
+    // evitando throttling de renderização e congelamento de animações (GIFs) no Chromium.
+    // Se novas mensagens foram adicionadas ao canal já aberto, rola suavemente ('smooth').
+    const behavior = isInitialChannelLoad ? 'auto' : 'smooth';
+
+    bottomRef.current.scrollIntoView({ behavior });
+
+    prevChannelIdRef.current = currentChannelId;
+    prevMessagesCountRef.current = messages.length;
+  }, [messages, loading, selectedChannel]);
 
   if (loading) {
     return (

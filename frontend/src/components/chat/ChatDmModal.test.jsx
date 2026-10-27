@@ -321,4 +321,19 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       expect(screen.getByTestId('dm-pagination-indicator')).toHaveTextContent('1 / 2');
     });
   });
+
+  it('renders modal with zIndex 1000002 to stay above all elements', () => {
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+        />
+      </ToastProvider>
+    );
+
+    const modal = screen.getByTestId('chat-dm-modal');
+    expect(modal).toHaveStyle({ zIndex: '1000002' });
+  });
 });

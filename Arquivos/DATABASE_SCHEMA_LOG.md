@@ -2,6 +2,43 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [26/10/2026] - Criação da Tabela de Inscrições / Presença em Eventos (event_attendees)
+- **Objetivo:** Armazenar confirmações de participação de alunos em eventos e mentorias ao vivo, permitindo acionar gatilhos de automação e funil quando o usuário clica em confirmar presença.
+- **Tabela Criada:** event_attendees
+- **Colunas:**
+  - id: INTEGER PRIMARY KEY SERIAL.
+  - event_id: INTEGER REFERENCES events(id) ON DELETE CASCADE NOT NULL.
+  - user_id: INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL.
+  - confirmed_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP.
+- **Restrição de Unicidade:** UQ uq_event_user_attendance em (event_id, user_id).
+- **Script de Migração:** backend/scripts/migrate_event_attendees.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [25/10/2026] - Criação da Tabela de Eventos e Mentorias (events)
+- **Objetivo:** Armazenar os eventos, mentorias e encontros ao vivo promovidos pelo expert para os alunos, com título, descrição, início/término no Horário de Brasília, links de transmissão e gravação, thumbnail e controle de visibilidade (aberto a todos ou exclusivo por curso para upsell).
+- **Tabela Criada:** events
+- **Colunas:**
+  - id: INTEGER PRIMARY KEY SERIAL.
+  - 	itle: VARCHAR(255) NOT NULL.
+  - description: TEXT.
+  - start_time: TIMESTAMP WITH TIME ZONE NOT NULL.
+  - end_time: TIMESTAMP WITH TIME ZONE.
+  - meeting_url: VARCHAR(1024).
+  - 
+ecording_url: VARCHAR(1024).
+  - 	humbnail_url: VARCHAR(1024).
+  - 	arget_type: VARCHAR(20) NOT NULL DEFAULT 'all'.
+  - course_id: INTEGER REFERENCES courses(id) ON DELETE SET NULL.
+  - is_active: BOOLEAN NOT NULL DEFAULT TRUE.
+  - created_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP.
+  - updated_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP.
+- **Script de Migração:** ackend/scripts/migrate_events_table.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
 ### [23/10/2026] - Adição de Enquadramento e Posição do Banner Hero (cover_image_position)
 - **Objetivo:** Permitir ao administrador ajustar a posição focal/vertical do Banner Hero (0% a 100%), permitindo drag-and-drop e slider para escolher qual parte da imagem panorâmica deve aparecer no topo do curso.
 - **Tabela Afetada:** courses

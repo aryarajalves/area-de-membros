@@ -248,3 +248,163 @@ async def test_funnel_execution_flow_with_all_action_nodes(db_session, seed_acti
         assert "[MATRÍCULA]" in execution.logs
         assert "[XP RPG]" in execution.logs
         assert "[NOTIFICAÇÃO INTERNA]" in execution.logs
+
+
+@pytest.mark.asyncio
+async def test_execute_webhook_node_with_custom_json_and_headers(seed_action_data):
+    """Valida disparo de webhook com payload customizado estilo ManyChat e headers dinâmicos."""
+    student = seed_action_data["student"]
+    custom_body = {
+        "lead": {
+            "name": "{{nome}}",
+            "contact_email": "{{email}}",
+            "id": "{{id}}",
+        },
+        "event": "matricula_confirmada",
+    }
+    node_data = {
+        "method": "POST",
+        "url": "https://api.crm-externo.com/leads",
+        "payload_type": "custom",
+        "custom_json": json.dumps(custom_body),
+        "custom_headers": "Authorization: Bearer my-manychat-token\nX-Workspace-ID: 9942",
+    }
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = mock_response
+        log_result = await execute_webhook_node(student, node_data, "node_webhook_custom", funnel_id=42)
+
+        assert "[WEBHOOK] Disparado" in log_result
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args.kwargs
+        assert "json" in call_kwargs
+        sent_json = call_kwargs["json"]
+        assert sent_json["lead"]["name"] == student.name
+        assert sent_json["lead"]["contact_email"] == student.email
+        assert str(sent_json["lead"]["id"]) == str(student.id)
+        assert sent_json["event"] == "matricula_confirmada"
+
+        headers = call_kwargs.get("headers", {})
+        assert headers.get("Authorization") == "Bearer my-manychat-token"
+        assert headers.get("X-Workspace-ID") == "9942"
+
+
+@pytest.mark.asyncio
+async def test_funnel_message_destination_community_general(db_session, seed_action_data):
+    """Valida envio de mensagem do funil diretamente no canal geral da comunidade."""
+    db = db_session
+    student = seed_action_data["student"]
+    admin = seed_action_data["admin"]
+
+    flow_data = {
+        "nodes": [
+            {
+                "id": "node_trig",
+                "type": "trigger",
+                "data": {"trigger_event": "student_created", "days_after": 0},
+            },
+            {
+                "id": "node_msg_general",
+                "type": "message",
+                "data": {
+                    "text": "Seja muito bem-vindo à nossa comunidade, {aluno}!",
+                    "destination_type": "community_general",
+                },
+            },
+        ],
+        "edges": [
+            {"id": "e1", "source": "node_trig", "target": "node_msg_general"},
+        ],
+    }
+
+    funnel = Funnel(
+        name="Funil de Boas-vindas na Comunidade Geral",
+        flow_data=json.dumps(flow_data),
+        is_active=True,
+    )
+    db.add(funnel)
+    db.commit()
+    db.refresh(funnel)
+
+    with patch("app.services.chat_ws_manager.chat_manager.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+        res = await execute_funnel_flow(
+            funnel_id=funnel.id,
+            student_id=student.id,
+            sender_id=admin.id,
+            triggered_by="manual_test",
+        )
+
+        assert res.success is True
+        # Verificar que ChatMessage foi criada no canal geral
+        msg = db.query(ChatMessage).filter(
+            ChatMessage.channel_type == "general",
+            ChatMessage.user_id == admin.id,
+        ).order_by(ChatMessage.id.desc()).first()
+
+        assert msg is not None
+        assert student.name.split()[0] in msg.message
+        assert msg.recipient_id is None
+        mock_broadcast.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_funnel_message_destination_community_course(db_session, seed_action_data):
+    """Valida envio de mensagem do funil no canal/grupo de um curso específico."""
+    db = db_session
+    student = seed_action_data["student"]
+    admin = seed_action_data["admin"]
+    course = seed_action_data["course"]
+
+    flow_data = {
+        "nodes": [
+            {
+                "id": "node_trig",
+                "type": "trigger",
+                "data": {"trigger_event": "student_created", "days_after": 0},
+            },
+            {
+                "id": "node_msg_course",
+                "type": "message",
+                "data": {
+                    "text": "Olá turma do curso! O aluno {aluno} acabou de entrar.",
+                    "destination_type": "community_course",
+                    "course_id": course.id,
+                },
+            },
+        ],
+        "edges": [
+            {"id": "e1", "source": "node_trig", "target": "node_msg_course"},
+        ],
+    }
+
+    funnel = Funnel(
+        name="Funil de Aviso no Grupo do Curso",
+        flow_data=json.dumps(flow_data),
+        is_active=True,
+    )
+    db.add(funnel)
+    db.commit()
+    db.refresh(funnel)
+
+    with patch("app.services.chat_ws_manager.chat_manager.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+        res = await execute_funnel_flow(
+            funnel_id=funnel.id,
+            student_id=student.id,
+            sender_id=admin.id,
+            triggered_by="manual_test",
+        )
+
+        assert res.success is True
+        msg = db.query(ChatMessage).filter(
+            ChatMessage.channel_type == "course",
+            ChatMessage.course_id == course.id,
+        ).order_by(ChatMessage.id.desc()).first()
+
+        assert msg is not None
+        assert student.name.split()[0] in msg.message
+        assert msg.course_id == course.id
+        assert msg.recipient_id is None
+        mock_broadcast.assert_called()

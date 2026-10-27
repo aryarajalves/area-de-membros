@@ -1,9 +1,11 @@
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.models.user import User
 from app.models.gamification import GamificationPoint
 from app.core.logger import logger
+from app.services.gamification_level_service import calculate_student_level
 
 POINTS_MAP = {
     "support_solution": (50, "Melhor Solução aceita no Suporte"),
@@ -64,6 +66,12 @@ def award_points(
         if existing:
             return existing
 
+    # Cálculo do nível antes de atribuir os novos pontos
+    total_before = db.query(func.coalesce(func.sum(GamificationPoint.points), 0)).filter(
+        GamificationPoint.user_id == user.id
+    ).scalar() or 0
+    level_before = calculate_student_level(total_before)["level"]
+
     try:
         point_entry = GamificationPoint(
             user_id=user.id,
@@ -76,6 +84,16 @@ def award_points(
         db.commit()
         db.refresh(point_entry)
         logger.info(f"[Gamificação] +{pts} pts atribuídos ao aluno #{user.id} ({user.name}) por '{action}'.")
+
+        # Verifica se o aluno subiu de nível (Level Up) e dispara funis
+        try:
+            level_after = calculate_student_level(total_before + pts)["level"]
+            if level_after > level_before:
+                from app.services.funnel_community_triggers_service import dispatch_level_up_funnels
+                dispatch_level_up_funnels(db, user.id, new_level=level_after, old_level=level_before)
+        except Exception as lvl_err:
+            logger.error(f"[Gamificação] Erro ao verificar subida de nível e disparar funis: {lvl_err}")
+
         return point_entry
     except Exception as exc:
         db.rollback()

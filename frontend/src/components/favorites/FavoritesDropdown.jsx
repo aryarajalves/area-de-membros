@@ -154,7 +154,7 @@ export default function FavoritesDropdown({
         boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.1)',
         display: 'flex',
         flexDirection: 'column',
-        zIndex: 9999,
+        zIndex: 1000000,
         overflow: 'hidden',
         backdropFilter: 'blur(12px)',
         animation: 'fadeInDropdown 0.2s ease-out',

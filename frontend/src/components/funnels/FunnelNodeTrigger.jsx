@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Target, Award, Hourglass, UserX, Copy, Trash2 } from 'lucide-react';
+import {
+  Zap,
+  Target,
+  Award,
+  Hourglass,
+  UserX,
+  Copy,
+  Trash2,
+  MessageSquareText,
+  Users,
+  Trophy,
+  CalendarCheck,
+} from 'lucide-react';
 import FunnelTriggerStudentCreatedConfig from './FunnelTriggerStudentCreatedConfig';
 import FunnelTriggerCourseInterestConfig from './FunnelTriggerCourseInterestConfig';
 import FunnelTriggerProgressConfig from './FunnelTriggerProgressConfig';
 import FunnelTriggerRenewalConfig from './FunnelTriggerRenewalConfig';
 import FunnelTriggerInactivityConfig from './FunnelTriggerInactivityConfig';
+import FunnelTriggerTestimonialConfig from './FunnelTriggerTestimonialConfig';
+import FunnelTriggerPresentationConfig from './FunnelTriggerPresentationConfig';
+import FunnelTriggerLevelUpConfig from './FunnelTriggerLevelUpConfig';
+import FunnelTriggerEventAttendanceConfig from './FunnelTriggerEventAttendanceConfig';
 
 const TRIGGER_METADATA = {
   student_created: {
@@ -42,6 +58,34 @@ const TRIGGER_METADATA = {
     glowColor: 'rgba(236, 72, 153, 0.45)',
     textColor: '#f472b6',
   },
+  first_testimonial: {
+    label: 'PRIMEIRO DEPOIMENTO',
+    icon: MessageSquareText,
+    themeColor: '#38bdf8',
+    glowColor: 'rgba(56, 189, 248, 0.45)',
+    textColor: '#7dd3fc',
+  },
+  first_presentation: {
+    label: 'PRIMEIRA APRESENTAÇÃO',
+    icon: Users,
+    themeColor: '#10b981',
+    glowColor: 'rgba(16, 185, 129, 0.45)',
+    textColor: '#34d399',
+  },
+  level_up: {
+    label: 'SUBIDA DE NÍVEL (LEVEL UP)',
+    icon: Trophy,
+    themeColor: '#c084fc',
+    glowColor: 'rgba(192, 132, 252, 0.45)',
+    textColor: '#e9d5ff',
+  },
+  event_attendance: {
+    label: 'PRESENÇA EM EVENTO',
+    icon: CalendarCheck,
+    themeColor: '#f472b6',
+    glowColor: 'rgba(244, 114, 182, 0.45)',
+    textColor: '#fbcfe8',
+  },
 };
 
 export default function FunnelNodeTrigger({
@@ -68,7 +112,8 @@ export default function FunnelNodeTrigger({
       setCourses(propCourses);
       return;
     }
-    if (triggerEvent === 'student_created') return;
+    const EVENTS_REQUIRING_COURSES = ['course_interest', 'progress_milestone', 'renewal_warning', 'student_inactivity', 'first_testimonial'];
+    if (!EVENTS_REQUIRING_COURSES.includes(triggerEvent)) return;
     let isMounted = true;
     const fetchCourses = async () => {
       setLoadingCourses(true);
@@ -98,12 +143,12 @@ export default function FunnelNodeTrigger({
       style={{
         position: 'relative',
         width: '320px',
-        backgroundColor: '#181408',
-        border: isSelected ? `2px solid ${meta.themeColor}` : `1px solid ${meta.glowColor}`,
+        backgroundColor: '#0b1329',
+        border: isSelected ? `2px solid ${meta.themeColor}` : `1px solid ${meta.glowColor || 'rgba(56, 189, 248, 0.4)'}`,
         borderRadius: '14px',
         boxShadow: isSelected
           ? `0 10px 30px ${meta.glowColor}`
-          : '0 10px 25px rgba(0, 0, 0, 0.7)',
+          : '0 12px 30px rgba(0, 0, 0, 0.65)',
         color: '#f8fafc',
         padding: '14px',
         userSelect: 'none',
@@ -268,6 +313,39 @@ export default function FunnelNodeTrigger({
 
       {triggerEvent === 'student_created' && (
         <FunnelTriggerStudentCreatedConfig
+          nodeId={node.id}
+          data={data}
+          onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'first_testimonial' && (
+        <FunnelTriggerTestimonialConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'first_presentation' && (
+        <FunnelTriggerPresentationConfig
+          nodeId={node.id}
+          data={data}
+        />
+      )}
+
+      {triggerEvent === 'level_up' && (
+        <FunnelTriggerLevelUpConfig
+          nodeId={node.id}
+          data={data}
+          onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'event_attendance' && (
+        <FunnelTriggerEventAttendanceConfig
           nodeId={node.id}
           data={data}
           onUpdateData={onUpdateData}

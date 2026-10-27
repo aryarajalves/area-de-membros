@@ -236,4 +236,10 @@ describe('FavoritesDropdown Component', () => {
     }));
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders with zIndex: 1000000 to ensure it stays above all other components and canvases', () => {
+    render(<FavoritesDropdown isOpen={true} onClose={vi.fn()} />);
+    const dropdown = screen.getByTestId('favorites-dropdown');
+    expect(dropdown).toHaveStyle({ zIndex: '1000000' });
+  });
 });

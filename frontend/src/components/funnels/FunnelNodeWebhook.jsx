@@ -1,5 +1,6 @@
-import React from 'react';
-import { Globe, Copy, Trash2, Send, Link as LinkIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe, Copy, Trash2, Send, Link as LinkIcon, Code, Sliders } from 'lucide-react';
+import FunnelWebhookConfigModal from './FunnelWebhookConfigModal';
 
 export default function FunnelNodeWebhook({
   node,
@@ -14,6 +15,7 @@ export default function FunnelNodeWebhook({
   const data = node.data || {};
   const method = (data.method || 'POST').toUpperCase();
   const url = data.url || '';
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleMethodChange = (m) => {
     onUpdateData(node.id, { ...data, method: m });
@@ -21,6 +23,10 @@ export default function FunnelNodeWebhook({
 
   const handleUrlChange = (e) => {
     onUpdateData(node.id, { ...data, url: e.target.value });
+  };
+
+  const handleSaveWebhookConfig = (config) => {
+    onUpdateData(node.id, { ...data, ...config });
   };
 
   return (
@@ -222,23 +228,85 @@ export default function FunnelNodeWebhook({
         />
       </div>
 
+      {/* Resumo e Botão de Configuração do Payload */}
+      <div style={{ marginBottom: '10px' }}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsModalOpen(true);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          data-testid={`btn-configure-webhook-json-${node.id}`}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '7px 10px',
+            borderRadius: '6px',
+            backgroundColor: data.payload_type === 'custom' ? 'rgba(6, 182, 212, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+            border: data.payload_type === 'custom' ? '1px solid #06b6d4' : '1px dashed rgba(6, 182, 212, 0.4)',
+            color: data.payload_type === 'custom' ? '#67e8f9' : '#cbd5e1',
+            fontSize: '0.74rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {data.payload_type === 'custom' ? (
+            <>
+              <Code size={13} color="#22d3ee" />
+              <span>JSON Customizado Ativo</span>
+            </>
+          ) : (
+            <>
+              <Sliders size={13} color="#06b6d4" />
+              <span>Personalizar JSON (ManyChat)</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Resumo do Payload */}
       <div
         style={{
           padding: '6px 8px',
-          backgroundColor: 'rgba(6, 182, 212, 0.08)',
-          borderLeft: '3px solid #06b6d4',
+          backgroundColor: data.payload_type === 'custom' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(6, 182, 212, 0.08)',
+          borderLeft: data.payload_type === 'custom' ? '3px solid #10b981' : '3px solid #06b6d4',
           borderRadius: '0 6px 6px 0',
           display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
+          flexDirection: 'column',
+          gap: '3px',
         }}
       >
-        <Send size={12} color="#22d3ee" style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: '0.68rem', color: '#cffafe' }}>
-          Envia JSON: <code style={{ color: '#67e8f9' }}>{'{ id, nome, email, telefone }'}</code>
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Send size={12} color={data.payload_type === 'custom' ? '#34d399' : '#22d3ee'} style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '0.68rem', color: data.payload_type === 'custom' ? '#a7f3d0' : '#cffafe' }}>
+            {data.payload_type === 'custom' ? (
+              <span>Corpo JSON Personalizado (Tags ativas)</span>
+            ) : (
+              <span>Envia JSON: <code style={{ color: '#67e8f9' }}>{'{ id, nome, email, telefone }'}</code></span>
+            )}
+          </span>
+        </div>
+        {data.payload_type === 'custom' && data.custom_headers && (
+          <span style={{ fontSize: '0.64rem', color: '#94a3b8', paddingLeft: '18px' }}>
+            + Headers customizados definidos
+          </span>
+        )}
       </div>
+
+      {/* Modal de Configuração ManyChat */}
+      {isModalOpen && (
+        <FunnelWebhookConfigModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveWebhookConfig}
+          nodeData={data}
+        />
+      )}
     </div>
   );
 }

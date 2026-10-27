@@ -137,7 +137,7 @@ export default function ChatDmModal({
         inset: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.75)',
         backdropFilter: 'blur(5px)',
-        zIndex: 9999,
+        zIndex: 1000002,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

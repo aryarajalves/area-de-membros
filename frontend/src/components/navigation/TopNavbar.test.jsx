@@ -90,4 +90,21 @@ describe('TopNavbar Component', () => {
     expect(favBtn.querySelector('.topbar-btn-text')).toHaveTextContent('Favoritos');
     expect(dmBtn.querySelector('.topbar-btn-text')).toHaveTextContent('DMs');
   });
+
+  it('elevates header zIndex to 999999 when favorites dropdown is open and renders dm modal with high zIndex', () => {
+    render(<TopNavbar user={mockUser} />);
+
+    const header = screen.getByTestId('mobile-header');
+    expect(header).toHaveStyle({ zIndex: '1000' });
+
+    // Abre favoritos
+    const favBtn = screen.getByTestId('global-favorites-btn');
+    fireEvent.click(favBtn);
+    expect(header).toHaveStyle({ zIndex: '999999' });
+
+    // Abre DM
+    const dmBtn = screen.getByTestId('global-dm-btn');
+    fireEvent.click(dmBtn);
+    expect(screen.getByTestId('chat-dm-modal')).toHaveStyle({ zIndex: '1000002' });
+  });
 });

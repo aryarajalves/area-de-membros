@@ -125,6 +125,16 @@ def create_introduction(
         db.commit()
         db.refresh(new_post)
         logger.info(f"[Introductions] Novo post de apresentação criado (ID: {new_post.id}) pelo usuário {current_user.id}")
+
+        # Dispara funis ativos com gatilho de Primeira Apresentação se for o 1º post do aluno
+        try:
+            total_user_posts = db.query(IntroductionPost).filter(IntroductionPost.user_id == current_user.id).count()
+            if total_user_posts == 1:
+                from app.services.funnel_community_triggers_service import dispatch_first_presentation_funnels
+                dispatch_first_presentation_funnels(db, current_user.id)
+        except Exception as p_err:
+            logger.error(f"[Gatilho Apresentação] Erro ao verificar e disparar funis: {p_err}")
+
         return _format_post_out(new_post, current_user.id, include_comments=True)
     except Exception as exc:
         db.rollback()

@@ -36,6 +36,7 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
   const { addToast } = useToast();
   const [nodeHeights, setNodeHeights] = useState({});
   const [availableSenders, setAvailableSenders] = useState([]);
+  const [availableCourses, setAvailableCourses] = useState([]);
 
   const handleNodeHeightMeasured = useCallback((nodeId, height) => {
     setNodeHeights((prev) => (prev[nodeId] === height ? prev : { ...prev, [nodeId]: height }));
@@ -44,7 +45,7 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
   const fetchFunnel = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/v1/funnels/${funnelId}`, { headers });
       if (!res?.ok) throw new Error('Falha ao carregar funil');
@@ -66,10 +67,17 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
       }
 
       try {
-        const sRes = await fetch('/api/v1/funnels/senders', { headers });
+        const [sRes, cRes] = await Promise.all([
+          fetch('/api/v1/funnels/senders', { headers }),
+          fetch('/api/v1/courses', { headers }),
+        ]);
         if (sRes?.ok) {
           const senders = await sRes.json();
           setAvailableSenders(Array.isArray(senders) ? senders : []);
+        }
+        if (cRes?.ok) {
+          const courseList = await cRes.json();
+          setAvailableCourses(Array.isArray(courseList) ? courseList : []);
         }
       } catch {
         /* fallback */
@@ -414,12 +422,8 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
     >
       {/* Barra de Ferramentas Superior */}
       <FunnelCanvasToolbar
-        name={name}
-        setName={setName}
-        saving={saving}
-        onBack={onBack}
-        onSaveFlow={handleSaveFlow}
-        onExportJson={handleExportJson}
+        name={name} setName={setName} saving={saving} onBack={onBack}
+        onSaveFlow={handleSaveFlow} onExportJson={handleExportJson}
         onRequestDelete={() => setShowDeleteModal(true)}
       />
 
@@ -465,7 +469,7 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
           onDuplicateNode={handleRequestDuplicateNode} onStartConnect={handleStartConnect}
           onConnectTarget={handleConnectTarget} activeConnectingSource={activeConnectingSource}
           nodeHeights={nodeHeights} onNodeHeightMeasured={handleNodeHeightMeasured}
-          availableSenders={availableSenders}
+          availableSenders={availableSenders} courses={availableCourses}
         />
 
         {/* Menu Flutuante "+ Adicionar Nó" */}
@@ -483,15 +487,9 @@ export default function FunnelCanvasPage({ funnelId, onBack }) {
         />
       </div>
 
-      {/* Modal de Exclusão do Funil Inteiro */}
+      {/* Modais de Exclusão e Ação de Nó */}
       <FunnelDeleteConfirmModal isOpen={showDeleteModal} funnelName={name} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteFunnel} deleting={deleting} />
-
-      {/* Modal de Confirmação para Duplicar ou Excluir Nó Específico */}
-      <FunnelNodeConfirmModal
-        config={nodeActionTarget}
-        onClose={() => setNodeActionTarget(null)}
-        onConfirm={handleConfirmNodeAction}
-      />
+      <FunnelNodeConfirmModal config={nodeActionTarget} onClose={() => setNodeActionTarget(null)} onConfirm={handleConfirmNodeAction} />
     </div>
   );
 }

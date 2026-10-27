@@ -76,4 +76,53 @@ describe('ChatMessagesList Component', () => {
     expect(screen.getByText('Mensagem de hoje')).toBeInTheDocument();
     expect(screen.getByText('Outra mensagem de hoje')).toBeInTheDocument();
   });
+
+  it('scrolls into view with auto behavior on initial load and smooth on subsequent new messages', () => {
+    const scrollIntoViewMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const initialMessages = [
+      {
+        id: 1,
+        message: 'Mensagem inicial',
+        created_at: new Date().toISOString(),
+        user: { id: 1, name: 'Aryaraj', role: 'superadmin' },
+      },
+    ];
+
+    const { rerender } = render(
+      <ChatMessagesList
+        loading={false}
+        messages={initialMessages}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        selectedChannel={{ id: 'general', name: 'Geral' }}
+      />
+    );
+
+    // Na primeira carga, scroll deve ser instantâneo ('auto') para não pausar animações de GIFs
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'auto' });
+
+    // Quando chega uma nova mensagem no canal já aberto
+    const updatedMessages = [
+      ...initialMessages,
+      {
+        id: 2,
+        message: 'Segunda mensagem recebida',
+        created_at: new Date().toISOString(),
+        user: { id: 2, name: 'Aluno', role: 'aluno' },
+      },
+    ];
+
+    rerender(
+      <ChatMessagesList
+        loading={false}
+        messages={updatedMessages}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        selectedChannel={{ id: 'general', name: 'Geral' }}
+      />
+    );
+
+    // Em mensagem subsequente com mesmo canal, deve usar 'smooth'
+    expect(scrollIntoViewMock).toHaveBeenLastCalledWith({ behavior: 'smooth' });
+  });
 });
