@@ -1,36 +1,59 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  GitBranch,
-  Plus,
-  Play,
-  Copy,
-  Trash2,
-  Calendar,
-  Layers,
-  Zap,
-  CheckCircle2,
-  Search,
-  ExternalLink,
-  History,
-} from 'lucide-react';
+import { GitBranch, Plus, CheckCircle2, Search } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import FunnelDeleteConfirmModal from './FunnelDeleteConfirmModal';
 import FunnelDuplicateConfirmModal from './FunnelDuplicateConfirmModal';
 import FunnelExecutionsHistoryModal from './FunnelExecutionsHistoryModal';
+import FunnelFolderBar from './FunnelFolderBar';
+import FunnelFolderModal from './FunnelFolderModal';
+import FunnelDeleteFolderConfirmModal from './FunnelDeleteFolderConfirmModal';
+import FunnelMoveModal from './FunnelMoveModal';
+import FunnelCreateModal from './FunnelCreateModal';
+import FunnelCard from './FunnelCard';
 
 export default function FunnelsListPage({ onSelectFunnel }) {
   const [funnels, setFunnels] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  // Modais de Funil
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState('');
+  const [newFunnelFolderId, setNewFunnelFolderId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [duplicateTarget, setDuplicateTarget] = useState(null);
   const [duplicating, setDuplicating] = useState(false);
   const [historyTarget, setHistoryTarget] = useState(null);
+
+  // Modais de Pasta
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [savingFolder, setSavingFolder] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
+  const [moveFunnelTarget, setMoveFunnelTarget] = useState(null);
+  const [movingFunnel, setMovingFunnel] = useState(false);
+
   const { addToast } = useToast();
+
+  const fetchFolders = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/v1/funnels/folders', {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFolders(data);
+      }
+    } catch {
+      // Ignora erro eventual de rede
+    }
+  }, []);
 
   const fetchFunnels = useCallback(async () => {
     setLoading(true);
@@ -49,9 +72,14 @@ export default function FunnelsListPage({ onSelectFunnel }) {
     }
   }, [addToast]);
 
-  useEffect(() => {
+  const loadAll = useCallback(() => {
     fetchFunnels();
-  }, [fetchFunnels]);
+    fetchFolders();
+  }, [fetchFunnels, fetchFolders]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   const handleCreateFunnel = async (e) => {
     e.preventDefault();
@@ -68,7 +96,11 @@ export default function FunnelsListPage({ onSelectFunnel }) {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ name: newFunnelName.trim(), trigger_type: 'chat_button' }),
+        body: JSON.stringify({
+          name: newFunnelName.trim(),
+          trigger_type: 'chat_button',
+          folder_id: newFunnelFolderId || null,
+        }),
       });
       if (!res.ok) throw new Error('Falha ao criar funil');
       const created = await res.json();
@@ -95,7 +127,7 @@ export default function FunnelsListPage({ onSelectFunnel }) {
       if (!res.ok) throw new Error('Falha ao duplicar funil');
       addToast('Funil duplicado com sucesso!', 'success');
       setDuplicateTarget(null);
-      fetchFunnels();
+      loadAll();
     } catch (err) {
       addToast(err.message, 'error');
     } finally {
@@ -115,7 +147,7 @@ export default function FunnelsListPage({ onSelectFunnel }) {
       if (!res.ok) throw new Error('Falha ao excluir funil');
       addToast('Funil excluído com sucesso!', 'success');
       setDeleteTarget(null);
-      fetchFunnels();
+      loadAll();
     } catch (err) {
       addToast(err.message, 'error');
     } finally {
@@ -123,16 +155,101 @@ export default function FunnelsListPage({ onSelectFunnel }) {
     }
   };
 
-  const filtered = funnels.filter((f) =>
-    f.name.toLowerCase().includes(search.toLowerCase().trim())
-  );
+  const handleSaveFolder = async ({ name, color }) => {
+    setSavingFolder(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const isEdit = !!editingFolder;
+      const url = isEdit ? `/api/v1/funnels/folders/${editingFolder.id}` : '/api/v1/funnels/folders';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name, color }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || 'Falha ao salvar pasta');
+      }
+      addToast(isEdit ? 'Pasta atualizada!' : 'Pasta criada com sucesso!', 'success');
+      setFolderModalOpen(false);
+      setEditingFolder(null);
+      fetchFolders();
+      fetchFunnels();
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setSavingFolder(false);
+    }
+  };
+
+  const handleConfirmDeleteFolder = async () => {
+    if (!deleteFolderTarget) return;
+    setDeletingFolder(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/v1/funnels/folders/${deleteFolderTarget.id}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) throw new Error('Falha ao excluir pasta');
+      addToast('Pasta excluída! Funis preservados em Sem Pasta.', 'success');
+      if (selectedFolderId === deleteFolderTarget.id) {
+        setSelectedFolderId(null);
+      }
+      setDeleteFolderTarget(null);
+      loadAll();
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setDeletingFolder(false);
+    }
+  };
+
+  const handleConfirmMoveFunnel = async (targetFolderId) => {
+    if (!moveFunnelTarget) return;
+    setMovingFunnel(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/v1/funnels/${moveFunnelTarget.id}/folder`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ folder_id: targetFolderId }),
+      });
+      if (!res.ok) throw new Error('Falha ao mover funil');
+      addToast('Funil movido com sucesso!', 'success');
+      setMoveFunnelTarget(null);
+      loadAll();
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setMovingFunnel(false);
+    }
+  };
+
+  const unassignedCount = funnels.filter((f) => !f.folder_id).length;
+
+  const filtered = funnels.filter((f) => {
+    const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase().trim());
+    if (!matchesSearch) return false;
+    if (selectedFolderId === null) return true;
+    if (selectedFolderId === 'unassigned') return !f.folder_id;
+    return f.folder_id === selectedFolderId;
+  });
 
   return (
     <div style={{ padding: '28px', maxWidth: '1240px', margin: '0 auto', color: '#f8fafc' }} data-testid="funnels-list-page">
       {/* Top Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px 0', fontSize: '1.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '1.75rem', fontWeight: 800 }}>
             <span style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Meus Funis
             </span>
@@ -142,7 +259,6 @@ export default function FunnelsListPage({ onSelectFunnel }) {
           </p>
         </div>
 
-        {/* Badges de Conectividade e Botão Criar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.75rem', fontWeight: 600 }}>
             <CheckCircle2 size={13} />
@@ -153,6 +269,7 @@ export default function FunnelsListPage({ onSelectFunnel }) {
             type="button"
             onClick={() => {
               setNewFunnelName(`Novo Funil ${new Date().toLocaleDateString('pt-BR')}, ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
+              setNewFunnelFolderId(typeof selectedFolderId === 'number' ? selectedFolderId : null);
               setShowCreateModal(true);
             }}
             style={{
@@ -177,7 +294,27 @@ export default function FunnelsListPage({ onSelectFunnel }) {
         </div>
       </div>
 
-      {/* Busca */}
+      {/* Barra de Pastas */}
+      <FunnelFolderBar
+        folders={folders}
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
+        onCreateFolderClick={() => {
+          setEditingFolder(null);
+          setFolderModalOpen(true);
+        }}
+        onEditFolderClick={(f) => {
+          setEditingFolder(f);
+          setFolderModalOpen(true);
+        }}
+        onDeleteFolderClick={(f) => {
+          setDeleteFolderTarget(f);
+        }}
+        totalFunnelsCount={funnels.length}
+        unassignedFunnelsCount={unassignedCount}
+      />
+
+      {/* Barra de Busca */}
       <div style={{ marginBottom: '22px', maxWidth: '360px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '8px 12px' }}>
           <Search size={15} color="#64748b" />
@@ -191,7 +328,7 @@ export default function FunnelsListPage({ onSelectFunnel }) {
         </div>
       </div>
 
-      {/* Listagem de Funis */}
+      {/* Grade de Funis */}
       {loading ? (
         <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>Carregando seus funis...</div>
       ) : filtered.length === 0 ? (
@@ -199,11 +336,12 @@ export default function FunnelsListPage({ onSelectFunnel }) {
           <GitBranch size={42} color="#6366f1" style={{ margin: '0 auto 12px auto' }} />
           <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>Nenhum funil encontrado</h3>
           <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '0.85rem' }}>
-            Comece criando o seu primeiro fluxo automatizado para engajar seus alunos pelo chat.
+            {selectedFolderId ? 'Nenhum funil associado a esta pasta.' : 'Comece criando o seu primeiro fluxo automatizado.'}
           </p>
           <button
             onClick={() => {
               setNewFunnelName(`Novo Funil ${new Date().toLocaleDateString('pt-BR')}`);
+              setNewFunnelFolderId(typeof selectedFolderId === 'number' ? selectedFolderId : null);
               setShowCreateModal(true);
             }}
             style={{ padding: '9px 18px', borderRadius: '8px', background: '#6366f1', color: '#ffffff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
@@ -214,160 +352,62 @@ export default function FunnelsListPage({ onSelectFunnel }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '18px' }}>
           {filtered.map((item) => (
-            <div
+            <FunnelCard
               key={item.id}
-              style={{
-                backgroundColor: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '14px',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'transform 0.15s ease, border-color 0.15s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)')}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)')}
-              data-testid={`funnel-card-${item.id}`}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <GitBranch size={17} />
-                    </div>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#34d399', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
-                      Ativo
-                    </span>
-                  </div>
-
-                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                    {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
-                  {item.name}
-                </h3>
-                {item.description && (
-                  <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                    {item.description}
-                  </p>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '14px 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Layers size={13} color="#a78bfa" />
-                    <span>{item.nodes_count || 1} {item.nodes_count === 1 ? 'nó' : 'nós'}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Zap size={13} color="#f59e0b" />
-                    <span>{item.executions_count || 0} execuções</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ações */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => onSelectFunnel(item.id)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                  data-testid={`edit-funnel-btn-${item.id}`}
-                >
-                  <Play size={13} fill="#ffffff" />
-                  <span>Editar Fluxo</span>
-                </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setHistoryTarget(item)}
-                    title="Histórico de Execuções e Contatos"
-                    style={{ background: 'transparent', border: '1px solid rgba(139, 92, 246, 0.35)', color: '#c084fc', padding: '7px', borderRadius: '6px', cursor: 'pointer' }}
-                    data-testid={`history-funnel-btn-${item.id}`}
-                  >
-                    <History size={13} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setDuplicateTarget(item)}
-                    title="Duplicar Funil"
-                    style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', padding: '7px', borderRadius: '6px', cursor: 'pointer' }}
-                    data-testid={`duplicate-funnel-btn-${item.id}`}
-                  >
-                    <Copy size={13} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(item)}
-                    title="Excluir Funil"
-                    style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', padding: '7px', borderRadius: '6px', cursor: 'pointer' }}
-                    data-testid={`delete-funnel-btn-${item.id}`}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
+              item={item}
+              onSelectFunnel={onSelectFunnel}
+              onMoveClick={(f) => setMoveFunnelTarget(f)}
+              onHistoryClick={(f) => setHistoryTarget(f)}
+              onDuplicateClick={(f) => setDuplicateTarget(f)}
+              onDeleteClick={(f) => setDeleteTarget(f)}
+            />
           ))}
         </div>
       )}
 
-      {/* Modal Criar Funil */}
-      {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: '20px' }}>
-          <div style={{ width: '100%', maxWidth: '440px', backgroundColor: '#0f172a', border: '1px solid rgba(139, 92, 246, 0.4)', borderRadius: '16px', padding: '24px', color: '#f8fafc' }}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '1.2rem', fontWeight: 700 }}>Criar Novo Funil</h3>
-            <form onSubmit={handleCreateFunnel}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: 600 }}>Nome do Funil *</label>
-                <input
-                  type="text"
-                  value={newFunnelName}
-                  onChange={(e) => setNewFunnelName(e.target.value)}
-                  placeholder="Ex: Funil de Oferta Especial"
-                  autoFocus
-                  style={{ width: '100%', backgroundColor: '#020617', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', color: '#ffffff', padding: '9px 12px', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.15)', backgroundColor: 'transparent', color: '#cbd5e1', cursor: 'pointer' }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', color: '#ffffff', border: 'none', fontWeight: 700, cursor: creating ? 'not-allowed' : 'pointer' }}
-                  data-testid="submit-create-funnel-btn"
-                >
-                  {creating ? 'Criando...' : 'Criar e Abrir Fluxo'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Modais de Pasta */}
+      <FunnelFolderModal
+        isOpen={folderModalOpen}
+        folder={editingFolder}
+        onClose={() => {
+          setFolderModalOpen(false);
+          setEditingFolder(null);
+        }}
+        onSave={handleSaveFolder}
+        saving={savingFolder}
+      />
 
-      {/* Modal Confirmar Duplicação */}
+      <FunnelDeleteFolderConfirmModal
+        isOpen={!!deleteFolderTarget}
+        folderName={deleteFolderTarget?.name}
+        funnelsCount={deleteFolderTarget?.funnels_count || 0}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirm={handleConfirmDeleteFolder}
+        deleting={deletingFolder}
+      />
+
+      <FunnelMoveModal
+        isOpen={!!moveFunnelTarget}
+        funnel={moveFunnelTarget}
+        folders={folders}
+        onClose={() => setMoveFunnelTarget(null)}
+        onConfirm={handleConfirmMoveFunnel}
+        moving={movingFunnel}
+      />
+
+      {/* Modais de Funil */}
+      <FunnelCreateModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateFunnel}
+        newFunnelName={newFunnelName}
+        setNewFunnelName={setNewFunnelName}
+        newFunnelFolderId={newFunnelFolderId}
+        setNewFunnelFolderId={setNewFunnelFolderId}
+        folders={folders}
+        creating={creating}
+      />
+
       <FunnelDuplicateConfirmModal
         isOpen={!!duplicateTarget}
         funnelName={duplicateTarget?.name}
@@ -376,7 +416,6 @@ export default function FunnelsListPage({ onSelectFunnel }) {
         duplicating={duplicating}
       />
 
-      {/* Modal Histórico de Execuções */}
       <FunnelExecutionsHistoryModal
         isOpen={!!historyTarget}
         funnelId={historyTarget?.id}
@@ -384,7 +423,6 @@ export default function FunnelsListPage({ onSelectFunnel }) {
         onClose={() => setHistoryTarget(null)}
       />
 
-      {/* Modal Confirmar Exclusão */}
       <FunnelDeleteConfirmModal
         isOpen={!!deleteTarget}
         funnelName={deleteTarget?.name}

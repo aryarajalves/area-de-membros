@@ -3,6 +3,38 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class FunnelFolderBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    color: Optional[str] = "#6366f1"
+    order_index: int = 0
+
+
+class FunnelFolderCreate(FunnelFolderBase):
+    pass
+
+
+class FunnelFolderUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    color: Optional[str] = None
+    order_index: Optional[int] = None
+
+
+class FunnelFolderItem(BaseModel):
+    id: int
+    name: str
+    color: Optional[str] = "#6366f1"
+    order_index: int = 0
+    funnels_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FunnelMoveFolderRequest(BaseModel):
+    folder_id: Optional[int] = None
+
+
 class FunnelBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -10,6 +42,7 @@ class FunnelBase(BaseModel):
     trigger_keywords: Optional[str] = None
     flow_data: str = "{}"
     is_active: bool = True
+    folder_id: Optional[int] = None
 
 
 class FunnelCreate(FunnelBase):
@@ -23,6 +56,7 @@ class FunnelUpdate(BaseModel):
     trigger_keywords: Optional[str] = None
     flow_data: Optional[str] = None
     is_active: Optional[bool] = None
+    folder_id: Optional[int] = None
 
 
 class FunnelSummary(BaseModel):
@@ -32,6 +66,9 @@ class FunnelSummary(BaseModel):
     trigger_type: str
     trigger_keywords: Optional[str] = None
     is_active: bool
+    folder_id: Optional[int] = None
+    folder_name: Optional[str] = None
+    folder_color: Optional[str] = None
     nodes_count: int = 0
     executions_count: int = 0
     created_at: datetime
@@ -49,6 +86,9 @@ class FunnelDetail(BaseModel):
     trigger_keywords: Optional[str] = None
     flow_data: str
     is_active: bool
+    folder_id: Optional[int] = None
+    folder_name: Optional[str] = None
+    folder_color: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     created_by_name: Optional[str] = None
@@ -123,4 +163,3 @@ class ContactActiveFunnelItem(BaseModel):
     total_nodes_count: int = 0
 
     model_config = {"from_attributes": True}
-

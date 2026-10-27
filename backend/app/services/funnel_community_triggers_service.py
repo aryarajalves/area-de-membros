@@ -225,10 +225,13 @@ def dispatch_event_attendance_funnels(
 ) -> int:
     """
     Gatilho 4: Dispara funis ativos quando o aluno confirma presença / se inscreve em um evento.
-    Permite filtrar por evento específico ou qualquer evento.
+    Permite filtrar por evento específico/qualquer evento OU disparar ao atingir a meta de X eventos confirmados.
     """
     dispatched = 0
     try:
+        from app.models.event import EventAttendee
+        total_confirmed = db.query(EventAttendee).filter(EventAttendee.user_id == student_id).count()
+
         active_funnels = db.query(Funnel).filter(Funnel.is_active == True).all()
         for f in active_funnels:
             try:
@@ -238,21 +241,42 @@ def dispatch_event_attendance_funnels(
 
             nodes = flow.get("nodes", [])
             matches = False
+            matched_mode = "event"
             for n in nodes:
                 if n.get("type") in ("trigger", "trigger_event_attendance"):
                     data = n.get("data", {})
                     if data.get("trigger_event") == "event_attendance":
-                        target_event = data.get("event_id")
-                        if target_event and str(target_event) not in ("any", "all", "null", ""):
-                            if int(target_event) == int(event_id):
+                        attendance_mode = data.get("attendance_mode", "event")
+                        if attendance_mode == "count":
+                            target_count = data.get("target_count")
+                            try:
+                                target_count_num = int(target_count) if target_count is not None else 1
+                            except (ValueError, TypeError):
+                                target_count_num = 1
+
+                            # Dispara quando o aluno atinge a meta exata de X eventos confirmados
+                            if total_confirmed == target_count_num:
                                 matches = True
+                                matched_mode = "count"
                                 break
                         else:
-                            matches = True
-                            break
+                            target_event = data.get("event_id")
+                            if target_event and str(target_event) not in ("any", "all", "null", ""):
+                                if int(target_event) == int(event_id):
+                                    matches = True
+                                    matched_mode = "event"
+                                    break
+                            else:
+                                matches = True
+                                matched_mode = "event"
+                                break
 
             if matches:
-                trigger_label = f"trigger_event_attendance_evt{event_id}"
+                trigger_label = (
+                    f"trigger_event_attendance_count{total_confirmed}"
+                    if matched_mode == "count"
+                    else f"trigger_event_attendance_evt{event_id}"
+                )
                 if _start_funnel_execution(db, f, student_id, trigger_label, db_session_factory):
                     dispatched += 1
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, Wrench, Package, History } from 'lucide-react';
 import ChainedLockOverlay from './ChainedLockOverlay';
 import { recordCourseSalesClick } from './courseSalesApi';
@@ -21,6 +21,9 @@ export default function CourseCard({
   const hasAccess = isManager || course.has_access !== false;
   const isTool = course.item_type === 'tool';
   const bundledCount = course.bundled_items_count || (course.bundled_courses ? course.bundled_courses.length : 0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const imageSrc = course.thumbnail_url || course.cover_image_url;
 
   const handleCardClick = () => {
     if (hasAccess) {
@@ -137,8 +140,32 @@ export default function CourseCard({
         style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
         title={hasAccess ? (isTool ? 'Clique para acessar a ferramenta' : 'Clique para acessar o curso') : 'Produto fechado - Clique para ver mais informações'}
       >
-        {course.thumbnail_url || course.cover_image_url ? (
-          <img src={course.thumbnail_url || course.cover_image_url} alt={course.title} />
+        {imageSrc && !imageError ? (
+          <>
+            {!imageLoaded && (
+              <div
+                className="course-card-skeleton"
+                data-testid={`course-card-skeleton-${course.id}`}
+              />
+            )}
+            <img
+              src={imageSrc}
+              alt={course.title}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+              style={{
+                opacity: imageLoaded ? 1 : 0,
+                transition: 'opacity 0.22s ease-in-out',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block'
+              }}
+            />
+          </>
         ) : (
           <div className="course-card-placeholder">
             {isTool ? (

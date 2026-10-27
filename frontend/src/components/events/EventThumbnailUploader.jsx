@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X } from 'lucide-react';
+import { UploadProgressModal } from '../common/FeedbackModals';
 
 export default function EventThumbnailUploader({
   thumbnailUrl,
@@ -116,6 +117,13 @@ export default function EventThumbnailUploader({
           </button>
         </div>
       )}
+
+      {/* Modal de Progresso de Upload */}
+      <UploadProgressModal
+        isOpen={isUploadingThumb}
+        title="Enviando capa do evento..."
+        subtitle="Aguarde o processamento e envio seguro da imagem para a nuvem."
+      />
     </div>
   );
 }

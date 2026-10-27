@@ -71,8 +71,11 @@ describe('CourseModals Components', () => {
       // A cor de fundo agora fica na aba Configurações da Sidebar, e não no curso individual
       expect(screen.queryByTestId('course-bgcolor-input')).not.toBeInTheDocument();
 
-      // Verificar preview do Banner Hero e remoção com confirmação
-      expect(screen.getByTestId('cover-preview-img')).toHaveAttribute('src', 'https://b2.com/hero-banner.jpg');
+      // Clicar na aba de Capas & Mídia
+      fireEvent.click(screen.getByTestId('course-tab-media'));
+
+      // Verificar preview do Banner Hero no BannerPositionAdjuster e remoção com confirmação
+      expect(screen.getByTestId('banner-drag-preview')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('remove-course-cover-btn'));
       expect(screen.getByText('Remover Banner Hero?')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('confirm-file-delete-btn'));

@@ -37,6 +37,8 @@ export function CourseFormModal({
   setToolUrl,
   bundledCourseIds = [],
   setBundledCourseIds,
+  bundleTitle = '',
+  setBundleTitle,
   availableCourses = [],
   bgColor = '#090d16',
   uploading,
@@ -181,6 +183,8 @@ export function CourseFormModal({
               setOrderIndex={setOrderIndex}
               setBundledCourseIds={setBundledCourseIds}
               bundledCourseIds={bundledCourseIds}
+              bundleTitle={bundleTitle}
+              setBundleTitle={setBundleTitle}
               availableCourses={availableCourses}
               editingCourse={editingCourse}
               isLightBg={isLightBg}

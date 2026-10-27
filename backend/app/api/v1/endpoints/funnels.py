@@ -17,6 +17,17 @@ from app.schemas.funnel import (
     FunnelSenderOption,
     FunnelExecutionsResponse,
     ContactActiveFunnelItem,
+    FunnelFolderCreate,
+    FunnelFolderUpdate,
+    FunnelFolderItem,
+    FunnelMoveFolderRequest,
+)
+from app.services.funnel_folder_service import (
+    list_funnel_folders,
+    create_funnel_folder,
+    update_funnel_folder,
+    delete_funnel_folder,
+    move_funnel_to_folder,
 )
 from app.services.funnel_service import (
     list_funnels,
@@ -74,6 +85,58 @@ def create_new_funnel(
 ):
     """Cria um novo funil com fluxo padrão inicial."""
     return create_funnel(db, current_user, data)
+
+
+@router.get("/folders", response_model=List[FunnelFolderItem], summary="Listar Pastas de Funis")
+def get_funnel_folders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Lista as pastas organizadoras de funis com contagem de funis contidos."""
+    return list_funnel_folders(db)
+
+
+@router.post("/folders", response_model=FunnelFolderItem, status_code=status.HTTP_201_CREATED, summary="Criar Pasta de Funis")
+def create_new_folder(
+    data: FunnelFolderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Cria uma nova pasta organizadora de funis."""
+    return create_funnel_folder(db, data)
+
+
+@router.put("/folders/{folder_id}", response_model=FunnelFolderItem, summary="Atualizar Pasta de Funis")
+def update_existing_folder(
+    folder_id: int,
+    data: FunnelFolderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Renomeia ou ajusta as configurações de uma pasta."""
+    return update_funnel_folder(db, folder_id, data)
+
+
+@router.delete("/folders/{folder_id}", status_code=status.HTTP_200_OK, summary="Excluir Pasta de Funis")
+def delete_existing_folder(
+    folder_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Exclui uma pasta de funis. Os funis são preservados e movidos para 'Sem Pasta'."""
+    delete_funnel_folder(db, folder_id)
+    return {"message": "Pasta excluída com sucesso. Os funis contidos foram movidos para Sem Pasta."}
+
+
+@router.patch("/{funnel_id}/folder", response_model=FunnelDetail, summary="Mover Funil para Pasta")
+def move_funnel_folder(
+    funnel_id: int,
+    data: FunnelMoveFolderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """Move um funil para uma pasta ou remove-o de qualquer pasta (null)."""
+    return move_funnel_to_folder(db, funnel_id, data.folder_id)
 
 
 @router.get("/{funnel_id}", response_model=FunnelDetail, summary="Obter Detalhes do Funil")

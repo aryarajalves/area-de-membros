@@ -116,6 +116,27 @@
   justify-content: center;
 }
 
+.course-card-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+  background-size: 200% 100%;
+  animation: courseSkeletonShimmer 1.4s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes courseSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .course-card-thumb img {
   width: 100%;
   height: 100%;

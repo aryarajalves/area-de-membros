@@ -28,3 +28,6 @@ cryptography==50.0.2
 
 # Controle e limitação de taxa de requisições (Rate Limiting) contra ataques de força bruta e DoS
 slowapi>=0.1.9
+
+# Otimizacao e compressao de imagens de cursos e banners para carregamento instantaneo (WebP)
+Pillow>=10.4.0

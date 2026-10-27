@@ -181,7 +181,7 @@ export default function LessonModal({
       <div className="table-card" style={{ maxWidth: '780px', width: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '14px', backgroundColor: modalBg, border: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.14)', color: textColor, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         
         {/* Topo do Modal */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 2px 0', color: textColor }}>
               {editingLesson ? 'Editar Aula' : 'Nova Aula'}
@@ -201,7 +201,7 @@ export default function LessonModal({
         </div>
 
         {/* Seletor de Tipo de Aula */}
-        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '10px', backgroundColor: isLightBg ? '#f8fafc' : 'rgba(255,255,255,0.03)', border: `1px solid ${borderColor}` }}>
+        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '10px', backgroundColor: isLightBg ? '#f8fafc' : 'rgba(255,255,255,0.03)', border: `1px solid ${borderColor}`, flexShrink: 0 }}>
           <span style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: subTextColor, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Tipo de Aula:
           </span>
@@ -239,7 +239,7 @@ export default function LessonModal({
         </div>
 
         {/* Abas */}
-        <div data-testid="lesson-modal-tabs" style={{ display: 'flex', gap: '6px', borderBottom: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)', marginBottom: '18px', overflowX: 'auto' }}>
+        <div data-testid="lesson-modal-tabs" style={{ display: 'flex', gap: '6px', borderBottom: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)', marginBottom: '18px', overflowX: 'auto', flexShrink: 0, paddingBottom: '2px' }}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -261,7 +261,8 @@ export default function LessonModal({
                   fontWeight: isActive ? 700 : 500,
                   color: isActive ? '#eab308' : subTextColor,
                   borderBottom: isActive ? '2px solid #eab308' : '2px solid transparent',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
                 <Icon size={15} />
@@ -272,7 +273,7 @@ export default function LessonModal({
         </div>
 
         {/* Conteúdo do Formulário */}
-        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' }}>
+        <form onSubmit={handleSubmit} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' }}>
           <div data-testid="lesson-modal-panel-info" style={{ display: activeTab === 'info' ? 'flex' : 'none', flexDirection: 'column', gap: '14px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -479,7 +480,7 @@ export default function LessonModal({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '12px', borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '12px', borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
             <button type="button" className="secondary-btn" onClick={onClose} disabled={loading || uploading}>
               Cancelar
             </button>

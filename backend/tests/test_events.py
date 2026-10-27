@@ -191,3 +191,88 @@ def test_event_course_restriction_and_upsell(superadmin_token, student_data):
         db.query(Course).filter(Course.id == course_id).delete()
         db.commit()
         db.close()
+
+
+def test_student_confirmed_events_count_in_students_list(superadmin_token, student_data):
+    headers_admin = {"Authorization": f"Bearer {superadmin_token}"}
+    headers_student = {"Authorization": f"Bearer {student_data['token']}"}
+    student_id = student_data["id"]
+
+    db = SessionLocal()
+    from app.models.event import EventAttendee
+    # Limpa presenças prévias do aluno para garantir ambiente limpo no teste
+    db.query(EventAttendee).filter(EventAttendee.user_id == student_id).delete()
+    db.commit()
+
+    # Cria 2 eventos abertos para teste
+    now = datetime.now(timezone.utc)
+    ev1 = Event(
+        title="Evento Teste Contagem 1",
+        start_time=now + timedelta(days=2),
+        target_type="all",
+        is_active=True
+    )
+    ev2 = Event(
+        title="Evento Teste Contagem 2",
+        start_time=now + timedelta(days=4),
+        target_type="all",
+        is_active=True
+    )
+    db.add_all([ev1, ev2])
+    db.commit()
+    db.refresh(ev1)
+    db.refresh(ev2)
+    ev1_id, ev2_id = ev1.id, ev2.id
+    db.close()
+
+    try:
+        # 1. Aluno sem confirmações: confirmed_events_count deve ser 0
+        res = client.get("/api/v1/students", headers=headers_admin)
+        assert res.status_code == 200
+        students_list = res.json()["items"]
+        st = next((s for s in students_list if s["id"] == student_id), None)
+        assert st is not None
+        assert st["confirmed_events_count"] == 0
+
+        # 2. Aluno confirma presença no evento 1 -> deve ser 1
+        res_conf1 = client.post(f"/api/v1/events/{ev1_id}/confirm-attendance", headers=headers_student)
+        assert res_conf1.status_code == 200
+        assert res_conf1.json()["is_confirmed"] is True
+
+        res = client.get("/api/v1/students", headers=headers_admin)
+        st = next((s for s in res.json()["items"] if s["id"] == student_id), None)
+        assert st["confirmed_events_count"] == 1
+
+        # 3. Aluno confirma presença no evento 2 -> deve ser 2
+        res_conf2 = client.post(f"/api/v1/events/{ev2_id}/confirm-attendance", headers=headers_student)
+        assert res_conf2.status_code == 200
+        assert res_conf2.json()["is_confirmed"] is True
+
+        res = client.get("/api/v1/students", headers=headers_admin)
+        st = next((s for s in res.json()["items"] if s["id"] == student_id), None)
+        assert st["confirmed_events_count"] == 2
+
+        # 4. Aluno desconfirma presença no evento 1 -> deve remover 1 e voltar para 1
+        res_unconf1 = client.post(f"/api/v1/events/{ev1_id}/confirm-attendance", headers=headers_student)
+        assert res_unconf1.status_code == 200
+        assert res_unconf1.json()["is_confirmed"] is False
+
+        res = client.get("/api/v1/students", headers=headers_admin)
+        st = next((s for s in res.json()["items"] if s["id"] == student_id), None)
+        assert st["confirmed_events_count"] == 1
+
+        # 5. Aluno desconfirma presença no evento 2 -> deve remover 1 e voltar para 0
+        res_unconf2 = client.post(f"/api/v1/events/{ev2_id}/confirm-attendance", headers=headers_student)
+        assert res_unconf2.status_code == 200
+        assert res_unconf2.json()["is_confirmed"] is False
+
+        res = client.get("/api/v1/students", headers=headers_admin)
+        st = next((s for s in res.json()["items"] if s["id"] == student_id), None)
+        assert st["confirmed_events_count"] == 0
+
+    finally:
+        db = SessionLocal()
+        db.query(EventAttendee).filter(EventAttendee.event_id.in_([ev1_id, ev2_id])).delete()
+        db.query(Event).filter(Event.id.in_([ev1_id, ev2_id])).delete()
+        db.commit()
+        db.close()

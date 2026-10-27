@@ -216,6 +216,61 @@ describe('FunnelNodeTrigger - Novos Gatilhos da Comunidade & Eventos', () => {
       expect(screen.getByTestId('select-attendance-event-trig_evento')).toBeInTheDocument();
       expect(screen.getByTestId('event-attendance-trigger-summary-trig_evento')).toBeInTheDocument();
     });
+
+    it('permite alternar para modo de meta de X eventos confirmados e selecionar preset', () => {
+      const onUpdateData = vi.fn();
+      const { rerender } = render(
+        <FunnelNodeTrigger
+          node={node}
+          isSelected={true}
+          onUpdateData={onUpdateData}
+        />
+      );
+
+      const countModeBtn = screen.getByTestId('attendance-mode-count-btn-trig_evento');
+      fireEvent.click(countModeBtn);
+
+      expect(onUpdateData).toHaveBeenCalledWith(
+        'trig_evento',
+        expect.objectContaining({
+          attendance_mode: 'count',
+        })
+      );
+
+      // Atualiza renderização com mode count ativo
+      const nodeCountMode = {
+        ...node,
+        data: {
+          ...node.data,
+          attendance_mode: 'count',
+          target_count: 3,
+        },
+      };
+
+      rerender(
+        <FunnelNodeTrigger
+          node={nodeCountMode}
+          isSelected={true}
+          onUpdateData={onUpdateData}
+        />
+      );
+
+      expect(screen.getByTestId('input-target-attendance-count-trig_evento')).toHaveValue(3);
+      expect(screen.getByTestId('event-attendance-trigger-summary-trig_evento')).toHaveTextContent(
+        'Ativa quando o aluno confirmar presença em 3 eventos'
+      );
+
+      // Clica no preset de 5 eventos
+      const preset5Btn = screen.getByTestId('preset-attendance-count-5-trig_evento');
+      fireEvent.click(preset5Btn);
+
+      expect(onUpdateData).toHaveBeenCalledWith(
+        'trig_evento',
+        expect.objectContaining({
+          target_count: 5,
+        })
+      );
+    });
   });
 
   describe('Catálogo de Nós - FunnelNodeMenu com novos gatilhos', () => {

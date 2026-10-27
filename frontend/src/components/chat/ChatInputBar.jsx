@@ -92,7 +92,7 @@ export default function ChatInputBar({
     }
   };
 
-  const handleSendRecordedAudio = async (audioBlob) => {
+  const handleSendRecordedAudio = async (audioBlob, caption = '') => {
     setUploading(true);
     try {
       const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, {
@@ -100,8 +100,8 @@ export default function ChatInputBar({
       });
       const data = await uploadFileToServer(audioFile);
       if (data) {
-        const trimmed = text.trim();
-        const success = await onSendMessage(trimmed, data.media_url, 'audio');
+        const messageText = typeof caption === 'string' && caption.trim() ? caption.trim() : text.trim();
+        const success = await onSendMessage(messageText, data.media_url, 'audio');
         if (success) {
           setText('');
           setAttachedMedia(null);

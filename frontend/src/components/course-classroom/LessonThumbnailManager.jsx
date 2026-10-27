@@ -224,6 +224,13 @@ export default function LessonThumbnailManager({
         </div>
       )}
 
+      {/* Modal de Progresso de Upload */}
+      <UploadProgressModal
+        isOpen={uploading}
+        title="Enviando imagem de capa..."
+        subtitle="Aguarde o processamento e envio seguro da imagem para a nuvem."
+      />
+
       {/* Modal de Confirmação de Remoção da Capa */}
       <FileDeleteConfirmModal
         isOpen={showDeleteConfirm}

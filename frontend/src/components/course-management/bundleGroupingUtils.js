@@ -90,11 +90,18 @@ export function groupCoursesByBundles(courses = []) {
         ? sortedBundleCourses.map((c) => ({ ...c, has_access: true }))
         : sortedBundleCourses;
 
+      // Busca título customizado do combo ou usa o título do curso principal
+      const customBundleTitle =
+        primaryCourse.bundle_title?.trim() ||
+        componentCourses.find((c) => c.bundle_title && c.bundle_title.trim())?.bundle_title?.trim();
+      const bundleDisplayTitle = customBundleTitle || primaryCourse.title;
+
       groupedItems.push({
         type: 'bundle',
         key: `bundle-group-${primaryCourse.id}`,
         bundleId: primaryCourse.id,
-        title: primaryCourse.title,
+        title: bundleDisplayTitle,
+        bundle_title: customBundleTitle || null,
         primaryCourse,
         courses: finalBundleCourses,
         totalItems: finalBundleCourses.length,

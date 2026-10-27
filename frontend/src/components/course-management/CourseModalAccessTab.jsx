@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, ListOrdered } from 'lucide-react';
+import { Globe, ListOrdered, Package } from 'lucide-react';
 import CourseBundleSelector from './CourseBundleSelector';
 
 export default function CourseModalAccessTab({
@@ -9,6 +9,8 @@ export default function CourseModalAccessTab({
   setOrderIndex,
   setBundledCourseIds,
   bundledCourseIds = [],
+  bundleTitle = '',
+  setBundleTitle,
   availableCourses = [],
   editingCourse,
   isLightBg
@@ -64,6 +66,27 @@ export default function CourseModalAccessTab({
           onChangeSelectedCourseIds={setBundledCourseIds}
           isLightBg={isLightBg}
         />
+      )}
+
+      {/* Nome Personalizado do Pacote / Combo */}
+      {setBundledCourseIds && bundledCourseIds.length > 0 && (
+        <div className="form-group" style={{ marginTop: '16px' }} data-testid="course-bundle-title-group">
+          <label htmlFor="course-bundle-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Package size={15} style={{ color: '#10b981' }} />
+            <span>Nome de Exibição do Pacote / Combo (Opcional)</span>
+          </label>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
+            Personalize o nome que aparece no topo da caixa do combo (ex: "Combo AstroWake Master"). Se deixar em branco, usará o título do curso.
+          </p>
+          <input
+            id="course-bundle-title"
+            type="text"
+            placeholder="Ex: Combo AstroWake Master"
+            value={bundleTitle}
+            onChange={(e) => setBundleTitle && setBundleTitle(e.target.value)}
+            data-testid="course-bundle-title-input"
+          />
+        </div>
       )}
     </div>
   );

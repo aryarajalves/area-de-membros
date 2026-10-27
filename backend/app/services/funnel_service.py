@@ -124,6 +124,8 @@ def list_funnels(db: Session) -> List[FunnelSummary]:
     summaries = []
     for f in funnels:
         exec_count = db.query(func.count(FunnelExecution.id)).filter(FunnelExecution.funnel_id == f.id).scalar() or 0
+        folder_name = f.folder.name if f.folder else None
+        folder_color = f.folder.color if f.folder else None
         summaries.append(
             FunnelSummary(
                 id=f.id,
@@ -132,6 +134,9 @@ def list_funnels(db: Session) -> List[FunnelSummary]:
                 trigger_type=f.trigger_type,
                 trigger_keywords=f.trigger_keywords,
                 is_active=f.is_active,
+                folder_id=f.folder_id,
+                folder_name=folder_name,
+                folder_color=folder_color,
                 nodes_count=_extract_nodes_count(f.flow_data),
                 executions_count=exec_count,
                 created_at=f.created_at,
@@ -147,6 +152,8 @@ def get_funnel_detail(db: Session, funnel_id: int) -> FunnelDetail:
     f = db.query(Funnel).filter(Funnel.id == funnel_id).first()
     if not f:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funil não encontrado.")
+    folder_name = f.folder.name if f.folder else None
+    folder_color = f.folder.color if f.folder else None
     return FunnelDetail(
         id=f.id,
         name=f.name,
@@ -155,6 +162,9 @@ def get_funnel_detail(db: Session, funnel_id: int) -> FunnelDetail:
         trigger_keywords=f.trigger_keywords,
         flow_data=f.flow_data,
         is_active=f.is_active,
+        folder_id=f.folder_id,
+        folder_name=folder_name,
+        folder_color=folder_color,
         created_at=f.created_at,
         updated_at=f.updated_at,
         created_by_name=f.created_by_user.name if f.created_by_user else None,
@@ -190,6 +200,7 @@ def create_funnel(db: Session, current_user: User, data: FunnelCreate) -> Funnel
         trigger_keywords=data.trigger_keywords.strip() if data.trigger_keywords else None,
         flow_data=normalize_flow_data_nodes(flow),
         is_active=data.is_active,
+        folder_id=data.folder_id,
         created_by_user_id=current_user.id,
     )
     db.add(f)
@@ -216,6 +227,8 @@ def update_funnel(db: Session, funnel_id: int, data: FunnelUpdate) -> FunnelDeta
         f.flow_data = normalize_flow_data_nodes(data.flow_data)
     if data.is_active is not None:
         f.is_active = data.is_active
+    if hasattr(data, "folder_id") and data.folder_id is not None:
+        f.folder_id = data.folder_id if data.folder_id != 0 else None
 
     f.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -246,6 +259,7 @@ def duplicate_funnel(db: Session, funnel_id: int, current_user: User) -> FunnelD
         trigger_keywords=f.trigger_keywords,
         flow_data=f.flow_data,
         is_active=f.is_active,
+        folder_id=f.folder_id,
         created_by_user_id=current_user.id,
     )
     db.add(new_f)

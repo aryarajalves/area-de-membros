@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy, Tag } from 'lucide-react';
+import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy, Tag, CalendarCheck } from 'lucide-react';
 import StudentCourseProgressItem from './StudentCourseProgressItem';
 import StudentAccessHistoryModal from './StudentAccessHistoryModal';
 import StudentTriggerWebhookModal from './StudentTriggerWebhookModal';
@@ -260,6 +260,32 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             <Trophy size={14} color="#eab308" />
             <span>Pontos & Conquistas</span>
           </button>
+
+          {/* Badge de Eventos Confirmados */}
+          <div
+            data-testid={`student-confirmed-events-badge-${student.id}`}
+            title="Quantidade de eventos com presença confirmada por este aluno"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: isLightBg ? 'rgba(56, 189, 248, 0.12)' : 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              color: '#38bdf8',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.15)',
+              flexShrink: 0,
+            }}
+          >
+            <CalendarCheck size={14} color="#38bdf8" />
+            <span>
+              {student.confirmed_events_count ?? 0}{' '}
+              {(student.confirmed_events_count ?? 0) === 1 ? 'evento confirmado' : 'eventos confirmados'}
+            </span>
+          </div>
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: '0.78rem', color: textMuted }}>Progresso Geral</div>

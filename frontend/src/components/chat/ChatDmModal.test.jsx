@@ -336,4 +336,42 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     const modal = screen.getByTestId('chat-dm-modal');
     expect(modal).toHaveStyle({ zIndex: '1000002' });
   });
+
+  it('renderiza links internos de cursos e abas como badges clicaveis nas mensagens da DM', () => {
+    const messages = [
+      {
+        id: 101,
+        message: '[📍 Apresente-se](internal://tab/introductions)',
+        created_at: '2026-10-27T11:44:00Z',
+        user: { id: 1, name: 'Aryaraj' },
+      },
+      {
+        id: 102,
+        message: '[📚 Astrowake](internal://course/3)',
+        created_at: '2026-10-27T11:44:10Z',
+        user: { id: 1, name: 'Aryaraj' },
+      },
+    ];
+
+    render(
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={currentUser}
+          messages={messages}
+          loading={false}
+          onSendMessage={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    // Deve renderizar os badges interativos ao inves do texto markdown cru
+    const badges = screen.getAllByTestId('chat-internal-link');
+    expect(badges.length).toBe(2);
+
+    expect(screen.getByText(/Apresente-se/)).toBeInTheDocument();
+    expect(screen.getByText(/Astrowake/)).toBeInTheDocument();
+    expect(screen.queryByText('[📍 Apresente-se](internal://tab/introductions)')).not.toBeInTheDocument();
+    expect(screen.queryByText('[📚 Astrowake](internal://course/3)')).not.toBeInTheDocument();
+  });
 });

@@ -10,6 +10,7 @@ import {
   User,
   Activity,
 } from 'lucide-react';
+import FunnelExecutionLogsCard from './FunnelExecutionLogsCard';
 
 export default function FunnelExecutionFlowProgress({
   execution,
@@ -106,10 +107,12 @@ export default function FunnelExecutionFlowProgress({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px',
+        gap: '16px',
         height: '100%',
         overflowY: 'auto',
-        paddingRight: '6px',
+        boxSizing: 'border-box',
+        paddingRight: '8px',
+        paddingBottom: '24px',
       }}
       data-testid="funnel-execution-flow-progress"
     >
@@ -367,6 +370,9 @@ export default function FunnelExecutionFlowProgress({
         )}
       </div>
 
+      {/* Logs da Execução Atual */}
+      <FunnelExecutionLogsCard logs={execution.logs} status={execution.status} />
+
       {/* Seção: Outros Funis em Andamento para este Contato */}
       <div
         style={{
@@ -445,30 +451,6 @@ export default function FunnelExecutionFlowProgress({
           </div>
         )}
       </div>
-
-      {/* Logs Textuais da Execução */}
-      {execution.logs && (
-        <div
-          style={{
-            padding: '12px 14px',
-            backgroundColor: '#070b14',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: '10px',
-            fontSize: '0.72rem',
-            color: '#94a3b8',
-            fontFamily: 'monospace',
-            whiteSpace: 'pre-wrap',
-            maxHeight: '120px',
-            overflowY: 'auto',
-          }}
-          data-testid="execution-logs"
-        >
-          <div style={{ fontWeight: 700, color: '#cbd5e1', marginBottom: '4px' }}>
-            Logs da Execução:
-          </div>
-          {execution.logs}
-        </div>
-      )}
     </div>
   );
 }

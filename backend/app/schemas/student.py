@@ -42,6 +42,7 @@ class StudentListItem(BaseModel):
     points_to_next_level: int = 25
     level_progress_percent: int = 0
     is_max_level: bool = False
+    confirmed_events_count: int = 0
 
 class StudentGamificationHistoryResponse(BaseModel):
     student_id: int

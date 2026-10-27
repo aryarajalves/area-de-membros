@@ -26,7 +26,6 @@ from app.services.course_bundle_service import sync_course_bundles, attach_bundl
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
-
 def _is_user_course_active(uc: UserCourse) -> bool:
     """Verifica se o acesso do aluno ao curso está ativo (vitalício ou dentro do prazo de validade)."""
     if not uc.expires_at:
@@ -68,7 +67,6 @@ os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 os.makedirs(VIDEOS_DIR, exist_ok=True)
 os.makedirs(ATTACHMENTS_DIR, exist_ok=True)
 
-
 def _get_saved_platform_bg_color(db: Session) -> str:
     """Obtém a cor de fundo global da Área de Membros."""
     if os.path.exists(PLATFORM_THEME_FILE):
@@ -105,7 +103,6 @@ def update_platform_theme(
     db.query(Course).update({Course.bg_color: new_color}, synchronize_session=False)
     db.commit()
     return {"bg_color": new_color}
-
 
 # ============================================================================
 # CURSOS (COURSES)
@@ -169,7 +166,8 @@ def create_course(
         agentflow_kb_id=course_in.agentflow_kb_id,
         agentflow_kb_name=course_in.agentflow_kb_name,
         item_type=course_in.item_type or "course",
-        tool_url=course_in.tool_url.strip() if course_in.tool_url else None
+        tool_url=course_in.tool_url.strip() if course_in.tool_url else None,
+        bundle_title=course_in.bundle_title.strip() if course_in.bundle_title else None
     )
     db.add(new_course)
     db.commit()
@@ -251,6 +249,8 @@ def update_course(
         course.item_type = course_update.item_type
     if course_update.tool_url is not None:
         course.tool_url = course_update.tool_url.strip() if course_update.tool_url else None
+    if course_update.bundle_title is not None:
+        course.bundle_title = course_update.bundle_title.strip() if course_update.bundle_title else None
     if course_update.bundled_course_ids is not None:
         sync_course_bundles(db, course.id, course_update.bundled_course_ids)
 
@@ -335,7 +335,6 @@ def delete_course(
     db.delete(course)
     db.commit()
     return {"message": "Curso excluído com sucesso."}
-
 
 # ============================================================================
 # MÓDULOS (MODULES)
@@ -450,7 +449,6 @@ def delete_module(
     db.commit()
     return {"message": "Módulo excluído com sucesso."}
 
-
 @router.post(
     "/{course_id}/modules/{module_id}/generate-ai-overview",
     response_model=ModuleResponse,
@@ -506,7 +504,6 @@ async def generate_module_ai_overview(
     db.commit()
     db.refresh(module)
     return module
-
 
 # ============================================================================
 # AULAS (LESSONS)
@@ -795,7 +792,6 @@ def delete_lesson_attachment(
     db.commit()
     return {"message": "Anexo excluído com sucesso."}
 
-
 # ============================================================================
 # COMENTÁRIOS DE AULAS (LESSON COMMENTS)
 # ============================================================================
@@ -913,7 +909,6 @@ def toggle_lesson_comment_like(
         liked_by_me=liked_by_me,
         liked=liked_by_me
     )
-
 
 @router.post(
     "/{course_id}/modules/{module_id}/lessons/{lesson_id}/comments",

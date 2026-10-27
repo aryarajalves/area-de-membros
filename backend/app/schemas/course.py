@@ -180,6 +180,7 @@ class CourseBase(BaseModel):
     agentflow_kb_name: Optional[str] = None
     item_type: Optional[str] = "course"
     tool_url: Optional[str] = None
+    bundle_title: Optional[str] = None
     bundled_course_ids: Optional[List[int]] = []
 
 class CourseCreate(CourseBase):
@@ -199,6 +200,7 @@ class CourseUpdate(BaseModel):
     agentflow_kb_name: Optional[str] = None
     item_type: Optional[str] = None
     tool_url: Optional[str] = None
+    bundle_title: Optional[str] = None
     bundled_course_ids: Optional[List[int]] = None
 
 class CourseResponse(CourseBase):

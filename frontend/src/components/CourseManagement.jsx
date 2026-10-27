@@ -3,6 +3,7 @@ import { Plus, BookOpen, Search, GraduationCap, ChevronLeft, ChevronRight } from
 import { useToast } from '../context/ToastContext';
 import CourseClassroom from './course-classroom/CourseClassroom';
 import { CourseCard, CourseBundleGroup, groupCoursesByBundles, CourseFormModal, CourseDeleteModal, CourseSalesHistoryModal } from './course-management';
+import { preloadCourseImages } from '../utils/imagePreloader';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -89,6 +90,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [itemType, setItemType] = useState('course');
   const [toolUrl, setToolUrl] = useState('');
   const [bundledCourseIds, setBundledCourseIds] = useState([]);
+  const [bundleTitle, setBundleTitle] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -104,6 +106,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       if (res.ok) {
         const data = await res.json();
         setCourses(data);
+        preloadCourseImages(data);
         if (data.length > 0 && data[0].bg_color && onThemeColorChange) {
           onThemeColorChange(data[0].bg_color);
         }
@@ -135,11 +138,9 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setCoverImagePosition(50);
     setSalesPageUrl('');
     setOrderIndex(0);
-    setAgentflowKbId(null);
-    setAgentflowKbName(null);
-    setItemType('course');
-    setToolUrl('');
-    setBundledCourseIds([]);
+    setAgentflowKbId(null); setAgentflowKbName(null);
+    setItemType('course'); setToolUrl('');
+    setBundledCourseIds([]); setBundleTitle('');
     setModalOpen(true);
   };
 
@@ -157,6 +158,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setItemType(course.item_type || 'course');
     setToolUrl(course.tool_url || '');
     setBundledCourseIds(course.bundled_course_ids || (course.bundled_courses ? course.bundled_courses.map((b) => b.id) : []));
+    setBundleTitle(course.bundle_title || '');
     setModalOpen(true);
   };
 
@@ -229,6 +231,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       bg_color: activeBgColor,
       item_type: itemType,
       tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
+      bundle_title: bundleTitle.trim() || null,
       bundled_course_ids: bundledCourseIds
     };
 
@@ -464,6 +467,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         agentflowKbName={agentflowKbName} setAgentflowKbName={setAgentflowKbName}
         itemType={itemType} setItemType={setItemType} toolUrl={toolUrl} setToolUrl={setToolUrl}
         bundledCourseIds={bundledCourseIds} setBundledCourseIds={setBundledCourseIds}
+        bundleTitle={bundleTitle} setBundleTitle={setBundleTitle}
         availableCourses={courses} bgColor={activeBgColor} uploading={uploading} saving={saving}
         onUploadThumbnail={handleUploadThumbnail} onUploadCoverImage={handleUploadCoverImage}
         onSaveCourse={handleSaveCourse}

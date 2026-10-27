@@ -96,4 +96,35 @@ describe('LessonThumbnailManager Component', () => {
       expect(onChange).toHaveBeenCalledWith('https://b2.com/replaced-poster.jpg');
     });
   });
+
+  it('exibe modal centralizado de progresso (UploadProgressModal) durante o envio da imagem', async () => {
+    let resolveUpload;
+    const uploadPromise = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
+    const onUploadThumbnail = vi.fn().mockReturnValue(uploadPromise);
+
+    render(
+      <LessonThumbnailManager
+        thumbnailUrl=""
+        onChange={vi.fn()}
+        onUploadThumbnail={onUploadThumbnail}
+      />
+    );
+
+    const input = screen.getByTestId('lesson-thumbnail-file-input');
+    const file = new File(['img-bytes'], 'capa.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    // O modal de carregamento deve estar visível na tela
+    expect(screen.getByTestId('upload-progress-modal')).toBeInTheDocument();
+    expect(screen.getByText('Enviando imagem de capa...')).toBeInTheDocument();
+
+    // Finaliza o upload
+    resolveUpload('https://b2.com/capa-final.png');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument();
+    });
+  });
 });

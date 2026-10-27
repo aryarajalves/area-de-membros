@@ -178,7 +178,13 @@ def rename_backup_file(old_s3_key: str, old_filename: str, new_filename: str, fo
     return new_s3_key
 
 
-def upload_media_file(file_bytes: bytes, filename: str, content_type: str, folder: str = "AreaDeMembros/videos/") -> str:
+def upload_media_file(
+    file_bytes: bytes,
+    filename: str,
+    content_type: str,
+    folder: str = "AreaDeMembros/videos/",
+    cache_control: str = "public, max-age=31536000, immutable"
+) -> str:
     """
     Faz upload de arquivo de mídia (vídeo de aula ou thumbnail de curso) para o Backblaze B2.
     Retorna a URL pública/direta do arquivo no Backblaze B2, ou None se falhar.
@@ -191,12 +197,15 @@ def upload_media_file(file_bytes: bytes, filename: str, content_type: str, folde
 
     if s3 and settings.B2_BUCKET_NAME:
         try:
-            s3.put_object(
-                Bucket=settings.B2_BUCKET_NAME,
-                Key=s3_key,
-                Body=file_bytes,
-                ContentType=content_type
-            )
+            put_args = {
+                "Bucket": settings.B2_BUCKET_NAME,
+                "Key": s3_key,
+                "Body": file_bytes,
+                "ContentType": content_type
+            }
+            if cache_control:
+                put_args["CacheControl"] = cache_control
+            s3.put_object(**put_args)
             # URL de acesso direto ao Backblaze B2
             if settings.BACKBLAZE_CDN_URL:
                 base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")

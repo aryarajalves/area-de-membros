@@ -57,6 +57,7 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - 🔴 **AO VIVO AGORA:** Exibido quando a data e hora atual estiver entre o início e o término da live, com animação pulsante neon e botão direto para entrar.
   - 🔵 **EM BREVE:** Para eventos futuros com contagem regressiva e data formatada.
   - ⚪ **ENCERRADO:** Para eventos que já aconteceram, destacando o botão de gravação caso preenchido.
+- **Contador de Eventos Confirmados na Aba de Alunos:** O card de cada aluno na tela de Gestão de Alunos (`/students`) exibe um badge visual temático com a quantidade de eventos em que o aluno confirmou presença. Quando o aluno confirma presença em um evento, a contagem aumenta em 1. Se o aluno desmarcar/desconfirmar a presença no evento, 1 é removido da sua contagem automaticamente em tempo real.
 - **Permissões de Gestão (Admin / Super Admin):**
   - Botão **"+ Novo Evento"** no cabeçalho.
   - Ações de **Editar** e **Excluir** diretamente em cada card.
@@ -1193,7 +1194,9 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
          - **Primeiro Depoimento (`first_testimonial`):** Dispara automaticamente assim que o aluno posta sua primeira avaliação/depoimento na plataforma, com filtro opcional por curso específico.
          - **Primeira Apresentação (`first_presentation`):** Dispara quando o aluno publica seu primeiro post de apresentação na comunidade, ideal para boas-vindas e acolhimento.
          - **Subida de Nível / Level Up (`level_up`):** Dispara quando o aluno sobe de nível de RPG ao ganhar XP por aulas concluídas, suporte ou interação, permitindo escolher "Qualquer Nível" ou um nível alvo específico (Níveis 2 a 20).
-         - **Presença em Evento (`event_attendance`):** Dispara quando o aluno clica no botão de confirmação de presença no card do evento, permitindo filtrar por qualquer evento ou evento específico.
+          - **Presença em Evento (`event_attendance`):** Dispara quando o aluno confirma presença no card do evento, oferecendo duas modalidades de ativação:
+            - **Por Evento (`event` - Padrão):** Dispara na confirmação de presença em qualquer evento da comunidade ou em um evento específico selecionado no dropdown.
+            - **Por Meta de Presenças (`count`):** Dispara no momento exato em que o aluno atinge a meta de X eventos confirmados (presets rápidos: `1`, `2`, `3`, `5`, `10 eventos`, além de campo numérico customizado). O backend consulta o total de presenças ativas na tabela `EventAttendee` (`user_id == student_id`) e executa o fluxo exclusivamente quando `total_confirmed == target_count`.
     2. **Categoria Mensagens (`message`):** Envia mensagem com suporte a tags dinâmicas `{aluno}`, variações Spintax (ex: `{Olá|Oi|E aí}`) sorteadas a cada execução, até 3 botões de ação interativos e **seleção flexível do destino de disparo**:
        - **DM Privada (`dm` - Padrão):** Disparo privado direto no chat do aluno com seleção de remetente (Admin, Tutor, etc.) e criptografia.
        - **Comunidade Geral (`community_general`):** Publicação automática no canal público Geral da Comunidade com broadcast via WebSocket em tempo real.
@@ -1232,6 +1235,18 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     11. **Delay com Janela de Horário Comercial:**
        - Integrado ao nó de **Delay**: além do tempo base (segundos, minutos, horas ou dias), permite ativar **"Janela de Horário Comercial"** com horários de início e término (padrão 09:00 às 20:00 no Horário de Brasília) e filtro opcional para apenas dias úteis (Segunda a Sexta).
        - Caso o tempo de espera expire fora do intervalo ou de madrugada, o envio é ajustado para as 09:00 do próximo dia útil elegível.
+
+- **Organização de Funis em Pastas Personalizadas (`funnel_folders`):**
+  - **Barra de Pastas no Topo:** A tela "Meus Funis" apresenta uma barra horizontal de navegação por abas/pills contendo a visualização consolidada "Todos os Funis", cada uma das pastas personalizadas criadas (com cor temática, ícone de pasta e contagem de automações), a seção "Sem Pasta" (quando houver funis desvinculados) e o botão em destaque **"+ Nova Pasta"**.
+  - **Criação e Edição de Pastas:** Administradores podem criar novas pastas atribuindo um nome descritivo (ex: "Boas-vindas", "Recuperação", "Eventos", "Engajamento") e selecionando uma cor de destaque da paleta neon/glassmorphism. As pastas podem ser renomeadas e ter suas cores ajustadas a qualquer momento.
+  - **Atribuição e Movimentação de Funis:**
+    - Ao criar um novo funil através do botão "+ Criar Novo Funil", o modal de criação permite selecionar opcionalmente a pasta de destino (já herdando a pasta ativa caso uma pasta esteja selecionada na barra).
+    - Nos cards dos funis, há a ação rápida **"Mover para Pasta"** (`FolderInput`), permitindo migrar o funil para qualquer outra pasta ou desvinculá-lo para "Sem Pasta".
+    - Cada card de funil exibe uma badge colorida indicando a pasta à qual pertence.
+  - **Exclusão Segura de Pastas (Proteção de Automações):**
+    - Ao excluir uma pasta, o modal de confirmação reforça a regra de segurança: **os funis vinculados à pasta NUNCA são excluídos**.
+    - O banco de dados e a camada de serviço desvinculam os funis automaticamente (`folder_id: null`), transferindo-os de forma segura e transparente para a seção "Sem Pasta", garantindo que nenhuma régua ou automação de mensagens seja perdida.
+
 
 
 ---

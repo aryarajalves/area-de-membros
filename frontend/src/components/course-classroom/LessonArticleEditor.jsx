@@ -4,6 +4,7 @@ import {
   Heading, Bold, List, Minus, Loader2, Sparkles
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { UploadProgressModal } from '../common/FeedbackModals';
 
 export default function LessonArticleEditor({
   textContent = '',
@@ -438,6 +439,13 @@ export default function LessonArticleEditor({
           </div>
         </div>
       )}
+
+      {/* Modal de Progresso de Upload */}
+      <UploadProgressModal
+        isOpen={uploadingImage}
+        title="Enviando imagem do artigo..."
+        subtitle="Aguarde o envio seguro para a nuvem ser concluído."
+      />
     </div>
   );
 }

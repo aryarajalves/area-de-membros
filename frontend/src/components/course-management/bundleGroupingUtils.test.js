@@ -91,4 +91,23 @@ describe('groupCoursesByBundles', () => {
     expect(result[0].courses[0].has_access).toBe(true);
     expect(result[0].courses[1].has_access).toBe(true);
   });
+
+  it('utiliza bundle_title customizado no cabeçalho do combo quando preenchido', () => {
+    const courses = [
+      {
+        id: 1,
+        title: 'AstroWake - Trânsitos',
+        bundle_title: 'Combo AstroWake Master',
+        item_type: 'course',
+        bundled_course_ids: [2],
+        has_access: true
+      },
+      { id: 2, title: 'AstroWake', item_type: 'course', bundled_course_ids: [], has_access: true }
+    ];
+
+    const result = groupCoursesByBundles(courses);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('bundle');
+    expect(result[0].title).toBe('Combo AstroWake Master');
+  });
 });

@@ -329,3 +329,78 @@ def test_event_attendance_trigger_dispatches_funnel(db_session, seed_triggers_da
         ).first()
         assert exec_entry is not None
         assert f"trigger_event_attendance_evt{event.id}" in exec_entry.triggered_by
+
+
+def test_event_attendance_count_mode_trigger_dispatches_funnel(db_session, seed_triggers_data):
+    """Gatilho 4 (Modo Meta X Eventos): Dispara funil apenas quando o aluno atinge a meta de X eventos confirmados."""
+    db = db_session
+    student = seed_triggers_data["student"]
+
+    # Cria 2 eventos
+    now = datetime.now(timezone.utc)
+    ev1 = Event(title="Evento Meta 1", start_time=now + timedelta(days=2), target_type="all", is_active=True)
+    ev2 = Event(title="Evento Meta 2", start_time=now + timedelta(days=5), target_type="all", is_active=True)
+    db.add_all([ev1, ev2])
+    db.commit()
+    db.refresh(ev1)
+    db.refresh(ev2)
+
+    # Limpa presenças anteriores
+    db.query(EventAttendee).filter(EventAttendee.user_id == student.id).delete()
+    db.commit()
+
+    # Cria funil configurado para disparar na meta de 2 eventos confirmados
+    flow_data = {
+        "nodes": [
+            {
+                "id": "trig_meta_2",
+                "type": "trigger",
+                "data": {
+                    "trigger_event": "event_attendance",
+                    "attendance_mode": "count",
+                    "target_count": 2,
+                },
+            },
+            {
+                "id": "msg_premio",
+                "type": "message",
+                "data": {"text": "Parabéns, você confirmou presença em 2 eventos!"},
+            },
+        ],
+        "edges": [{"id": "e1", "source": "trig_meta_2", "target": "msg_premio"}],
+    }
+
+    funnel = Funnel(
+        name="Funil Meta de 2 Eventos",
+        flow_data=json.dumps(flow_data),
+        is_active=True,
+    )
+    db.add(funnel)
+    db.commit()
+    db.refresh(funnel)
+
+    with patch("app.services.chat_ws_manager.chat_manager.broadcast_event", new_callable=AsyncMock):
+        # 1. Aluno confirma presença no evento 1 (total = 1 evento, meta é 2)
+        att1 = EventAttendee(event_id=ev1.id, user_id=student.id)
+        db.add(att1)
+        db.commit()
+
+        count_ev1 = dispatch_event_attendance_funnels(db, student.id, event_id=ev1.id)
+        # Não deve disparar ainda pois total_confirmed (1) != target_count (2)
+        assert count_ev1 == 0
+
+        # 2. Aluno confirma presença no evento 2 (total = 2 eventos, meta é 2!)
+        att2 = EventAttendee(event_id=ev2.id, user_id=student.id)
+        db.add(att2)
+        db.commit()
+
+        count_ev2 = dispatch_event_attendance_funnels(db, student.id, event_id=ev2.id)
+        # Agora DEVE disparar com sucesso!
+        assert count_ev2 == 1
+
+        exec_entry = db.query(FunnelExecution).filter(
+            FunnelExecution.funnel_id == funnel.id,
+            FunnelExecution.user_id == student.id,
+        ).first()
+        assert exec_entry is not None
+        assert "trigger_event_attendance_count2" in exec_entry.triggered_by

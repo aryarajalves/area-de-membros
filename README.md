@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.3`** | **Docker Hub: `backend-1.1.3` / `frontend-1.1.3`**
+> **Versão Oficial: `v1.1.4`** | **Docker Hub: `backend-1.1.4` / `frontend-1.1.4`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -188,6 +188,12 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **Criação Rápida de Etiquetas com Paleta de Cores:** Modal centralizado com backdrop escuro (`FunnelCreateTagModal`) para cadastrar novas etiquetas informando nome e escolhendo entre 8 cores temáticas vibrantes.
 - **Segurança de Fluxo e Confirmação de Ações:**
   - **Duplicação e Exclusão Seguras:** Modais centralizados com painel escuro translúcido para confirmação de duplicação ou exclusão tanto de nós individuais quanto do fluxo completo (`FunnelDuplicateConfirmModal`, `FunnelNodeConfirmModal`).
+- **Organização e Separação de Funis em Pastas Personalizadas (`FunnelFolderBar`, `FunnelFolderModal`, `funnel_folders`):**
+  - Barra de abas/pills estilizada no topo da tela com contadores dinâmicos de automações (*"Todos os Funis"*, pastas personalizadas e *"Sem Pasta"*).
+  - Criação rápida de pastas com nome temático e cor de destaque da paleta neon (*Índigo*, *Roxo*, *Rosa Neon*, *Esmeralda*, *Âmbar*, *Ciano*, *Rubi*).
+  - Ação rápida no card do funil para transferir automações entre pastas (`FunnelMoveModal`).
+  - Criação de novos funis já vinculados à pasta ativa selecionada.
+  - **Exclusão Segura de Pastas:** Ao remover uma pasta, os funis vinculados **nunca são excluídos**, sendo automaticamente desvinculados no banco de dados (`ON DELETE SET NULL`) e movidos de forma segura para a seção *"Sem Pasta"*.
 - **Histórico e Rastreamento Visual de Execuções (`FunnelExecutionsHistoryModal`):**
   - Modal para consultar o histórico detalhado de execuções do funil por contato.
   - **Visualização de Progresso (`FunnelExecutionFlowProgress`):** Renderização gráfica indicando exatamente até qual nó o lead avançou, se está pausado em um nó de delay ou se o fluxo foi concluído.
@@ -226,6 +232,10 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 - **Classificação de Produtos (Cursos vs Ferramentas):**
   - Seletor de tipo de produto (`CourseTypeSelector`) permitindo catalogar conteúdos pedagógicos e ferramentas utilitárias na vitrine.
 - **Criação de Combos / Bundles Agrupados (`CourseBundleSelector`, `CourseBundleGroup`):**
+  - Agrupamento de múltiplos cursos e ferramentas em pacotes integrados com gestão visual unificada.
+  - **Nome de Exibição Personalizado de Pacotes (`bundle_title`):** Campo exclusivo na aba Vendas & Acesso permitindo ao gestor personalizar o título que encabeça o combo de forma 100% independente dos títulos dos cursos e ferramentas inclusos no pacote.
+- **Otimização e Pré-carregamento Instantâneo de Imagens e Capas de Cursos:**
+  - Pipeline acelerado de compressão WebP no backend (`image_optimizer.py`) e cache com pré-carregamento inteligente no frontend (`imagePreloader.js`), tornando a visualização de banners e capas quase instantânea.
   - Agrupamento de múltiplos cursos e ferramentas em pacotes integrados com gestão visual unificada.
 - **Rastreamento de Leads e Interesse de Vendas:**
   - Registro automático de cliques de alunos interessados em cursos fechados (`POST /courses/{id}/sales-click`).

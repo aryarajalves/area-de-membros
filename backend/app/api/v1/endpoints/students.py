@@ -14,6 +14,7 @@ from app.models.course import Course, UserCourse, Module, Lesson, LessonProgress
 from app.models.webhook import Webhook
 from app.models.gamification import GamificationPoint
 from app.models.student_tag import StudentTag, StudentTagAssignment
+from app.models.event import EventAttendee
 from app.schemas.student import (
     StudentListResponse, StudentListItem, StudentCourseProgressItem, StudentImportResponse,
     StudentLessonActivityItem, StudentTriggerWebhookRequest, StudentTriggerWebhookResponse,
@@ -75,6 +76,18 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 description=tdesc,
             )
         )
+
+    # Carregar contagem de eventos confirmados em lote
+    event_attendees_agg = (
+        db.query(
+            EventAttendee.user_id,
+            func.count(EventAttendee.id).label("cnt")
+        )
+        .filter(EventAttendee.user_id.in_(student_ids))
+        .group_by(EventAttendee.user_id)
+        .all()
+    ) if student_ids else []
+    confirmed_events_map = {uid: int(cnt) for uid, cnt in event_attendees_agg}
 
     for student in students:
         user_courses = db.query(UserCourse).filter(UserCourse.user_id == student.id).all()
@@ -184,7 +197,8 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 level_color=level_info["level_color"],
                 points_to_next_level=level_info["points_to_next_level"],
                 level_progress_percent=level_info["level_progress_percent"],
-                is_max_level=level_info["is_max_level"]
+                is_max_level=level_info["is_max_level"],
+                confirmed_events_count=confirmed_events_map.get(student.id, 0)
             )
         )
 

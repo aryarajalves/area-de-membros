@@ -342,7 +342,18 @@ export default function FunnelExecutionsHistoryModal({
           </div>
 
           {/* Lado Direito: Visualização do Progresso e Rastreamento */}
-          <div style={{ flex: 1, padding: '20px', minHeight: 0, backgroundColor: '#090d17' }}>
+          <div
+            style={{
+              flex: 1,
+              padding: '20px',
+              minHeight: 0,
+              backgroundColor: '#090d17',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxSizing: 'border-box',
+            }}
+          >
             <FunnelExecutionFlowProgress
               execution={selectedExecution}
               flowNodes={data?.flow_nodes || []}

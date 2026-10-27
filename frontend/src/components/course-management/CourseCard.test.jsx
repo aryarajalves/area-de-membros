@@ -271,4 +271,69 @@ describe('CourseCard Component', () => {
     expect(screen.getByTestId('course-bundle-badge-5')).toBeInTheDocument();
     expect(screen.getByText('Combo (+2)')).toBeInTheDocument();
   });
+
+  it('renders skeleton shimmer placeholder until image loads, then reveals image smoothly', () => {
+    const mockCourse = {
+      id: 6,
+      title: 'Curso de Performance',
+      thumbnail_url: 'https://b2.com/thumb_speed.webp',
+      has_access: true
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    // Skeleton deve estar presente inicialmente
+    const skeleton = screen.getByTestId('course-card-skeleton-6');
+    expect(skeleton).toBeInTheDocument();
+
+    const img = screen.getByAltText('Curso de Performance');
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveStyle({ opacity: '0' });
+
+    // Dispara evento onLoad da imagem
+    fireEvent.load(img);
+
+    expect(screen.queryByTestId('course-card-skeleton-6')).not.toBeInTheDocument();
+    expect(img).toHaveStyle({ opacity: '1' });
+  });
+
+  it('falls back to placeholder if image encounters loading error', () => {
+    const mockCourse = {
+      id: 7,
+      title: 'Curso com Imagem Quebrada',
+      thumbnail_url: 'https://b2.com/broken.jpg',
+      has_access: true
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    const img = screen.getByAltText('Curso com Imagem Quebrada');
+    fireEvent.error(img);
+
+    // Deve cair no placeholder de Área de Membros
+    expect(screen.getByText('Área de Membros')).toBeInTheDocument();
+    expect(screen.queryByAltText('Curso com Imagem Quebrada')).not.toBeInTheDocument();
+  });
 });

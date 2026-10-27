@@ -23,6 +23,7 @@ class Course(Base):
     agentflow_kb_name = Column(String, nullable=True)
     item_type = Column(String, default="course", nullable=True)  # 'course' ou 'tool'
     tool_url = Column(String, nullable=True)
+    bundle_title = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

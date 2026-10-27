@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Loader2, ExternalLink, Lock } from 'lucide-react';
-import { resolveButtonUrl } from './chatMentionUtils';
+import { formatMessageWithMentions, resolveButtonUrl } from './chatMentionUtils';
 import ChatDateSeparator from './ChatDateSeparator';
 import { isSameDay } from './chatDateUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
@@ -113,7 +113,7 @@ export default function ChatDmConversationView({
                     {/* Texto da Mensagem */}
                     {m.message && (
                       <div style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                        {m.message}
+                        {formatMessageWithMentions(m.message)}
                       </div>
                     )}
 

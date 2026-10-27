@@ -2,6 +2,32 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [27/10/2026] - Criação de Pastas de Funis (funnel_folders) e Vinculação em Funis (folder_id)
+- **Objetivo:** Permitir ao administrador criar pastas personalizadas (ex: Boas-vindas, Recuperação, Eventos) com cor de destaque e contadores para categorizar funis com o mesmo intuito. Ao excluir uma pasta, os funis contidos são preservados e movidos de forma segura para "Sem Pasta" (ON DELETE SET NULL).
+- **Tabela Criada:** funnel_folders
+  - id: INTEGER PRIMARY KEY SERIAL
+  - name: VARCHAR(100) NOT NULL
+  - color: VARCHAR(30) DEFAULT '#6366f1'
+  - order_index: INTEGER DEFAULT 0 NOT NULL
+  - created_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+  - updated_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+- **Tabela Afetada:** funnels
+  - folder_id: INTEGER REFERENCES funnel_folders(id) ON DELETE SET NULL (nullable=True, indexado)
+- **Script de Migração:** backend/scripts/add_funnel_folders.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [27/10/2026] - Adição de Nome de Exibição Personalizado para Pacotes / Combos (bundle_title)
+- **Objetivo:** Permitir ao administrador personalizar livremente o nome que aparece no topo da caixa do pacote/combo (ex: "Combo AstroWake Master") de forma independente dos títulos dos cursos e ferramentas individuais inclusos no pacote.
+- **Tabela Afetada:** courses
+- **Nova Coluna:**
+  - bundle_title: Nome customizado de exibição do combo (VARCHAR, nullable=True).
+- **Script de Migração:** backend/scripts/add_bundle_title_to_courses.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
 ### [26/10/2026] - Criação da Tabela de Inscrições / Presença em Eventos (event_attendees)
 - **Objetivo:** Armazenar confirmações de participação de alunos em eventos e mentorias ao vivo, permitindo acionar gatilhos de automação e funil quando o usuário clica em confirmar presença.
 - **Tabela Criada:** event_attendees

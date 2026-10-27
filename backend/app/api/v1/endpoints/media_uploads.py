@@ -1,3 +1,4 @@
+from app.services.image_optimizer import optimize_image
 """
 Endpoints de Upload e Streaming de Mídias (Vídeos, Capas e Anexos) com suporte a Presigned URL para o Backblaze B2.
 """
@@ -129,21 +130,21 @@ async def upload_thumbnail(
             detail="O arquivo excede o limite máximo permitido de 5 MB."
         )
 
-    unique_name = f"thumb_{uuid.uuid4().hex[:12]}{ext}"
-    content_type_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp"
-    }
-    content_type = content_type_map.get(ext, "image/jpeg")
+    # Otimiza e comprime para WebP para carregamento quase instantâneo
+    final_content, final_content_type, final_ext = optimize_image(
+        image_bytes=content,
+        max_width=1280,
+        quality=82
+    )
+    unique_name = f"thumb_{uuid.uuid4().hex[:12]}{final_ext}"
 
-    # 1. Tentar salvar diretamente no Backblaze B2
+    # 1. Tentar salvar diretamente no Backblaze B2 com cache agressivo
     b2_url = upload_media_file(
-        file_bytes=content,
+        file_bytes=final_content,
         filename=unique_name,
-        content_type=content_type,
-        folder="AreaDeMembros/thumbnails/"
+        content_type=final_content_type,
+        folder="AreaDeMembros/thumbnails/",
+        cache_control="public, max-age=31536000, immutable"
     )
     if b2_url:
         return {"thumbnail_url": b2_url}
@@ -151,7 +152,7 @@ async def upload_thumbnail(
     # 2. Fallback local se Backblaze B2 não estiver configurado
     target_path = os.path.join(THUMBNAILS_DIR, unique_name)
     with open(target_path, "wb") as f:
-        f.write(content)
+        f.write(final_content)
 
     return {"thumbnail_url": f"/api/v1/courses/thumbnails/{unique_name}"}
 
@@ -163,7 +164,7 @@ def get_thumbnail(filename: str):
     filepath = os.path.join(THUMBNAILS_DIR, safe_filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Imagem não encontrada.")
-    return FileResponse(filepath)
+    return FileResponse(filepath, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.post(

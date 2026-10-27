@@ -122,4 +122,28 @@ describe('StudentCard Component', () => {
       borderRadius: '50%',
     });
   });
+
+  it('renders confirmed events badge correctly with singular and plural count', () => {
+    // Aluno sem eventos confirmados
+    const { rerender } = renderWithToast(
+      <StudentCard student={{ ...mockStudent, confirmed_events_count: 0 }} isLightBg={false} />
+    );
+    expect(screen.getByTestId('student-confirmed-events-badge-42')).toHaveTextContent('0 eventos confirmados');
+
+    // Aluno com 1 evento confirmado (singular)
+    rerender(
+      <ToastProvider>
+        <StudentCard student={{ ...mockStudent, confirmed_events_count: 1 }} isLightBg={false} />
+      </ToastProvider>
+    );
+    expect(screen.getByTestId('student-confirmed-events-badge-42')).toHaveTextContent('1 evento confirmado');
+
+    // Aluno com 3 eventos confirmados (plural)
+    rerender(
+      <ToastProvider>
+        <StudentCard student={{ ...mockStudent, confirmed_events_count: 3 }} isLightBg={false} />
+      </ToastProvider>
+    );
+    expect(screen.getByTestId('student-confirmed-events-badge-42')).toHaveTextContent('3 eventos confirmados');
+  });
 });

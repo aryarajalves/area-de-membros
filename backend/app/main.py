@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP WITHOUT TIME ZONE;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type VARCHAR DEFAULT 'course';
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS tool_url VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS bundle_title VARCHAR;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_position INTEGER NOT NULL DEFAULT 50;
                         CREATE TABLE IF NOT EXISTS course_bundles (
                             id SERIAL PRIMARY KEY,
@@ -181,6 +182,18 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_events_start_time ON events(start_time);
                         CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id);
 
+                        CREATE TABLE IF NOT EXISTS funnel_folders (
+                            id SERIAL PRIMARY KEY,
+                            name VARCHAR(100) NOT NULL,
+                            color VARCHAR(30) DEFAULT '#6366f1',
+                            order_index INTEGER DEFAULT 0 NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_funnel_folders_name ON funnel_folders(name);
+                        ALTER TABLE funnels ADD COLUMN IF NOT EXISTS folder_id INTEGER REFERENCES funnel_folders(id) ON DELETE SET NULL;
+                        CREATE INDEX IF NOT EXISTS ix_funnels_folder_id ON funnels(folder_id);
+
                     """))
                 else:
                     for col_sql in [
@@ -202,7 +215,16 @@ async def lifespan(app: FastAPI):
                     except Exception:
                         pass
                     try:
+                        conn.execute(text("ALTER TABLE courses ADD COLUMN bundle_title VARCHAR"))
+                    except Exception:
+                        pass
+                    try:
                         conn.execute(text("ALTER TABLE courses ADD COLUMN cover_image_position INTEGER DEFAULT 50"))
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS funnel_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, color VARCHAR(30) DEFAULT '#6366f1', order_index INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"))
+                        conn.execute(text("ALTER TABLE funnels ADD COLUMN folder_id INTEGER REFERENCES funnel_folders(id) ON DELETE SET NULL"))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
