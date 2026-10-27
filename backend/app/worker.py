@@ -53,10 +53,16 @@ def run_renewal_check_job():
                 fn_count = check_and_dispatch_delayed_student_funnels(db_w)
                 inact_count = dispatch_student_inactivity_funnels(db_w)
                 logger.info(f"[WORKER] Gatilhos de funil verificados: {fn_count + inact_count} disparo(s) efetuado(s) (Atraso: {fn_count}, Inatividade: {inact_count}).")
+            except Exception as fn_exc:
+                try:
+                    db_w.rollback()
+                except Exception:
+                    pass
+                logger.error(f"[WORKER] Erro ao verificar gatilhos de funil: {fn_exc}")
             finally:
                 db_w.close()
-        except Exception as fn_exc:
-            logger.error(f"[WORKER] Erro ao verificar gatilhos de funil: {fn_exc}")
+        except Exception as fn_outer_exc:
+            logger.error(f"[WORKER] Erro geral ao processar funis no worker: {fn_outer_exc}")
 
         return results
     except Exception as exc:
@@ -128,8 +134,9 @@ def start_worker():
     # Configura os jobs periódicos
     setup_worker_jobs(worker_scheduler)
 
-    # Aguarda 3 segundos para permitir inicialização prioritária da API backend se iniciados em paralelo
-    time.sleep(3)
+    # Aguarda 15 segundos para permitir inicialização prioritária da API backend (DDL e migrações) se iniciados em paralelo
+    logger.info("[WORKER] Aguardando 15s para sincronização prioritária com a API backend...")
+    time.sleep(15)
 
     # Executa uma checagem inicial de renovações na inicialização do worker
     try:

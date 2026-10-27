@@ -57,6 +57,29 @@ async def lifespan(app: FastAPI):
     except Exception as sec_e:
         logger.warning(f"[MAIN] Aviso na auditoria preventiva de chaves: {sec_e}")
 
+    # 0. Limpeza preventiva de conexões e transações órfãs no PostgreSQL (deploys anteriores)
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import text as sa_text
+            is_postgres = "postgresql" in engine.dialect.name
+            if is_postgres:
+                # Encerra conexões órfãs deixadas em 'idle in transaction' ou com DDLs pendentes
+                # Executado ANTES de qualquer DDL para evitar deadlocks de ACCESS EXCLUSIVE LOCK
+                conn.execute(sa_text("""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid()
+                      AND (
+                          state IN ('idle in transaction', 'idle in transaction (aborted)')
+                          OR (state = 'active' AND query ILIKE 'ALTER TABLE%')
+                      );
+                """))
+                conn.commit()
+                logger.info("[MAIN] Conexões órfãs e transações pendentes no PostgreSQL limpas com sucesso.")
+    except Exception as e:
+        logger.warning(f"[MAIN] Aviso na verificação inicial de conexões do banco: {e}")
+
     # 1. Criação/Verificação das tabelas
     try:
         logger.info("[MAIN] Verificando e criando tabelas do banco de dados...")
@@ -73,6 +96,8 @@ async def lifespan(app: FastAPI):
             with conn.begin():
                 is_postgres = "postgresql" in engine.dialect.name
                 if is_postgres:
+                    conn.execute(text("SET lock_timeout = '4s';"))
+                    conn.execute(text("SET statement_timeout = '15s';"))
                     conn.execute(text("""
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0;
@@ -230,28 +255,6 @@ async def lifespan(app: FastAPI):
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
     except Exception as e:
         logger.warning(f"[MAIN] Aviso nas auto-migrações preventivas: {e}")
-
-    # 2. Limpeza preventiva de conexões e transações órfãs no PostgreSQL (deploys anteriores)
-    try:
-        with engine.connect() as conn:
-            from sqlalchemy import text
-            is_postgres = "postgresql" in engine.dialect.name
-            if is_postgres:
-                # Encerra conexões órfãs deixadas em 'idle in transaction' ou com DDLs pendentes
-                conn.execute(text("""
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = current_database()
-                      AND pid <> pg_backend_pid()
-                      AND (
-                          state IN ('idle in transaction', 'idle in transaction (aborted)')
-                          OR (state = 'active' AND query ILIKE 'ALTER TABLE%')
-                      );
-                """))
-                conn.commit()
-                logger.info("[MAIN] Conexões órfãs e transações pendentes no PostgreSQL limpas com sucesso.")
-    except Exception as e:
-        logger.warning(f"[MAIN] Aviso na verificação de conexões do banco: {e}")
 
     # 3. Sincronização de credenciais do superadministrador
     try:
