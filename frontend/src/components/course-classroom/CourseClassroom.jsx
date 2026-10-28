@@ -8,6 +8,8 @@ import NetflixHeroAndModules from './NetflixHeroAndModules';
 import ModuleTimelineSidebar from './ModuleTimelineSidebar';
 import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModals';
 import BatchCourseImportModal from './BatchCourseImportModal';
+import BatchLessonThumbnailModal from './BatchLessonThumbnailModal';
+import BatchLessonOrderModal from './BatchLessonOrderModal';
 import CourseUpsellManager from './CourseUpsellManager';
 import { scrollToClassroomSection } from './lessonUtils';
 
@@ -83,6 +85,10 @@ export default function CourseClassroom({
   const [targetModuleId, setTargetModuleId] = useState(null);
   const [targetModuleTitle, setTargetModuleTitle] = useState('');
   const [editingLesson, setEditingLesson] = useState(null);
+  const [batchThumbnailOpen, setBatchThumbnailOpen] = useState(false);
+  const [batchThumbnailModule, setBatchThumbnailModule] = useState(null);
+  const [batchOrderOpen, setBatchOrderOpen] = useState(false);
+  const [batchOrderModule, setBatchOrderModule] = useState(null);
 
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, type: null, id: null, parentId: null, title: '', message: '' });
 
@@ -158,6 +164,19 @@ export default function CourseClassroom({
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
   const textColor = isLightBg ? '#0f172a' : '#ffffff';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
+
+  const renderTimelineSidebar = () => (
+    <ModuleTimelineSidebar
+      courseId={course?.id || initialCourse.id} modules={modules} selectedModule={selectedModule}
+      activeLesson={activeLesson} completedLessonIds={completedLessonIds} totalLessonsCount={totalLessonsCount}
+      isManager={isManager} isLightBg={isLightBg} onSelectModule={handleSelectModule}
+      onSelectLesson={handleSelectLessonAndModule} onOpenCreateLesson={handleOpenCreateLesson}
+      onOpenEditModule={handleOpenEditModule} onPromptDeleteModule={handlePromptDeleteModule}
+      onOpenEditLesson={handleOpenEditLesson} onPromptDeleteLesson={handlePromptDeleteLesson}
+      onOpenBatchThumbnail={(mod) => { setBatchThumbnailModule(mod); setBatchThumbnailOpen(true); }}
+      onOpenBatchOrder={(mod) => { setBatchOrderModule(mod); setBatchOrderOpen(true); }}
+    />
+  );
 
   return (
     <div
@@ -344,25 +363,7 @@ export default function CourseClassroom({
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
-                  rightSidebar={
-                    <ModuleTimelineSidebar
-                      courseId={course?.id || initialCourse.id}
-                      modules={modules}
-                      selectedModule={selectedModule}
-                      activeLesson={activeLesson}
-                      completedLessonIds={completedLessonIds}
-                      totalLessonsCount={totalLessonsCount}
-                      isManager={isManager}
-                      isLightBg={isLightBg}
-                      onSelectModule={handleSelectModule}
-                      onSelectLesson={handleSelectLessonAndModule}
-                      onOpenCreateLesson={handleOpenCreateLesson}
-                      onOpenEditModule={handleOpenEditModule}
-                      onPromptDeleteModule={handlePromptDeleteModule}
-                      onOpenEditLesson={handleOpenEditLesson}
-                      onPromptDeleteLesson={handlePromptDeleteLesson}
-                    />
-                  }
+                  rightSidebar={renderTimelineSidebar()}
                 />
               ) : activeLesson?.content_type === 'quiz' ? (
                 <LessonQuizViewer
@@ -380,25 +381,7 @@ export default function CourseClassroom({
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
-                  rightSidebar={
-                    <ModuleTimelineSidebar
-                      courseId={course?.id || initialCourse.id}
-                      modules={modules}
-                      selectedModule={selectedModule}
-                      activeLesson={activeLesson}
-                      completedLessonIds={completedLessonIds}
-                      totalLessonsCount={totalLessonsCount}
-                      isManager={isManager}
-                      isLightBg={isLightBg}
-                      onSelectModule={handleSelectModule}
-                      onSelectLesson={handleSelectLessonAndModule}
-                      onOpenCreateLesson={handleOpenCreateLesson}
-                      onOpenEditModule={handleOpenEditModule}
-                      onPromptDeleteModule={handlePromptDeleteModule}
-                      onOpenEditLesson={handleOpenEditLesson}
-                      onPromptDeleteLesson={handlePromptDeleteLesson}
-                    />
-                  }
+                  rightSidebar={renderTimelineSidebar()}
                 />
               ) : (
                 <LessonPlayer
@@ -424,25 +407,7 @@ export default function CourseClassroom({
                     setActiveLesson((prev) => (prev ? { ...prev, ...updated, ...(updated.title && prev.videos ? { videos: prev.videos.map((v) => ({ ...v, title: updated.title, ...(updated.description ? { description: updated.description } : {}) })) } : {}) } : updated));
                     fetchCourseData();
                   }}
-                  rightSidebar={
-                    <ModuleTimelineSidebar
-                      courseId={course?.id || initialCourse.id}
-                      modules={modules}
-                      selectedModule={selectedModule}
-                      activeLesson={activeLesson}
-                      completedLessonIds={completedLessonIds}
-                      totalLessonsCount={totalLessonsCount}
-                      isManager={isManager}
-                      isLightBg={isLightBg}
-                      onSelectModule={handleSelectModule}
-                      onSelectLesson={handleSelectLessonAndModule}
-                      onOpenCreateLesson={handleOpenCreateLesson}
-                      onOpenEditModule={handleOpenEditModule}
-                      onPromptDeleteModule={handlePromptDeleteModule}
-                      onOpenEditLesson={handleOpenEditLesson}
-                      onPromptDeleteLesson={handlePromptDeleteLesson}
-                    />
-                  }
+                  rightSidebar={renderTimelineSidebar()}
                 />
               )}
             </div>
@@ -485,6 +450,18 @@ export default function CourseClassroom({
           courseId={course?.id || initialCourse.id} existingModules={modules} onImportCompleted={fetchCourseData}
         />
       )}
+
+      {/* Modais de Lote: Capas e Ordem */}
+      <BatchLessonThumbnailModal
+        isOpen={batchThumbnailOpen} onClose={() => { setBatchThumbnailOpen(false); setBatchThumbnailModule(null); }}
+        courseId={course?.id || initialCourse.id} module={batchThumbnailModule}
+        onUploadThumbnail={uploadLessonThumbnail} onSuccess={fetchCourseData} isLightBg={isLightBg}
+      />
+      <BatchLessonOrderModal
+        isOpen={batchOrderOpen} onClose={() => { setBatchOrderOpen(false); setBatchOrderModule(null); }}
+        courseId={course?.id || initialCourse.id} module={batchOrderModule}
+        onSuccess={fetchCourseData} isLightBg={isLightBg}
+      />
 
       {/* Gerenciador de Anúncios e Ofertas de Upsell no Curso */}
       <CourseUpsellManager

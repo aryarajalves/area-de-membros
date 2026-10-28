@@ -208,3 +208,71 @@ export function scrollToClassroomSection(elementId = 'selected-module-classroom-
   }
 }
 
+/**
+ * Formata um total de segundos em uma string amigável de horas e minutos (ex: "1h 15min", "45 min", "2h").
+ *
+ * @param {number} totalSeconds
+ * @returns {string}
+ */
+export function formatHumanDuration(totalSeconds) {
+  if (!totalSeconds || isNaN(totalSeconds) || totalSeconds <= 0) return '';
+  if (totalSeconds < 60) {
+    return `${Math.round(totalSeconds)}s`;
+  }
+  const totalMinutes = Math.round(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+    return `${hours}h ${String(minutes).padStart(2, '0')}min`;
+  }
+  return `${minutes} min`;
+}
+
+/**
+ * Calcula o total de aulas, total de segundos e a duração formatada para um módulo específico.
+ *
+ * @param {object|null} module
+ * @returns {{ totalLessons: number, totalSeconds: number, formattedDuration: string }}
+ */
+export function calculateModuleStats(module) {
+  const lessons = module?.lessons || [];
+  let totalSeconds = 0;
+  for (const l of lessons) {
+    totalSeconds += parseDurationToSeconds(l?.duration);
+  }
+  return {
+    totalLessons: lessons.length,
+    totalSeconds,
+    formattedDuration: formatHumanDuration(totalSeconds)
+  };
+}
+
+/**
+ * Calcula o total de aulas, total de segundos e a duração formatada para todo o curso (somando todos os módulos).
+ *
+ * @param {Array} modules
+ * @returns {{ totalLessons: number, totalSeconds: number, formattedDuration: string }}
+ */
+export function calculateCourseStats(modules = []) {
+  if (!Array.isArray(modules)) {
+    return { totalLessons: 0, totalSeconds: 0, formattedDuration: '' };
+  }
+  let totalLessons = 0;
+  let totalSeconds = 0;
+  for (const m of modules) {
+    const lessons = m?.lessons || [];
+    totalLessons += lessons.length;
+    for (const l of lessons) {
+      totalSeconds += parseDurationToSeconds(l?.duration);
+    }
+  }
+  return {
+    totalLessons,
+    totalSeconds,
+    formattedDuration: formatHumanDuration(totalSeconds)
+  };
+}

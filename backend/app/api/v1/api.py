@@ -5,7 +5,7 @@ from app.api.v1.endpoints import (
     profile, testimonials, gamification, lesson_transcriptions, platform_links,
     favorites, student_tags, chat_broadcast, funnels, agentflow, tutorials,
     whitelabel, introductions, public_register, chat_members, course_sales,
-    infrastructure, course_upsell, events
+    infrastructure, course_upsell, events, course_lessons
 )
 
 api_router = APIRouter()
@@ -16,6 +16,7 @@ api_router.include_router(profile.router)
 api_router.include_router(backups.router, include_in_schema=False)
 api_router.include_router(logs.router, include_in_schema=False)
 api_router.include_router(lesson_interactions.router)
+api_router.include_router(course_lessons.router)
 api_router.include_router(courses.router)
 api_router.include_router(course_sales.router)
 api_router.include_router(lesson_transcriptions.router)

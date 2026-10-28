@@ -7,7 +7,16 @@ export default function LessonThumbnailManager({
   onChange,
   onUploadThumbnail,
   isLightBg = false,
-  title = 'Capa do Vídeo da Aula (Thumbnail / Poster)'
+  title = 'Capa do Vídeo da Aula (Thumbnail / Poster)',
+  aspectRatio = '16 / 9',
+  recommendedText = '1280 × 720 pixels (Proporção 16:9). Formatos: JPG, PNG ou WEBP (máx. 5 MB). Exibida como capa antes do vídeo iniciar.',
+  entityLabel = 'Imagem de capa vinculada à aula',
+  emptyHelpText = 'Nenhuma imagem selecionada. Deixe em branco para usar o primeiro frame do vídeo.',
+  confirmDeleteTitle = 'Remover Capa da Aula?',
+  confirmDeleteMessage = 'Tem certeza que deseja remover a imagem de capa desta aula?',
+  previewMaxWidth = '100%',
+  previewMaxHeight = '220px',
+  imageFit = 'contain'
 }) {
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -101,7 +110,7 @@ export default function LessonThumbnailManager({
       >
         <Info size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
         <span>
-          <strong>Tamanho recomendado:</strong> 1280 × 720 pixels (Proporção 16:9). Formatos: JPG, PNG ou WEBP (máx. 5 MB). Exibida como capa antes do vídeo iniciar.
+          <strong>Tamanho recomendado:</strong> {recommendedText}
         </span>
       </div>
 
@@ -115,8 +124,10 @@ export default function LessonThumbnailManager({
               overflow: 'hidden',
               border: isLightBg ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.14)',
               backgroundColor: '#0f172a',
-              aspectRatio: '16 / 9',
-              maxHeight: '220px',
+              aspectRatio,
+              maxWidth: previewMaxWidth,
+              maxHeight: previewMaxHeight,
+              margin: '0 auto',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -126,7 +137,7 @@ export default function LessonThumbnailManager({
             <img
               src={thumbnailUrl}
               alt="Capa da aula"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              style={{ width: '100%', height: '100%', objectFit: imageFit }}
               data-testid="lesson-thumbnail-preview"
             />
           </div>
@@ -145,7 +156,7 @@ export default function LessonThumbnailManager({
             }}
           >
             <span style={{ fontSize: '11.5px', color: subTextColor }}>
-              Imagem de capa vinculada à aula
+              {entityLabel}
             </span>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -219,7 +230,7 @@ export default function LessonThumbnailManager({
             <span>{uploading ? 'Enviando capa...' : 'Fazer Upload da Capa'}</span>
           </label>
           <p style={{ fontSize: '11px', color: subTextColor, margin: '8px 0 0 0' }}>
-            Nenhuma imagem selecionada. Deixe em branco para usar o primeiro frame do vídeo.
+            {emptyHelpText}
           </p>
         </div>
       )}
@@ -234,8 +245,8 @@ export default function LessonThumbnailManager({
       {/* Modal de Confirmação de Remoção da Capa */}
       <FileDeleteConfirmModal
         isOpen={showDeleteConfirm}
-        title="Remover Capa da Aula?"
-        message="Tem certeza que deseja remover a imagem de capa desta aula?"
+        title={confirmDeleteTitle}
+        message={confirmDeleteMessage}
         onConfirm={handleConfirmRemove}
         onCancel={() => setShowDeleteConfirm(false)}
       />

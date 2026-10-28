@@ -6,7 +6,19 @@ import ModuleModal from './ModuleModal';
 
 // Mock dos subgerenciadores para isolar o teste do modal
 vi.mock('./LessonThumbnailManager', () => ({
-  default: () => <div data-testid="mock-thumbnail-manager" />
+  default: (props) => (
+    <div
+      data-testid="mock-thumbnail-manager"
+      data-title={props.title}
+      data-aspect={props.aspectRatio}
+      data-rec={props.recommendedText}
+      data-label={props.entityLabel}
+    >
+      <span>{props.title}</span>
+      <span>{props.recommendedText}</span>
+      <span>{props.entityLabel}</span>
+    </div>
+  )
 }));
 
 vi.mock('./LessonVideoManager', () => ({
@@ -289,6 +301,21 @@ describe('LessonModal & ConfirmDeleteModal Components', () => {
       'success'
     );
   });
+  it('renders correct 600x900 2:3 vertical poster specifications and module label in ModuleModal', () => {
+    render(
+      <ModuleModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        onUploadThumbnail={vi.fn()}
+        editingModule={{ id: 1, title: 'Módulo 1', image_url: 'https://b2.com/mod1.jpg' }}
+      />
+    );
+
+    expect(screen.getByText('Imagem de Capa / Pôster do Módulo (Estilo Netflix - Opcional)')).toBeInTheDocument();
+    expect(screen.getByText(/600 × 900 pixels/i)).toBeInTheDocument();
+    expect(screen.getByText(/Proporção 2:3 vertical/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estilo Pôster Netflix/i)).toBeInTheDocument();
+    expect(screen.getByText('Imagem de capa vinculada ao módulo')).toBeInTheDocument();
+  });
 });
-
-

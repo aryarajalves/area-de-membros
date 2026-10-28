@@ -1,5 +1,5 @@
 import json
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -408,6 +408,23 @@ class CourseSalesClicksListResponse(BaseModel):
     course_title: str
     total_clicks: int
     clicks: List[CourseSalesClickResponse]
+
+
+# --- Schema para Atualização em Lote de Capas das Aulas de um Módulo ---
+class BatchLessonThumbnailUpdate(BaseModel):
+    lesson_ids: List[int] = Field(..., min_length=1, description="Lista de IDs das aulas a serem atualizadas")
+    thumbnail_url: str = Field(..., description="URL da nova imagem de capa")
+
+
+# --- Schema para Atualização em Lote de Ordem das Aulas de um Módulo ---
+class LessonOrderItem(BaseModel):
+    lesson_id: int = Field(..., description="ID da aula")
+    order_index: int = Field(..., ge=0, description="Nova ordem de exibição")
+
+
+class BatchLessonOrderUpdate(BaseModel):
+    items: List[LessonOrderItem] = Field(..., min_length=1, description="Lista de aulas e suas respectivas ordens")
+
 
 
 

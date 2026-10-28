@@ -1,41 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
+import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown } from 'lucide-react';
+import { formatLessonDuration, isLessonComingSoon, calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseSidebarUpsellCard from './CourseSidebarUpsellCard';
 import { fetchSidebarUpsellOffer } from '../course-management/courseUpsellApi';
-
-function ProgressRing({ percent = 0, size = 24, strokeWidth = 2.5, activeColor = '#eab308', trackColor = 'rgba(255,255,255,0.14)' }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const clamped = Math.min(100, Math.max(0, percent));
-  const offset = circumference - (clamped / 100) * circumference;
-
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="transparent"
-        stroke={trackColor}
-        strokeWidth={strokeWidth}
-      />
-      {clamped > 0 && (
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="transparent"
-          stroke={clamped === 100 ? '#22c55e' : activeColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      )}
-    </svg>
-  );
-}
+import ProgressRing from './ProgressRing';
 
 export default function ModuleTimelineSidebar({
   courseId,
@@ -53,7 +21,9 @@ export default function ModuleTimelineSidebar({
   onOpenEditModule,
   onPromptDeleteModule,
   onOpenEditLesson,
-  onPromptDeleteLesson
+  onPromptDeleteLesson,
+  onOpenBatchThumbnail,
+  onOpenBatchOrder
 }) {
   const [sidebarOffer, setSidebarOffer] = useState(sidebarUpsellOffer || null);
 
@@ -142,9 +112,22 @@ export default function ModuleTimelineSidebar({
           <div style={{ fontSize: '13.5px', fontWeight: 700, color: textColor }}>
             Meu Progresso - {progressPct}%
           </div>
-          <div style={{ fontSize: '12px', color: subTextColor, marginTop: '2px' }}>
-            {completedCount} de {totalLessonsCount} {totalLessonsCount === 1 ? 'aula' : 'aulas'}
-          </div>
+          {(() => {
+            const courseStats = calculateCourseStats(modules);
+            return (
+              <div style={{ fontSize: '12px', color: subTextColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                <span>{completedCount} de {totalLessonsCount} {totalLessonsCount === 1 ? 'aula' : 'aulas'}</span>
+                {courseStats.formattedDuration && (
+                  <>
+                    <span>•</span>
+                    <span data-testid="sidebar-course-duration" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <Clock size={11} style={{ flexShrink: 0 }} /> {courseStats.formattedDuration} total
+                    </span>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -230,10 +213,18 @@ export default function ModuleTimelineSidebar({
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </span>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
-                      {modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}
-                      {!isExpanded && ' • Fechado (clique para abrir)'}
-                    </div>
+                    {(() => {
+                      const modStats = calculateModuleStats(mod);
+                      return (
+                        <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
+                          <span>{modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}</span>
+                          {modStats.formattedDuration && (
+                            <span data-testid={`sidebar-module-duration-${mod.id}`}> • {modStats.formattedDuration}</span>
+                          )}
+                          {!isExpanded && ' • Fechado (clique para abrir)'}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -248,29 +239,33 @@ export default function ModuleTimelineSidebar({
                       title="Adicionar Aula neste Módulo"
                       onClick={(e) => onOpenCreateLesson(mod, e)}
                       data-testid={`timeline-add-lesson-btn-${mod.id}`}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#38bdf8',
-                        padding: '3px',
-                        cursor: 'pointer',
-                        display: 'flex'
-                      }}
+                      style={{ background: 'transparent', border: 'none', color: '#38bdf8', padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <Plus size={14} />
                     </button>
                     <button
                       type="button"
+                      title="Trocar capa das aulas deste módulo em lote"
+                      onClick={(e) => { e.stopPropagation(); onOpenBatchThumbnail?.(mod); }}
+                      data-testid={`timeline-batch-thumbnail-btn-${mod.id}`}
+                      style={{ background: 'transparent', border: 'none', color: '#a855f7', padding: '3px', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <ImageIcon size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Reordenar aulas deste módulo em lote"
+                      onClick={(e) => { e.stopPropagation(); onOpenBatchOrder?.(mod); }}
+                      data-testid={`timeline-batch-order-btn-${mod.id}`}
+                      style={{ background: 'transparent', border: 'none', color: '#06b6d4', padding: '3px', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <ArrowUpDown size={13} />
+                    </button>
+                    <button
+                      type="button"
                       title="Editar Módulo"
                       onClick={(e) => onOpenEditModule(mod, e)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: subTextColor,
-                        padding: '3px',
-                        cursor: 'pointer',
-                        display: 'flex'
-                      }}
+                      style={{ background: 'transparent', border: 'none', color: subTextColor, padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <Edit2 size={13} />
                     </button>
@@ -278,14 +273,7 @@ export default function ModuleTimelineSidebar({
                       type="button"
                       title="Excluir Módulo"
                       onClick={(e) => onPromptDeleteModule(mod, e)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#f87171',
-                        padding: '3px',
-                        cursor: 'pointer',
-                        display: 'flex'
-                      }}
+                      style={{ background: 'transparent', border: 'none', color: '#f87171', padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <Trash2 size={13} />
                     </button>

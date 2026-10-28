@@ -246,5 +246,68 @@ describe('NetflixHeroAndModules Component', () => {
     const banner = screen.getByTestId('netflix-hero-banner');
     expect(banner.style.backgroundPosition).toBe('center 75%');
   });
-});
+  it('aplica backgroundSize cover e degradê suave na base do poster para preservar a arte da capa do módulo', () => {
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        activeLesson={mockModules[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
 
+    const posterImg = screen.getByTestId('module-poster-image-10');
+    expect(posterImg).toBeInTheDocument();
+    expect(posterImg.style.backgroundSize).toBe('cover');
+    expect(posterImg.style.backgroundPosition).toBe('center top');
+  });
+  it('exibe badge de estatísticas no Hero e duração em cada card de módulo', () => {
+    const modulesWithDurations = [
+      {
+        id: 10,
+        title: 'Módulo 1',
+        lessons: [
+          { id: 101, title: 'Aula 1', duration: '15:00' },
+          { id: 102, title: 'Aula 2', duration: '15:00' }
+        ]
+      },
+      {
+        id: 20,
+        title: 'Módulo 2',
+        lessons: [
+          { id: 201, title: 'Aula 3', duration: '30:00' }
+        ]
+      }
+    ];
+
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={modulesWithDurations}
+        selectedModuleId={10}
+        activeLesson={modulesWithDurations[0].lessons[0]}
+        completedLessonIds={[]}
+        isManager={false}
+        bgColor="#090d16"
+        onSelectModule={vi.fn()}
+        onStartCourse={vi.fn()}
+      />
+    );
+
+    const heroBadge = screen.getByTestId('hero-course-stats-badge');
+    expect(heroBadge).toBeInTheDocument();
+    expect(heroBadge).toHaveTextContent(/3 aulas/i);
+    expect(heroBadge).toHaveTextContent(/1h de conteúdo/i);
+
+    const mod1Stats = screen.getByTestId('netflix-module-stats-10');
+    expect(mod1Stats).toHaveTextContent(/2 aulas • 30 min/i);
+
+    const mod2Stats = screen.getByTestId('netflix-module-stats-20');
+    expect(mod2Stats).toHaveTextContent(/1 aula • 30 min/i);
+  });
+});

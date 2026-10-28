@@ -11,8 +11,13 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 - **Vitrine Netflix & Banner Hero:**
   - Banner Hero cinematográfico com suporte a capa personalizada ou gradiente dark glassmorphism.
   - **Enquadramento e Reposicionamento Vertical do Banner Hero:** Ajuste interativo arrastando a imagem diretamente com o mouse (Drag & Drop vertical) ou utilizando o slider de precisão (0% a 100%) e botões de atalho rápido (Topo 0%, Centro 50%, Base 100%), permitindo ao gestor definir com exatidão a faixa visível da imagem panorâmica no topo da sala de aula.
+  - **Capas de Módulo no Formato Pôster Vertical (Proporção 2:3 / 600 × 900 px):** Enquadramento cinematográfico nos cards do carrossel horizontal de módulos sem cortes nas imagens, com indicação clara no gerenciador de capas.
+  - **Contadores de Aulas e Duração Somada em Tempo Real:** Exibição da contagem de aulas e somatório de tempo total por módulo (ex: `3 aulas • 17 min`) e do curso completo no card "Meu Progresso" da timeline lateral.
   - Carrossel horizontal de módulos com miniaturas (posters), contadores de aulas e barra de progresso individual.
   - Vitrine de cursos com paginação inteligente (20 cursos por página) e controle de acesso individual.
+- **Gestão e Operações em Lote de Aulas por Módulo (`BatchLessonThumbnailModal` & `BatchLessonOrderModal`):**
+  - **Troca de Capa das Aulas em Lote:** Permite ao gestor selecionar todas as aulas de um módulo específico de uma única vez (pré-selecionadas por padrão) ou escolher aulas individuais para aplicar uma nova capa padronizada (via upload de arquivo ou URL direta).
+  - **Reordenação da Ordem de Exibição em Lote:** Modal dedicado acessível diretamente pelo cabeçalho do módulo com botões rápidos de subir e descer (`↑` `↓`), campos editáveis de número de ordem direta, botão **"Auto-Numerar (1, 2, 3...)"** para ordenação sequencial automática instantânea e botão de inverter sequência.
 - **Player de Vídeo Customizado HTML5 (`CustomVideoPlayer` & `VideoControls`):**
   - **Barra de Progresso Interativa (Scrubbing / Seek):** Avanço e retrocesso livre clicando ou arrastando na timeline do vídeo.
   - **Barra de Buffer Visual (`video-buffered-bar`):** Faixa translúcida no trilho de progresso que exibe exatamente quanto do vídeo foi baixado na memória à frente da reprodução.

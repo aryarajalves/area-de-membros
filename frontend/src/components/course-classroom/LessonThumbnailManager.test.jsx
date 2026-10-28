@@ -127,4 +127,37 @@ describe('LessonThumbnailManager Component', () => {
       expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument();
     });
   });
+  it('supports custom vertical poster aspect ratio, recommended text and entity label', () => {
+    const onChange = vi.fn();
+    render(
+      <LessonThumbnailManager
+        thumbnailUrl="https://b2.com/poster-vertical.jpg"
+        onChange={onChange}
+        onUploadThumbnail={vi.fn()}
+        title="Pôster do Módulo"
+        aspectRatio="2 / 3"
+        recommendedText="600 × 900 pixels (Proporção 2:3 vertical / Estilo Pôster Netflix)."
+        entityLabel="Imagem de capa vinculada ao módulo"
+        emptyHelpText="Nenhum pôster selecionado."
+        confirmDeleteTitle="Remover Capa do Módulo?"
+        confirmDeleteMessage="Deseja remover o pôster deste módulo?"
+        previewMaxWidth="180px"
+        previewMaxHeight="270px"
+        imageFit="cover"
+      />
+    );
+
+    expect(screen.getByText('Pôster do Módulo')).toBeInTheDocument();
+    expect(screen.getByText(/600 × 900 pixels/i)).toBeInTheDocument();
+    expect(screen.getByText(/Proporção 2:3 vertical/i)).toBeInTheDocument();
+    expect(screen.getByText('Imagem de capa vinculada ao módulo')).toBeInTheDocument();
+
+    const img = screen.getByTestId('lesson-thumbnail-preview');
+    expect(img.style.objectFit).toBe('cover');
+
+    // Clica em remover
+    fireEvent.click(screen.getByTestId('remove-lesson-thumbnail-btn'));
+    expect(screen.getByText('Remover Capa do Módulo?')).toBeInTheDocument();
+    expect(screen.getByText('Deseja remover o pôster deste módulo?')).toBeInTheDocument();
+  });
 });

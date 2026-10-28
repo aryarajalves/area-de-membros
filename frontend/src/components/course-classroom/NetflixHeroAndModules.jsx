@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Play, Plus, Edit2, Trash2, CheckCircle2, Layers, Sparkles } from 'lucide-react';
+import { Play, Plus, Edit2, Trash2, CheckCircle2, Layers, Sparkles, Clock } from 'lucide-react';
+import { calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseDescriptionModal from './CourseDescriptionModal';
 
 export default function NetflixHeroAndModules({
@@ -180,6 +181,30 @@ export default function NetflixHeroAndModules({
                 </span>
               </div>
             )}
+
+            {totalLessons > 0 && (() => {
+              const courseStats = calculateCourseStats(modules);
+              return (
+                <div
+                  data-testid="hero-course-stats-badge"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    backdropFilter: 'blur(8px)',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <Clock size={14} color="#38bdf8" />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0' }}>
+                    {totalLessons} {totalLessons === 1 ? 'aula' : 'aulas'}{courseStats.formattedDuration ? ` • ${courseStats.formattedDuration} de conteúdo` : ''}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -291,15 +316,15 @@ export default function NetflixHeroAndModules({
                           pointerEvents: 'none'
                         }}
                       />
-                      {/* Pôster em alta definição contido e centralizado com degradê de leitura */}
+                      {/* Pôster em alta definição com enquadramento completo e degradê de leitura suave na base */}
                       <div
                         data-testid={`module-poster-image-${mod.id}`}
                         style={{
                           position: 'absolute',
                           inset: 0,
-                          backgroundImage: `linear-gradient(180deg, rgba(9,13,22,0.18) 0%, rgba(9,13,22,0.3) 45%, rgba(9,13,22,0.92) 100%), url(${modPoster})`,
-                          backgroundSize: 'contain',
-                          backgroundPosition: 'center',
+                          backgroundImage: `linear-gradient(180deg, rgba(9,13,22,0.02) 0%, rgba(9,13,22,0) 45%, rgba(9,13,22,0.45) 75%, rgba(9,13,22,0.92) 100%), url(${modPoster})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center top',
                           backgroundRepeat: 'no-repeat',
                           zIndex: 0,
                           pointerEvents: 'none'
@@ -367,8 +392,16 @@ export default function NetflixHeroAndModules({
                     )}
                   </div>
 
-                  {/* Base do Pôster: Título e Contagem de Aulas */}
-                  <div style={{ position: 'relative', zIndex: 1 }}>
+                  {/* Base do Pôster: Título e Contagem de Aulas com Acabamento Glassmorphism */}
+                  <div style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(9, 13, 22, 0.58)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}>
                     <h4 style={{
                       fontSize: '15px',
                       fontWeight: 800,
@@ -385,7 +418,13 @@ export default function NetflixHeroAndModules({
                     </h4>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#cbd5e1' }}>
-                      <span>{modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}</span>
+                      <span data-testid={`netflix-module-stats-${mod.id}`}>
+                        {modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}
+                        {(() => {
+                          const modStats = calculateModuleStats(mod);
+                          return modStats.formattedDuration ? ` • ${modStats.formattedDuration}` : '';
+                        })()}
+                      </span>
                       {modCompletedCount > 0 && (
                         <span style={{ color: '#4ade80', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                           <CheckCircle2 size={12} />

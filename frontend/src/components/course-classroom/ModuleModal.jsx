@@ -169,6 +169,15 @@ export default function ModuleModal({
                 onChange={setImageUrl}
                 onUploadThumbnail={onUploadThumbnail}
                 isLightBg={isLightBg}
+                aspectRatio="2 / 3"
+                recommendedText="600 × 900 pixels (Proporção 2:3 vertical / Estilo Pôster Netflix). Formatos: JPG, PNG ou WEBP (máx. 5 MB). Exibida nos cards da trilha de módulos da jornada."
+                entityLabel="Imagem de capa vinculada ao módulo"
+                emptyHelpText="Nenhuma imagem selecionada. Deixe em branco para usar a capa da primeira aula ou do curso."
+                confirmDeleteTitle="Remover Capa do Módulo?"
+                confirmDeleteMessage="Tem certeza que deseja remover o pôster de capa deste módulo?"
+                previewMaxWidth="180px"
+                previewMaxHeight="270px"
+                imageFit="cover"
               />
             </div>
           )}

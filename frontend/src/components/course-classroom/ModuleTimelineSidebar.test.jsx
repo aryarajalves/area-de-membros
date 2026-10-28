@@ -205,4 +205,79 @@ describe('ModuleTimelineSidebar', () => {
     expect(screen.getByText('Próximo Passo: Mentoria VIP')).toBeInTheDocument();
     expect(screen.getByText('Garantir Vaga')).toBeInTheDocument();
   });
+  it('renderiza duração total do curso no bloco Meu Progresso e duração individual de cada módulo', () => {
+    const modulesWithDurations = [
+      {
+        id: 10,
+        title: 'Módulo 1',
+        lessons: [
+          { id: 101, title: 'Aula A', duration: '20 min' },
+          { id: 102, title: 'Aula B', duration: '25 min' }
+        ]
+      },
+      {
+        id: 20,
+        title: 'Módulo 2',
+        lessons: [
+          { id: 201, title: 'Aula C', duration: '35 min' }
+        ]
+      }
+    ];
+
+    render(
+      <ModuleTimelineSidebar
+        modules={modulesWithDurations}
+        selectedModule={modulesWithDurations[0]}
+        activeLesson={modulesWithDurations[0].lessons[0]}
+        completedLessonIds={[]}
+        totalLessonsCount={3}
+      />
+    );
+
+    const courseDuration = screen.getByTestId('sidebar-course-duration');
+    expect(courseDuration).toBeInTheDocument();
+    expect(courseDuration).toHaveTextContent(/1h 20min total/i);
+
+    const mod1Duration = screen.getByTestId('sidebar-module-duration-10');
+    expect(mod1Duration).toHaveTextContent(/45 min/i);
+
+    const mod2Duration = screen.getByTestId('sidebar-module-duration-20');
+    expect(mod2Duration).toHaveTextContent(/35 min/i);
+  });
+
+  it('renderiza o botão de troca de capa em lote para gestores e dispara callback ao clicar', () => {
+    const onOpenBatchThumbnail = vi.fn();
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        activeLesson={mockModules[0].lessons[0]}
+        isManager={true}
+        onOpenBatchThumbnail={onOpenBatchThumbnail}
+      />
+    );
+
+    const batchBtn = screen.getByTestId('timeline-batch-thumbnail-btn-1');
+    expect(batchBtn).toBeInTheDocument();
+    fireEvent.click(batchBtn);
+    expect(onOpenBatchThumbnail).toHaveBeenCalledWith(mockModules[0]);
+  });
+
+  it('renderiza o botão de reordenação em lote para gestores e dispara callback ao clicar', () => {
+    const onOpenBatchOrder = vi.fn();
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        activeLesson={mockModules[0].lessons[0]}
+        isManager={true}
+        onOpenBatchOrder={onOpenBatchOrder}
+      />
+    );
+
+    const orderBtn = screen.getByTestId('timeline-batch-order-btn-1');
+    expect(orderBtn).toBeInTheDocument();
+    fireEvent.click(orderBtn);
+    expect(onOpenBatchOrder).toHaveBeenCalledWith(mockModules[0]);
+  });
 });

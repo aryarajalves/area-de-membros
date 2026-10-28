@@ -5,7 +5,10 @@ import {
   parseDurationToSeconds,
   formatSecondsToTimer,
   formatSecondsToClock,
-  scrollToClassroomSection
+  scrollToClassroomSection,
+  formatHumanDuration,
+  calculateModuleStats,
+  calculateCourseStats
 } from './lessonUtils';
 
 describe('lessonUtils - formatLessonDuration & normalizeLessonDuration', () => {
@@ -111,4 +114,60 @@ describe('lessonUtils - scrollToClassroomSection', () => {
   });
 });
 
+describe('lessonUtils - formatHumanDuration, calculateModuleStats & calculateCourseStats', () => {
+  it('formats seconds into human readable duration strings', () => {
+    expect(formatHumanDuration(0)).toBe('');
+    expect(formatHumanDuration(null)).toBe('');
+    expect(formatHumanDuration(30)).toBe('30s');
+    expect(formatHumanDuration(60)).toBe('1 min');
+    expect(formatHumanDuration(1500)).toBe('25 min');
+    expect(formatHumanDuration(3600)).toBe('1h');
+    expect(formatHumanDuration(3840)).toBe('1h 04min');
+    expect(formatHumanDuration(7200)).toBe('2h');
+    expect(formatHumanDuration(45900)).toBe('12h 45min');
+  });
 
+  it('calculates module stats with total lessons and human duration', () => {
+    const mod = {
+      id: 1,
+      title: 'Introdução',
+      lessons: [
+        { id: 10, duration: '07:19' },
+        { id: 11, duration: '11:41' },
+        { id: 12, duration: '18:45' },
+        { id: 13, duration: '26:17' }
+      ]
+    };
+    const stats = calculateModuleStats(mod);
+    expect(stats.totalLessons).toBe(4);
+    expect(stats.totalSeconds).toBe(3842);
+    expect(stats.formattedDuration).toBe('1h 04min');
+  });
+
+  it('calculates full course stats summing all modules lessons', () => {
+    const modules = [
+      {
+        id: 1,
+        lessons: [
+          { id: 10, duration: '30 min' },
+          { id: 11, duration: '30 min' }
+        ]
+      },
+      {
+        id: 2,
+        lessons: [
+          { id: 20, duration: '45 min' }
+        ]
+      }
+    ];
+    const stats = calculateCourseStats(modules);
+    expect(stats.totalLessons).toBe(3);
+    expect(stats.totalSeconds).toBe(6300); // 105 min = 1h 45min
+    expect(stats.formattedDuration).toBe('1h 45min');
+  });
+
+  it('handles empty modules gracefully', () => {
+    expect(calculateModuleStats(null)).toEqual({ totalLessons: 0, totalSeconds: 0, formattedDuration: '' });
+    expect(calculateCourseStats(null)).toEqual({ totalLessons: 0, totalSeconds: 0, formattedDuration: '' });
+  });
+});
