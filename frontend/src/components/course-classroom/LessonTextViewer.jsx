@@ -57,11 +57,16 @@ export default function LessonTextViewer({
       });
 
       if (res.ok) {
+        const data = typeof res.json === 'function' ? await res.json().catch(() => ({})) : {};
         if (onToggleComplete) onToggleComplete(lesson.id, nextStatus);
-        addToast(
-          nextStatus ? 'Aula marcada como concluída! Parabéns!' : 'Aula marcada como não assistida.',
-          'success'
-        );
+        if (nextStatus) {
+          const xp = data?.xp_awarded !== undefined ? Number(data.xp_awarded) : 15, modXp = Number(data?.module_xp_awarded || 0), courseXp = Number(data?.course_xp_awarded || 0);
+          if (xp > 0) addToast(`⚡ +${xp} XP ganhos! (Conclusão de aula)`, 'success');
+          if (modXp > 0) addToast(`🏆 +${modXp} XP de Bônus! (Módulo concluído!)`, 'success', 4500);
+          if (courseXp > 0) addToast(`👑 +${courseXp} XP de Bônus! (Curso 100% concluído!)`, 'success', 5500);
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: xp + modXp + courseXp } }));
+        }
+        addToast(nextStatus ? 'Aula marcada como concluída! Parabéns!' : 'Aula marcada como não assistida.', 'success');
       } else {
         addToast('Não foi possível atualizar o progresso da aula.', 'error');
       }

@@ -210,6 +210,20 @@ def get_gamification_rules(
     """
     return [
         GamificationRuleItem(
+            action="course_completed",
+            name="Curso Concluído (100%)",
+            points=250,
+            description="Bônus especial ao concluir todas as aulas de um treinamento completo.",
+            daily_limit="Pontuação única por curso",
+        ),
+        GamificationRuleItem(
+            action="module_completed",
+            name="Módulo Concluído",
+            points=60,
+            description="Bônus ao concluir todas as aulas de um módulo do curso.",
+            daily_limit="Pontuação única por módulo",
+        ),
+        GamificationRuleItem(
             action="support_solution",
             name="Melhor Solução no Suporte",
             points=50,

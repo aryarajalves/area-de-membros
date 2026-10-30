@@ -67,6 +67,8 @@ export default function StudentGamificationHistoryModal({ isOpen, onClose, stude
 
   const getActionIcon = (action) => {
     switch (action) {
+      case 'course_completed':
+      case 'module_completed':
       case 'support_solution':
         return <Award size={16} color="#f59e0b" />;
       case 'lesson_completed':

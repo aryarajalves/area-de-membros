@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Sparkles, Shield, ChevronRight, Award, TrendingUp, Users } from 'lucide-react';
 import { calculateStudentLevel, getTierBadgeStyle } from '../../utils/gamificationLevelUtils';
 import GamificationRpgLadderModal from '../gamification/GamificationRpgLadderModal';
+import { triggerLevelUpCelebration } from '../gamification/LevelUpWatcher';
 
 export default function ProfileGamificationCard({
   currentUser,
@@ -162,6 +163,16 @@ export default function ProfileGamificationCard({
 
         {/* Botões de Ação Rápida */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => triggerLevelUpCelebration(levelInfo)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: '8px', backgroundColor: isLightBg ? '#fef9c3' : 'rgba(234, 179, 8, 0.14)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#facc15', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s ease' }}
+            title="Visualizar animação de conquista do seu nível"
+            data-testid="btn-replay-levelup-animation"
+          >
+            <Award size={13} color="#facc15" />
+            <span>Ver Conquista</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsLadderOpen(true)}

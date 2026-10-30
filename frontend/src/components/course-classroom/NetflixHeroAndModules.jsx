@@ -320,33 +320,44 @@ export default function NetflixHeroAndModules({
                       requiredTierColor={mod.required_tier_color}
                     />
                   )}
-                  {/* Camada Atmosférica de Fundo e Pôster com Enquadramento Inteligente */}
+                  {/* Camada Atmosférica de Fundo e Pôster com Lazy Loading e Decodificação Assíncrona */}
                   {modPoster ? (
                     <>
-                      {/* Fundo com desfoque ambiente que preenche qualquer proporção (1:1, 16:9, etc) sem bordas secas */}
                       <div
                         data-testid={`module-ambient-glow-${mod.id}`}
                         style={{
                           position: 'absolute',
                           inset: '-12px',
-                          backgroundImage: `url(${modPoster})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          filter: 'blur(16px) brightness(0.35)',
+                          background: 'radial-gradient(circle at center, rgba(30, 41, 59, 0.55) 0%, #090d16 100%)',
                           zIndex: 0,
                           pointerEvents: 'none'
                         }}
                       />
-                      {/* Pôster em alta definição com enquadramento completo e degradê de leitura suave na base */}
-                      <div
+                      <img
+                        src={modPoster}
+                        alt={mod.title || ''}
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority={isModSelected ? 'high' : 'low'}
                         data-testid={`module-poster-image-${mod.id}`}
                         style={{
                           position: 'absolute',
                           inset: 0,
-                          backgroundImage: `linear-gradient(180deg, rgba(9,13,22,0.02) 0%, rgba(9,13,22,0) 45%, rgba(9,13,22,0.45) 75%, rgba(9,13,22,0.92) 100%), url(${modPoster})`,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'center top',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center top',
-                          backgroundRepeat: 'no-repeat',
+                          zIndex: 0,
+                          pointerEvents: 'none'
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'linear-gradient(180deg, rgba(9,13,22,0.02) 0%, rgba(9,13,22,0) 45%, rgba(9,13,22,0.45) 75%, rgba(9,13,22,0.92) 100%)',
                           zIndex: 0,
                           pointerEvents: 'none'
                         }}

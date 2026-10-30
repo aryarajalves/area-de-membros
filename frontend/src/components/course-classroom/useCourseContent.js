@@ -364,6 +364,20 @@ export function useCourseContent(courseId) {
         return prev.filter((id) => id !== lessonId);
       }
     });
+
+    // Avança automaticamente para a próxima aula ao marcar como assistida (exceto se já estiver na última aula)
+    if (isCompleted) {
+      const flatLessons = modules.flatMap((m) =>
+        (m.lessons || []).map((l) => ({ ...l, module_id: l.module_id || m.id }))
+      );
+      const idx = flatLessons.findIndex((l) => l.id === lessonId);
+      if (idx >= 0 && idx < flatLessons.length - 1) {
+        const nextTarget = flatLessons[idx + 1];
+        if (nextTarget && !nextTarget.is_locked) {
+          setActiveLesson(nextTarget);
+        }
+      }
+    }
   };
 
   // Navegação entre aulas

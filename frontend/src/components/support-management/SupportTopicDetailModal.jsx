@@ -229,6 +229,8 @@ export default function SupportTopicDetailModal({
       if (!res.ok) throw new Error(data.detail || 'Erro ao enviar resposta.');
 
       addToast('Resposta publicada com sucesso!', 'success');
+      addToast('⚡ +10 XP ganhos! (Resposta no suporte)', 'success');
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: 10 } }));
       setTopic((prev) => ({
         ...prev,
         replies: [...prev.replies, data],

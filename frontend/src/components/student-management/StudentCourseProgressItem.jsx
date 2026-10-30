@@ -3,8 +3,9 @@ import { BookOpen, CheckCircle, Clock, Calendar, AlertCircle, History, Hourglass
 import { formatBrasiliaDateTime, formatBrasiliaDate } from './studentDateUtils';
 
 export default function StudentCourseProgressItem({ course, isLightBg, onOpenHistory, onOpenTriggerWebhook }) {
-  const isCompleted = course.total_lessons > 0 && course.completed_lessons >= course.total_lessons;
-  const isStarted = course.completed_lessons > 0;
+  const isTool = course.item_type === 'tool';
+  const isCompleted = !isTool && course.total_lessons > 0 && course.completed_lessons >= course.total_lessons;
+  const isStarted = !isTool && course.completed_lessons > 0;
 
   const itemBg = isLightBg ? '#f8fafc' : 'rgba(15, 23, 42, 0.55)';
   const itemBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -156,7 +157,7 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
             </button>
           )}
 
-          {onOpenHistory && (
+          {!isTool && onOpenHistory && (
             <button
               type="button"
               onClick={() => onOpenHistory(course)}
@@ -183,7 +184,25 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
             </button>
           )}
 
-          {isCompleted ? (
+          {isTool ? (
+            <span
+              data-testid={`tool-badge-${course.course_id}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                color: '#c084fc',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
+              }}
+            >
+              🛠️ Aplicativo / Ferramenta
+            </span>
+          ) : isCompleted ? (
             <span
               style={{
                 display: 'inline-flex',
@@ -290,39 +309,41 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
         </div>
       )}
 
-      {/* Barra de Progresso de Aulas */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px', color: textMuted }}>
-          <span>
-            Progresso: <strong style={{ color: textTitle }}>{course.completed_lessons}</strong> de{' '}
-            <strong style={{ color: textTitle }}>{course.total_lessons}</strong> aulas
-          </span>
-          <span style={{ fontWeight: 600, color: isCompleted ? '#34d399' : '#60a5fa' }}>
-            {course.progress_percent}%
-          </span>
-        </div>
-        <div
-          style={{
-            height: '7px',
-            borderRadius: '999px',
-            backgroundColor: isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
-            overflow: 'hidden',
-          }}
-        >
+      {/* Barra de Progresso de Aulas (Oculta para Aplicativos / Ferramentas) */}
+      {!isTool && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px', color: textMuted }}>
+            <span>
+              Progresso: <strong style={{ color: textTitle }}>{course.completed_lessons}</strong> de{' '}
+              <strong style={{ color: textTitle }}>{course.total_lessons}</strong> aulas
+            </span>
+            <span style={{ fontWeight: 600, color: isCompleted ? '#34d399' : '#60a5fa' }}>
+              {course.progress_percent}%
+            </span>
+          </div>
           <div
             style={{
-              height: '100%',
-              width: `${Math.min(course.progress_percent, 100)}%`,
-              backgroundColor: isCompleted ? '#10b981' : '#3b82f6',
+              height: '7px',
               borderRadius: '999px',
-              transition: 'width 0.4s ease',
+              backgroundColor: isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
+              overflow: 'hidden',
             }}
-          />
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${Math.min(course.progress_percent, 100)}%`,
+                backgroundColor: isCompleted ? '#10b981' : '#3b82f6',
+                borderRadius: '999px',
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Até onde o aluno foi: Última aula assistida */}
-      {course.last_lesson_title && (
+      {!isTool && course.last_lesson_title && (
         <div
           style={{
             fontSize: '0.8rem',

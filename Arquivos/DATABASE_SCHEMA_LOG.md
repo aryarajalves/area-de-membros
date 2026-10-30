@@ -2,6 +2,17 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [30/10/2026] - Liberação Programada por Aula Individual (Drip Content / 7 Dias da Garantia na tabela lessons)
+- **Objetivo:** Permitir configurar a liberação programada (Imediato, Dias após Entrada como os 7 dias da garantia ou Data Fixa) individualmente em cada aula (`lessons`), além da liberação por módulo.
+- **Tabela Afetada:** lessons
+  - release_type: VARCHAR(50) DEFAULT 'immediate' (Tipos: 'immediate', 'days_after', 'specific_date')
+  - release_days: INTEGER DEFAULT 0 (Dias decorridos após matrícula para liberação da aula)
+  - release_date: TIMESTAMP WITH TIME ZONE NULL (Data e hora fixa para liberação da aula)
+- **Script de Migração:** backend/scripts/migrate_lesson_drip_content.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
 ### [30/10/2026] - Usabilidade do Player: Memorização de Velocidade (playback_rate na tabela users)
 - **Objetivo:** Memorizar a velocidade de reprodução preferida do aluno (ex: 1.0x, 1.25x, 1.5x, 2.0x) salva na sua conta, aplicando automaticamente em todos os dispositivos e aulas acessadas.
 - **Tabela Afetada:** users

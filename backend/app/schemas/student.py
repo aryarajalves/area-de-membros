@@ -5,6 +5,7 @@ from datetime import datetime
 class StudentCourseProgressItem(BaseModel):
     course_id: int
     course_title: str
+    item_type: Optional[str] = "course"
     thumbnail_url: Optional[str] = None
     access_duration: Optional[str] = "lifetime"
     enrolled_at: Optional[datetime] = None

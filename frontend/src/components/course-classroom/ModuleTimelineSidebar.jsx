@@ -6,6 +6,7 @@ import { fetchSidebarUpsellOffer } from '../course-management/courseUpsellApi';
 import ProgressRing from './ProgressRing';
 import TimelineLessonItem from './TimelineLessonItem';
 import { formatUnlockDate } from './ModuleCardLockOverlay';
+import SuperAdminLessonAuditFilterBar, { useSuperAdminLessonAudit } from './SuperAdminLessonAuditFilterBar';
 
 export default function ModuleTimelineSidebar({
   courseId,
@@ -16,6 +17,7 @@ export default function ModuleTimelineSidebar({
   completedLessonIds = [],
   totalLessonsCount = 0,
   isManager = false,
+  currentUser = null,
   isLightBg = false,
   onSelectModule,
   onSelectLesson,
@@ -28,6 +30,18 @@ export default function ModuleTimelineSidebar({
   onOpenBatchOrder
 }) {
   const [sidebarOffer, setSidebarOffer] = useState(sidebarUpsellOffer || null);
+
+  const {
+    isSuperAdmin,
+    activeFilter,
+    setActiveFilter,
+    auditByLessonId,
+    counts,
+    filteredFlatLessons,
+    unoptimizedItems,
+    matchesFilter,
+    refreshAudit
+  } = useSuperAdminLessonAudit(courseId, modules, currentUser);
 
   useEffect(() => {
     if (sidebarUpsellOffer !== undefined) {
@@ -131,6 +145,19 @@ export default function ModuleTimelineSidebar({
         </div>
       </div>
 
+      {/* Painel de Filtros Rápidos de Auditoria (Exclusivo Super Admin) */}
+      <SuperAdminLessonAuditFilterBar
+        isSuperAdmin={isSuperAdmin}
+        activeFilter={activeFilter}
+        onSelectFilter={setActiveFilter}
+        counts={counts}
+        filteredFlatLessons={filteredFlatLessons}
+        unoptimizedItems={unoptimizedItems}
+        onRefreshAudit={refreshAudit}
+        activeLessonId={activeLesson?.id}
+        onSelectLesson={onSelectLesson}
+      />
+
       {/* Card Facultativo de Próximo Nível (Oferta no Sidebar) */}
       {sidebarOffer && (
         <CourseSidebarUpsellCard
@@ -145,8 +172,16 @@ export default function ModuleTimelineSidebar({
         {modules.map((mod) => {
           const isLocked = mod.is_locked && !isManager;
           const isSelected = selectedModule?.id === mod.id;
-          const isExpanded = !isLocked && expandedModuleIds.includes(mod.id);
           const modLessons = mod.lessons || [];
+          const visibleLessonsWithIdx = modLessons
+            .map((lesson, idx) => ({ lesson, idx }))
+            .filter(({ lesson }) => matchesFilter(lesson));
+
+          if (isSuperAdmin && activeFilter !== 'all' && visibleLessonsWithIdx.length === 0) {
+            return null;
+          }
+
+          const isExpanded = !isLocked && ((isSuperAdmin && activeFilter !== 'all') || expandedModuleIds.includes(mod.id));
           const modCompleted = modLessons.filter((l) => completedLessonIds.includes(l.id)).length;
           const modPct = modLessons.length > 0 ? Math.round((modCompleted / modLessons.length) * 100) : 0;
 
@@ -264,7 +299,11 @@ export default function ModuleTimelineSidebar({
                         const modStats = calculateModuleStats(mod);
                         return (
                           <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
-                            <span>{modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}</span>
+                            <span>
+                              {isSuperAdmin && activeFilter !== 'all'
+                                ? `${visibleLessonsWithIdx.length} de ${modLessons.length} aulas filtradas`
+                                : `${modLessons.length} ${modLessons.length === 1 ? 'aula' : 'aulas'}`}
+                            </span>
                             {modStats.formattedDuration && (
                               <span data-testid={`sidebar-module-duration-${mod.id}`}> • {modStats.formattedDuration}</span>
                             )}
@@ -342,12 +381,12 @@ export default function ModuleTimelineSidebar({
                     gap: '12px'
                   }}
                 >
-                  {modLessons.length === 0 ? (
+                  {visibleLessonsWithIdx.length === 0 ? (
                     <div style={{ fontSize: '12.5px', color: subTextColor, fontStyle: 'italic', padding: '4px 0' }}>
                       Nenhuma aula cadastrada neste módulo.
                     </div>
                   ) : (
-                    modLessons.map((lesson, idx) => (
+                    visibleLessonsWithIdx.map(({ lesson, idx }) => (
                       <TimelineLessonItem
                         key={lesson.id}
                         lesson={lesson}
@@ -358,9 +397,10 @@ export default function ModuleTimelineSidebar({
                         isLightBg={isLightBg}
                         textColor={textColor}
                         subTextColor={subTextColor}
+                        lessonAudit={isSuperAdmin ? auditByLessonId[lesson.id] : null}
                         onSelectLesson={onSelectLesson}
-                        onOpenEditLesson={onOpenEditLesson}
-                        onPromptDeleteLesson={onPromptDeleteLesson}
+                        onOpenEditLesson={(l, e) => onOpenEditLesson(mod, l, e)}
+                        onPromptDeleteLesson={(l, e) => onPromptDeleteLesson(mod, l, e)}
                       />
                     ))
                   )}

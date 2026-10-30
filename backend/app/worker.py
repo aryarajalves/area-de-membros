@@ -82,6 +82,25 @@ def run_backup_check_job():
         logger.error(f"[WORKER] Erro inesperado na rotina de backup: {exc}")
 
 
+def run_media_optimization_job():
+    """
+    Executa a otimização periódica de vídeos (.MOV -> .MP4 H.264 +faststart)
+    e imagens (PNG/JPG -> WebP) armazenados no Backblaze B2.
+    """
+    logger.info("[WORKER] >>> Verificando mídias (vídeos e imagens) pendentes de otimização...")
+    try:
+        from app.services.video_optimizer import run_pending_media_optimizations
+        stats = run_pending_media_optimizations()
+        logger.info(
+            f"[WORKER] <<< Otimização de mídias concluída: "
+            f"{stats.get('images_optimized', 0)} imagem(ns), {stats.get('videos_optimized', 0)} vídeo(s)."
+        )
+        return stats
+    except Exception as exc:
+        logger.error(f"[WORKER] Erro na rotina de otimização de mídias: {exc}")
+        return {"error": str(exc)}
+
+
 def setup_worker_jobs(scheduler_instance=None):
     """
     Configura e registra todos os jobs periódicos no scheduler do Worker.
@@ -108,6 +127,16 @@ def setup_worker_jobs(scheduler_instance=None):
         replace_existing=True,
     )
     logger.info("[WORKER] Job de backup periódico configurado com sucesso.")
+
+    # 3. Job de Otimização de Vídeos e Imagens em Nuvem (A cada 30 minutos)
+    target_scheduler.add_job(
+        run_media_optimization_job,
+        trigger=IntervalTrigger(minutes=30),
+        id="worker_media_optimization_job",
+        name="Otimização Automática de Vídeos (FastStart) e Imagens (WebP)",
+        replace_existing=True,
+    )
+    logger.info("[WORKER] Job de otimização de mídias configurado a cada 30 minutos.")
 
 
 def graceful_shutdown(signum, frame):

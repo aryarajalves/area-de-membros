@@ -114,7 +114,11 @@ export default function LessonQuizViewer({
         const result = await res.json();
         setSubmissionResult(result);
         if (result.passed && onToggleComplete && !isCompleted) {
-          onToggleComplete();
+          onToggleComplete(lesson.id, true);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('app:xp-earned', { detail: { points: 15, reason: 'Quiz concluído' } }));
+            window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: 15 } }));
+          }
         }
       } else {
         const err = await res.json().catch(() => ({}));

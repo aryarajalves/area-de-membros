@@ -12,9 +12,9 @@ services:
   # ----------------------------------------------------------------------------
   # 1. Serviço de Backend (FastAPI + Python)
   # ----------------------------------------------------------------------------
-  backend:
+  area_aulas_backend:
     # Imagem oficial do Backend da Área de Membros
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.6}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.8}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Volumes do Backend (Uploads locais de arquivos e socket Docker para logs)
@@ -26,9 +26,11 @@ services:
       network_swarm_public:
         aliases:
           - area_de_membros_backend
+          - area_aulas_backend
       area_de_membros_internal:
         aliases:
           - area_de_membros_backend
+          - area_aulas_backend
     # Variáveis de Ambiente do Backend
     environment:
       #########################################################
@@ -112,9 +114,9 @@ services:
   # ----------------------------------------------------------------------------
   # 2. Serviço de Worker (Verificações Periódicas e Backups em Background)
   # ----------------------------------------------------------------------------
-  worker:
+  area_aulas_worker:
     # Utiliza a imagem do Backend com execução isolada das rotinas agendadas
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.6}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.8}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Comando de inicialização do Worker de rotinas periódicas
@@ -196,9 +198,9 @@ services:
   # ----------------------------------------------------------------------------
   # 3. Serviço de Frontend (Nginx + React App Compilado)
   # ----------------------------------------------------------------------------
-  frontend:
+  area_aulas_frontend:
     # Imagem da aplicação Frontend (Nginx servindo dist/)
-    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.1.6}
+    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.1.8}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Redes do Swarm

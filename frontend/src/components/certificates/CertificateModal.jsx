@@ -223,7 +223,7 @@ export default function CertificateModal({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Clock size={14} color="#f59e0b" />
-                <span>Carga Horária: <b style={{ color: '#fff' }}>{certificate.workload_hours || 10}h</b></span>
+                <span>Carga Horária: <b style={{ color: '#fff' }}>{certificate.workload_label || `${certificate.workload_hours || 10}h`}</b></span>
               </div>
               {formattedDate && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

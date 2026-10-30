@@ -93,4 +93,30 @@ describe('ModuleModal', () => {
     expect(screen.getByTestId('module-title-input').value).toBe('Módulo Existente');
     expect(screen.getByTestId('drip-release-days-input').value).toBe('7');
   });
+
+  it('navega entre as abas Dados Gerais, Liberação & Elo e Capa do Módulo', () => {
+    render(
+      <ToastProvider>
+        <ModuleModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          onUploadThumbnail={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('module-modal-tabs')).toBeInTheDocument();
+    expect(screen.getByTestId('module-modal-panel-info')).toHaveStyle({ display: 'flex' });
+    expect(screen.getByTestId('module-modal-panel-access')).toHaveStyle({ display: 'none' });
+
+    // Clicar na aba Liberação & Elo
+    fireEvent.click(screen.getByTestId('module-modal-tab-access'));
+    expect(screen.getByTestId('module-modal-panel-info')).toHaveStyle({ display: 'none' });
+    expect(screen.getByTestId('module-modal-panel-access')).toHaveStyle({ display: 'flex' });
+
+    // Clicar na aba Capa do Módulo
+    fireEvent.click(screen.getByTestId('module-modal-tab-thumbnail'));
+    expect(screen.getByTestId('module-modal-panel-thumbnail')).toHaveStyle({ display: 'block' });
+  });
 });

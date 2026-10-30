@@ -113,6 +113,17 @@ export function UploadQueueProvider({ children }) {
                       : item
                   )
                 );
+                // Dispara otimização automática FastStart + H.264 no backend sem bloquear
+                try {
+                  fetch('/api/v1/courses/optimize-video', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ video_url: targetVideoUrl })
+                  }).catch(() => {});
+                } catch {}
                 addToast(`Vídeo de "${newUpload.lessonTitle}" enviado com sucesso para o Backblaze B2!`, 'success');
                 resolve(targetVideoUrl);
               } else {

@@ -179,8 +179,8 @@ export default function LessonAiTranscriptionTab({
   const isCompleted = data?.status === 'completed' && (data?.full_transcript || data?.summary_markdown || data?.summary_html);
   const isProcessing = transcribing || data?.status === 'processing';
 
-  // Se falhou
-  if (data?.status === 'failed' && !isProcessing) {
+  // Se falhou: exibe erro técnico exclusivamente para o Super Admin (alunos veem estado neutro)
+  if (data?.status === 'failed' && !isProcessing && currentUser?.role === 'superadmin') {
     return (
       <div
         data-testid="ai-transcription-failed"
@@ -308,7 +308,8 @@ export default function LessonAiTranscriptionTab({
 
   return (
     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }} data-testid="ai-transcription-container">
-      {/* Barra de Ações do Topo */}
+      {/* Barra de Ações do Topo (Exclusiva para Administradores/Gestores) */}
+      {isManager && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '12px', fontWeight: 700, backgroundColor: 'rgba(59, 130, 246, 0.14)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '4px 10px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -406,6 +407,7 @@ export default function LessonAiTranscriptionTab({
           )}
         </div>
       </div>
+      )}
 
       {/* Card: Capítulos da Aula (Minutagem estilo YouTube) */}
       {data.chapters && data.chapters.length > 0 && (

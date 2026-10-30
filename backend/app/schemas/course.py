@@ -94,6 +94,9 @@ class LessonBase(BaseModel):
     content_type: Optional[str] = "video"  # 'video', 'text', 'quiz'
     text_content: Optional[str] = None
     passing_score_pct: Optional[int] = 70
+    release_type: Optional[str] = "immediate"
+    release_days: Optional[int] = 0
+    release_date: Optional[datetime] = None
     import_identifier: Optional[str] = None
 
 class LessonCreate(LessonBase):
@@ -112,11 +115,16 @@ class LessonUpdate(BaseModel):
     content_type: Optional[str] = None
     text_content: Optional[str] = None
     passing_score_pct: Optional[int] = None
+    release_type: Optional[str] = None
+    release_days: Optional[int] = None
+    release_date: Optional[datetime] = None
     import_identifier: Optional[str] = None
     videos: Optional[List[LessonVideoCreate]] = None
     attachments: Optional[List[LessonAttachmentCreate]] = None
 
 class LessonResponse(LessonBase):
+    is_locked: Optional[bool] = False
+    available_at: Optional[datetime] = None
     id: int
     module_id: int
     created_at: datetime
@@ -240,6 +248,9 @@ class LessonProgressResponse(BaseModel):
     user_id: int
     is_completed: bool
     completed_at: Optional[datetime] = None
+    xp_awarded: Optional[int] = 0
+    module_xp_awarded: Optional[int] = 0
+    course_xp_awarded: Optional[int] = 0
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,11 +1,32 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.6`** | **Docker Hub: `backend-1.1.6` / `frontend-1.1.6`**
+> **Versão Oficial: `v1.1.8`** | **Docker Hub: `backend-1.1.8` / `frontend-1.1.8`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.1.8 (Fila de Otimização 1 a 1, Drip por Aula, Certificados e Gamificação Avançada)
+- **⚡ Fila Automática de Otimização de Vídeos 1 a 1 (`BatchVideoOptimizationModal`):**
+  - Modal protegido contra fechamento acidental que enfileira todas as aulas não otimizadas do curso, permite selecionar/desmarcar aulas individualmente, exibe o progresso real de download/conversão/upload e conta com botão para parar a fila a qualquer momento.
+- **⏳ Liberação Programada por Aula Individual (7 Dias da Garantia / Drip Content):**
+  - Configuração de liberação imediata, por dias após a matrícula (ex: 7 dias da garantia) ou data fixa diretamente em cada aula (`LessonModal`), além da organização do `ModuleModal` em 3 abas (`Dados Gerais`, `Liberação & Elo`, `Capa do Módulo`).
+- **🎓 Certificados Oficiais em PDF com Carga Horária Real:**
+  - Cálculo automático da carga horária exata do certificado somando a minutagem real de todas as aulas do curso (ex: `1h 40min`), pré-visualização liberada para administradores e correção da moldura vetorial do PDF.
+- **🏆 Bônus de XP por Módulo (+60 XP), Curso (+250 XP), Toasts de XP e Avanço Automático:**
+  - Exibição de Toast no canto superior direito sempre que o aluno ganha XP (`+15 XP` aula, `+60 XP` módulo concluído, `+250 XP` curso concluído, `+5 XP` comentário/tópico, `+10 XP` resposta no suporte), popup comemorativo de subida de nível (`LevelUpWatcher`) e avanço automático para a próxima aula ao marcar uma aula como assistida.
+- **🛠️ Tratamento de Aplicativos/Ferramentas no Progresso do Aluno:**
+  - Produtos do tipo Aplicativo/Ferramenta (`item_type = 'tool'`) exibem o selo `🛠️ Aplicativo / Ferramenta` na ficha do aluno sem barra de aulas e sem reduzir a média do `Progresso Geral`.
+
+### 🚀 Novidades da Versão v1.1.7 (Performance & Streaming Instantâneo)
+- **🎬 Otimização Automática de Vídeos com FFmpeg (`+faststart` + H.264):**
+  - Transcodificação automática em background de vídeos recém-enviados ou existentes (`.mov`, `.mkv`, `.mp4` brutos) para **MP4 Web (H.264 / AAC)**.
+  - Posicionamento do átomo `moov` no início do arquivo (`-movflags +faststart`), reduzindo o tamanho dos vídeos em até 85% e permitindo reprodução instantânea via HTTP Range Requests.
+  - Cabeçalhos de cache de longa duração (`Cache-Control: public, max-age=31536000, immutable`) e exposição CORS de `Accept-Ranges` e `Content-Range` no Backblaze B2.
+- **🖼️ Compressão WebP e Carregamento Sob Demanda (*Lazy Loading*):**
+  - Carrossel de módulos e timeline lateral otimizados com `<img loading="lazy" decoding="async">`, eliminando gargalos de rede simultâneos com o player de vídeo.
+  - Rotina automática no Worker e script em lote para compressão de capas e miniaturas em **WebP** ultra-leve (redução de ~95% no peso das imagens).
 
 ### 🏆 Novidades da Versão v1.1.6
 - **🎓 Certificados Oficiais de Conclusão de Curso (PDF + QR Code):**

@@ -99,6 +99,9 @@ class Lesson(Base):
     text_content = Column(Text, nullable=True)
     passing_score_pct = Column(Integer, default=70, nullable=True)  # Nota mínima de aprovação no quiz (ex: 70%)
     import_identifier = Column(String(255), nullable=True, index=True)  # Identificador de origem / nome original para deduplicação
+    release_type = Column(String, default="immediate", nullable=True)  # 'immediate', 'days_after', 'specific_date'
+    release_days = Column(Integer, default=0, nullable=True)
+    release_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

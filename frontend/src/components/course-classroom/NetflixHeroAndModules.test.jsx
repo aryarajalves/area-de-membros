@@ -341,4 +341,21 @@ describe('NetflixHeroAndModules Component', () => {
     fireEvent.click(screen.getByTestId('netflix-module-card-30'));
     expect(onSelectModule).not.toHaveBeenCalled();
   });
+
+  it('renderiza as capas dos modulos com lazy loading e decoding async para nao bloquear a rede do video', () => {
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={mockModules}
+        selectedModuleId={10}
+        isManager={false}
+        onSelectModule={vi.fn()}
+      />
+    );
+
+    const posterImg = screen.getByTestId('module-poster-image-10');
+    expect(posterImg).toHaveAttribute('loading', 'lazy');
+    expect(posterImg).toHaveAttribute('decoding', 'async');
+    expect(posterImg).toHaveAttribute('src', 'https://b2.com/mod1.jpg');
+  });
 });

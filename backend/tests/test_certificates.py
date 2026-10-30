@@ -172,3 +172,71 @@ def test_validate_public_certificate_not_found():
     res = client.get("/api/v1/certificates/public/CERT-INEXISTENTE-999")
     assert res.status_code == 404
     assert "Certificado de conclusão não encontrado" in res.json()["detail"]
+
+
+def test_superadmin_can_issue_certificate_without_100_percent():
+    db = SessionLocal()
+    try:
+        admin = create_mock_user(db, email="superadmin_cert@teste.com", role="superadmin", name="Super Admin Cert")
+        course, lessons = create_course_with_lessons(db, num_lessons=2)
+        lessons[0].duration = "40:00"
+        lessons[1].duration = "01:00:00"
+        db.commit()
+
+        token = create_access_token(data={"sub": str(admin.id), "role": admin.role})
+        issue_res = client.post(
+            f"/api/v1/certificates/course/{course.id}/issue",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert issue_res.status_code == 200
+        cert_json = issue_res.json()
+        assert cert_json["certificate_code"].startswith("CERT-")
+        assert cert_json["workload_label"] == "1h 40min"
+        assert cert_json["workload_hours"] == 2
+    finally:
+        db.close()
+
+
+def test_lesson_drip_content_7_days_guarantee_lock_and_unlock():
+    from datetime import datetime, timezone, timedelta
+    from app.services.drip_content import is_lesson_locked_for_user, apply_drip_content_to_course_modules
+
+    db = SessionLocal()
+    try:
+        student = create_mock_user(db, email="aluno_drip7d@teste.com", role="aluno", name="Aluno Garantia")
+        admin = create_mock_user(db, email="admin_drip7d@teste.com", role="superadmin", name="Admin Garantia")
+        course, lessons = create_course_with_lessons(db, num_lessons=2)
+
+        # Aula 1: Imediata | Aula 2: Após 7 dias da matrícula
+        lessons[0].release_type = "immediate"
+        lessons[1].release_type = "days_after"
+        lessons[1].release_days = 7
+        lessons[1].video_url = "https://cdn.exemplo.com/aula2.mp4"
+        db.commit()
+
+        # Recém-matriculado (hoje): Aula 1 liberada, Aula 2 bloqueada
+        now = datetime.now(timezone.utc)
+        locked_1, _ = is_lesson_locked_for_user(lessons[0], student, enrollment_date=now)
+        locked_2, avail_2 = is_lesson_locked_for_user(lessons[1], student, enrollment_date=now)
+        assert locked_1 is False
+        assert locked_2 is True
+        assert avail_2 is not None
+
+        # Para Superadmin: Aula 2 nunca fica bloqueada
+        locked_admin, _ = is_lesson_locked_for_user(lessons[1], admin, enrollment_date=now)
+        assert locked_admin is False
+
+        # Matriculado há 8 dias: Aula 2 liberada
+        eight_days_ago = now - timedelta(days=8)
+        locked_after_8d, _ = is_lesson_locked_for_user(lessons[1], student, enrollment_date=eight_days_ago)
+        assert locked_after_8d is False
+
+        # Sanitização em apply_drip_content_to_course_modules para aluno recém-matriculado
+        db.refresh(course)
+        apply_drip_content_to_course_modules(db, student, course.id, course.modules)
+        mod_lessons = course.modules[0].lessons
+        assert mod_lessons[0].is_locked is False
+        assert mod_lessons[1].is_locked is True
+        assert mod_lessons[1].video_url is None
+    finally:
+        db.close()

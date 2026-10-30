@@ -304,5 +304,98 @@ describe('ModuleTimelineSidebar', () => {
     expect(screen.getByTestId('module-locked-icon-99')).toBeInTheDocument();
     expect(screen.getByTestId('module-locked-text-99')).toHaveTextContent(/Exige Elo Ouro/i);
   });
+
+  it('exibe os filtros rápidos de auditoria exclusivamente para superadmin e filtra aulas por pendência', () => {
+    const auditModules = [
+      {
+        id: 1,
+        title: 'Módulo 1',
+        lessons: [
+          {
+            id: 10,
+            title: 'Trânsitos da Lua: Emoções e Necessidades Emocionais',
+            description: 'Nesta aula vamos explorar os trânsitos da Lua e como eles influenciam nossas emoções.',
+            video_url: 'https://b2.com/AreaDeMembros/videos/vid_ok.mp4',
+            thumbnail_url: 'https://b2.com/AreaDeMembros/thumbnails/thumb1.webp',
+            chapters: [{ start: '00:00', title: 'Intro' }]
+          },
+          {
+            id: 11,
+            title: '2a8bcc96-3336-462f-a0a0-cacde04f86b9',
+            description: '',
+            video_url: 'https://b2.com/AreaDeMembros/videos/vid_raw.mov',
+            thumbnail_url: ''
+          }
+        ]
+      }
+    ];
+
+    // 1. Para aluno comum, o filtro NÃO deve aparecer
+    const { unmount } = render(
+      <ModuleTimelineSidebar
+        courseId={5}
+        modules={auditModules}
+        selectedModule={auditModules[0]}
+        activeLesson={auditModules[0].lessons[0]}
+        currentUser={{ id: 2, role: 'student' }}
+      />
+    );
+    expect(screen.queryByTestId('superadmin-lesson-audit-filter-bar')).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Para superadmin, o filtro DEVE aparecer com contadores e filtrar as aulas
+    const onSelectLesson = vi.fn();
+    render(
+      <ModuleTimelineSidebar
+        courseId={5}
+        modules={auditModules}
+        selectedModule={auditModules[0]}
+        activeLesson={auditModules[0].lessons[0]}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        isManager={true}
+        onSelectLesson={onSelectLesson}
+      />
+    );
+
+    expect(screen.getByTestId('superadmin-lesson-audit-filter-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('superadmin-filter-count-unoptimized_video')).toHaveTextContent('1');
+    expect(screen.getByTestId('superadmin-filter-count-bad_title')).toHaveTextContent('1');
+    expect(screen.getByTestId('superadmin-filter-count-missing_description')).toHaveTextContent('1');
+    expect(screen.getByTestId('superadmin-filter-count-missing_thumbnail')).toHaveTextContent('1');
+
+    // Clica para filtrar apenas aulas Sem Otimização (.MOV)
+    fireEvent.click(screen.getByTestId('superadmin-filter-btn-unoptimized_video'));
+
+    // A aula 10 (otimizada) some da lista e apenas a aula 11 (.mov) permanece
+    expect(screen.queryByTestId('lesson-item-10')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lesson-item-11')).toBeInTheDocument();
+
+    // Botão Próxima Pendente navega para a aula 11
+    fireEvent.click(screen.getByTestId('superadmin-jump-next-filtered-btn'));
+    expect(onSelectLesson).toHaveBeenCalledWith(expect.objectContaining({ id: 11 }));
+
+    // Abre o popup de fila de otimização 1 a 1
+    const openQueueBtn = screen.getByTestId('superadmin-open-batch-opt-modal-btn');
+    expect(openQueueBtn).toHaveTextContent('Otimizar Aulas em Fila (1)');
+    fireEvent.click(openQueueBtn);
+
+    expect(screen.getByTestId('batch-video-opt-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('batch-opt-item-11')).toBeInTheDocument();
+
+    // Permite desmarcar todas e marcar todas novamente
+    fireEvent.click(screen.getByTestId('batch-opt-deselect-all-btn'));
+    expect(screen.queryByTestId('batch-video-opt-start-btn')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('batch-opt-select-all-btn'));
+    expect(screen.getByTestId('batch-video-opt-start-btn')).toBeInTheDocument();
+
+    // Não fecha ao clicar no backdrop externo
+    fireEvent.click(screen.getByTestId('batch-video-opt-backdrop'));
+    expect(screen.getByTestId('batch-video-opt-modal')).toBeInTheDocument();
+
+    // Fecha ao clicar no botão Fechar quando não está executando
+    fireEvent.click(screen.getByTestId('batch-video-opt-close-btn'));
+    expect(screen.queryByTestId('batch-video-opt-modal')).not.toBeInTheDocument();
+  });
 });
 

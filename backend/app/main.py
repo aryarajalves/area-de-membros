@@ -244,6 +244,9 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS required_tier VARCHAR(50) NULL;
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_type VARCHAR(50) DEFAULT 'immediate';
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
 
                     """))

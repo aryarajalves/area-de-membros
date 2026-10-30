@@ -169,8 +169,8 @@ export default function CustomVideoPlayer({
       if (vidDuration && !isNaN(vidDuration) && vidDuration !== Infinity && vidDuration !== duration) {
         setDuration(vidDuration);
       }
-      // Se estava em buffering e o reprodutor já tem dados prontos (HAVE_FUTURE_DATA)
-      if (isBuffering && videoRef.current.readyState >= 3) {
+      // Se estava em buffering e o reprodutor já tem dados prontos (HAVE_CURRENT_DATA / HAVE_FUTURE_DATA)
+      if (isBuffering && videoRef.current.readyState >= 2) {
         setIsBuffering(false);
       }
       updateBuffered();
@@ -182,14 +182,12 @@ export default function CustomVideoPlayer({
     if (!videoRef.current) return;
     setIsLoading(false);
     if (videoRef.current.paused || videoRef.current.ended) {
-      if (videoRef.current.readyState < 3) {
+      if (videoRef.current.readyState < 2) {
         setIsBuffering(true);
       }
       videoRef.current.play().then(() => {
         setIsPlaying(true);
-        if (videoRef.current && videoRef.current.readyState >= 3) {
-          setIsBuffering(false);
-        }
+        setIsBuffering(false);
       }).catch(() => {
         setIsBuffering(false);
       });
@@ -355,7 +353,8 @@ export default function CustomVideoPlayer({
         ref={videoRef}
         key={src}
         src={src}
-        preload="metadata"
+        preload="auto"
+        playsInline
         poster={poster || undefined}
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}

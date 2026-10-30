@@ -339,6 +339,7 @@ def list_course_modules(
         _verify_student_course_access(db, current_user.id, course_id)
 
     modules = db.query(Module).filter(Module.course_id == course_id).order_by(Module.order_index.asc(), Module.id.asc()).all()
+    apply_drip_content_to_course_modules(db, current_user, course_id, modules)
     return modules
 
 @router.post(
@@ -539,7 +540,10 @@ def create_lesson(
         content_type=lesson_in.content_type or "video",
         text_content=lesson_in.text_content,
         passing_score_pct=lesson_in.passing_score_pct if lesson_in.passing_score_pct is not None else 70,
-        import_identifier=lesson_in.import_identifier.strip() if lesson_in.import_identifier else lesson_in.title.strip()
+        import_identifier=lesson_in.import_identifier.strip() if lesson_in.import_identifier else lesson_in.title.strip(),
+        release_type=lesson_in.release_type or "immediate",
+        release_days=lesson_in.release_days or 0,
+        release_date=lesson_in.release_date
     )
     db.add(new_lesson)
     db.commit()
@@ -628,6 +632,9 @@ def update_lesson(
         lesson.thumbnail_url = lesson_in.thumbnail_url.strip() if lesson_in.thumbnail_url else None
     if lesson_in.import_identifier is not None:
         lesson.import_identifier = lesson_in.import_identifier.strip() if lesson_in.import_identifier else None
+    if lesson_in.release_type is not None: lesson.release_type = lesson_in.release_type
+    if lesson_in.release_days is not None: lesson.release_days = lesson_in.release_days
+    if lesson_in.release_date is not None: lesson.release_date = lesson_in.release_date
 
     if lesson_in.videos is not None:
         # Atualizar a lista de vídeos da aula

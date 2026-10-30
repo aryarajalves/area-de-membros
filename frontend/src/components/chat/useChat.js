@@ -317,10 +317,8 @@ export function useChat(currentUser) {
 
       if (res.ok) {
         const newMsg = await res.json();
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
-        });
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('app:check-level-up'));
+        setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
         return true;
       } else {
         const errData = await res.json().catch(() => ({}));

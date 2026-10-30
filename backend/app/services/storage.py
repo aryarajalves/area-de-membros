@@ -248,8 +248,20 @@ def delete_media_file(media_url: str) -> bool:
 
 _b2_cors_configured = False
 
+
+def build_b2_public_url(s3_key: str) -> str:
+    """Constrói a URL pública/CDN de um arquivo armazenado no Backblaze B2 a partir de sua s3_key."""
+    if settings.BACKBLAZE_CDN_URL:
+        base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")
+        if settings.B2_BUCKET_NAME not in base_url:
+            return f"{base_url}/{settings.B2_BUCKET_NAME}/{s3_key}"
+        return f"{base_url}/{s3_key}"
+    endpoint = (settings.EFFECTIVE_B2_ENDPOINT_URL or "").rstrip("/")
+    return f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
+
+
 def configure_b2_cors():
-    """Configura regras de CORS no bucket Backblaze B2 para permitir uploads diretos do navegador (executado uma única vez)."""
+    """Configura regras de CORS no bucket Backblaze B2 para permitir uploads e streaming de vídeo com Range Requests."""
     global _b2_cors_configured
     if _b2_cors_configured:
         return
@@ -262,7 +274,7 @@ def configure_b2_cors():
                 'AllowedHeaders': ['*'],
                 'AllowedMethods': ['GET', 'PUT', 'POST', 'HEAD'],
                 'AllowedOrigins': ['*'],
-                'ExposeHeaders': ['ETag'],
+                'ExposeHeaders': ['ETag', 'Accept-Ranges', 'Content-Range', 'Content-Length'],
                 'MaxAgeSeconds': 3600
             }]
         }

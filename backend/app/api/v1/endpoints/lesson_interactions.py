@@ -140,13 +140,78 @@ def toggle_lesson_progress(
     db.refresh(record)
     logger.info(f"Usuário {current_user.id} alterou progresso da aula {lesson_id} para {target_status}")
 
-    # Gamificação: +15 pontos ao concluir aula
+    # Gamificação: +15 pontos ao concluir aula, +60 ao concluir módulo, +250 ao concluir curso
+    xp_awarded = 0
+    module_xp_awarded = 0
+    course_xp_awarded = 0
     if target_status:
         try:
             from app.services.gamification_service import award_points
-            award_points(db, current_user, "lesson_completed", reference_id=lesson_id)
+            pt = award_points(db, current_user, "lesson_completed", reference_id=lesson_id)
+            if pt and getattr(pt, "is_new_award", False):
+                xp_awarded = pt.points
+            elif current_user.role in ["superadmin", "admin"]:
+                xp_awarded = 15
+
+            # Verifica se concluiu todas as aulas do módulo atual (+60 XP)
+            if lesson.module_id:
+                mod_lesson_ids = [
+                    r[0] for r in db.query(Lesson.id).filter(Lesson.module_id == lesson.module_id).all()
+                ]
+                if mod_lesson_ids:
+                    done_mod_count = db.query(LessonProgress).filter(
+                        LessonProgress.user_id == current_user.id,
+                        LessonProgress.lesson_id.in_(mod_lesson_ids),
+                        LessonProgress.is_completed == True
+                    ).count()
+                    if done_mod_count >= len(mod_lesson_ids):
+                        pt_mod = award_points(db, current_user, "module_completed", reference_id=lesson.module_id)
+                        if pt_mod and getattr(pt_mod, "is_new_award", False):
+                            module_xp_awarded = pt_mod.points
+                        elif current_user.role in ["superadmin", "admin"]:
+                            module_xp_awarded = 60
+
+            # Verifica se concluiu todas as aulas do curso (+250 XP)
+            if total_course_lessons > 0:
+                done_course_count = db.query(LessonProgress).filter(
+                    LessonProgress.user_id == current_user.id,
+                    LessonProgress.lesson_id.in_(all_course_lesson_ids),
+                    LessonProgress.is_completed == True
+                ).count()
+                if done_course_count >= total_course_lessons:
+                    pt_course = award_points(db, current_user, "course_completed", reference_id=course_id)
+                    if pt_course and getattr(pt_course, "is_new_award", False):
+                        course_xp_awarded = pt_course.points
+                    elif current_user.role in ["superadmin", "admin"]:
+                        course_xp_awarded = 250
         except Exception as g_exc:
-            logger.error(f"Erro ao atribuir pontos por aula concluída: {g_exc}")
+            logger.error(f"Erro ao atribuir pontos por aula/módulo/curso concluído: {g_exc}")
+    else:
+        try:
+            from app.models.gamification import GamificationPoint
+            db.query(GamificationPoint).filter(
+                GamificationPoint.user_id == current_user.id,
+                GamificationPoint.action == "lesson_completed",
+                GamificationPoint.reference_id == lesson_id
+            ).delete(synchronize_session=False)
+            if lesson.module_id:
+                db.query(GamificationPoint).filter(
+                    GamificationPoint.user_id == current_user.id,
+                    GamificationPoint.action == "module_completed",
+                    GamificationPoint.reference_id == lesson.module_id
+                ).delete(synchronize_session=False)
+            db.query(GamificationPoint).filter(
+                GamificationPoint.user_id == current_user.id,
+                GamificationPoint.action == "course_completed",
+                GamificationPoint.reference_id == course_id
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception as g_exc:
+            logger.error(f"Erro ao remover pontos de aula desmarcada: {g_exc}")
+
+    setattr(record, "xp_awarded", xp_awarded)
+    setattr(record, "module_xp_awarded", module_xp_awarded)
+    setattr(record, "course_xp_awarded", course_xp_awarded)
 
     # Se a aula foi marcada como assistida, verifica marcos (25%, 50%, 75%, 100%) e dispara webhooks
     if target_status and total_course_lessons > 0:

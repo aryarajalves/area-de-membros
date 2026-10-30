@@ -81,4 +81,16 @@ describe('CertificateModal Component', () => {
     fireEvent.click(screen.getByTestId('close-certificate-modal-btn'));
     expect(handleClose).toHaveBeenCalled();
   });
+
+  it('renders exact course duration from workload_label when provided (e.g. 1h 40min)', () => {
+    render(
+      <CertificateModal
+        isOpen={true}
+        onClose={vi.fn()}
+        certificate={{ ...mockCertificate, workload_label: '1h 40min', workload_hours: 2 }}
+      />
+    );
+
+    expect(screen.getByText('1h 40min')).toBeInTheDocument();
+  });
 });

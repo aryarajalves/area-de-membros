@@ -95,6 +95,8 @@ export default function AgentFlowLessonSync({
   const subTextColor = isLightBg ? '#475569' : '#94a3b8';
   const borderColor = isLightBg ? '#e2e8f0' : 'rgba(16, 185, 129, 0.28)';
 
+  if (!isManager) return null;
+
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
       {/* Badge de Status */}

@@ -13,12 +13,14 @@ class CertificateResponse(BaseModel):
     student_name: str
     course_title: str
     workload_hours: int
+    workload_label: Optional[str] = None
     instructor_name: Optional[str] = None
     issued_at: datetime
 
 
 class CertificateStatusResponse(BaseModel):
     eligible: bool
+    certificate_enabled: bool = True
     progress_pct: int
     completed_lessons: int
     total_lessons: int
@@ -31,5 +33,6 @@ class CertificatePublicValidationResponse(BaseModel):
     student_name: Optional[str] = None
     course_title: Optional[str] = None
     workload_hours: Optional[int] = None
+    workload_label: Optional[str] = None
     instructor_name: Optional[str] = None
     issued_at: Optional[datetime] = None

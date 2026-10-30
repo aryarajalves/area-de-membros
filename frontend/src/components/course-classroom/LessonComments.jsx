@@ -146,6 +146,8 @@ export default function LessonComments({
         });
         setNewComment('');
         addToast('Comentário publicado!', 'success');
+        addToast('⚡ +5 XP ganhos! (Comentário na aula)', 'success');
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: 5 } }));
       } else {
         const err = await res.json();
         throw new Error(err.detail || 'Erro ao publicar comentário.');

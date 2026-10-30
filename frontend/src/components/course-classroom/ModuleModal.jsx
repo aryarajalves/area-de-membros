@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2 } from 'lucide-react';
+import { X, Sparkles, Loader2, FileText, Lock, Image as ImageIcon } from 'lucide-react';
 import LessonThumbnailManager from './LessonThumbnailManager';
 import ExpandableTextarea from '../common/ExpandableTextarea';
 import { useToast } from '../../context/ToastContext';
@@ -18,6 +18,7 @@ export default function ModuleModal({
   bgColor = '#090d16'
 }) {
   const { addToast } = useToast();
+  const [activeTab, setActiveTab] = useState('info');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -38,6 +39,7 @@ export default function ModuleModal({
   };
 
   useEffect(() => {
+    setActiveTab('info');
     if (editingModule) {
       setTitle(editingModule.title || '');
       setDescription(editingModule.description || '');
@@ -65,6 +67,12 @@ export default function ModuleModal({
   const modalBg = isLightBg ? '#ffffff' : (bgColor === '#000000' ? '#0f172a' : bgColor);
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
+
+  const tabs = [
+    { id: 'info', label: 'Dados Gerais', icon: FileText },
+    { id: 'access', label: 'Liberação & Elo', icon: Lock },
+    ...(onUploadThumbnail ? [{ id: 'thumbnail', label: 'Capa do Módulo', icon: ImageIcon }] : [])
+  ];
 
   const handleGenerateAiOverview = async () => {
     if (!courseId || !editingModule?.id) return;
@@ -94,7 +102,10 @@ export default function ModuleModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setActiveTab('info');
+      return;
+    }
     onSave({
       title: title.trim(),
       description: description.trim() || null,
@@ -109,11 +120,34 @@ export default function ModuleModal({
 
   return (
     <div className="custom-modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.78)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div className="table-card" style={{ maxWidth: '520px', width: '90%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', borderRadius: '14px', backgroundColor: modalBg, border: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.14)', color: textColor, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: textColor }}>
-            {editingModule ? 'Editar Módulo' : 'Novo Módulo'}
-          </h2>
+      <div
+        className="table-card"
+        style={{
+          maxWidth: '640px',
+          width: '92%',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '24px',
+          borderRadius: '14px',
+          backgroundColor: modalBg,
+          border: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.14)',
+          color: textColor,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          position: 'relative'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabeçalho do Modal */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: textColor }}>
+              {editingModule ? 'Editar Módulo' : 'Novo Módulo'}
+            </h2>
+            <span style={{ fontSize: '12px', color: subTextColor }}>
+              Organize os dados gerais, regras de liberação e pôster do módulo
+            </span>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -124,78 +158,144 @@ export default function ModuleModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: textColor, margin: 0 }}>
-                Título do Módulo *
-              </label>
-              {editingModule && (
-                <button
-                  type="button"
-                  onClick={() => setAiConfirmOpen(true)}
-                  disabled={aiLoading || loading}
-                  className="table-action-btn"
-                  data-testid="btn-generate-module-ai-overview"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '4px 10px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '7px',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.25) 100%)',
-                    color: '#c084fc',
-                    border: '1px solid rgba(168, 85, 247, 0.45)',
-                    cursor: (aiLoading || loading) ? 'not-allowed' : 'pointer',
-                    opacity: (aiLoading || loading) ? 0.7 : 1
-                  }}
-                  title="Gerar título e descrição com base nas transcrições de todas as aulas deste módulo"
-                >
-                  {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                  <span>{aiLoading ? 'Gerando com IA...' : 'Gerar com IA'}</span>
-                </button>
-              )}
+        {/* Barra de Abas */}
+        <div
+          data-testid="module-modal-tabs"
+          style={{
+            display: 'flex',
+            gap: '6px',
+            borderBottom: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)',
+            marginBottom: '18px',
+            overflowX: 'auto',
+            flexShrink: 0,
+            paddingBottom: '2px'
+          }}
+        >
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                data-testid={`module-modal-tab-${tab.id}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#eab308' : subTextColor,
+                  borderBottom: isActive ? '2px solid #eab308' : '2px solid transparent',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
+                }}
+              >
+                <Icon size={15} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Conteúdo das Abas */}
+        <form onSubmit={handleSubmit} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' }}>
+          {/* ABA 1: DADOS GERAIS */}
+          <div data-testid="module-modal-panel-info" style={{ display: activeTab === 'info' ? 'flex' : 'none', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: textColor, margin: 0 }}>
+                  Título do Módulo *
+                </label>
+                {editingModule && (
+                  <button
+                    type="button"
+                    onClick={() => setAiConfirmOpen(true)}
+                    disabled={aiLoading || loading}
+                    className="table-action-btn"
+                    data-testid="btn-generate-module-ai-overview"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '7px',
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.25) 100%)',
+                      color: '#c084fc',
+                      border: '1px solid rgba(168, 85, 247, 0.45)',
+                      cursor: (aiLoading || loading) ? 'not-allowed' : 'pointer',
+                      opacity: (aiLoading || loading) ? 0.7 : 1
+                    }}
+                    title="Gerar título e descrição com base nas transcrições de todas as aulas deste módulo"
+                  >
+                    {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                    <span>{aiLoading ? 'Gerando com IA...' : 'Gerar com IA'}</span>
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Módulo 1 - Fundamentos"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="form-control-modern"
+                data-testid="module-title-input"
+              />
             </div>
-            <input
-              type="text"
-              required
-              placeholder="Ex: Módulo 1 - Fundamentos"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="form-control-modern"
-              data-testid="module-title-input"
+
+            <ExpandableTextarea
+              label="Descrição (Opcional)"
+              placeholder="O que o aluno aprenderá neste módulo..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              textColor={textColor}
+              subTextColor={subTextColor}
+              testId="module-description-input"
+            />
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
+                Ordem de Exibição
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={orderIndex}
+                onChange={(e) => setOrderIndex(e.target.value)}
+                className="form-control-modern"
+                data-testid="module-order-input"
+              />
+            </div>
+          </div>
+
+          {/* ABA 2: LIBERAÇÃO & ELO */}
+          <div data-testid="module-modal-panel-access" style={{ display: activeTab === 'access' ? 'flex' : 'none', flexDirection: 'column', gap: '14px' }}>
+            <ModuleDripSettings
+              releaseType={releaseType}
+              setReleaseType={setReleaseType}
+              releaseDays={releaseDays}
+              setReleaseDays={setReleaseDays}
+              releaseDate={releaseDate}
+              setReleaseDate={setReleaseDate}
+              requiredTier={requiredTier}
+              setRequiredTier={setRequiredTier}
+              textColor={textColor}
+              subTextColor={subTextColor}
+              isLightBg={isLightBg}
             />
           </div>
 
-          <ExpandableTextarea
-            label="Descrição (Opcional)"
-            placeholder="O que o aluno aprenderá neste módulo..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            textColor={textColor}
-            subTextColor={subTextColor}
-            testId="module-description-input"
-          />
-
-          {/* Seletor de Drip Content e Recompensa por Elo */}
-          <ModuleDripSettings
-            releaseType={releaseType}
-            setReleaseType={setReleaseType}
-            releaseDays={releaseDays}
-            setReleaseDays={setReleaseDays}
-            releaseDate={releaseDate}
-            setReleaseDate={setReleaseDate}
-            requiredTier={requiredTier}
-            setRequiredTier={setRequiredTier}
-            textColor={textColor}
-            subTextColor={subTextColor}
-            isLightBg={isLightBg}
-          />
-
+          {/* ABA 3: CAPA DO MÓDULO */}
           {onUploadThumbnail && (
-            <div>
+            <div data-testid="module-modal-panel-thumbnail" style={{ display: activeTab === 'thumbnail' ? 'block' : 'none' }}>
               <LessonThumbnailManager
                 title="Imagem de Capa / Pôster do Módulo (Estilo Netflix - Opcional)"
                 thumbnailUrl={imageUrl}
@@ -215,21 +315,8 @@ export default function ModuleModal({
             </div>
           )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-              Ordem de Exibição
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={orderIndex}
-              onChange={(e) => setOrderIndex(e.target.value)}
-              className="form-control-modern"
-              data-testid="module-order-input"
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+          {/* Rodapé Fixo */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px', paddingTop: '12px', borderTop: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
             <button type="button" className="secondary-btn" onClick={onClose} disabled={loading}>
               Cancelar
             </button>

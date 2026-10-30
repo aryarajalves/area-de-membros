@@ -260,6 +260,16 @@ export async function uploadVideoWithProgress(file, token, onProgress, abortRef 
               totalFormatted: formatFileSize(file.size)
             });
           }
+          try {
+            fetch('/api/v1/courses/optimize-video', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ video_url: targetVideoUrl })
+            }).catch(() => {});
+          } catch {}
           resolve(targetVideoUrl);
         } else {
           reject(new Error(`Falha no envio do vídeo para o storage (Status ${xhr.status})`));

@@ -14,6 +14,7 @@ import LessonTabsNavBar from './LessonTabsNavBar';
 import LessonNavigationBar from './LessonNavigationBar';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import LessonComingSoonScreen from './LessonComingSoonScreen';
+import SuperAdminVideoOptimizerBadge from './SuperAdminVideoOptimizerBadge';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 const LANG_FLAGS = {
@@ -369,15 +370,22 @@ export default function LessonPlayer({
               </div>
             </div>
 
-            {lesson.duration && (
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', color: subTextColor, fontSize: '12.5px', backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)', border: `1px solid ${borderColor}`, padding: '5px 12px', borderRadius: '999px' }}
-                data-testid="lesson-duration-badge"
-              >
-                <Clock size={14} />
-                <span>{formatLessonDuration(lesson.duration)}</span>
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <SuperAdminVideoOptimizerBadge
+                videoUrl={currentVideoUrl}
+                currentUser={currentUser}
+                isLightBg={isLightBg}
+              />
+              {lesson.duration && (
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: subTextColor, fontSize: '12.5px', backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)', border: `1px solid ${borderColor}`, padding: '5px 12px', borderRadius: '999px' }}
+                  data-testid="lesson-duration-badge"
+                >
+                  <Clock size={14} />
+                  <span>{formatLessonDuration(lesson.duration)}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {isComingSoon && (

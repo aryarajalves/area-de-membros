@@ -407,50 +407,13 @@ describe('CourseClassroom Component', () => {
 
   it('displays Em Breve screen and timeline badge when lesson has no video or is marked coming_soon', async () => {
     const courseWithComingSoon = {
-      id: 1,
-      title: 'Curso de Especialização',
-      modules: [
-        {
-          id: 10,
-          course_id: 1,
-          title: 'Módulo 1',
-          order_index: 1,
-          lessons: [
-            {
-              id: 201,
-              module_id: 10,
-              title: 'Aula 01: Em Gravação',
-              description: 'Esta aula será liberada em breve.',
-              video_url: null,
-              videos: [],
-              availability_status: 'coming_soon'
-            }
-          ]
-        }
-      ]
+      id: 1, title: 'Curso de Especialização',
+      modules: [{ id: 10, course_id: 1, title: 'Módulo 1', order_index: 1, lessons: [{ id: 201, module_id: 10, title: 'Aula 01: Em Gravação', description: 'Esta aula será liberada em breve.', video_url: null, videos: [], availability_status: 'coming_soon' }] }]
     };
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => courseWithComingSoon,
-    });
-
-    render(
-      <ToastProvider>
-        <CourseClassroom
-          course={{ id: 1, title: 'Curso de Especialização' }}
-          currentUser={{ role: 'aluno' }}
-          onBack={vi.fn()}
-        />
-      </ToastProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('netflix-module-card-10')).toBeInTheDocument();
-    });
-
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => courseWithComingSoon });
+    render(<ToastProvider><CourseClassroom course={{ id: 1, title: 'Curso de Especialização' }} currentUser={{ role: 'aluno' }} onBack={vi.fn()} /></ToastProvider>);
+    await waitFor(() => expect(screen.getByTestId('netflix-module-card-10')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('netflix-module-card-10'));
-
     await waitFor(() => {
       expect(screen.getByTestId('lesson-coming-soon-screen')).toBeInTheDocument();
       expect(screen.getByTestId('lesson-coming-soon-badge-201')).toBeInTheDocument();
@@ -460,46 +423,46 @@ describe('CourseClassroom Component', () => {
 
   it('allows selecting Em Breve status in LessonModal and sends availability_status in payload', async () => {
     global.fetch = vi.fn().mockImplementation((url, options) => {
-      if (options?.method === 'POST') {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ id: 205, title: 'Aula Futura', module_id: 10, availability_status: 'coming_soon' })
-        });
-      }
-      return Promise.resolve({
-        ok: true,
-        json: async () => mockCourseData,
-      });
+      if (options?.method === 'POST') return Promise.resolve({ ok: true, json: async () => ({ id: 205, title: 'Aula Futura', module_id: 10, availability_status: 'coming_soon' }) });
+      return Promise.resolve({ ok: true, json: async () => mockCourseData });
     });
-
-    render(
-      <ToastProvider>
-        <CourseClassroom
-          course={{ id: 1, title: 'Curso de Especialização' }}
-          currentUser={{ role: 'superadmin' }}
-          onBack={vi.fn()}
-        />
-      </ToastProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('add-lesson-btn-10')).toBeInTheDocument();
-    });
-
+    render(<ToastProvider><CourseClassroom course={{ id: 1, title: 'Curso de Especialização' }} currentUser={{ role: 'superadmin' }} onBack={vi.fn()} /></ToastProvider>);
+    await waitFor(() => expect(screen.getByTestId('add-lesson-btn-10')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('add-lesson-btn-10'));
-
     fireEvent.change(screen.getByTestId('lesson-title-input'), { target: { value: 'Aula Futura' } });
     fireEvent.click(screen.getByTestId('lesson-status-coming-soon-btn'));
     fireEvent.click(screen.getByTestId('save-lesson-btn'));
-
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/v1/courses/1/modules/10/lessons',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('"availability_status":"coming_soon"')
-        })
-      );
+      expect(global.fetch).toHaveBeenCalledWith('/api/v1/courses/1/modules/10/lessons', expect.objectContaining({ method: 'POST', body: expect.stringContaining('"availability_status":"coming_soon"') }));
+    });
+  });
+
+  it('advances automatically to next lesson when marked as completed and stays if on last lesson', async () => {
+    global.fetch = vi.fn().mockImplementation((url, options) => {
+      if (url.includes('/progress') && options?.method === 'POST') {
+        return Promise.resolve({ ok: true, json: async () => ({ is_completed: true, xp_awarded: 15 }) });
+      }
+      if (url.includes('/progress')) {
+        return Promise.resolve({ ok: true, json: async () => ({ completed_lesson_ids: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => mockCourseData });
+    });
+    render(<ToastProvider><CourseClassroom course={{ id: 1, title: 'Curso de Especialização' }} currentUser={{ role: 'aluno' }} onBack={vi.fn()} /></ToastProvider>);
+    await waitFor(() => expect(screen.getByTestId('netflix-module-card-10')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('netflix-module-card-10'));
+    await waitFor(() => expect(screen.getByTestId('toggle-lesson-complete-btn')).toBeInTheDocument());
+
+    // Aula 101 é a atual; ao marcar como assistida, avança automaticamente para a Aula 102
+    expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 01: Boas-vindas');
+    fireEvent.click(screen.getByTestId('toggle-lesson-complete-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 02: Mindset e Estratégia');
+    });
+
+    // Agora na última aula (102); ao marcar como assistida, permanece na Aula 102
+    fireEvent.click(screen.getByTestId('toggle-lesson-complete-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 02: Mindset e Estratégia');
     });
   });
 });

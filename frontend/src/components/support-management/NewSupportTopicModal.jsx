@@ -110,6 +110,8 @@ export default function NewSupportTopicModal({
       if (!res.ok) throw new Error(data.detail || 'Erro ao publicar dúvida.');
 
       addToast('Dúvida publicada com sucesso na comunidade!', 'success');
+      addToast('⚡ +5 XP ganhos! (Criação de tópico)', 'success');
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: 5 } }));
       if (onTopicCreated) onTopicCreated(data);
       setTitle('');
       setContent('');

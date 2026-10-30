@@ -89,10 +89,22 @@ def test_award_points_rules_and_daily_limit(setup_gamification_users):
     res_sol_dup = award_points(db, aluno_a, "support_solution", reference_id=101)
     assert res_sol_dup.id == res_sol.id
 
-    # 4. Aluno ganha 15 pontos por Aula Concluída
+    # 4. Aluno ganha 15 pontos por Aula Concluída, 60 por Módulo Concluído e 250 por Curso Concluído
     res_lesson = award_points(db, aluno_a, "lesson_completed", reference_id=201)
     assert res_lesson is not None
     assert res_lesson.points == 15
+
+    res_mod = award_points(db, aluno_a, "module_completed", reference_id=301)
+    assert res_mod is not None
+    assert res_mod.points == 60
+    res_mod_dup = award_points(db, aluno_a, "module_completed", reference_id=301)
+    assert res_mod_dup.id == res_mod.id
+
+    res_course = award_points(db, aluno_a, "course_completed", reference_id=401)
+    assert res_course is not None
+    assert res_course.points == 250
+    res_course_dup = award_points(db, aluno_a, "course_completed", reference_id=401)
+    assert res_course_dup.id == res_course.id
 
     # 5. Limite diário de Chat: até 10 mensagens pontuam, 11ª é ignorada
     for i in range(10):
@@ -167,6 +179,8 @@ def test_history_and_rules_endpoints(setup_gamification_users):
     assert res_rules.status_code == 200
     rules = res_rules.json()
     assert any(r["action"] == "support_solution" and r["points"] == 50 for r in rules)
+    assert any(r["action"] == "module_completed" and r["points"] == 60 for r in rules)
+    assert any(r["action"] == "course_completed" and r["points"] == 250 for r in rules)
     assert any(r["action"] == "chat_message" and "limite" in r["daily_limit"].lower() for r in rules)
 
 

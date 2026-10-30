@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, Video, FileText, Image as ImageIcon, Paperclip,
-  Clock, CheckCircle2, HelpCircle, BookOpen
+  HelpCircle, BookOpen
 } from 'lucide-react';
 import LessonVideoManager from './LessonVideoManager';
 import LessonAttachmentsManager from './LessonAttachmentsManager';
@@ -11,6 +11,7 @@ import LessonArticleEditor from './LessonArticleEditor';
 import ExpandableTextarea from '../common/ExpandableTextarea';
 import { normalizeLessonDuration } from './lessonUtils';
 import LessonAiGenerateButton from './LessonAiGenerateButton';
+import LessonReleaseSettings from './LessonReleaseSettings';
 
 const CONTENT_TYPES = [
   { id: 'video', label: 'Vídeo-aula', icon: Video, color: '#eab308', lightBg: '#fefce8', darkBg: 'rgba(234, 179, 8, 0.16)', testId: 'type-video-btn' },
@@ -40,6 +41,9 @@ export default function LessonModal({
   const [duration, setDuration] = useState('');
   const [orderIndex, setOrderIndex] = useState(0);
   const [availabilityStatus, setAvailabilityStatus] = useState('available');
+  const [releaseType, setReleaseType] = useState('immediate');
+  const [releaseDays, setReleaseDays] = useState(7);
+  const [releaseDate, setReleaseDate] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [videos, setVideos] = useState([]);
@@ -59,11 +63,14 @@ export default function LessonModal({
       setDuration(editingLesson.duration || '');
       setOrderIndex(editingLesson.order_index || 0);
       setAvailabilityStatus(editingLesson.availability_status || 'available');
+      setReleaseType(editingLesson.release_type || 'immediate');
+      setReleaseDays(editingLesson.release_days || 7);
+      setReleaseDate(editingLesson.release_date ? String(editingLesson.release_date).slice(0, 16) : '');
       setThumbnailUrl(editingLesson.thumbnail_url || '');
       setAttachments(editingLesson.attachments || []);
       setPassingScorePct(editingLesson.passing_score_pct !== undefined && editingLesson.passing_score_pct !== null ? editingLesson.passing_score_pct : 70);
 
-        if (editingLesson.videos && editingLesson.videos.length > 0) {
+      if (editingLesson.videos && editingLesson.videos.length > 0) {
         setVideos(editingLesson.videos);
       } else if (editingLesson.video_url) {
         setVideos([{
@@ -77,7 +84,6 @@ export default function LessonModal({
       }
       setTempLessonKey(editingLesson.id ? `lesson_${editingLesson.id}` : `new_${Date.now()}`);
 
-      // Se a aula for quiz e tiver id, busca as perguntas existentes com token autenticado
       if (editingLesson.content_type === 'quiz' && editingLesson.id && courseId) {
         const token = localStorage.getItem('auth_token');
         fetch(`/api/v1/courses/${courseId}/lessons/${editingLesson.id}/quiz`, {
@@ -102,6 +108,9 @@ export default function LessonModal({
       setDuration('');
       setOrderIndex(0);
       setAvailabilityStatus('available');
+      setReleaseType('immediate');
+      setReleaseDays(7);
+      setReleaseDate('');
       setThumbnailUrl('');
       setAttachments([]);
       setQuizQuestions([]);
@@ -118,10 +127,8 @@ export default function LessonModal({
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
   const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
   const borderColor = isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.12)';
-
   const effectiveModuleId = moduleId || editingLesson?.module_id;
 
-  // Definir as abas dinâmicas conforme o contentType
   const tabs = [
     { id: 'info', label: 'Dados Gerais', icon: FileText },
     ...(contentType === 'video' ? [{ id: 'videos', label: 'Vídeos e Idiomas', icon: Video }] : []),
@@ -168,6 +175,9 @@ export default function LessonModal({
       duration: normalizeLessonDuration(duration),
       order_index: parseInt(orderIndex, 10) || 0,
       availability_status: availabilityStatus,
+      release_type: releaseType,
+      release_days: releaseType === 'days_after' ? (parseInt(releaseDays, 10) || 0) : 0,
+      release_date: releaseType === 'specific_date' && releaseDate ? new Date(releaseDate).toISOString() : null,
       thumbnail_url: thumbnailUrl.trim() || null,
       videos: contentType === 'video' ? validVideos : [],
       attachments: validAttachments,
@@ -179,7 +189,6 @@ export default function LessonModal({
   return (
     <div className="custom-modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.78)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div className="table-card" style={{ maxWidth: '780px', width: '92%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '14px', backgroundColor: modalBg, border: isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.14)', color: textColor, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        
         {/* Topo do Modal */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
           <div>
@@ -190,12 +199,7 @@ export default function LessonModal({
               Módulo: <strong>{moduleTitle}</strong>
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="table-action-btn"
-            style={{ border: 'none', background: 'transparent', color: textColor }}
-          >
+          <button type="button" onClick={onClose} className="table-action-btn" style={{ border: 'none', background: 'transparent', color: textColor }}>
             <X size={18} />
           </button>
         </div>
@@ -216,16 +220,9 @@ export default function LessonModal({
                   onClick={() => { setContentType(type.id); setActiveTab('info'); }}
                   data-testid={type.testId}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '9px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    border: isSelected ? `1.5px solid ${type.color}` : `1px solid ${borderColor}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', fontWeight: isSelected ? 700 : 500,
+                    cursor: 'pointer', border: isSelected ? `1.5px solid ${type.color}` : `1px solid ${borderColor}`,
                     backgroundColor: isSelected ? (isLightBg ? type.lightBg : type.darkBg) : 'transparent',
                     color: isSelected ? type.color : subTextColor
                   }}
@@ -250,19 +247,10 @@ export default function LessonModal({
                 onClick={() => setActiveTab(tab.id)}
                 data-testid={`lesson-modal-tab-${tab.id}`}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 14px',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? '#eab308' : subTextColor,
-                  borderBottom: isActive ? '2px solid #eab308' : '2px solid transparent',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: 'none',
+                  background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#eab308' : subTextColor, borderBottom: isActive ? '2px solid #eab308' : '2px solid transparent',
+                  whiteSpace: 'nowrap', flexShrink: 0
                 }}
               >
                 <Icon size={15} />
@@ -366,58 +354,19 @@ export default function LessonModal({
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '6px' }}>
-                Status de Liberação da Aula
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setAvailabilityStatus('available')}
-                  data-testid="lesson-status-available-btn"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontWeight: availabilityStatus === 'available' ? 700 : 500,
-                    cursor: 'pointer',
-                    border: availabilityStatus === 'available' ? '1.5px solid #22c55e' : (isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.12)'),
-                    backgroundColor: availabilityStatus === 'available' ? (isLightBg ? '#f0fdf4' : 'rgba(34, 197, 94, 0.16)') : (isLightBg ? '#ffffff' : 'rgba(255,255,255,0.03)'),
-                    color: availabilityStatus === 'available' ? '#22c55e' : subTextColor
-                  }}
-                >
-                  <CheckCircle2 size={15} color={availabilityStatus === 'available' ? '#22c55e' : subTextColor} />
-                  <span>Disponível para os Alunos</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAvailabilityStatus('coming_soon')}
-                  data-testid="lesson-status-coming-soon-btn"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontWeight: availabilityStatus === 'coming_soon' ? 700 : 500,
-                    cursor: 'pointer',
-                    border: availabilityStatus === 'coming_soon' ? '1.5px solid #eab308' : (isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.12)'),
-                    backgroundColor: availabilityStatus === 'coming_soon' ? (isLightBg ? '#fefce8' : 'rgba(234, 179, 8, 0.16)') : (isLightBg ? '#ffffff' : 'rgba(255,255,255,0.03)'),
-                    color: availabilityStatus === 'coming_soon' ? '#eab308' : subTextColor
-                  }}
-                >
-                  <Clock size={15} color={availabilityStatus === 'coming_soon' ? '#eab308' : subTextColor} />
-                  <span>Em Breve</span>
-                </button>
-              </div>
-            </div>
+            <LessonReleaseSettings
+              availabilityStatus={availabilityStatus}
+              setAvailabilityStatus={setAvailabilityStatus}
+              releaseType={releaseType}
+              setReleaseType={setReleaseType}
+              releaseDays={releaseDays}
+              setReleaseDays={setReleaseDays}
+              releaseDate={releaseDate}
+              setReleaseDate={setReleaseDate}
+              textColor={textColor}
+              subTextColor={subTextColor}
+              isLightBg={isLightBg}
+            />
           </div>
 
           {contentType === 'video' && (

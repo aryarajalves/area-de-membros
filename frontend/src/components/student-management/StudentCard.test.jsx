@@ -146,4 +146,42 @@ describe('StudentCard Component', () => {
     );
     expect(screen.getByTestId('student-confirmed-events-badge-42')).toHaveTextContent('3 eventos confirmados');
   });
+
+  it('hides lesson progress bar and shows tool badge when product item_type is tool', () => {
+    const studentWithTool = {
+      ...mockStudent,
+      overall_progress_percent: 100,
+      total_courses: 2,
+      courses: [
+        {
+          course_id: 1,
+          course_title: 'Bussola Astrologica',
+          item_type: 'course',
+          access_duration: 'lifetime',
+          progress_percent: 100,
+          completed_lessons: 27,
+          total_lessons: 27,
+        },
+        {
+          course_id: 2,
+          course_title: 'Bussola Astrologica APP',
+          item_type: 'tool',
+          access_duration: 'lifetime',
+          progress_percent: 0,
+          completed_lessons: 0,
+          total_lessons: 0,
+        },
+      ],
+    };
+
+    renderWithToast(<StudentCard student={studentWithTool} isLightBg={false} />);
+
+    // Expande os cursos se necessário (já inicia expandido por padrão ou clica no botão)
+    if (!screen.queryByTestId('student-course-2')) {
+      fireEvent.click(screen.getByTestId('toggle-courses-btn-42'));
+    }
+
+    expect(screen.getByTestId('tool-badge-2')).toHaveTextContent('🛠️ Aplicativo / Ferramenta');
+    expect(screen.queryByText(/0 de 0 aulas/i)).not.toBeInTheDocument();
+  });
 });

@@ -143,8 +143,8 @@ describe('AgentFlowLessonSync Component', () => {
     });
   });
 
-  it('hides sync buttons for regular students while preserving status badge', () => {
-    render(
+  it('hides status badge and sync buttons completely for regular students', () => {
+    const { container } = render(
       <AgentFlowLessonSync
         lessonId={51}
         isManager={false}
@@ -154,7 +154,8 @@ describe('AgentFlowLessonSync Component', () => {
       />
     );
 
-    expect(screen.getByTestId('agentflow-sync-badge')).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByTestId('agentflow-sync-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('btn-sync-agentflow')).not.toBeInTheDocument();
   });
 });

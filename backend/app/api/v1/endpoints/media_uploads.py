@@ -1,9 +1,10 @@
-from app.services.image_optimizer import optimize_image
 """
 Endpoints de Upload e Streaming de Mídias (Vídeos, Capas e Anexos) com suporte a Presigned URL para o Backblaze B2.
 """
 import os
 import uuid
+import threading
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from app.models.user import User
@@ -11,11 +12,22 @@ from app.schemas.course import VideoUploadUrlRequest, VideoUploadUrlResponse
 from app.api.v1.endpoints.users import require_admin_or_superadmin
 from app.core.file_validation import validate_file_magic_bytes
 from app.core.logger import logger
+from app.services.image_optimizer import optimize_image
+from app.services.video_optimizer import (
+    optimize_video_bytes,
+    trigger_background_video_optimization,
+    run_pending_media_optimizations,
+    get_video_optimization_info
+)
 from app.services.storage import (
     upload_media_file,
     delete_media_file,
     generate_presigned_upload_url
 )
+
+
+class OptimizeVideoPayload(BaseModel):
+    video_url: str
 
 router = APIRouter(prefix="/courses", tags=["Mídias e Conteúdos"])
 
@@ -199,21 +211,20 @@ async def upload_video(
             detail="O arquivo de vídeo excede o limite máximo de 2 GB."
         )
 
-    unique_name = f"vid_{uuid.uuid4().hex[:14]}{ext}"
-    video_content_type_map = {
-        ".mp4": "video/mp4",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
-        ".mkv": "video/x-matroska"
-    }
-    content_type = video_content_type_map.get(ext, "video/mp4")
+    # Otimiza automaticamente para MP4 H.264 com +faststart (se for vídeo real completo)
+    final_content, final_content_type, final_ext = optimize_video_bytes(
+        video_bytes=content,
+        original_ext=ext
+    )
+    unique_name = f"vid_{uuid.uuid4().hex[:14]}{final_ext}"
 
-    # 1. Tentar salvar diretamente no Backblaze B2
+    # 1. Tentar salvar diretamente no Backblaze B2 com Cache-Control de 1 ano
     b2_url = upload_media_file(
-        file_bytes=content,
+        file_bytes=final_content,
         filename=unique_name,
-        content_type=content_type,
-        folder="AreaDeMembros/videos/"
+        content_type=final_content_type,
+        folder="AreaDeMembros/videos/",
+        cache_control="public, max-age=31536000, immutable"
     )
     if b2_url:
         return {"video_url": b2_url}
@@ -221,14 +232,122 @@ async def upload_video(
     # 2. Fallback local se Backblaze B2 não estiver configurado
     target_path = os.path.join(VIDEOS_DIR, unique_name)
     with open(target_path, "wb") as f:
-        f.write(content)
+        f.write(final_content)
 
     return {"video_url": f"/api/v1/courses/videos/{unique_name}"}
 
 
+@router.get(
+    "/video-info",
+    tags=["Aulas e Conteúdos"],
+    summary="Consultar Tamanho e Status de Otimização do Vídeo (Exclusivo Super Admin)",
+    description="Retorna tamanho em MB, formato e status de otimização FastStart de um vídeo no Backblaze B2 ou local."
+)
+def get_video_info(
+    video_url: str,
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Retorna metadados de tamanho e otimização do arquivo de vídeo exclusivamente para o Super Admin."""
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas o Super Administrador pode consultar informações técnicas de tamanho de vídeo."
+        )
+    return get_video_optimization_info(video_url)
+
+
+from sqlalchemy.orm import Session
+from typing import Optional
+from app.core.database import get_db
+from app.services.video_optimizer import (
+    audit_course_lessons_for_superadmin,
+    cancel_video_optimization
+)
+
+
+class StopVideoOptimizationPayload(BaseModel):
+    video_url: Optional[str] = None
+
+
+@router.post(
+    "/stop-video-optimization",
+    tags=["Aulas e Conteúdos"],
+    summary="Interromper Otimização de Vídeo em Andamento (Exclusivo Super Admin)"
+)
+def stop_video_optimization(
+    payload: StopVideoOptimizationPayload,
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Interrompe imediatamente a otimização de vídeo ativa na fila do Super Admin."""
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas o Super Administrador pode interromper a fila de otimização."
+        )
+    return cancel_video_optimization(payload.video_url)
+
+
+@router.get(
+    "/{course_id}/superadmin-audit",
+    tags=["Aulas e Conteúdos"],
+    summary="Auditoria Rápida de Aulas do Curso (Exclusivo Super Admin)",
+    description="Retorna diagnóstico de otimização de vídeo, descrição IA, capítulos IA, thumbnail e qualidade de título para todas as aulas do curso."
+)
+def get_course_superadmin_audit(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Retorna o mapa de pendências de auditoria de todas as aulas do curso (exclusivo para o Super Admin)."""
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas o Super Administrador pode consultar a auditoria técnica das aulas."
+        )
+    return audit_course_lessons_for_superadmin(course_id, db)
+
+
+@router.post(
+    "/optimize-video",
+    tags=["Aulas e Conteúdos"],
+    summary="Otimizar Vídeo no Backblaze B2 (FastStart + H.264)",
+    description="Aciona em background a transcodificação automática para MP4 H.264 com +faststart após upload direto para o B2."
+)
+def trigger_video_optimization(
+    payload: OptimizeVideoPayload,
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Inicia a otimização assíncrona de um vídeo recém-enviado ao Backblaze B2."""
+    if not payload.video_url:
+        raise HTTPException(status_code=400, detail="URL do vídeo é obrigatória.")
+    trigger_background_video_optimization(payload.video_url)
+    return {
+        "status": "processing",
+        "message": "Otimização do vídeo iniciada automaticamente em segundo plano."
+    }
+
+
+@router.post(
+    "/optimize-all-media",
+    tags=["Aulas e Conteúdos"],
+    summary="Otimizar Todas as Mídias Existentes em Segundo Plano",
+    description="Varre e otimiza todos os vídeos (.mov/mp4) e imagens (png/jpg) existentes no banco e B2."
+)
+def trigger_all_media_optimization(
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Dispara em background a otimização de todas as imagens e vídeos pendentes na plataforma."""
+    t = threading.Thread(target=run_pending_media_optimizations, daemon=True)
+    t.start()
+    return {
+        "status": "processing",
+        "message": "Otimização em lote de todos os vídeos e imagens iniciada em segundo plano."
+    }
+
+
 @router.get("/videos/{filename}", include_in_schema=False)
 def get_video(filename: str):
-    """Serve um arquivo de vídeo de aula armazenado localmente com streaming de mídia."""
+    """Serve um arquivo de vídeo de aula armazenado localmente com streaming de mídia e Range Requests."""
     safe_filename = os.path.basename(filename)
     filepath = os.path.join(VIDEOS_DIR, safe_filename)
     if not os.path.exists(filepath):
@@ -242,7 +361,14 @@ def get_video(filename: str):
         ".mkv": "video/x-matroska"
     }
     media_type = content_type_map.get(ext, "video/mp4")
-    return FileResponse(filepath, media_type=media_type)
+    return FileResponse(
+        filepath,
+        media_type=media_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable"
+        }
+    )
 
 
 @router.post(

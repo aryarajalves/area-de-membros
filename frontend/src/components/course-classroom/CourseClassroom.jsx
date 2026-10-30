@@ -13,6 +13,7 @@ import BatchLessonOrderModal from './BatchLessonOrderModal';
 import CourseUpsellManager from './CourseUpsellManager';
 import CourseCertificateManager from './CourseCertificateManager';
 import { scrollToClassroomSection } from './lessonUtils';
+import { useToast } from '../../context/ToastContext';
 
 export default function CourseClassroom({
   course: initialCourse,
@@ -24,6 +25,7 @@ export default function CourseClassroom({
   onBack,
 }) {
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
+  const { addToast } = useToast();
   const {
     course, modules, activeLesson, setActiveLesson, loading, actionLoading,
     completedLessonIds, handleToggleLessonComplete, fetchCourseData,
@@ -32,6 +34,9 @@ export default function CourseClassroom({
   } = useCourseContent(initialCourse.id);
 
   const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
+  useEffect(() => {
+    if (activeLesson?.module_id && selectedModuleId && activeLesson.module_id !== selectedModuleId) setSelectedModuleId(activeLesson.module_id);
+  }, [activeLesson?.id, activeLesson?.module_id, selectedModuleId]);
 
   useEffect(() => {
     if (!modules || modules.length === 0) return;
@@ -114,6 +119,11 @@ export default function CourseClassroom({
   };
 
   const handleSelectLessonAndModule = (lesson) => {
+    if (lesson?.is_locked && !isManager) {
+      const dateStr = lesson.available_at ? new Date(lesson.available_at).toLocaleDateString('pt-BR') : `${lesson.release_days || 7} dias após a matrícula`;
+      if (addToast) addToast(`🔒 Esta aula estará disponível em ${dateStr} (período de liberação programada).`, 'info');
+      return;
+    }
     setActiveLesson(lesson);
     if (lesson?.module_id) {
       setSelectedModuleId(lesson.module_id);
@@ -170,7 +180,7 @@ export default function CourseClassroom({
     <ModuleTimelineSidebar
       courseId={course?.id || initialCourse.id} modules={modules} selectedModule={selectedModule}
       activeLesson={activeLesson} completedLessonIds={completedLessonIds} totalLessonsCount={totalLessonsCount}
-      isManager={isManager} isLightBg={isLightBg} onSelectModule={handleSelectModule}
+      isManager={isManager} currentUser={currentUser} isLightBg={isLightBg} onSelectModule={handleSelectModule}
       onSelectLesson={handleSelectLessonAndModule} onOpenCreateLesson={handleOpenCreateLesson}
       onOpenEditModule={handleOpenEditModule} onPromptDeleteModule={handlePromptDeleteModule}
       onOpenEditLesson={handleOpenEditLesson} onPromptDeleteLesson={handlePromptDeleteLesson}
@@ -465,7 +475,7 @@ export default function CourseClassroom({
       />
 
       {/* Gerenciador e Emissão de Certificados de Conclusão */}
-      <CourseCertificateManager
+      <CourseCertificateManager isManager={isManager}
         courseId={course?.id || initialCourse.id}
         completedCount={completedLessonIds?.length || 0}
         totalCount={totalLessonsCount || 0}

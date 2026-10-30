@@ -21,7 +21,7 @@ from sqlalchemy import func
 
 from app.core.logger import logger
 from app.models.user import User
-from app.models.course import Module, UserCourse
+from app.models.course import Module, Lesson, UserCourse
 from app.models.gamification import GamificationPoint
 from app.services.gamification_level_service import calculate_student_level
 
@@ -142,6 +142,49 @@ def is_module_locked_for_user(
     return False, None, None
 
 
+def is_lesson_locked_for_user(
+    lesson: Any,
+    user: User,
+    enrollment_date: Optional[datetime] = None,
+) -> Tuple[bool, Optional[datetime]]:
+    """
+    Determina se uma aula individual está bloqueada por Drip Content (ex: 7 dias da garantia) para o aluno.
+    Retorna (is_locked, available_at).
+    """
+    if getattr(user, "role", None) in ["superadmin", "admin"]:
+        avail_date = ensure_utc(getattr(lesson, "release_date", None)) if getattr(lesson, "release_type", "immediate") == "specific_date" else None
+        return False, avail_date
+
+    now = utc_now()
+    release_type = getattr(lesson, "release_type", None) or "immediate"
+
+    if release_type == "immediate":
+        return False, None
+
+    if release_type == "days_after":
+        days = getattr(lesson, "release_days", 0) or 0
+        if days <= 0:
+            return False, None
+
+        base_date = enrollment_date or now
+        unlock_at = base_date + timedelta(days=days)
+        if now >= unlock_at:
+            return False, unlock_at
+        return True, unlock_at
+
+    if release_type == "specific_date":
+        rel_date = getattr(lesson, "release_date", None)
+        if not rel_date:
+            return False, None
+
+        unlock_at = ensure_utc(rel_date)
+        if now >= unlock_at:
+            return False, unlock_at
+        return True, unlock_at
+
+    return False, None
+
+
 def apply_drip_content_to_course_modules(
     db: Session,
     user: User,
@@ -150,8 +193,8 @@ def apply_drip_content_to_course_modules(
 ) -> None:
     """
     Calcula e atribui os campos dinâmicos `is_locked`, `available_at`, `locked_reason`
-    e `required_tier_color` aos módulos do curso.
-    Para módulos bloqueados, sanitiza as aulas para não vazar mídias.
+    e `required_tier_color` aos módulos e aulas do curso.
+    Para módulos ou aulas bloqueadas, sanitiza os vídeos/anexos para não vazar mídias.
     """
     is_admin = getattr(user, "role", None) in ["superadmin", "admin"]
 
@@ -168,11 +211,23 @@ def apply_drip_content_to_course_modules(
         setattr(m, "locked_reason", reason)
         setattr(m, "required_tier_color", TIER_COLORS.get(getattr(m, "required_tier", None)))
 
-        if locked:
-            # Protege os dados de mídia das aulas deste módulo bloqueado
-            for lesson in getattr(m, "lessons", []):
+        for lesson in getattr(m, "lessons", []):
+            if locked:
+                setattr(lesson, "is_locked", True)
+                setattr(lesson, "available_at", avail_at)
                 setattr(lesson, "video_url", None)
+                setattr(lesson, "videos", [])
                 setattr(lesson, "attachments", [])
+                setattr(lesson, "text_content", None)
+            else:
+                les_locked, les_avail_at = is_lesson_locked_for_user(lesson, user, enrollment_date)
+                setattr(lesson, "is_locked", les_locked)
+                setattr(lesson, "available_at", les_avail_at)
+                if les_locked:
+                    setattr(lesson, "video_url", None)
+                    setattr(lesson, "videos", [])
+                    setattr(lesson, "attachments", [])
+                    setattr(lesson, "text_content", None)
 
 
 def check_module_access(

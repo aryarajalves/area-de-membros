@@ -316,9 +316,11 @@ describe('LessonAiTranscriptionTab Component', () => {
       expect(screen.getByTestId('ai-transcription-container')).toBeInTheDocument();
     });
 
-    // O badge de custo NÃO pode estar visível para o aluno
+    // O badge de custo e os badges técnicos de IA/AgentFlow NÃO podem estar visível para o aluno
     expect(screen.queryByTestId('ai-transcription-cost-badge')).not.toBeInTheDocument();
     expect(screen.queryByText(/Custo:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Processado por IA/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agentflow-sync-badge')).not.toBeInTheDocument();
 
     // A transcrição integral e o botão de copiar NÃO devem aparecer para o aluno
     expect(screen.queryByTestId('ai-full-transcription')).not.toBeInTheDocument();

@@ -93,18 +93,22 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
         user_courses = db.query(UserCourse).filter(UserCourse.user_id == student.id).all()
         courses_data: List[StudentCourseProgressItem] = []
         total_progress_sum = 0
+        trackable_courses_count = 0
 
         for uc in user_courses:
             course = db.query(Course).filter(Course.id == uc.course_id).first()
             if not course:
                 continue
 
+            item_type = getattr(course, "item_type", None) or "course"
+            is_tool = (item_type == "tool")
+
             lessons = (
                 db.query(Lesson.id, Lesson.title)
                 .join(Module, Lesson.module_id == Module.id)
                 .filter(Module.course_id == course.id)
                 .all()
-            )
+            ) if not is_tool else []
             total_lessons = len(lessons)
             lesson_id_to_title = {l.id: l.title for l in lessons}
             lesson_ids = list(lesson_id_to_title.keys())
@@ -131,7 +135,9 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                     last_activity_at = last_record.updated_at or last_record.completed_at
 
             progress_percent = int(round((completed_lessons / total_lessons) * 100)) if total_lessons > 0 else 0
-            total_progress_sum += progress_percent
+            if not is_tool:
+                total_progress_sum += progress_percent
+                trackable_courses_count += 1
 
             is_expired = False
             days_remaining = None
@@ -156,6 +162,7 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 StudentCourseProgressItem(
                     course_id=course.id,
                     course_title=course.title,
+                    item_type=item_type,
                     thumbnail_url=course.thumbnail_url or course.cover_image_url,
                     access_duration=uc.access_duration or "lifetime",
                     enrolled_at=uc.created_at,
@@ -172,7 +179,7 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
             )
 
         total_courses = len(courses_data)
-        overall_progress_percent = int(round(total_progress_sum / total_courses)) if total_courses > 0 else 0
+        overall_progress_percent = int(round(total_progress_sum / trackable_courses_count)) if trackable_courses_count > 0 else 0
 
         total_pts = points_map.get(student.id, 0)
         level_info = calculate_student_level(total_pts)

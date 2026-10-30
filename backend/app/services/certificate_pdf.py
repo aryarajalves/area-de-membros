@@ -1,68 +1,44 @@
 import io
-import os
 import qrcode
 from datetime import datetime
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.pdfgen import canvas
-from reportlab.graphics.shapes import Drawing, Rect, Line
 
 
-class NumberedCanvas(canvas.Canvas):
-    """Canvas customizado para moldura ornamental do certificado."""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._saved_page_states = []
+def draw_certificate_frame(canvas_obj, doc):
+    """Desenha a moldura ornamental ao redor do certificado sem cobrir o texto central."""
+    width, height = landscape(A4)
+    canvas_obj.saveState()
 
-    def showPage(self):
-        self._saved_page_states.append(dict(self.__dict__))
-        self._startPage()
+    # Moldura externa azul escuro (fill=False para NUNCA cobrir o conteúdo do certificado)
+    canvas_obj.setStrokeColor(colors.HexColor("#0f172a"))
+    canvas_obj.setLineWidth(4)
+    canvas_obj.rect(20, 20, width - 40, height - 40, fill=False, stroke=True)
 
-    def save(self):
-        num_pages = len(self._saved_page_states)
-        for state in self._saved_page_states:
-            self.__dict__.update(state)
-            self.draw_certificate_frame()
-            super().showPage()
-        super().save()
+    # Moldura interna dourada
+    canvas_obj.setStrokeColor(colors.HexColor("#d97706"))
+    canvas_obj.setLineWidth(1.5)
+    canvas_obj.rect(26, 26, width - 52, height - 52, fill=False, stroke=True)
 
-    def draw_certificate_frame(self):
-        width, height = landscape(A4)
-        self.saveState()
+    # Detalhes geométricos dourados nos 4 cantos
+    corner_size = 18
+    for x, y, dx, dy in [
+        (26, 26, 1, 1),
+        (width - 26, 26, -1, 1),
+        (26, height - 26, 1, -1),
+        (width - 26, height - 26, -1, -1),
+    ]:
+        canvas_obj.setFillColor(colors.HexColor("#d97706"))
+        p = canvas_obj.beginPath()
+        p.moveTo(x, y)
+        p.lineTo(x + (corner_size * dx), y)
+        p.lineTo(x, y + (corner_size * dy))
+        p.close()
+        canvas_obj.drawPath(p, fill=True, stroke=False)
 
-        # Fundo do certificado
-        self.setFillColor(colors.HexColor("#f8fafc"))
-        self.rect(0, 0, width, height, fill=True, stroke=False)
-
-        # Moldura externa azul escuro
-        self.setStrokeColor(colors.HexColor("#0f172a"))
-        self.setLineWidth(4)
-        self.rect(20, 20, width - 40, height - 40, fill=False, stroke=True)
-
-        # Moldura interna dourada
-        self.setStrokeColor(colors.HexColor("#d97706"))
-        self.setLineWidth(1.5)
-        self.rect(26, 26, width - 52, height - 52, fill=False, stroke=True)
-
-        # Detalhes geométricos nos 4 cantos
-        corner_size = 18
-        for x, y, dx, dy in [
-            (26, 26, 1, 1),
-            (width - 26, 26, -1, 1),
-            (26, height - 26, 1, -1),
-            (width - 26, height - 26, -1, -1),
-        ]:
-            self.setFillColor(colors.HexColor("#d97706"))
-            p = self.beginPath()
-            p.moveTo(x, y)
-            p.lineTo(x + (corner_size * dx), y)
-            p.lineTo(x, y + (corner_size * dy))
-            p.close()
-            self.drawPath(p, fill=True, stroke=False)
-
-        self.restoreState()
+    canvas_obj.restoreState()
 
 
 MESES_PT_BR = {
@@ -97,21 +73,21 @@ def generate_certificate_pdf_bytes(
     issued_at: datetime,
     instructor_name: str = None,
     validation_base_url: str = "http://localhost:3010",
+    workload_label: str = None,
 ) -> bytes:
     """
     Gera o PDF vetorial em paisagem (Landscape A4) do Certificado Oficial de Conclusão.
     """
     buffer = io.BytesIO()
-    page_width, page_height = landscape(A4)
 
     # Margens internas respeitando a moldura ornamental
     doc = SimpleDocTemplate(
         buffer,
         pagesize=landscape(A4),
-        leftMargin=50,
-        rightMargin=50,
-        topMargin=46,
-        bottomMargin=36,
+        leftMargin=55,
+        rightMargin=55,
+        topMargin=52,
+        bottomMargin=40,
     )
 
     styles = getSampleStyleSheet()
@@ -135,7 +111,7 @@ def generate_certificate_pdf_bytes(
         leading=14,
         textColor=colors.HexColor("#d97706"),
         alignment=1,
-        spaceAfter=18,
+        spaceAfter=22,
     )
 
     intro_style = ParagraphStyle(
@@ -146,40 +122,40 @@ def generate_certificate_pdf_bytes(
         leading=18,
         textColor=colors.HexColor("#475569"),
         alignment=1,
-        spaceAfter=10,
+        spaceAfter=12,
     )
 
     student_name_style = ParagraphStyle(
         "CertStudent",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=24,
-        leading=30,
+        fontSize=26,
+        leading=32,
         textColor=colors.HexColor("#1e3a8a"),
         alignment=1,
-        spaceAfter=12,
+        spaceAfter=14,
     )
 
     course_title_style = ParagraphStyle(
         "CertCourse",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=24,
+        fontSize=20,
+        leading=26,
         textColor=colors.HexColor("#0f172a"),
         alignment=1,
-        spaceAfter=14,
+        spaceAfter=16,
     )
 
     body_style = ParagraphStyle(
         "CertBody",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=12,
-        leading=18,
+        fontSize=12.5,
+        leading=19,
         textColor=colors.HexColor("#334155"),
         alignment=1,
-        spaceAfter=20,
+        spaceAfter=26,
     )
 
     story = []
@@ -187,21 +163,22 @@ def generate_certificate_pdf_bytes(
     # Cabeçalho do Certificado
     story.append(Paragraph("CERTIFICADO DE CONCLUSÃO", title_style))
     story.append(Paragraph("ÁREA DE MEMBROS • PLATAFORMA OFICIAL DE ENSINO", subtitle_style))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 6))
 
     # Corpo
     story.append(Paragraph("Certificamos para os devidos fins que o(a) aluno(a)", intro_style))
     story.append(Paragraph(student_name.strip(), student_name_style))
-    story.append(Paragraph(f"concluiu integralmente todos os módulos e requisitos do curso", intro_style))
+    story.append(Paragraph("concluiu integralmente todos os módulos e requisitos do curso", intro_style))
     story.append(Paragraph(f"“{course_title.strip()}”", course_title_style))
 
     hours = workload_hours or 10
+    duration_display = workload_label.strip() if (workload_label and workload_label.strip()) else f"{hours} horas"
     body_text = (
-        f"com carga horária total estimada de <b>{hours} horas</b>, demonstrando dedicação e "
+        f"com carga horária total estimada de <b>{duration_display}</b>, demonstrando dedicação e "
         f"aproveitamento em todas as etapas, projetos e aulas práticas ministradas."
     )
     story.append(Paragraph(body_text, body_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 14))
 
     # Data por extenso
     dia = issued_at.day
@@ -212,13 +189,14 @@ def generate_certificate_pdf_bytes(
     # QR Code e link de validação
     validation_url = f"{validation_base_url.rstrip('/')}/validar-certificado/{certificate_code}"
     qr_buffer = generate_qr_code_image_bytes(validation_url)
-    qr_img = RLImage(qr_buffer, width=64, height=64)
+    qr_img = RLImage(qr_buffer, width=68, height=68)
 
     # Tabela de Rodapé: Assinatura (Esquerda) | Autenticidade (Centro) | QR Code (Direita)
     instrutor_final = (instructor_name or "Coordenação Acadêmica").strip()
 
     col_left = [
-        Spacer(1, 16),
+        Spacer(1, 14),
+        Paragraph("________________________________________", ParagraphStyle("Line", alignment=0, fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#94a3b8"), spaceAfter=4)),
         Paragraph(f"<b>{instrutor_final}</b>", ParagraphStyle("Instrutor", alignment=0, fontName="Helvetica-Bold", fontSize=11, textColor=colors.HexColor("#0f172a"))),
         Paragraph("Instrutor / Responsável Acadêmico", ParagraphStyle("Cargo", alignment=0, fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#64748b"))),
         Spacer(1, 4),
@@ -228,8 +206,8 @@ def generate_certificate_pdf_bytes(
     col_center = [
         Spacer(1, 16),
         Paragraph("<b>CÓDIGO DE AUTENTICIDADE</b>", ParagraphStyle("CodeLabel", alignment=1, fontName="Helvetica-Bold", fontSize=9, textColor=colors.HexColor("#64748b"))),
-        Paragraph(f"<b>{certificate_code}</b>", ParagraphStyle("CodeValue", alignment=1, fontName="Courier-Bold", fontSize=12, textColor=colors.HexColor("#0f172a"))),
-        Paragraph("Documento emitido digitalmente", ParagraphStyle("DocSign", alignment=1, fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#94a3b8"))),
+        Paragraph(f"<b>{certificate_code}</b>", ParagraphStyle("CodeValue", alignment=1, fontName="Courier-Bold", fontSize=13, textColor=colors.HexColor("#0f172a"), spaceBefore=3, spaceAfter=3)),
+        Paragraph("Documento emitido digitalmente", ParagraphStyle("DocSign", alignment=1, fontName="Helvetica", fontSize=8.5, textColor=colors.HexColor("#94a3b8"))),
     ]
 
     col_right = [
@@ -238,7 +216,7 @@ def generate_certificate_pdf_bytes(
     ]
 
     table_data = [[col_left, col_center, col_right]]
-    footer_table = Table(table_data, colWidths=[290, 290, 140])
+    footer_table = Table(table_data, colWidths=[280, 280, 150])
     footer_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (0, 0), "LEFT"),
@@ -248,7 +226,7 @@ def generate_certificate_pdf_bytes(
 
     story.append(footer_table)
 
-    doc.build(story, canvasmaker=NumberedCanvas)
+    doc.build(story, onFirstPage=draw_certificate_frame, onLaterPages=draw_certificate_frame)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes

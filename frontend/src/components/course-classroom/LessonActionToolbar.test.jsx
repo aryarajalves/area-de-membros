@@ -85,6 +85,7 @@ describe('LessonActionToolbar Component', () => {
         })
       );
       expect(onToggleMock).toHaveBeenCalledWith(101, true);
+      expect(screen.getByText(/⚡ \+15 XP ganhos!/i)).toBeInTheDocument();
     });
   });
 
@@ -270,6 +271,41 @@ describe('LessonActionToolbar Component', () => {
         expect.objectContaining({ method: 'POST' })
       );
       expect(screen.getByText('Favoritada')).toBeInTheDocument();
+    });
+  });
+
+  it('displays +60 XP module bonus toast and +250 XP course bonus toast when completing module and course', async () => {
+    global.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/progress') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            lesson_id: 101,
+            is_completed: true,
+            xp_awarded: 15,
+            module_xp_awarded: 60,
+            course_xp_awarded: 250
+          })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ user_rating: 0, average_rating: 0, total_ratings: 0 })
+      });
+    });
+
+    render(
+      <ToastProvider>
+        <LessonActionToolbar {...defaultProps} />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-lesson-complete-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/⚡ \+15 XP ganhos!/i)).toBeInTheDocument();
+      expect(screen.getByText(/🏆 \+60 XP de Bônus! \(Módulo concluído!\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/👑 \+250 XP de Bônus! \(Curso 100% concluído!\)/i)).toBeInTheDocument();
     });
   });
 });

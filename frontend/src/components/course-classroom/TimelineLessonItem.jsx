@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, Lock } from 'lucide-react';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 export default function TimelineLessonItem({
@@ -11,6 +11,7 @@ export default function TimelineLessonItem({
   isLightBg,
   textColor,
   subTextColor,
+  lessonAudit = null,
   onSelectLesson,
   onOpenEditLesson,
   onPromptDeleteLesson
@@ -68,6 +69,8 @@ export default function TimelineLessonItem({
             <img
               src={lesson.thumbnail_url}
               alt=""
+              loading="lazy"
+              decoding="async"
               style={{
                 width: '18px',
                 height: '18px',
@@ -129,6 +132,56 @@ export default function TimelineLessonItem({
             </span>
           )}
 
+          {lesson.is_locked && !isManager && (
+            <span
+              data-testid={`lesson-drip-locked-badge-${lesson.id}`}
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                backgroundColor: 'rgba(239, 68, 68, 0.16)',
+                color: '#f87171',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                flexShrink: 0,
+                marginTop: '1px'
+              }}
+            >
+              <Lock size={9} />
+              <span>
+                {lesson.available_at
+                  ? `Libera ${new Date(lesson.available_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+                  : `Após ${lesson.release_days || 7}d`}
+              </span>
+            </span>
+          )}
+
+          {isManager && lesson.release_type && lesson.release_type !== 'immediate' && (
+            <span
+              data-testid={`lesson-drip-rule-badge-${lesson.id}`}
+              style={{
+                fontSize: '9.5px',
+                fontWeight: 700,
+                backgroundColor: 'rgba(234, 179, 8, 0.14)',
+                color: '#facc15',
+                border: '1px solid rgba(234, 179, 8, 0.3)',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                flexShrink: 0,
+                marginTop: '1px'
+              }}
+            >
+              <Lock size={9} />
+              <span>{lesson.release_type === 'days_after' ? `${lesson.release_days || 7}d` : 'Data'}</span>
+            </span>
+          )}
+
           {isCompleted && (
             <span data-testid={`lesson-completed-icon-${lesson.id}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
               <CheckCircle2
@@ -164,6 +217,95 @@ export default function TimelineLessonItem({
             </>
           )}
         </div>
+
+        {/* Tags de Diagnóstico Exclusivas do Super Admin */}
+        {lessonAudit?.any_issue && (
+          <div
+            data-testid={`lesson-audit-tags-${lesson.id}`}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '4px',
+              marginTop: '4px'
+            }}
+          >
+            {lessonAudit.unoptimized_video && (
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(234, 179, 8, 0.16)',
+                  color: '#facc15',
+                  border: '1px solid rgba(234, 179, 8, 0.35)'
+                }}
+              >
+                ⚡ S/ Otimização{lessonAudit.format ? ` (.${lessonAudit.format})` : ''}
+              </span>
+            )}
+            {lessonAudit.bad_title && (
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(192, 132, 252, 0.16)',
+                  color: '#c084fc',
+                  border: '1px solid rgba(192, 132, 252, 0.35)'
+                }}
+              >
+                ✨ S/ Nome IA
+              </span>
+            )}
+            {lessonAudit.missing_description && (
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(56, 189, 248, 0.16)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.35)'
+                }}
+              >
+                📝 S/ Descrição
+              </span>
+            )}
+            {lessonAudit.missing_chapters && (
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(251, 146, 60, 0.16)',
+                  color: '#fb923c',
+                  border: '1px solid rgba(251, 146, 60, 0.35)'
+                }}
+              >
+                📑 S/ Capítulos
+              </span>
+            )}
+            {lessonAudit.missing_thumbnail && (
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(244, 114, 182, 0.16)',
+                  color: '#f472b6',
+                  border: '1px solid rgba(244, 114, 182, 0.35)'
+                }}
+              >
+                🖼️ S/ Thumbnail
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {isManager && (

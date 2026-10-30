@@ -45,14 +45,14 @@ export default function CertificatePublicValidationPage({ certificateCode, onBac
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
         width: '100%',
+        overflowY: 'auto',
         background: 'linear-gradient(135deg, #020617 0%, #0b1329 50%, #020617 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px 16px',
+        padding: '24px 16px 40px',
         boxSizing: 'border-box',
         color: '#f8fafc',
         fontFamily: 'Inter, system-ui, sans-serif',
@@ -63,12 +63,13 @@ export default function CertificatePublicValidationPage({ certificateCode, onBac
         style={{
           maxWidth: '620px',
           width: '100%',
+          margin: 'auto',
           background: 'rgba(15, 23, 42, 0.75)',
           backdropFilter: 'blur(16px)',
           border: error ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(217, 119, 6, 0.35)',
           borderRadius: '24px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 35px rgba(217, 119, 6, 0.1)',
-          padding: '36px 32px',
+          padding: '28px 28px',
           boxSizing: 'border-box',
           textAlign: 'center',
         }}
@@ -184,7 +185,7 @@ export default function CertificatePublicValidationPage({ certificateCode, onBac
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', color: '#e2e8f0', marginTop: '4px' }}>
                     <Clock size={14} color="#f59e0b" />
-                    <span><b>{data.workload_hours || 10} horas</b> estimadas</span>
+                    <span><b>{data.workload_label || `${data.workload_hours || 10} horas`}</b> estimadas</span>
                   </div>
                 </div>
 

@@ -8,6 +8,8 @@ from app.core.logger import logger
 from app.services.gamification_level_service import calculate_student_level
 
 POINTS_MAP = {
+    "course_completed": (250, "Conclusão completa do curso (100%)"),
+    "module_completed": (60, "Conclusão completa de módulo do curso"),
     "support_solution": (50, "Melhor Solução aceita no Suporte"),
     "support_reply": (10, "Resposta a dúvida de colega no Suporte"),
     "support_topic": (5, "Criação de tópico/dúvida relevante"),
@@ -52,8 +54,8 @@ def award_points(
         if daily_count >= 10:
             return None
 
-    # Prevenção de duplicação para ações únicas (ex: conclusão da mesma aula ou solução para o mesmo reply)
-    if action in ["lesson_completed", "support_solution"] and reference_id:
+    # Prevenção de duplicação para ações únicas (ex: conclusão da mesma aula, módulo, curso ou solução)
+    if action in ["lesson_completed", "module_completed", "course_completed", "support_solution"] and reference_id:
         existing = (
             db.query(GamificationPoint)
             .filter(
@@ -64,6 +66,7 @@ def award_points(
             .first()
         )
         if existing:
+            setattr(existing, "is_new_award", False)
             return existing
 
     # Cálculo do nível antes de atribuir os novos pontos
@@ -94,6 +97,7 @@ def award_points(
         except Exception as lvl_err:
             logger.error(f"[Gamificação] Erro ao verificar subida de nível e disparar funis: {lvl_err}")
 
+        setattr(point_entry, "is_new_award", True)
         return point_entry
     except Exception as exc:
         db.rollback()
@@ -107,7 +111,7 @@ def sync_student_historical_points(db: Session, user_id: Optional[int] = None) -
     para garantir a integridade da pontuação de alunos existentes.
     Retorna a quantidade de novas entradas criadas.
     """
-    from app.models.course import LessonProgress
+    from app.models.course import LessonProgress, Lesson, Module
 
     query_lp = (
         db.query(LessonProgress, User)
@@ -120,8 +124,12 @@ def sync_student_historical_points(db: Session, user_id: Optional[int] = None) -
     completed_lessons = query_lp.all()
     created_count = 0
     pts, desc = POINTS_MAP["lesson_completed"]
+    mod_pts, mod_desc = POINTS_MAP["module_completed"]
+    course_pts, course_desc = POINTS_MAP["course_completed"]
 
+    user_completed_map = {}
     for lp, user in completed_lessons:
+        user_completed_map.setdefault(lp.user_id, set()).add(lp.lesson_id)
         existing = (
             db.query(GamificationPoint)
             .filter(
@@ -143,6 +151,46 @@ def sync_student_historical_points(db: Session, user_id: Optional[int] = None) -
             )
             db.add(point_entry)
             created_count += 1
+
+    # Sincroniza retroativamente módulos (+60 XP) e cursos (+250 XP) 100% concluídos
+    if user_completed_map:
+        all_modules = db.query(Module).all()
+        mod_lessons = {}
+        course_lessons = {}
+        for m in all_modules:
+            l_ids = [r[0] for r in db.query(Lesson.id).filter(Lesson.module_id == m.id).all()]
+            if l_ids:
+                mod_lessons[m.id] = set(l_ids)
+                course_lessons.setdefault(m.course_id, set()).update(l_ids)
+
+        for uid, done_ids in user_completed_map.items():
+            for mid, req_ids in mod_lessons.items():
+                if req_ids and req_ids.issubset(done_ids):
+                    ex_mod = db.query(GamificationPoint).filter(
+                        GamificationPoint.user_id == uid,
+                        GamificationPoint.action == "module_completed",
+                        GamificationPoint.reference_id == mid,
+                    ).first()
+                    if not ex_mod:
+                        db.add(GamificationPoint(
+                            user_id=uid, action="module_completed", points=mod_pts,
+                            description=mod_desc, reference_id=mid, created_at=datetime.utcnow()
+                        ))
+                        created_count += 1
+
+            for cid, req_c_ids in course_lessons.items():
+                if req_c_ids and req_c_ids.issubset(done_ids):
+                    ex_course = db.query(GamificationPoint).filter(
+                        GamificationPoint.user_id == uid,
+                        GamificationPoint.action == "course_completed",
+                        GamificationPoint.reference_id == cid,
+                    ).first()
+                    if not ex_course:
+                        db.add(GamificationPoint(
+                            user_id=uid, action="course_completed", points=course_pts,
+                            description=course_desc, reference_id=cid, created_at=datetime.utcnow()
+                        ))
+                        created_count += 1
 
     if created_count > 0:
         db.commit()
