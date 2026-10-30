@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Play, Plus, Edit2, Trash2, CheckCircle2, Layers, Sparkles, Clock } from 'lucide-react';
 import { calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseDescriptionModal from './CourseDescriptionModal';
+import ModuleCardLockOverlay from './ModuleCardLockOverlay';
+import { useToast } from '../../context/ToastContext';
 
 export default function NetflixHeroAndModules({
   course,
@@ -19,6 +21,7 @@ export default function NetflixHeroAndModules({
   onOpenCreateLesson
 }) {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const { addToast } = useToast();
   const heroBgImage = course?.cover_image_url || course?.thumbnail_url || null;
 
   // Referência e controle de drag-to-scroll horizontal
@@ -276,6 +279,14 @@ export default function NetflixHeroAndModules({
                   key={mod.id}
                   onClick={() => {
                     if (!hasDraggedRef.current) {
+                      if (mod.is_locked && !isManager) {
+                        if (mod.locked_reason === 'elo') {
+                          addToast(`🏆 Módulo exclusivo para alunos do Elo ${mod.required_tier || 'Superior'}. Conquiste mais XP para liberar!`, 'warning');
+                        } else {
+                          addToast('🔒 Este módulo está bloqueado no momento.', 'warning');
+                        }
+                        return;
+                      }
                       onSelectModule(mod);
                     }
                   }}
@@ -299,6 +310,16 @@ export default function NetflixHeroAndModules({
                   }}
                   data-testid={`netflix-module-card-${mod.id}`}
                 >
+                  {mod.is_locked && !isManager && (
+                    <ModuleCardLockOverlay
+                      isLocked={true}
+                      availableAt={mod.available_at}
+                      releaseDays={mod.release_days}
+                      lockedReason={mod.locked_reason}
+                      requiredTier={mod.required_tier}
+                      requiredTierColor={mod.required_tier_color}
+                    />
+                  )}
                   {/* Camada Atmosférica de Fundo e Pôster com Enquadramento Inteligente */}
                   {modPoster ? (
                     <>

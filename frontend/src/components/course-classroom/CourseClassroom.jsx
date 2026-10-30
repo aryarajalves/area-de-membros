@@ -11,6 +11,7 @@ import BatchCourseImportModal from './BatchCourseImportModal';
 import BatchLessonThumbnailModal from './BatchLessonThumbnailModal';
 import BatchLessonOrderModal from './BatchLessonOrderModal';
 import CourseUpsellManager from './CourseUpsellManager';
+import CourseCertificateManager from './CourseCertificateManager';
 import { scrollToClassroomSection } from './lessonUtils';
 
 export default function CourseClassroom({
@@ -461,6 +462,13 @@ export default function CourseClassroom({
         isOpen={batchOrderOpen} onClose={() => { setBatchOrderOpen(false); setBatchOrderModule(null); }}
         courseId={course?.id || initialCourse.id} module={batchOrderModule}
         onSuccess={fetchCourseData} isLightBg={isLightBg}
+      />
+
+      {/* Gerenciador e Emissão de Certificados de Conclusão */}
+      <CourseCertificateManager
+        courseId={course?.id || initialCourse.id}
+        completedCount={completedLessonIds?.length || 0}
+        totalCount={totalLessonsCount || 0}
       />
 
       {/* Gerenciador de Anúncios e Ofertas de Upsell no Curso */}

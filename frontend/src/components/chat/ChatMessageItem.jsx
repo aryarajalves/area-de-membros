@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Trash2, Shield, Award, User, Heart, Star, Pin, MessageSquare, ExternalLink } from 'lucide-react';
 import { formatMessageWithMentions, resolveButtonUrl } from './chatMentionUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
+import ChatUserEloBadge, { getChatAvatarEloStyle } from './ChatUserEloBadge';
 
 function formatMessageTime(dateString) {
   if (!dateString) return '';
@@ -100,8 +101,7 @@ export default function ChatMessageItem({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
-          border: isOwn ? '1px solid rgba(147, 197, 253, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+          ...getChatAvatarEloStyle(message.user),
         }}
       >
         {avatarUrl && !imgError ? (

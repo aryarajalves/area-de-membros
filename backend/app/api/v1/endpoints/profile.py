@@ -11,7 +11,7 @@ from app.core.security import get_password_hash
 from app.core.file_validation import validate_file_magic_bytes
 from app.services.auth_security_service import invalidate_user_sessions
 from app.models.user import User
-from app.schemas.user import UserResponse, UserProfileUpdate
+from app.schemas.user import UserResponse, UserProfileUpdate, UserPlaybackRateUpdate
 from app.api.v1.endpoints.users import get_current_user
 from app.services.storage import upload_media_file
 
@@ -67,6 +67,11 @@ def update_my_profile(
     if profile_data.avatar_url is not None:
         clean_avatar = profile_data.avatar_url.strip() if profile_data.avatar_url else None
         current_user.avatar_url = clean_avatar
+
+    # Atualizar velocidade de reprodução preferida
+    if profile_data.playback_rate is not None:
+        if 0 < profile_data.playback_rate <= 4.0:
+            current_user.playback_rate = round(float(profile_data.playback_rate), 2)
 
     # 5. Atualizar senha (se não for superadmin)
     if profile_data.password and not is_superadmin:
@@ -160,3 +165,26 @@ def get_avatar_file(filename: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Avatar não encontrado")
     return FileResponse(file_path)
+
+
+@router.patch(
+    "/playback-rate",
+    response_model=UserResponse,
+    summary="Salvar Velocidade de Reprodução do Aluno",
+    description="Memoriza na conta do aluno sua velocidade preferida de reprodução no player (ex: 1.0, 1.25, 1.5, 2.0)."
+)
+def update_playback_rate(
+    rate_data: UserPlaybackRateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    rate = rate_data.playback_rate
+    if rate <= 0 or rate > 4.0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Velocidade de reprodução deve estar entre 0.25x e 4.0x."
+        )
+    current_user.playback_rate = round(float(rate), 2)
+    db.commit()
+    db.refresh(current_user)
+    return current_user

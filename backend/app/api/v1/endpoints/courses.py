@@ -23,36 +23,14 @@ from app.schemas.course import (
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.services.storage import upload_media_file, delete_media_file
 from app.services.course_bundle_service import sync_course_bundles, attach_bundles_to_courses, get_effective_user_course_ids
+from app.services.drip_content import apply_drip_content_to_course_modules
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
-def _is_user_course_active(uc: UserCourse) -> bool:
-    """Verifica se o acesso do aluno ao curso está ativo (vitalício ou dentro do prazo de validade)."""
-    if not uc.expires_at:
-        return True
-    now = datetime.now(timezone.utc)
-    exp = uc.expires_at
-    if exp.tzinfo is None:
-        exp = exp.replace(tzinfo=timezone.utc)
-    return exp > now
-
-def _verify_student_course_access(db: Session, user_id: int, course_id: int):
-    """Valida se o aluno possui acesso liberado e vigente ao curso (direto ou via pacote/combo)."""
-    uc = db.query(UserCourse).filter(
-        UserCourse.user_id == user_id,
-        UserCourse.course_id == course_id
-    ).first()
-    if uc and _is_user_course_active(uc):
-        return
-
-    # Se não tem direto, verifica se possui acesso ativo via pacote/combo
-    effective_ids = get_effective_user_course_ids(db, user_id)
-    if course_id in effective_ids:
-        return
-
-    if uc and not _is_user_course_active(uc):
-        raise HTTPException(status_code=403, detail="O seu período de acesso a este curso expirou.")
-    raise HTTPException(status_code=403, detail="Você não possui acesso liberado a este curso.")
+from app.services.course_access import (
+    is_user_course_active as _is_user_course_active,
+    verify_student_course_access as _verify_student_course_access
+)
 
 BASE_UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
@@ -199,6 +177,7 @@ def get_course(
         _verify_student_course_access(db, current_user.id, course_id)
 
     attach_bundles_to_courses(db, [course])
+    apply_drip_content_to_course_modules(db, current_user, course.id, course.modules)
     return course
 
 @router.patch(
@@ -385,7 +364,11 @@ def create_module(
         title=module_in.title.strip(),
         description=module_in.description,
         image_url=module_in.image_url,
-        order_index=module_in.order_index or 0
+        order_index=module_in.order_index or 0,
+        release_type=module_in.release_type or 'immediate',
+        release_days=module_in.release_days or 0,
+        release_date=module_in.release_date,
+        required_tier=module_in.required_tier.strip() if module_in.required_tier else None
     )
     db.add(new_module)
     db.commit()
@@ -421,6 +404,14 @@ def update_module(
         module.image_url = module_in.image_url or None
     if module_in.order_index is not None:
         module.order_index = module_in.order_index
+    if module_in.release_type is not None:
+        module.release_type = module_in.release_type
+    if module_in.release_days is not None:
+        module.release_days = module_in.release_days
+    if module_in.release_date is not None:
+        module.release_date = module_in.release_date
+    if module_in.required_tier is not None:
+        module.required_tier = module_in.required_tier.strip() if module_in.required_tier else None
 
     db.commit()
     db.refresh(module)

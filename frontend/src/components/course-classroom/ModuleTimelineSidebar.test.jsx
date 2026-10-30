@@ -280,4 +280,29 @@ describe('ModuleTimelineSidebar', () => {
     fireEvent.click(orderBtn);
     expect(onOpenBatchOrder).toHaveBeenCalledWith(mockModules[0]);
   });
+
+  it('renderiza ícone de troféu e badge de elo quando o módulo for bloqueado por elo', () => {
+    const eloModules = [
+      {
+        id: 99,
+        title: 'Masterclass Exclusiva',
+        is_locked: true,
+        locked_reason: 'elo',
+        required_tier: 'Ouro',
+        required_tier_color: '#f59e0b',
+        lessons: [{ id: 991, title: 'Segredos Avançados' }]
+      }
+    ];
+
+    render(
+      <ModuleTimelineSidebar
+        modules={eloModules}
+        isManager={false}
+      />
+    );
+
+    expect(screen.getByTestId('module-locked-icon-99')).toBeInTheDocument();
+    expect(screen.getByTestId('module-locked-text-99')).toHaveTextContent(/Exige Elo Ouro/i);
+  });
 });
+

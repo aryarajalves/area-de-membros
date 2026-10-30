@@ -27,9 +27,11 @@ class UserResponse(BaseModel):
     is_active: bool
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
+    playback_rate: Optional[float] = None
     created_at: datetime
     course_ids: Optional[List[int]] = []
     course_access: Optional[List[CourseAccessItem]] = []
+    playback_rate: Optional[float] = 1.0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -108,6 +110,7 @@ class InviteResponse(BaseModel):
     used_by_email: Optional[str] = None
     allowed_course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = []
+    playback_rate: Optional[float] = 1.0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -145,6 +148,7 @@ class UserProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
+    playback_rate: Optional[float] = None
     password: Optional[str] = None
 
     @field_validator("password")
@@ -209,3 +213,6 @@ class PasswordResetValidateResponse(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     detail: Optional[str] = None
+
+class UserPlaybackRateUpdate(BaseModel):
+    playback_rate: float

@@ -57,24 +57,49 @@ export async function deleteTutorialApi(id, token) {
   return res.json();
 }
 
-export async function uploadTutorialVideoApi(file, token) {
-  const formData = new FormData();
-  formData.append('file', file);
+export async function uploadTutorialVideoApi(file, token, onProgress) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  const res = await fetch('/api/v1/tutorials/upload-video', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/v1/tutorials/upload-video', true);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    if (xhr.upload && typeof onProgress === 'function') {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          onProgress(percent, event.loaded, event.total);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      try {
+        const responseData = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(responseData);
+        } else {
+          reject(new Error(responseData.detail || `Falha no upload do vídeo (HTTP ${xhr.status}).`));
+        }
+      } catch {
+        reject(new Error(`Erro ao processar resposta do upload (HTTP ${xhr.status}).`));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Erro de conexão ao enviar o arquivo de vídeo. Verifique sua rede.'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Tempo limite de upload esgotado. Tente novamente.'));
+    };
+
+    xhr.send(formData);
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Falha no upload do arquivo de vídeo.');
-  }
-
-  return res.json();
 }
 
 export async function generateTutorialAiDescriptionApi({ file, videoUrl, videoKey, title }, token) {

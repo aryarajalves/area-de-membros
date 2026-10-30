@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float
 from datetime import datetime, timezone
 from app.core.database import Base
 
@@ -19,6 +19,7 @@ class User(Base):
     token_version = Column(Integer, default=1, nullable=False) # Invalidação imediata de JWT ao alterar senha/deslogar
     failed_login_attempts = Column(Integer, default=0, nullable=False) # Contador de tentativas falhas de login
     locked_until = Column(DateTime, nullable=True) # Timestamp de bloqueio temporário por força bruta
+    playback_rate = Column(Float, default=1.0, nullable=True) # Velocidade preferida de reprodução do player
     created_at = Column(DateTime, default=utc_now)
 
 
@@ -51,12 +52,8 @@ class RegistrationVerification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, index=True, nullable=False)
-    name = Column(String, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False)
-    invite_token = Column(String, nullable=False)
     code = Column(String, nullable=False)
-    phone = Column(String, nullable=True) # WhatsApp
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
+    attempts = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=utc_now)

@@ -9,8 +9,10 @@ import {
   Maximize,
   Minimize,
   Bookmark,
-  Gauge
+  Gauge,
+  Tv
 } from 'lucide-react';
+import PlaybackRateMenu from './PlaybackRateMenu';
 import { formatSecondsToTimer } from './lessonUtils';
 import VideoChaptersTrack from './VideoChaptersTrack';
 
@@ -39,12 +41,12 @@ export default function VideoControls({
   onToggleChaptersDrawer,
   isChaptersDrawerOpen = false,
   playbackRate = 1,
-  onPlaybackRateChange
+  onPlaybackRateChange,
+  isTheaterMode = false,
+  onToggleTheaterMode
 }) {
   const [hoveredChapter, setHoveredChapter] = useState(null);
-  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
   const hasChapters = Array.isArray(chapters) && chapters.length > 0;
-  const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   // Capítulo atualmente sendo reproduzido
   const activeChapter = hasChapters
@@ -377,92 +379,34 @@ export default function VideoControls({
             />
           </div>
 
-          {/* Seletor de Velocidade de Reprodução (Playback Rate) */}
-          <div style={{ position: 'relative' }} data-testid="video-speed-selector-container">
+          {/* Seletor de Velocidade de Reprodução Modularizado */}
+          <PlaybackRateMenu
+            playbackRate={playbackRate}
+            onPlaybackRateChange={onPlaybackRateChange}
+          />
+
+          {/* Botão Modo Teatro (Player Expandido) */}
+          {onToggleTheaterMode && (
             <button
               type="button"
-              onClick={() => setIsSpeedMenuOpen((prev) => !prev)}
-              title="Velocidade de Reprodução"
+              onClick={onToggleTheaterMode}
+              title={isTheaterMode ? 'Sair do Modo Teatro (T)' : 'Modo Teatro (T)'}
               style={{
-                background: isSpeedMenuOpen || playbackRate !== 1 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.1)',
-                border: isSpeedMenuOpen || playbackRate !== 1 ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
-                color: isSpeedMenuOpen || playbackRate !== 1 ? '#60a5fa' : '#ffffff',
+                background: isTheaterMode ? 'rgba(59, 130, 246, 0.25)' : 'none',
+                border: isTheaterMode ? '1px solid rgba(59, 130, 246, 0.5)' : 'none',
+                color: isTheaterMode ? '#60a5fa' : '#ffffff',
                 cursor: 'pointer',
-                padding: '3px 7px',
+                padding: '4px 6px',
                 borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                outline: 'none',
                 transition: 'all 0.15s ease'
               }}
-              data-testid="video-speed-btn"
+              data-testid="video-theater-mode-btn"
             >
-              <Gauge size={13} />
-              <span data-testid="video-speed-label">{playbackRate === 1 ? '1x' : `${playbackRate}x`}</span>
+              <Tv size={17} />
             </button>
-
-            {/* Menu Popover Flutuante de Velocidades */}
-            {isSpeedMenuOpen && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '36px',
-                  right: 0,
-                  backgroundColor: 'rgba(10, 15, 29, 0.96)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(59, 130, 246, 0.35)',
-                  borderRadius: '10px',
-                  padding: '6px',
-                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(37, 99, 235, 0.2)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px',
-                  minWidth: '100px',
-                  zIndex: 40
-                }}
-                data-testid="video-speed-menu"
-              >
-                <div style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Velocidade
-                </div>
-                {speedOptions.map((speed) => {
-                  const isSelected = playbackRate === speed;
-                  return (
-                    <button
-                      key={speed}
-                      type="button"
-                      onClick={() => {
-                        if (onPlaybackRateChange) onPlaybackRateChange(speed);
-                        setIsSpeedMenuOpen(false);
-                      }}
-                      data-testid={`video-speed-option-${speed}`}
-                      style={{
-                        background: isSelected ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                        border: 'none',
-                        color: isSelected ? '#60a5fa' : '#f8fafc',
-                        padding: '5px 10px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '11.5px',
-                        fontWeight: isSelected ? 700 : 500,
-                        textAlign: 'left',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'background 0.15s ease'
-                      }}
-                    >
-                      <span>{speed === 1 ? '1x (Normal)' : `${speed}x`}</span>
-                      {isSelected && <span style={{ color: '#38bdf8', fontSize: '12px' }}>✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Botão Tela Cheia */}
           <button

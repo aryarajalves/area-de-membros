@@ -37,6 +37,7 @@ from app.models.funnel import Funnel, FunnelExecution
 from app.models.tutorial import Tutorial
 from app.models.introduction import IntroductionPost, IntroductionComment, IntroductionLike
 from app.models.event import Event, EventAttendee
+from app.models.certificate import Certificate
 
 __all__ = [
     "User",
@@ -86,4 +87,5 @@ __all__ = [
     "CourseUpsellView",
     "Event",
     "EventAttendee",
+    "Certificate",
 ]

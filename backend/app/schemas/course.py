@@ -133,6 +133,11 @@ class ModuleBase(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     order_index: Optional[int] = 0
+    release_type: Optional[str] = 'immediate'  # 'immediate', 'days_after', 'specific_date'
+    release_days: Optional[int] = 0
+    release_date: Optional[datetime] = None
+    required_tier: Optional[str] = None
+    required_tier: Optional[str] = None
 
 class ModuleCreate(ModuleBase):
     pass
@@ -142,10 +147,17 @@ class ModuleUpdate(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     order_index: Optional[int] = None
+    release_type: Optional[str] = None
+    release_days: Optional[int] = None
+    release_date: Optional[datetime] = None
 
 class ModuleResponse(ModuleBase):
     id: int
     course_id: int
+    is_locked: Optional[bool] = False
+    available_at: Optional[datetime] = None
+    locked_reason: Optional[str] = None
+    required_tier_color: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

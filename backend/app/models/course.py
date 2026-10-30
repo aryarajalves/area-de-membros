@@ -24,10 +24,14 @@ class Course(Base):
     item_type = Column(String, default="course", nullable=True)  # 'course' ou 'tool'
     tool_url = Column(String, nullable=True)
     bundle_title = Column(String, nullable=True)
+    certificate_enabled = Column(Boolean, default=True, nullable=False)
+    workload_hours = Column(Integer, default=10, nullable=True)
+    instructor_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     modules = relationship("Module", back_populates="course", cascade="all, delete-orphan", order_by="Module.order_index")
+    certificates = relationship("Certificate", back_populates="course", cascade="all, delete-orphan")
 
 
 class CourseBundle(Base):
@@ -67,6 +71,10 @@ class Module(Base):
     image_url = Column(String, nullable=True)
     order_index = Column(Integer, default=0, index=True)
     agentflow_synced_at = Column(DateTime, nullable=True)
+    release_type = Column(String, default="immediate", nullable=True)  # 'immediate', 'days_after', 'specific_date'
+    release_days = Column(Integer, default=0, nullable=True)
+    release_date = Column(DateTime, nullable=True)
+    required_tier = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

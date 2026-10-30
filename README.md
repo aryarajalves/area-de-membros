@@ -1,11 +1,33 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.1.5`** | **Docker Hub: `backend-1.1.5` / `frontend-1.1.5`**
+> **Versão Oficial: `v1.1.6`** | **Docker Hub: `backend-1.1.6` / `frontend-1.1.6`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🏆 Novidades da Versão v1.1.6
+- **🎓 Certificados Oficiais de Conclusão de Curso (PDF + QR Code):**
+  - Emissão automática desbloqueada ao atingir 100% de conclusão de aulas no curso.
+  - Geração de PDF no backend com assinatura digital do instrutor, carga horária estimada e código único irrepetível.
+  - Página pública de validação via QR Code (`/validar-certificado/{codigo}`) para conferência de autenticidade por terceiros.
+- **🔒 Proteção Anti-Pirataria (DRM / Marca d'Água Dinâmica):**
+  - Marca d'água flutuante, sutil e translúcida com e-mail/dados do aluno posicionada dinamicamente sobre o vídeo.
+  - Bloqueio preventivo de clique com botão direito sobre o player para proteger os links dos arquivos.
+- **⏳ Liberação Programada de Módulos (Drip Content):**
+  - Agendamento da liberação de módulos por dias decorridos após a matrícula do aluno (ex: Módulo liberado após 7 dias) ou por data e hora fixas no calendário.
+  - Sanitização automática das URLs de mídia para alunos antes da liberação e bypass irrestrito para administradores.
+- **🎮 Celebração de Level Up & Gamificação Social:**
+  - Modal imersivo em tela cheia com confetes e efeitos neon quando o aluno sobe de nível no ranking RPG (Bronze, Prata, Ouro, Diamante, Lenda).
+  - Molduras coloridas e badges exclusivas do Elo atual no Chat da Comunidade.
+- **🏆 Recompensas Pedagógicas por Elo:**
+  - Bloqueio de módulos/masterclasses bônus exigindo determinado nível de ranking (ex: Exige Elo Ouro).
+  - Visual de cofre/recompensa com troféu brilhante e badge explicativa.
+- **⚡ Usabilidade do Player e Classroom:**
+  - Atalhos de teclado completos (`Espaço`/`K` play/pause, `Setas` -/+10s e volume, `F` fullscreen, `M` mudo, `T` modo teatro).
+  - Memorização da velocidade de reprodução (`1.25x`, `1.5x`, `2.0x`) salva na conta do aluno no backend e sincronizada entre dispositivos.
+  - Modo Teatro com player expandido para largura total com experiência cinematográfica.
 
 ### 🎓 1. Sala de Aula e Experiência do Aluno
 - **Vitrine Netflix & Banner Hero:**

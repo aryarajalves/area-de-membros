@@ -9,6 +9,11 @@ class ChatUser(BaseModel):
     email: str
     role: str
     avatar_url: Optional[str] = None
+    gamification_points: Optional[int] = 0
+    gamification_tier: Optional[str] = None
+    gamification_level_title: Optional[str] = None
+    gamification_tier_color: Optional[str] = None
+    gamification_badge: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

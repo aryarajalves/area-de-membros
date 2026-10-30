@@ -219,6 +219,33 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE funnels ADD COLUMN IF NOT EXISTS folder_id INTEGER REFERENCES funnel_folders(id) ON DELETE SET NULL;
                         CREATE INDEX IF NOT EXISTS ix_funnels_folder_id ON funnels(folder_id);
 
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS certificate_enabled BOOLEAN DEFAULT TRUE;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS workload_hours INTEGER DEFAULT 10;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_name VARCHAR;
+                        CREATE TABLE IF NOT EXISTS certificates (
+                            id SERIAL PRIMARY KEY,
+                            certificate_code VARCHAR(100) UNIQUE NOT NULL,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            student_name VARCHAR(255) NOT NULL,
+                            course_title VARCHAR(255) NOT NULL,
+                            workload_hours INTEGER NOT NULL DEFAULT 10,
+                            instructor_name VARCHAR(255),
+                            issued_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT uq_certificate_user_course UNIQUE (user_id, course_id)
+                        );
+                        CREATE UNIQUE INDEX IF NOT EXISTS ix_certificates_certificate_code ON certificates(certificate_code);
+                        CREATE INDEX IF NOT EXISTS ix_certificates_user_id ON certificates(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_certificates_course_id ON certificates(course_id);
+
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_type VARCHAR(50) DEFAULT 'immediate';
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS required_tier VARCHAR(50) NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
+
                     """))
                 else:
                     for col_sql in [
@@ -226,6 +253,7 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE course_upsell_offers ADD COLUMN show_in_sidebar BOOLEAN DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP",
+                        "ALTER TABLE users ADD COLUMN playback_rate FLOAT DEFAULT 1.0",
                     ]:
                         try:
                             conn.execute(text(col_sql))

@@ -229,4 +229,87 @@ describe('CustomVideoPlayer Component', () => {
     expect(screen.queryByTestId('video-loading-spinner')).not.toBeInTheDocument();
     expect(screen.getByTestId('video-big-play-btn')).toBeInTheDocument();
   });
+
+  it('blocks right click context menu and renders anti-piracy watermark with student email', () => {
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({ id: 10, email: 'aluno_protegido@teste.com' })
+    );
+
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula Anti-Pirataria"
+        lessonDuration="10 min"
+      />
+    );
+
+    const container = screen.getByTestId('custom-video-player-container');
+    const video = screen.getByTestId('lesson-html5-video');
+
+    expect(video).toHaveAttribute('controlslist', 'nodownload');
+
+    const containerEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    container.dispatchEvent(containerEvent);
+    expect(containerEvent.defaultPrevented).toBe(true);
+
+    const videoEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    video.dispatchEvent(videoEvent);
+    expect(videoEvent.defaultPrevented).toBe(true);
+
+    const watermark = screen.getByTestId('video-watermark-overlay');
+    expect(watermark).toBeInTheDocument();
+    expect(watermark).toHaveTextContent('aluno_protegido@teste.com');
+  });
+
+  it('renderiza botao de modo teatro e dispara onToggleTheaterMode ao clicar ou apertar T', () => {
+    const onToggleTheaterMode = vi.fn();
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula Teatro"
+        lessonDuration="10 min"
+        isTheaterMode={false}
+        onToggleTheaterMode={onToggleTheaterMode}
+      />
+    );
+
+    const theaterBtn = screen.getByTestId('video-theater-mode-btn');
+    expect(theaterBtn).toBeInTheDocument();
+
+    fireEvent.click(theaterBtn);
+    expect(onToggleTheaterMode).toHaveBeenCalledTimes(1);
+
+    // Atalho T
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', bubbles: true }));
+    expect(onToggleTheaterMode).toHaveBeenCalledTimes(2);
+  });
+
+  it('inicializa com userPlaybackRate salvo na conta do aluno', () => {
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula Velocidade"
+        lessonDuration="10 min"
+        userPlaybackRate={1.75}
+      />
+    );
+
+    expect(screen.getByTestId('video-speed-label')).toHaveTextContent('1.75x');
+  });
+
+  it('permite pausar e retomar via barra de espaco', () => {
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula Atalho Espaco"
+        lessonDuration="10 min"
+      />
+    );
+
+    const spaceEvent = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    window.dispatchEvent(spaceEvent);
+
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
 });

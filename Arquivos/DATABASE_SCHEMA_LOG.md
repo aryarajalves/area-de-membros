@@ -2,6 +2,59 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [30/10/2026] - Usabilidade do Player: Memorização de Velocidade (playback_rate na tabela users)
+- **Objetivo:** Memorizar a velocidade de reprodução preferida do aluno (ex: 1.0x, 1.25x, 1.5x, 2.0x) salva na sua conta, aplicando automaticamente em todos os dispositivos e aulas acessadas.
+- **Tabela Afetada:** users
+  - playback_rate: FLOAT DEFAULT 1.0 (Velocidade de reprodução preferida do usuário)
+- **Script de Migração:** backend/scripts/migrate_user_playback_rate.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [30/10/2026] - Recompensas Pedagógicas por Elo (required_tier na tabela modules)
+- **Objetivo:** Permitir o bloqueio de módulos bônus e masterclasses exclusivas exigindo que o aluno atinja um determinado Elo de gamificação RPG (ex: Bronze, Prata, Ouro, Diamante, Lenda).
+- **Tabela Afetada:** modules
+  - required_tier: VARCHAR(50) NULL (Valores: NULL, 'Bronze', 'Prata', 'Ouro', 'Diamante', 'Lenda')
+- **Script de Migração:** backend/scripts/migrate_module_elo_requirement.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [30/10/2026] - Sistema de Liberação Programada de Módulos (Drip Content na tabela modules)
+- **Objetivo:** Permitir o agendamento da liberação de módulos por dias decorridos após a matrícula do aluno (ex: Módulo 2 liberado após 7 dias) ou por data e hora fixas no calendário, mantendo acesso imediato irrestrito para administradores.
+- **Tabela Afetada:** modules
+  - release_type: VARCHAR(50) DEFAULT 'immediate' (Tipos: 'immediate', 'days_after', 'specific_date')
+  - release_days: INTEGER DEFAULT 0 (Dias decorridos após matrícula para liberação)
+  - release_date: TIMESTAMP WITH TIME ZONE NULL (Data e hora fixa para liberação)
+- **Script de Migração:** backend/scripts/migrate_module_drip_content.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [30/10/2026] - Criação do Sistema de Certificados de Conclusão (certificates e campos em courses)
+- **Objetivo:** Permitir a emissão oficial de certificados de conclusão de curso com código único de autenticidade, geração de PDF profissional e validação pública via QR Code.
+- **Tabela Criada:** certificates
+  - id: INTEGER PRIMARY KEY SERIAL
+  - certificate_code: VARCHAR UNIQUE NOT NULL (Código de autenticidade ex: CERT-XXXXXXXX)
+  - user_id: INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL (indexado)
+  - course_id: INTEGER REFERENCES courses(id) ON DELETE CASCADE NOT NULL (indexado)
+  - student_name: VARCHAR NOT NULL (Nome do aluno congelado na emissão)
+  - course_title: VARCHAR NOT NULL (Título do curso congelado na emissão)
+  - workload_hours: INTEGER DEFAULT 10 NOT NULL (Carga horária registrada)
+  - instructor_name: VARCHAR NULL (Nome do instrutor na emissão)
+  - issued_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+  - created_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  - updated_at: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  - **Restrição de Unicidade:** UQ uq_certificate_user_course em (user_id, course_id)
+- **Tabela Afetada:** courses
+  - certificate_enabled: BOOLEAN DEFAULT TRUE NOT NULL
+  - workload_hours: INTEGER DEFAULT 10 NULL
+  - instructor_name: VARCHAR NULL
+- **Script de Migração:** ackend/scripts/migrate_certificates.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
 ### [27/10/2026] - Criação de Pastas de Funis (funnel_folders) e Vinculação em Funis (folder_id)
 - **Objetivo:** Permitir ao administrador criar pastas personalizadas (ex: Boas-vindas, Recuperação, Eventos) com cor de destaque e contadores para categorizar funis com o mesmo intuito. Ao excluir uma pasta, os funis contidos são preservados e movidos de forma segura para "Sem Pasta" (ON DELETE SET NULL).
 - **Tabela Criada:** funnel_folders

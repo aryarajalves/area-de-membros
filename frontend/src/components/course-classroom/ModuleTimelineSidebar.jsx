@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown } from 'lucide-react';
-import { formatLessonDuration, isLessonComingSoon, calculateModuleStats, calculateCourseStats } from './lessonUtils';
+import { Plus, Edit2, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown, Lock, Clock, Trophy } from 'lucide-react';
+import { calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseSidebarUpsellCard from './CourseSidebarUpsellCard';
 import { fetchSidebarUpsellOffer } from '../course-management/courseUpsellApi';
 import ProgressRing from './ProgressRing';
+import TimelineLessonItem from './TimelineLessonItem';
+import { formatUnlockDate } from './ModuleCardLockOverlay';
 
 export default function ModuleTimelineSidebar({
   courseId,
@@ -60,12 +62,10 @@ export default function ModuleTimelineSidebar({
     ? Number(((completedCount / totalLessonsCount) * 100).toFixed(1).replace(/\.0$/, ''))
     : 0;
 
-  // Controle de módulos expandidos/fechados (accordion/toggle)
   const [expandedModuleIds, setExpandedModuleIds] = useState(() => {
-    return selectedModule?.id ? [selectedModule.id] : [];
+    return selectedModule?.id ? [selectedModule.id] : (modules[0]?.id ? [modules[0].id] : []);
   });
 
-  // Mantém sincronizado se o módulo selecionado mudar externamente
   useEffect(() => {
     if (selectedModule?.id) {
       setExpandedModuleIds((prev) => (prev.includes(selectedModule.id) ? prev : [...prev, selectedModule.id]));
@@ -73,12 +73,12 @@ export default function ModuleTimelineSidebar({
   }, [selectedModule?.id]);
 
   const handleToggleModule = (mod) => {
+    if (mod.is_locked && !isManager) return;
+
     const isCurrentlyExpanded = expandedModuleIds.includes(mod.id);
     if (isCurrentlyExpanded) {
-      // Fecha o módulo
       setExpandedModuleIds((prev) => prev.filter((id) => id !== mod.id));
     } else {
-      // Abre o módulo e notifica seleção
       setExpandedModuleIds((prev) => [...prev, mod.id]);
       if (onSelectModule) {
         onSelectModule(mod);
@@ -143,8 +143,9 @@ export default function ModuleTimelineSidebar({
       {/* Lista Vertical de Módulos e Aulas em Timeline */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {modules.map((mod) => {
+          const isLocked = mod.is_locked && !isManager;
           const isSelected = selectedModule?.id === mod.id;
-          const isExpanded = expandedModuleIds.includes(mod.id);
+          const isExpanded = !isLocked && expandedModuleIds.includes(mod.id);
           const modLessons = mod.lessons || [];
           const modCompleted = modLessons.filter((l) => completedLessonIds.includes(l.id)).length;
           const modPct = modLessons.length > 0 ? Math.round((modCompleted / modLessons.length) * 100) : 0;
@@ -153,19 +154,19 @@ export default function ModuleTimelineSidebar({
             <div
               key={mod.id}
               data-testid={`module-item-${mod.id}`}
-              style={{ display: 'flex', flexDirection: 'column' }}
+              style={{ display: 'flex', flexDirection: 'column', opacity: isLocked ? 0.75 : 1 }}
             >
-              {/* Cabeçalho do Módulo (Clicável para Fechar / Abrir) */}
+              {/* Cabeçalho do Módulo */}
               <div
                 onClick={() => handleToggleModule(mod)}
                 data-testid={`module-toggle-btn-${mod.id}`}
-                title={isExpanded ? 'Clique para fechar o módulo' : 'Clique para abrir o módulo'}
+                title={isLocked ? (mod.locked_reason === 'elo' ? `Exclusivo para o Elo ${mod.required_tier || 'Superior'}` : 'Módulo bloqueado por agendamento') : (isExpanded ? 'Clique para fechar o módulo' : 'Clique para abrir o módulo')}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   gap: '10px',
-                  cursor: 'pointer',
+                  cursor: isLocked ? 'not-allowed' : 'pointer',
                   padding: '4px 2px',
                   borderRadius: '6px',
                   transition: 'background-color 0.15s ease',
@@ -174,12 +175,31 @@ export default function ModuleTimelineSidebar({
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0, flex: 1 }}>
                   <div style={{ marginTop: '1px' }}>
-                    <ProgressRing
-                      percent={isSelected && modPct === 0 ? 25 : modPct}
-                      size={24}
-                      strokeWidth={2.5}
-                      trackColor={trackColor}
-                    />
+                    {isLocked ? (
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: mod.locked_reason === 'elo' ? `${mod.required_tier_color || '#f59e0b'}22` : 'rgba(234, 179, 8, 0.15)',
+                          border: `1px solid ${mod.locked_reason === 'elo' ? (mod.required_tier_color || '#f59e0b') : 'rgba(234, 179, 8, 0.4)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: mod.locked_reason === 'elo' ? (mod.required_tier_color || '#f59e0b') : '#eab308'
+                        }}
+                        data-testid={`module-locked-icon-${mod.id}`}
+                      >
+                        {mod.locked_reason === 'elo' ? <Trophy size={12} /> : <Lock size={12} />}
+                      </div>
+                    ) : (
+                      <ProgressRing
+                        percent={isSelected && modPct === 0 ? 25 : modPct}
+                        size={24}
+                        strokeWidth={2.5}
+                        trackColor={trackColor}
+                      />
+                    )}
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
@@ -210,34 +230,62 @@ export default function ModuleTimelineSidebar({
                         }}
                         data-testid={`module-chevron-${mod.id}`}
                       >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        {isLocked ? (
+                          mod.locked_reason === 'elo' ? (
+                            <Trophy size={13} style={{ color: mod.required_tier_color || '#f59e0b' }} />
+                          ) : (
+                            <Lock size={13} style={{ color: '#eab308' }} />
+                          )
+                        ) : isExpanded ? (
+                          <ChevronDown size={14} />
+                        ) : (
+                          <ChevronRight size={14} />
+                        )}
                       </span>
                     </div>
-                    {(() => {
-                      const modStats = calculateModuleStats(mod);
-                      return (
-                        <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
-                          <span>{modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}</span>
-                          {modStats.formattedDuration && (
-                            <span data-testid={`sidebar-module-duration-${mod.id}`}> • {modStats.formattedDuration}</span>
-                          )}
-                          {!isExpanded && ' • Fechado (clique para abrir)'}
-                        </div>
-                      );
-                    })()}
+
+                    {isLocked ? (
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          color: mod.locked_reason === 'elo' ? (mod.required_tier_color || '#f59e0b') : '#eab308',
+                          fontWeight: 600,
+                          marginTop: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        data-testid={`module-locked-text-${mod.id}`}
+                      >
+                        {mod.locked_reason === 'elo' ? '🏆' : '🔒'} {formatUnlockDate(mod.available_at, mod.release_days, mod.locked_reason, mod.required_tier)}
+                      </div>
+                    ) : (
+                      (() => {
+                        const modStats = calculateModuleStats(mod);
+                        return (
+                          <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
+                            <span>{modLessons.length} {modLessons.length === 1 ? 'aula' : 'aulas'}</span>
+                            {modStats.formattedDuration && (
+                              <span data-testid={`sidebar-module-duration-${mod.id}`}> • {modStats.formattedDuration}</span>
+                            )}
+                            {!isExpanded && ' • Fechado (clique para abrir)'}
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                 </div>
 
-                {/* Botões de Gestão do Módulo para Admin/SuperAdmin */}
                 {isManager && (
                   <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                   >
                     <button
                       type="button"
-                      title="Adicionar Aula neste Módulo"
-                      onClick={(e) => onOpenCreateLesson(mod, e)}
+                      title="Adicionar Aula a este Módulo"
+                      onClick={(e) => { e.stopPropagation(); onOpenCreateLesson(mod, e); }}
                       data-testid={`timeline-add-lesson-btn-${mod.id}`}
                       style={{ background: 'transparent', border: 'none', color: '#38bdf8', padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
@@ -264,7 +312,7 @@ export default function ModuleTimelineSidebar({
                     <button
                       type="button"
                       title="Editar Módulo"
-                      onClick={(e) => onOpenEditModule(mod, e)}
+                      onClick={(e) => { e.stopPropagation(); onOpenEditModule(mod, e); }}
                       style={{ background: 'transparent', border: 'none', color: subTextColor, padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <Edit2 size={13} />
@@ -272,7 +320,7 @@ export default function ModuleTimelineSidebar({
                     <button
                       type="button"
                       title="Excluir Módulo"
-                      onClick={(e) => onPromptDeleteModule(mod, e)}
+                      onClick={(e) => { e.stopPropagation(); onPromptDeleteModule(mod, e); }}
                       style={{ background: 'transparent', border: 'none', color: '#f87171', padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <Trash2 size={13} />
@@ -281,7 +329,7 @@ export default function ModuleTimelineSidebar({
                 )}
               </div>
 
-              {/* Aulas do Módulo Expandido (Linha Vertical de Timeline) */}
+              {/* Aulas do Módulo Expandido */}
               {isExpanded && (
                 <div
                   style={{
@@ -299,180 +347,22 @@ export default function ModuleTimelineSidebar({
                       Nenhuma aula cadastrada neste módulo.
                     </div>
                   ) : (
-                    modLessons.map((lesson, idx) => {
-                      const isActive = activeLesson?.id === lesson.id;
-                      const isCompleted = completedLessonIds.includes(lesson.id);
-                      const isComingSoon = isLessonComingSoon(lesson);
-
-                      const dotColor = isActive
-                        ? '#eab308'
-                        : isCompleted
-                        ? '#22c55e'
-                        : (isLightBg ? '#cbd5e1' : '#334155');
-
-                      const itemTextColor = isActive
-                        ? '#eab308'
-                        : isCompleted
-                        ? '#4ade80'
-                        : subTextColor;
-
-                      return (
-                        <div
-                          key={lesson.id}
-                          onClick={() => onSelectLesson(lesson)}
-                          data-testid={`lesson-item-${lesson.id}`}
-                          style={{
-                            position: 'relative',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                            cursor: 'pointer',
-                            padding: '3px 6px',
-                            borderRadius: '6px',
-                            backgroundColor: isActive ? (isLightBg ? 'rgba(234, 179, 8, 0.12)' : 'rgba(234, 179, 8, 0.14)') : 'transparent',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {/* Ponto na Linha da Timeline */}
-                          <span
-                            style={{
-                              position: 'absolute',
-                              left: '-25px',
-                              top: '6px',
-                              width: '9px',
-                              height: '9px',
-                              borderRadius: '50%',
-                              backgroundColor: dotColor,
-                              border: isActive ? '2px solid #fef08a' : 'none',
-                              boxShadow: isActive ? '0 0 8px rgba(234, 179, 8, 0.7)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                          />
-
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0, flex: 1 }}>
-                            {isCompleted && (
-                              <CheckCircle2
-                                size={13}
-                                color="#22c55e"
-                                data-testid={`lesson-completed-icon-${lesson.id}`}
-                                style={{ flexShrink: 0, marginTop: '2px' }}
-                              />
-                            )}
-                            {lesson.thumbnail_url ? (
-                              <img
-                                src={lesson.thumbnail_url}
-                                alt=""
-                                data-testid={`lesson-thumb-${lesson.id}`}
-                                style={{
-                                  width: '28px',
-                                  height: '18px',
-                                  objectFit: 'cover',
-                                  borderRadius: '3px',
-                                  flexShrink: 0,
-                                  marginTop: '1px',
-                                  opacity: isActive ? 1 : 0.75
-                                }}
-                              />
-                            ) : lesson.content_type === 'text' ? (
-                              <FileText size={13} color="#38bdf8" style={{ flexShrink: 0, marginTop: '2px' }} data-testid={`lesson-type-icon-text-${lesson.id}`} />
-                            ) : lesson.content_type === 'quiz' ? (
-                              <HelpCircle size={13} color="#a855f7" style={{ flexShrink: 0, marginTop: '2px' }} data-testid={`lesson-type-icon-quiz-${lesson.id}`} />
-                            ) : null}
-                            <span
-                              data-testid={`lesson-title-${lesson.id}`}
-                              title={`${idx + 1}. ${lesson.title}`}
-                              style={{
-                                fontSize: '13px',
-                                fontWeight: isActive ? 700 : 500,
-                                color: itemTextColor,
-                                textDecoration: isCompleted ? 'line-through' : 'none',
-                                lineHeight: 1.35,
-                                transition: 'color 0.15s ease',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                wordBreak: 'break-word',
-                                minWidth: 0
-                              }}
-                            >
-                              {idx + 1}. {lesson.title}
-                            </span>
-                            {isComingSoon && (
-                              <span
-                                data-testid={`lesson-coming-soon-badge-${lesson.id}`}
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  backgroundColor: 'rgba(234, 179, 8, 0.16)',
-                                  color: '#eab308',
-                                  border: '1px solid rgba(234, 179, 8, 0.35)',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '3px',
-                                  flexShrink: 0,
-                                  marginTop: '1px'
-                                }}
-                              >
-                                <Clock size={9} />
-                                <span>Em Breve</span>
-                              </span>
-                            )}
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                            {lesson.duration && (
-                              <span
-                                data-testid={`lesson-duration-${lesson.id}`}
-                                style={{ fontSize: '11px', color: subTextColor, opacity: 0.75 }}
-                              >
-                                {formatLessonDuration(lesson.duration)}
-                              </span>
-                            )}
-                            {isManager && (
-                              <>
-                                <button
-                                  type="button"
-                                  title="Editar Aula"
-                                  onClick={(e) => onOpenEditLesson(mod, lesson, e)}
-                                  data-testid={`edit-lesson-btn-${lesson.id}`}
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: subTextColor,
-                                    padding: '2px',
-                                    cursor: 'pointer',
-                                    display: 'flex'
-                                  }}
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  title="Excluir Aula"
-                                  onClick={(e) => onPromptDeleteLesson(mod, lesson, e)}
-                                  data-testid={`delete-lesson-btn-${lesson.id}`}
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#f87171',
-                                    padding: '2px',
-                                    cursor: 'pointer',
-                                    display: 'flex'
-                                  }}
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
+                    modLessons.map((lesson, idx) => (
+                      <TimelineLessonItem
+                        key={lesson.id}
+                        lesson={lesson}
+                        idx={idx}
+                        isActive={activeLesson?.id === lesson.id}
+                        isCompleted={completedLessonIds.includes(lesson.id)}
+                        isManager={isManager}
+                        isLightBg={isLightBg}
+                        textColor={textColor}
+                        subTextColor={subTextColor}
+                        onSelectLesson={onSelectLesson}
+                        onOpenEditLesson={onOpenEditLesson}
+                        onPromptDeleteLesson={onPromptDeleteLesson}
+                      />
+                    ))
                   )}
                 </div>
               )}

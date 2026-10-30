@@ -25,6 +25,8 @@ import FunnelManagement from './components/funnels/FunnelManagement';
 import { HomeTutorials } from './components/home-tutorials';
 import { IntroductionManagement } from './components/introductions';
 import { EventsManagement } from './components/events';
+import CertificatePublicValidationPage from './components/certificates/CertificatePublicValidationPage';
+import LevelUpWatcher from './components/gamification/LevelUpWatcher';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 import { useUrlNavigation } from './hooks/useUrlNavigation';
@@ -278,6 +280,20 @@ function App() {
     setToken(null);
   };
 
+  // Validação pública de autenticidade de certificado via QR Code ou link (/validar-certificado/:code)
+  if (pathname.includes('/validar-certificado')) {
+    const certCode = pathname.split('/validar-certificado/')[1]?.split('/')[0]?.split('?')[0] || '';
+    return (
+      <CertificatePublicValidationPage
+        certificateCode={certCode}
+        onBackToPlatform={() => {
+          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
+          setPathname('/');
+        }}
+      />
+    );
+  }
+
   // Se o caminho for de redefinição de senha (/reset-password)
   const isResetPasswordPage = pathname.includes('/reset-password');
   if (isResetPasswordPage) {
@@ -377,35 +393,19 @@ function App() {
           />
         )}
         {activeTab === 'support' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <SupportManagement
-            currentUser={user}
-            bgColor={memberAreaBgColor}
-          />
+          <SupportManagement currentUser={user} bgColor={memberAreaBgColor} />
         )}
         {activeTab === 'chat' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <ChatManagement
-            currentUser={user}
-            bgColor={memberAreaBgColor}
-            onBack={() => handleSelectTab('courses')}
-          />
+          <ChatManagement currentUser={user} bgColor={memberAreaBgColor} onBack={() => handleSelectTab('courses')} />
         )}
         {activeTab === 'testimonials' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <TestimonialsManagement
-            user={user}
-            bgColor={memberAreaBgColor}
-          />
+          <TestimonialsManagement user={user} bgColor={memberAreaBgColor} />
         )}
         {activeTab === 'introductions' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <IntroductionManagement
-            user={user}
-            bgColor={memberAreaBgColor}
-          />
+          <IntroductionManagement user={user} bgColor={memberAreaBgColor} />
         )}
         {activeTab === 'ranking' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <GamificationRanking
-            user={user}
-            bgColor={memberAreaBgColor}
-          />
+          <GamificationRanking user={user} bgColor={memberAreaBgColor} />
         )}
         {activeTab === 'lesson-reports' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <LessonReportsManagement
@@ -484,6 +484,7 @@ function App() {
       />
 
       <BackgroundUploadWidget />
+      <LevelUpWatcher currentUser={user} />
     </div>
   );
 }

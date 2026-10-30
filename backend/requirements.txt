@@ -31,3 +31,9 @@ slowapi>=0.1.9
 
 # Otimizacao e compressao de imagens de cursos e banners para carregamento instantaneo (WebP)
 Pillow>=10.4.0
+
+# Geracao de certificados oficiais em PDF de conclusao de cursos com layout vetorial
+reportlab>=4.2.0
+
+# Geracao de QR Code de autenticidade para validacao publica de certificados emitidos
+qrcode>=7.4.2

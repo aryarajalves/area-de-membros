@@ -4,6 +4,7 @@ import LessonThumbnailManager from './LessonThumbnailManager';
 import ExpandableTextarea from '../common/ExpandableTextarea';
 import { useToast } from '../../context/ToastContext';
 import ConfirmGenerateAiMetadataModal from './ConfirmGenerateAiMetadataModal';
+import ModuleDripSettings from './ModuleDripSettings';
 
 export default function ModuleModal({
   isOpen,
@@ -21,6 +22,10 @@ export default function ModuleModal({
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [orderIndex, setOrderIndex] = useState(0);
+  const [releaseType, setReleaseType] = useState('immediate');
+  const [releaseDays, setReleaseDays] = useState(7);
+  const [releaseDate, setReleaseDate] = useState('');
+  const [requiredTier, setRequiredTier] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
 
@@ -38,11 +43,19 @@ export default function ModuleModal({
       setDescription(editingModule.description || '');
       setImageUrl(editingModule.image_url || '');
       setOrderIndex(editingModule.order_index || 0);
+      setReleaseType(editingModule.release_type || 'immediate');
+      setReleaseDays(editingModule.release_days || 7);
+      setReleaseDate(editingModule.release_date ? editingModule.release_date.slice(0, 16) : '');
+      setRequiredTier(editingModule.required_tier || null);
     } else {
       setTitle('');
       setDescription('');
       setImageUrl('');
       setOrderIndex(0);
+      setReleaseType('immediate');
+      setReleaseDays(7);
+      setReleaseDate('');
+      setRequiredTier(null);
     }
   }, [editingModule, isOpen]);
 
@@ -51,6 +64,7 @@ export default function ModuleModal({
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
   const modalBg = isLightBg ? '#ffffff' : (bgColor === '#000000' ? '#0f172a' : bgColor);
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
+  const subTextColor = isLightBg ? '#64748b' : '#94a3b8';
 
   const handleGenerateAiOverview = async () => {
     if (!courseId || !editingModule?.id) return;
@@ -85,7 +99,11 @@ export default function ModuleModal({
       title: title.trim(),
       description: description.trim() || null,
       image_url: imageUrl.trim() || null,
-      order_index: parseInt(orderIndex, 10) || 0
+      order_index: parseInt(orderIndex, 10) || 0,
+      release_type: releaseType,
+      release_days: releaseType === 'days_after' ? (parseInt(releaseDays, 10) || 0) : 0,
+      release_date: releaseType === 'specific_date' && releaseDate ? new Date(releaseDate).toISOString() : null,
+      required_tier: requiredTier || null
     });
   };
 
@@ -157,8 +175,23 @@ export default function ModuleModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             textColor={textColor}
-            subTextColor={isLightBg ? '#64748b' : '#94a3b8'}
+            subTextColor={subTextColor}
             testId="module-description-input"
+          />
+
+          {/* Seletor de Drip Content e Recompensa por Elo */}
+          <ModuleDripSettings
+            releaseType={releaseType}
+            setReleaseType={setReleaseType}
+            releaseDays={releaseDays}
+            setReleaseDays={setReleaseDays}
+            releaseDate={releaseDate}
+            setReleaseDate={setReleaseDate}
+            requiredTier={requiredTier}
+            setRequiredTier={setRequiredTier}
+            textColor={textColor}
+            subTextColor={subTextColor}
+            isLightBg={isLightBg}
           />
 
           {onUploadThumbnail && (

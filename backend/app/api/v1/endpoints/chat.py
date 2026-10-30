@@ -227,15 +227,11 @@ def get_channel_messages(
         ).group_by(ChatMessage.parent_id).all()
         reply_count_map = {row[0]: row[1] for row in replies_counts}
 
+    user_ids = [msg.user_id for msg in messages if msg.user_id]
+    g_map = get_users_gamification_map(db, user_ids)
     result = []
     for msg in messages:
-        user_info = ChatUser(
-            id=msg.user.id if msg.user else 0,
-            name=msg.user.name if msg.user else "Usuário Desconhecido",
-            email=msg.user.email if msg.user else "",
-            role=msg.user.role if msg.user else "aluno",
-            avatar_url=msg.user.avatar_url if msg.user else None,
-        )
+        user_info = build_chat_user(msg.user, g_map.get(msg.user_id))
         can_del = is_privileged or (msg.user_id == current_user.id)
         result.append(
             ChatMessageResponse(
@@ -291,13 +287,8 @@ def get_pinned_message(
     if not msg:
         return None
 
-    user_info = ChatUser(
-        id=msg.user.id if msg.user else 0,
-        name=msg.user.name if msg.user else "Usuário Desconhecido",
-        email=msg.user.email if msg.user else "",
-        role=msg.user.role if msg.user else "aluno",
-        avatar_url=msg.user.avatar_url if msg.user else None,
-    )
+    g_map_pin = get_users_gamification_map(db, [msg.user_id] if msg.user_id else [])
+    user_info = build_chat_user(msg.user, g_map_pin.get(msg.user_id))
     is_privileged = current_user.role in ("superadmin", "admin")
     likes_count = db.query(func.count(ChatMessageLike.id)).filter(ChatMessageLike.message_id == msg.id).scalar() or 0
     liked_by_me = db.query(ChatMessageLike).filter(ChatMessageLike.message_id == msg.id, ChatMessageLike.user_id == current_user.id).first() is not None
@@ -433,13 +424,8 @@ def send_chat_message(
             f"Mensagem enviada no chat [{payload.channel_type}] pelo usuário {current_user.email} (ID {current_user.id})"
         )
 
-        user_info = ChatUser(
-            id=current_user.id,
-            name=current_user.name,
-            email=current_user.email,
-            role=current_user.role,
-            avatar_url=current_user.avatar_url,
-        )
+        g_map_send = get_users_gamification_map(db, [current_user.id])
+        user_info = build_chat_user(current_user, g_map_send.get(current_user.id))
 
         resp = ChatMessageResponse(
             id=new_msg.id,
@@ -637,13 +623,8 @@ def toggle_pin_chat_message(
     db.commit()
     db.refresh(msg)
 
-    user_info = ChatUser(
-        id=msg.user.id if msg.user else 0,
-        name=msg.user.name if msg.user else "Usuário Desconhecido",
-        email=msg.user.email if msg.user else "",
-        role=msg.user.role if msg.user else "aluno",
-        avatar_url=msg.user.avatar_url if msg.user else None,
-    )
+    g_map_toggle = get_users_gamification_map(db, [msg.user_id] if msg.user_id else [])
+    user_info = build_chat_user(msg.user, g_map_toggle.get(msg.user_id))
     likes_count = db.query(func.count(ChatMessageLike.id)).filter(ChatMessageLike.message_id == msg.id).scalar() or 0
     liked_by_me = db.query(ChatMessageLike).filter(ChatMessageLike.message_id == msg.id, ChatMessageLike.user_id == current_user.id).first() is not None
     is_favorited = db.query(ChatMessageFavorite).filter(ChatMessageFavorite.message_id == msg.id, ChatMessageFavorite.user_id == current_user.id).first() is not None

@@ -3,6 +3,9 @@ import { parseDurationToSeconds } from './lessonUtils';
 import VideoControls from './VideoControls';
 import VideoChaptersDrawer from './VideoChaptersDrawer';
 import VideoPlayerOverlays from './VideoPlayerOverlays';
+import VideoWatermark from './VideoWatermark';
+import usePlayerKeyboardShortcuts from './usePlayerKeyboardShortcuts';
+import { savePlaybackRateApi } from '../../services/playerPreferencesApi';
 
 const EMPTY_CHAPTERS = [];
 
@@ -11,7 +14,10 @@ export default function CustomVideoPlayer({
   poster,
   title,
   lessonDuration,
-  chapters = EMPTY_CHAPTERS
+  chapters = EMPTY_CHAPTERS,
+  isTheaterMode = false,
+  onToggleTheaterMode,
+  userPlaybackRate = null
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -22,6 +28,9 @@ export default function CustomVideoPlayer({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(() => {
+    if (typeof userPlaybackRate === 'number' && userPlaybackRate > 0) {
+      return userPlaybackRate;
+    }
     try {
       const savedRate = localStorage.getItem('area_de_membros_playback_rate');
       return savedRate ? parseFloat(savedRate) || 1 : 1;
@@ -121,6 +130,7 @@ export default function CustomVideoPlayer({
       } catch {
         // Ignora erros de localStorage
       }
+      savePlaybackRateApi(numRate);
     }
   }, []);
 
@@ -305,6 +315,20 @@ export default function CustomVideoPlayer({
     return () => window.removeEventListener('video-seek-to', handleGlobalSeek);
   }, [seekToSeconds]);
 
+  // Atalhos de Teclado no Player (Espaço, K, Setas, F, M, T)
+  usePlayerKeyboardShortcuts({
+    togglePlay,
+    handleSkipBackward10,
+    handleSkipForward10,
+    toggleFullscreen,
+    toggleMute,
+    volume,
+    handleVolumeChange,
+    toggleTheaterMode: onToggleTheaterMode,
+    resetHideControlsTimer,
+    isEnabled: true
+  });
+
   const effectiveDuration = duration > 0 ? duration : fallbackDuration;
   const progressPercentage = effectiveDuration > 0 ? (currentTime / effectiveDuration) * 100 : 0;
   const remainingSeconds = Math.max(0, effectiveDuration - currentTime);
@@ -314,6 +338,7 @@ export default function CustomVideoPlayer({
       ref={containerRef}
       onMouseMove={resetHideControlsTimer}
       onMouseEnter={() => setShowControls(true)}
+      onContextMenu={(e) => e.preventDefault()}
       style={{
         position: 'relative',
         width: '100%',
@@ -332,6 +357,8 @@ export default function CustomVideoPlayer({
         src={src}
         preload="metadata"
         poster={poster || undefined}
+        controlsList="nodownload"
+        onContextMenu={(e) => e.preventDefault()}
         onLoadedMetadata={handleLoadedMetadata}
         onLoadedData={() => {
           setIsLoading(false);
@@ -386,6 +413,9 @@ export default function CustomVideoPlayer({
         Seu navegador não suporta a reprodução deste vídeo.
       </video>
 
+      {/* Marca d'Água Dinâmica Anti-Pirataria Flutuante */}
+      <VideoWatermark />
+
       {/* Overlays do Player (Poster de transição, Loading, Buffering, Play central e Erro) */}
       <VideoPlayerOverlays
         isLoading={isLoading}
@@ -424,6 +454,8 @@ export default function CustomVideoPlayer({
         isChaptersDrawerOpen={isChaptersDrawerOpen}
         playbackRate={playbackRate}
         onPlaybackRateChange={handlePlaybackRateChange}
+        isTheaterMode={isTheaterMode}
+        onToggleTheaterMode={onToggleTheaterMode}
       />
 
       {/* Menu / Drawer Lateral de Capítulos do Vídeo (estilo YouTube) */}

@@ -310,4 +310,35 @@ describe('NetflixHeroAndModules Component', () => {
     const mod2Stats = screen.getByTestId('netflix-module-stats-20');
     expect(mod2Stats).toHaveTextContent(/1 aula • 30 min/i);
   });
+
+  it('bloqueia o clique e exibe overlay de recompensa de Elo quando o modulo exige Elo', () => {
+    const onSelectModule = vi.fn();
+    const lockedModules = [
+      {
+        id: 30,
+        title: 'Modulo Secreto VIP',
+        is_locked: true,
+        locked_reason: 'elo',
+        required_tier: 'Diamante',
+        required_tier_color: '#38bdf8',
+        lessons: [{ id: 301, title: 'Aula Elite' }]
+      }
+    ];
+
+    render(
+      <NetflixHeroAndModules
+        course={mockCourse}
+        modules={lockedModules}
+        isManager={false}
+        onSelectModule={onSelectModule}
+      />
+    );
+
+    expect(screen.getByTestId('module-locked-badge')).toBeInTheDocument();
+    expect(screen.getByText('Recompensa de Elo')).toBeInTheDocument();
+    expect(screen.getByText('Exige Elo Diamante')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('netflix-module-card-30'));
+    expect(onSelectModule).not.toHaveBeenCalled();
+  });
 });

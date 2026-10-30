@@ -7,6 +7,7 @@ import {
   generateTutorialAiDescriptionApi,
 } from './tutorialsApi';
 import TutorialVideoInputSection from './TutorialVideoInputSection';
+import TutorialModalFooter from './TutorialModalFooter';
 
 export default function TutorialModal({
   isOpen,
@@ -25,6 +26,8 @@ export default function TutorialModal({
   const [orderIndex, setOrderIndex] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStats, setUploadStats] = useState('');
   const [saving, setSaving] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +52,8 @@ export default function TutorialModal({
         setOrderIndex(0);
       }
       setSelectedFile(null);
+      setUploadProgress(0);
+      setUploadStats('');
       setError('');
     }
   }, [isOpen, tutorial]);
@@ -104,12 +109,25 @@ export default function TutorialModal({
     // Se escolheu upload e tem arquivo novo selecionado
     if (videoType === 'upload' && selectedFile) {
       setUploading(true);
+      setUploadProgress(0);
+      setUploadStats('');
       try {
-        const uploadRes = await uploadTutorialVideoApi(selectedFile, token);
+        const uploadRes = await uploadTutorialVideoApi(
+          selectedFile,
+          token,
+          (percent, loaded, total) => {
+            setUploadProgress(percent);
+            const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
+            const totalMB = (total / (1024 * 1024)).toFixed(1);
+            setUploadStats(`${loadedMB} MB de ${totalMB} MB`);
+          }
+        );
         finalVideoUrl = uploadRes.video_url;
         finalVideoKey = uploadRes.video_key;
       } catch (uploadErr) {
         setUploading(false);
+        setUploadProgress(0);
+        setUploadStats('');
         setError(uploadErr.message || 'Erro ao fazer upload do vídeo.');
         if (addToast) addToast(uploadErr.message || 'Erro no upload.', 'error');
         return;
@@ -231,20 +249,36 @@ export default function TutorialModal({
       }}
     >
       <div
-        className="modal-content custom-scrollbar"
+        className="modal-content tutorial-modal-card custom-scrollbar"
         style={{
           maxWidth: '580px',
           width: '100%',
-          maxHeight: 'calc(100vh - 48px)',
+          maxHeight: 'min(90vh, 780px)',
           display: 'flex',
           flexDirection: 'column',
-          overflowY: 'auto',
+          padding: 0,
+          overflow: 'hidden',
+          background: '#0b1329',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
         }}
       >
-        <div className="modal-header">
+        <div
+          className="modal-header"
+          style={{
+            padding: '18px 24px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Video size={20} color="#3b82f6" />
-            <h3 style={{ margin: 0 }}>
+            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem' }}>
               {isEditing ? 'Editar Aula de Tutorial' : 'Nova Aula de Tutorial'}
             </h3>
           </div>
@@ -259,153 +293,155 @@ export default function TutorialModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form" data-testid="tutorial-form">
-          {error && (
-            <div className="auth-error-banner" data-testid="tutorial-error-banner" style={{ marginBottom: '14px' }}>
-              {error}
-            </div>
-          )}
-
-          {/* Título */}
-          <div className="form-group">
-            <label htmlFor="tutorial-title">Título do Tutorial *</label>
-            <input
-              id="tutorial-title"
-              type="text"
-              placeholder="Ex: Como Navegar pela Plataforma"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              data-testid="tutorial-title-input"
-            />
-          </div>
-
-          {/* Descrição */}
-          <div className="form-group">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label htmlFor="tutorial-description" style={{ margin: 0 }}>
-                Descrição / O que você vai aprender
-              </label>
-              <button
-                type="button"
-                onClick={handleGenerateAiDescription}
-                disabled={isBusy || (!selectedFile && !videoUrl.trim())}
-                data-testid="generate-ai-description-btn"
-                title={
-                  !selectedFile && !videoUrl.trim()
-                    ? 'Selecione um arquivo de vídeo ou insira uma URL para transcrever com IA'
-                    : 'Transcrever vídeo e gerar descrição detalhada com IA'
-                }
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(168, 85, 247, 0.4)',
-                  background: generatingAi ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)',
-                  color: '#c084fc',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: isBusy || (!selectedFile && !videoUrl.trim()) ? 'not-allowed' : 'pointer',
-                  opacity: isBusy || (!selectedFile && !videoUrl.trim()) ? 0.6 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <Sparkles size={13} />
-                <span>{generatingAi ? 'Transcrevendo com IA...' : 'Gerar com IA'}</span>
-              </button>
-            </div>
-            <textarea
-              id="tutorial-description"
-              rows={4}
-              placeholder="Breve resumo dos tópicos abordados neste vídeo tutorial..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              data-testid="tutorial-description-input"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#fff',
-                resize: 'vertical',
-                fontSize: '13.5px',
-              }}
-            />
-          </div>
-
-          {/* Origem, Upload/URL e Pré-visualização do Vídeo */}
-          <TutorialVideoInputSection
-            videoType={videoType}
-            setVideoType={setVideoType}
-            isEditing={isEditing}
-            videoUrl={videoUrl}
-            setVideoUrl={setVideoUrl}
-            selectedFile={selectedFile}
-            handleFileChange={handleFileChange}
-          />
-
-          {/* Duração e Ordem */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="form-group">
-              <label htmlFor="tutorial-duration">Duração (MM:SS)</label>
-              <input
-                id="tutorial-duration"
-                type="text"
-                placeholder="Ex: 04:30"
-                value={duration || ''}
-                onChange={(e) => setDuration(e.target.value)}
-                data-testid="tutorial-duration-input"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="tutorial-order">Ordem na Playlist</label>
-              <input
-                id="tutorial-order"
-                type="number"
-                min="0"
-                value={orderIndex ?? 0}
-                onChange={(e) => setOrderIndex(e.target.value)}
-                data-testid="tutorial-order-input"
-              />
-            </div>
-          </div>
-
-          {/* Ações Fixas no Rodapé com Rolagem Perfeita */}
+        <form
+          onSubmit={handleSubmit}
+          className="modal-form"
+          data-testid="tutorial-form"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+            margin: 0,
+            gap: 0,
+          }}
+        >
           <div
-            className="modal-actions"
+            className="custom-scrollbar"
             style={{
-              marginTop: '20px',
-              position: 'sticky',
-              bottom: 0,
-              background: '#0f172a',
-              paddingTop: '12px',
-              paddingBottom: '4px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              zIndex: 10,
+              flex: 1,
+              overflowY: 'auto',
+              padding: '20px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
             }}
           >
-            <button
-              type="button"
-              onClick={onClose}
-              className="cancel-btn"
-              disabled={isBusy}
-              data-testid="cancel-tutorial-btn"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="primary-btn"
-              disabled={isBusy}
-              data-testid="submit-tutorial-btn"
-            >
-              {uploading ? 'Enviando Vídeo...' : saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Tutorial'}
-            </button>
+            {error && (
+              <div className="auth-error-banner" data-testid="tutorial-error-banner" style={{ margin: 0 }}>
+                {error}
+              </div>
+            )}
+
+            {/* Título */}
+            <div className="form-group">
+              <label htmlFor="tutorial-title">Título do Tutorial *</label>
+              <input
+                id="tutorial-title"
+                type="text"
+                placeholder="Ex: Como Navegar pela Plataforma"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                data-testid="tutorial-title-input"
+              />
+            </div>
+
+            {/* Descrição */}
+            <div className="form-group">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label htmlFor="tutorial-description" style={{ margin: 0 }}>
+                  Descrição / O que você vai aprender
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateAiDescription}
+                  disabled={isBusy || (!selectedFile && !videoUrl.trim())}
+                  data-testid="generate-ai-description-btn"
+                  title={
+                    !selectedFile && !videoUrl.trim()
+                      ? 'Selecione um arquivo de vídeo ou insira uma URL para transcrever com IA'
+                      : 'Transcrever vídeo e gerar descrição detalhada com IA'
+                  }
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    background: generatingAi ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)',
+                    color: '#c084fc',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: isBusy || (!selectedFile && !videoUrl.trim()) ? 'not-allowed' : 'pointer',
+                    opacity: isBusy || (!selectedFile && !videoUrl.trim()) ? 0.6 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Sparkles size={13} />
+                  <span>{generatingAi ? 'Transcrevendo com IA...' : 'Gerar com IA'}</span>
+                </button>
+              </div>
+              <textarea
+                id="tutorial-description"
+                rows={4}
+                placeholder="Breve resumo dos tópicos abordados neste vídeo tutorial..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                data-testid="tutorial-description-input"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#fff',
+                  resize: 'vertical',
+                  fontSize: '13.5px',
+                }}
+              />
+            </div>
+
+            {/* Origem, Upload/URL e Pré-visualização do Vídeo */}
+            <TutorialVideoInputSection
+              videoType={videoType}
+              setVideoType={setVideoType}
+              isEditing={isEditing}
+              videoUrl={videoUrl}
+              setVideoUrl={setVideoUrl}
+              selectedFile={selectedFile}
+              handleFileChange={handleFileChange}
+            />
+
+            {/* Duração e Ordem */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group">
+                <label htmlFor="tutorial-duration">Duração (MM:SS)</label>
+                <input
+                  id="tutorial-duration"
+                  type="text"
+                  placeholder="Ex: 04:30"
+                  value={duration || ''}
+                  onChange={(e) => setDuration(e.target.value)}
+                  data-testid="tutorial-duration-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="tutorial-order">Ordem na Playlist</label>
+                <input
+                  id="tutorial-order"
+                  type="number"
+                  min="0"
+                  value={orderIndex ?? 0}
+                  onChange={(e) => setOrderIndex(e.target.value)}
+                  data-testid="tutorial-order-input"
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Rodapé fixo de ponta a ponta sem vazamentos */}
+          <TutorialModalFooter
+            uploading={uploading}
+            uploadProgress={uploadProgress}
+            uploadStats={uploadStats}
+            saving={saving}
+            isEditing={isEditing}
+            isBusy={isBusy}
+            onClose={onClose}
+          />
         </form>
       </div>
     </div>

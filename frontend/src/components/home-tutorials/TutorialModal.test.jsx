@@ -159,4 +159,56 @@ describe('TutorialModal Component', () => {
     expect(handleToast).toHaveBeenCalledWith('Aula de tutorial criada com sucesso!', 'success');
     expect(handleClose).toHaveBeenCalled();
   });
+
+  it('submits form with video file upload and shows progress indicator until created', async () => {
+    const handleClose = vi.fn();
+    const handleSuccess = vi.fn();
+    const handleToast = vi.fn();
+
+    vi.spyOn(api, 'uploadTutorialVideoApi').mockImplementation(async (file, token, onProgress) => {
+      if (onProgress) {
+        onProgress(50, 50 * 1024 * 1024, 100 * 1024 * 1024);
+      }
+      return {
+        video_url: 'https://b2.com/video_upload.mp4',
+        video_key: 'AreaDeMembros/tutorials/video_upload.mp4',
+      };
+    });
+
+    vi.spyOn(api, 'createTutorialApi').mockResolvedValueOnce({
+      id: 11,
+      title: 'Tutorial com Arquivo Local',
+      video_url: 'https://b2.com/video_upload.mp4',
+    });
+
+    render(
+      <TutorialModal
+        isOpen={true}
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+        addToast={handleToast}
+      />
+    );
+
+    const fileInput = screen.getByTestId('tutorial-file-input');
+    const mockFile = new File(['fake mp4 bytes'], 'video_local.mp4', { type: 'video/mp4' });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+    const form = screen.getByTestId('tutorial-form');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(api.uploadTutorialVideoApi).toHaveBeenCalled();
+      expect(api.createTutorialApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Video local',
+          video_url: 'https://b2.com/video_upload.mp4',
+        }),
+        'mock_admin_token'
+      );
+    });
+
+    expect(handleSuccess).toHaveBeenCalled();
+    expect(handleClose).toHaveBeenCalled();
+  });
 });
