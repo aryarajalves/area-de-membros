@@ -14,7 +14,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_backend:
     # Imagem oficial do Backend da Área de Membros
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.8}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.2.0}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Volumes do Backend (Uploads locais de arquivos e socket Docker para logs)
@@ -116,7 +116,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_worker:
     # Utiliza a imagem do Backend com execução isolada das rotinas agendadas
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.1.8}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.2.0}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Comando de inicialização do Worker de rotinas periódicas
@@ -200,7 +200,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_frontend:
     # Imagem da aplicação Frontend (Nginx servindo dist/)
-    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.1.8}
+    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.2.0}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Redes do Swarm
