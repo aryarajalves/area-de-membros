@@ -2,6 +2,15 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [31/10/2026] - Controle Individual de Marca d'Água Anti-Pirataria nas Aulas (watermark_enabled na tabela courses)
+- **Objetivo:** Permitir ao administrador ativar ou desativar a marca d'água dinâmica anti-pirataria (identificação do aluno sobre os vídeos das aulas) individualmente na criação e edição de cada curso.
+- **Tabela Afetada:** courses
+  - watermark_enabled: BOOLEAN NOT NULL DEFAULT TRUE (Exibe ou oculta a marca d'água nas aulas do curso)
+- **Script de Migração:** backend/scripts/migrate_course_watermark.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
 ### [30/10/2026] - Liberação Programada por Aula Individual (Drip Content / 7 Dias da Garantia na tabela lessons)
 - **Objetivo:** Permitir configurar a liberação programada (Imediato, Dias após Entrada como os 7 dias da garantia ou Data Fixa) individualmente em cada aula (`lessons`), além da liberação por módulo.
 - **Tabela Afetada:** lessons

@@ -314,6 +314,61 @@ describe('CourseModals Components', () => {
       fireEvent.click(screen.getByTestId('course-tab-ai'));
       expect(screen.getByTestId('course-modal-tab-panel-ai').parentElement).toHaveStyle({ display: 'block' });
     });
+
+    it('renders watermark toggle for courses and allows enabling/disabling it', () => {
+      const setWatermarkEnabled = vi.fn();
+
+      const { rerender } = render(
+        <CourseFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          editingCourse={{ id: 10, title: 'Curso Com Marca Dagua' }}
+          title="Curso Com Marca Dagua"
+          setTitle={vi.fn()}
+          description=""
+          setDescription={vi.fn()}
+          thumbnailUrl=""
+          setThumbnailUrl={vi.fn()}
+          itemType="course"
+          watermarkEnabled={true}
+          setWatermarkEnabled={setWatermarkEnabled}
+          uploading={false}
+          saving={false}
+          onSaveCourse={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('course-watermark-card')).toBeInTheDocument();
+      expect(screen.getByText('Ativada')).toBeInTheDocument();
+
+      const toggleBtn = screen.getByTestId('course-watermark-toggle');
+      expect(toggleBtn).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(toggleBtn);
+      expect(setWatermarkEnabled).toHaveBeenCalledWith(false);
+
+      // Quando itemType é 'tool', não deve exibir o card de marca d'água de aulas
+      rerender(
+        <CourseFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          editingCourse={{ id: 10, title: 'Ferramenta' }}
+          title="Ferramenta"
+          setTitle={vi.fn()}
+          description=""
+          setDescription={vi.fn()}
+          thumbnailUrl=""
+          setThumbnailUrl={vi.fn()}
+          itemType="tool"
+          watermarkEnabled={false}
+          setWatermarkEnabled={setWatermarkEnabled}
+          uploading={false}
+          saving={false}
+          onSaveCourse={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByTestId('course-watermark-card')).not.toBeInTheDocument();
+    });
   });
 
   describe('CourseDeleteModal', () => {

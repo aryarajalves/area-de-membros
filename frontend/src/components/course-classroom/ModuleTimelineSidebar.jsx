@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown, Lock, Clock, Trophy } from 'lucide-react';
 import { calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseSidebarUpsellCard from './CourseSidebarUpsellCard';
@@ -7,6 +7,7 @@ import ProgressRing from './ProgressRing';
 import TimelineLessonItem from './TimelineLessonItem';
 import { formatUnlockDate } from './ModuleCardLockOverlay';
 import SuperAdminLessonAuditFilterBar, { useSuperAdminLessonAudit } from './SuperAdminLessonAuditFilterBar';
+import StudentLessonSearchBar from './StudentLessonSearchBar';
 
 export default function ModuleTimelineSidebar({
   courseId,
@@ -30,6 +31,8 @@ export default function ModuleTimelineSidebar({
   onOpenBatchOrder
 }) {
   const [sidebarOffer, setSidebarOffer] = useState(sidebarUpsellOffer || null);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentStatusFilter, setStudentStatusFilter] = useState('all');
 
   const {
     isSuperAdmin,
@@ -39,6 +42,7 @@ export default function ModuleTimelineSidebar({
     counts,
     filteredFlatLessons,
     unoptimizedItems,
+    aiPendingItems,
     matchesFilter,
     refreshAudit
   } = useSuperAdminLessonAudit(courseId, modules, currentUser);
@@ -82,21 +86,29 @@ export default function ModuleTimelineSidebar({
 
   useEffect(() => {
     if (selectedModule?.id) {
-      setExpandedModuleIds((prev) => (prev.includes(selectedModule.id) ? prev : [...prev, selectedModule.id]));
+      setExpandedModuleIds([selectedModule.id]);
     }
   }, [selectedModule?.id]);
 
+  // Auto-expande o módulo da aula ativa caso ela pertença a outro módulo, fechando os demais
+  useEffect(() => {
+    if (activeLesson?.id && modules.length > 0) {
+      const parentMod = modules.find((m) => (m.lessons || []).some((l) => l.id === activeLesson.id));
+      if (parentMod && (!expandedModuleIds.includes(parentMod.id) || expandedModuleIds.length > 1)) {
+        setExpandedModuleIds([parentMod.id]);
+      }
+    }
+  }, [activeLesson?.id, modules]);
+
+  // Acordeão exclusivo: ao abrir um módulo, fecha qualquer outro módulo que esteja aberto
   const handleToggleModule = (mod) => {
     if (mod.is_locked && !isManager) return;
 
     const isCurrentlyExpanded = expandedModuleIds.includes(mod.id);
     if (isCurrentlyExpanded) {
-      setExpandedModuleIds((prev) => prev.filter((id) => id !== mod.id));
+      setExpandedModuleIds([]);
     } else {
-      setExpandedModuleIds((prev) => [...prev, mod.id]);
-      if (onSelectModule) {
-        onSelectModule(mod);
-      }
+      setExpandedModuleIds([mod.id]);
     }
   };
 
@@ -145,14 +157,30 @@ export default function ModuleTimelineSidebar({
         </div>
       </div>
 
+      {/* Busca Instantânea e Filtro Rápido para o Aluno (Item 1) */}
+      <StudentLessonSearchBar
+        searchQuery={studentSearchQuery}
+        onSearchChange={setStudentSearchQuery}
+        statusFilter={studentStatusFilter}
+        onStatusFilterChange={setStudentStatusFilter}
+        isLightBg={isLightBg}
+        counts={{
+          all: totalLessonsCount,
+          pending: Math.max(0, totalLessonsCount - completedCount),
+          completed: completedCount
+        }}
+      />
+
       {/* Painel de Filtros Rápidos de Auditoria (Exclusivo Super Admin) */}
       <SuperAdminLessonAuditFilterBar
         isSuperAdmin={isSuperAdmin}
+        courseId={courseId}
         activeFilter={activeFilter}
         onSelectFilter={setActiveFilter}
         counts={counts}
         filteredFlatLessons={filteredFlatLessons}
         unoptimizedItems={unoptimizedItems}
+        aiPendingItems={aiPendingItems}
         onRefreshAudit={refreshAudit}
         activeLessonId={activeLesson?.id}
         onSelectLesson={onSelectLesson}
@@ -173,15 +201,29 @@ export default function ModuleTimelineSidebar({
           const isLocked = mod.is_locked && !isManager;
           const isSelected = selectedModule?.id === mod.id;
           const modLessons = mod.lessons || [];
+          const queryClean = studentSearchQuery.trim().toLowerCase();
+          const hasActiveSearch = Boolean(queryClean) || studentStatusFilter !== 'all';
+
           const visibleLessonsWithIdx = modLessons
             .map((lesson, idx) => ({ lesson, idx }))
-            .filter(({ lesson }) => matchesFilter(lesson));
+            .filter(({ lesson }) => {
+              if (!matchesFilter(lesson)) return false;
+              const isComp = completedLessonIds.includes(lesson.id);
+              if (studentStatusFilter === 'completed' && !isComp) return false;
+              if (studentStatusFilter === 'pending' && isComp) return false;
+              if (queryClean) {
+                const titleMatch = (lesson.title || '').toLowerCase().includes(queryClean);
+                const descMatch = (lesson.description || '').toLowerCase().includes(queryClean);
+                if (!titleMatch && !descMatch) return false;
+              }
+              return true;
+            });
 
-          if (isSuperAdmin && activeFilter !== 'all' && visibleLessonsWithIdx.length === 0) {
+          if (((isSuperAdmin && activeFilter !== 'all') || hasActiveSearch) && visibleLessonsWithIdx.length === 0) {
             return null;
           }
 
-          const isExpanded = !isLocked && ((isSuperAdmin && activeFilter !== 'all') || expandedModuleIds.includes(mod.id));
+          const isExpanded = !isLocked && ((isSuperAdmin && activeFilter !== 'all') || hasActiveSearch || expandedModuleIds.includes(mod.id));
           const modCompleted = modLessons.filter((l) => completedLessonIds.includes(l.id)).length;
           const modPct = modLessons.length > 0 ? Math.round((modCompleted / modLessons.length) * 100) : 0;
 
@@ -298,16 +340,15 @@ export default function ModuleTimelineSidebar({
                       (() => {
                         const modStats = calculateModuleStats(mod);
                         return (
-                          <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px' }}>
+                          <div style={{ fontSize: '11.5px', color: subTextColor, opacity: 0.85, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                             <span>
                               {isSuperAdmin && activeFilter !== 'all'
-                                ? `${visibleLessonsWithIdx.length} de ${modLessons.length} aulas filtradas`
-                                : `${modLessons.length} ${modLessons.length === 1 ? 'aula' : 'aulas'}`}
+                                ? `${visibleLessonsWithIdx.length} de ${modLessons.length} aulas`
+                                : `${modCompleted}/${modLessons.length} aulas`}
                             </span>
                             {modStats.formattedDuration && (
-                              <span data-testid={`sidebar-module-duration-${mod.id}`}> • {modStats.formattedDuration}</span>
+                              <span data-testid={`sidebar-module-duration-${mod.id}`}>• {modStats.formattedDuration}</span>
                             )}
-                            {!isExpanded && ' • Fechado (clique para abrir)'}
                           </div>
                         );
                       })()

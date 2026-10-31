@@ -262,6 +262,24 @@ describe('CustomVideoPlayer Component', () => {
     expect(watermark).toHaveTextContent('aluno_protegido@teste.com');
   });
 
+  it('hides anti-piracy watermark when watermarkEnabled is false', () => {
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({ id: 10, email: 'aluno_sem_marcadagua@teste.com' })
+    );
+
+    render(
+      <CustomVideoPlayer
+        src="https://b2.com/video.mp4"
+        title="Aula Sem Marca Dagua"
+        lessonDuration="10 min"
+        watermarkEnabled={false}
+      />
+    );
+
+    expect(screen.queryByTestId('video-watermark-overlay')).not.toBeInTheDocument();
+  });
+
   it('renderiza botao de modo teatro e dispara onToggleTheaterMode ao clicar ou apertar T', () => {
     const onToggleTheaterMode = vi.fn();
     render(

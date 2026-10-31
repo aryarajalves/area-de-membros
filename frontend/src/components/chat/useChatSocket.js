@@ -109,8 +109,8 @@ export function useChatSocket({
             if (isCurrentChan && callbacksRef.current.onMessagePinned) {
               callbacksRef.current.onMessagePinned(data);
             }
-          } else if (type === 'new_dm' || type === 'dm_read') {
-            window.dispatchEvent(new CustomEvent('dm_updated'));
+          } else if (type === 'new_dm' || type === 'dm_read' || type === 'dm_sent') {
+            window.dispatchEvent(new CustomEvent('dm_updated', { detail: data }));
           } else if (type === 'new_notification' || type === 'notifications_updated') {
             window.dispatchEvent(new CustomEvent('notifications_updated'));
           } else if (type === 'favorites_updated') {

@@ -91,6 +91,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [toolUrl, setToolUrl] = useState('');
   const [bundledCourseIds, setBundledCourseIds] = useState([]);
   const [bundleTitle, setBundleTitle] = useState('');
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -125,40 +126,38 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     fetchCourses();
   }, []);
 
+  // Atualização em Tempo Real via WebSocket (quando um curso é liberado/atualizado para o aluno)
+  useEffect(() => {
+    const handleCoursesAccessUpdated = (e) => {
+      fetchCourses();
+      if (e?.detail?.message) {
+        addToast(e.detail.message, 'success');
+      }
+    };
+    window.addEventListener('courses_access_updated', handleCoursesAccessUpdated);
+    return () => window.removeEventListener('courses_access_updated', handleCoursesAccessUpdated);
+  }, [addToast]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
 
   const handleOpenCreateModal = () => {
-    setEditingCourse(null);
-    setTitle('');
-    setDescription('');
-    setThumbnailUrl('');
-    setCoverImageUrl('');
-    setCoverImagePosition(50);
-    setSalesPageUrl('');
-    setOrderIndex(0);
-    setAgentflowKbId(null); setAgentflowKbName(null);
-    setItemType('course'); setToolUrl('');
-    setBundledCourseIds([]); setBundleTitle('');
-    setModalOpen(true);
+    setEditingCourse(null); setTitle(''); setDescription(''); setThumbnailUrl('');
+    setCoverImageUrl(''); setCoverImagePosition(50); setSalesPageUrl(''); setOrderIndex(0);
+    setAgentflowKbId(null); setAgentflowKbName(null); setItemType('course'); setToolUrl('');
+    setBundledCourseIds([]); setBundleTitle(''); setWatermarkEnabled(true); setModalOpen(true);
   };
 
   const handleOpenEditModal = (course) => {
-    setEditingCourse(course);
-    setTitle(course.title);
-    setDescription(course.description || '');
-    setThumbnailUrl(course.thumbnail_url || '');
-    setCoverImageUrl(course.cover_image_url || '');
+    setEditingCourse(course); setTitle(course.title); setDescription(course.description || '');
+    setThumbnailUrl(course.thumbnail_url || ''); setCoverImageUrl(course.cover_image_url || '');
     setCoverImagePosition(course.cover_image_position !== undefined && course.cover_image_position !== null ? course.cover_image_position : 50);
-    setSalesPageUrl(course.sales_page_url || '');
-    setOrderIndex(course.order_index ?? 0);
-    setAgentflowKbId(course.agentflow_kb_id || null);
-    setAgentflowKbName(course.agentflow_kb_name || null);
-    setItemType(course.item_type || 'course');
-    setToolUrl(course.tool_url || '');
+    setSalesPageUrl(course.sales_page_url || ''); setOrderIndex(course.order_index ?? 0);
+    setAgentflowKbId(course.agentflow_kb_id || null); setAgentflowKbName(course.agentflow_kb_name || null);
+    setItemType(course.item_type || 'course'); setToolUrl(course.tool_url || '');
     setBundledCourseIds(course.bundled_course_ids || (course.bundled_courses ? course.bundled_courses.map((b) => b.id) : []));
-    setBundleTitle(course.bundle_title || '');
+    setBundleTitle(course.bundle_title || ''); setWatermarkEnabled(course.watermark_enabled !== false);
     setModalOpen(true);
   };
 
@@ -232,6 +231,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       item_type: itemType,
       tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
       bundle_title: bundleTitle.trim() || null,
+      watermark_enabled: Boolean(watermarkEnabled),
       bundled_course_ids: bundledCourseIds
     };
 
@@ -468,6 +468,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         itemType={itemType} setItemType={setItemType} toolUrl={toolUrl} setToolUrl={setToolUrl}
         bundledCourseIds={bundledCourseIds} setBundledCourseIds={setBundledCourseIds}
         bundleTitle={bundleTitle} setBundleTitle={setBundleTitle}
+        watermarkEnabled={watermarkEnabled} setWatermarkEnabled={setWatermarkEnabled}
         availableCourses={courses} bgColor={activeBgColor} uploading={uploading} saving={saving}
         onUploadThumbnail={handleUploadThumbnail} onUploadCoverImage={handleUploadCoverImage}
         onSaveCourse={handleSaveCourse}

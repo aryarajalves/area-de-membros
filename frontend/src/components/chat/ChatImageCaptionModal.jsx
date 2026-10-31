@@ -31,12 +31,6 @@ export default function ChatImageCaptionModal({
     }
   };
 
-  const formattedSize = imageFile
-    ? imageFile.size > 1024 * 1024
-      ? `${(imageFile.size / (1024 * 1024)).toFixed(1)} MB`
-      : `${Math.round(imageFile.size / 1024)} KB`
-    : null;
-
   return (
     <div
       className="chat-image-caption-backdrop"
@@ -136,21 +130,6 @@ export default function ChatImageCaptionModal({
             />
           ) : (
             <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Carregando imagem...</div>
-          )}
-
-          {formattedSize && (
-            <div
-              style={{
-                marginTop: '8px',
-                fontSize: '0.75rem',
-                color: '#94a3b8',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                padding: '2px 8px',
-                borderRadius: '10px',
-              }}
-            >
-              {imageFile.name} • {formattedSize}
-            </div>
           )}
         </div>
 

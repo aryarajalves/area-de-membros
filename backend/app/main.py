@@ -105,6 +105,7 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS item_type VARCHAR DEFAULT 'course';
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS tool_url VARCHAR;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS bundle_title VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS watermark_enabled BOOLEAN NOT NULL DEFAULT TRUE;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_position INTEGER NOT NULL DEFAULT 50;
                         CREATE TABLE IF NOT EXISTS course_bundles (
                             id SERIAL PRIMARY KEY,
@@ -257,6 +258,7 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP",
                         "ALTER TABLE users ADD COLUMN playback_rate FLOAT DEFAULT 1.0",
+                        "ALTER TABLE courses ADD COLUMN watermark_enabled BOOLEAN DEFAULT 1",
                     ]:
                         try:
                             conn.execute(text(col_sql))

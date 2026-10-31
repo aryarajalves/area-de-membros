@@ -100,13 +100,6 @@ export default function CourseClassroom({
 
   const handleSelectModule = (mod) => {
     setSelectedModuleId(mod.id);
-    const modLessons = mod.lessons || [];
-    if (modLessons.length > 0) {
-      if (!modLessons.some((l) => l.id === activeLesson?.id)) setActiveLesson(modLessons[0]);
-    } else {
-      setActiveLesson(null);
-    }
-    scrollToClassroomSection();
   };
 
   const handleStartCourse = () => {
@@ -365,6 +358,7 @@ export default function CourseClassroom({
                   moduleTitle={selectedModule.title}
                   courseId={course?.id || initialCourse.id}
                   moduleId={selectedModule.id}
+                  watermarkEnabled={(course?.watermark_enabled ?? initialCourse?.watermark_enabled) !== false}
                   currentUser={currentUser}
                   prevLesson={prevLesson}
                   nextLesson={nextLesson}
@@ -383,6 +377,7 @@ export default function CourseClassroom({
                   moduleTitle={selectedModule.title}
                   courseId={course?.id || initialCourse.id}
                   moduleId={selectedModule.id}
+                  watermarkEnabled={(course?.watermark_enabled ?? initialCourse?.watermark_enabled) !== false}
                   currentUser={currentUser}
                   prevLesson={prevLesson}
                   nextLesson={nextLesson}
@@ -403,6 +398,7 @@ export default function CourseClassroom({
                   moduleTitle={selectedModule.title}
                   courseId={course?.id || initialCourse.id}
                   moduleId={selectedModule.id}
+                  watermarkEnabled={(course?.watermark_enabled ?? initialCourse?.watermark_enabled) !== false}
                   currentUser={currentUser}
                   prevLesson={prevLesson}
                   nextLesson={nextLesson}

@@ -63,30 +63,42 @@ export default function VideoPlayerOverlays({
         </div>
       )}
 
-      {/* Botão Central de Play Grande (quando pronto e pausado) */}
+      {/* Botão Central de Play com Glassmorphism (Item 8) */}
       {!isPlaying && !isLoading && !isBuffering && !hasError && (
         <button
           type="button"
           onClick={togglePlay}
           style={{
             position: 'absolute',
-            width: '60px',
-            height: '60px',
+            width: '68px',
+            height: '68px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(15, 23, 42, 0.75)',
-            border: '2px solid rgba(234, 179, 8, 0.85)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '2px solid rgba(234, 179, 8, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            boxShadow: '0 0 24px rgba(234, 179, 8, 0.35)',
-            transition: 'transform 0.15s ease',
+            boxShadow: '0 0 30px rgba(234, 179, 8, 0.45), 0 10px 25px rgba(0, 0, 0, 0.6)',
+            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.2s ease',
             zIndex: 9
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.backgroundColor = 'rgba(234, 179, 8, 0.22)';
+            e.currentTarget.style.boxShadow = '0 0 40px rgba(234, 179, 8, 0.65), 0 12px 30px rgba(0, 0, 0, 0.7)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.65)';
+            e.currentTarget.style.boxShadow = '0 0 30px rgba(234, 179, 8, 0.45), 0 10px 25px rgba(0, 0, 0, 0.6)';
           }}
           title="Reproduzir Vídeo"
           data-testid="video-big-play-btn"
         >
-          <Play size={26} color="#eab308" style={{ marginLeft: '3px' }} />
+          <Play size={30} color="#facc15" fill="#facc15" style={{ marginLeft: '4px', filter: 'drop-shadow(0 0 6px rgba(234, 179, 8, 0.5))' }} />
         </button>
       )}
 

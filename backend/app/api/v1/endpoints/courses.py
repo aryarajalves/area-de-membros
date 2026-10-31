@@ -145,7 +145,8 @@ def create_course(
         agentflow_kb_name=course_in.agentflow_kb_name,
         item_type=course_in.item_type or "course",
         tool_url=course_in.tool_url.strip() if course_in.tool_url else None,
-        bundle_title=course_in.bundle_title.strip() if course_in.bundle_title else None
+        bundle_title=course_in.bundle_title.strip() if course_in.bundle_title else None,
+        watermark_enabled=course_in.watermark_enabled if course_in.watermark_enabled is not None else True
     )
     db.add(new_course)
     db.commit()
@@ -230,6 +231,8 @@ def update_course(
         course.tool_url = course_update.tool_url.strip() if course_update.tool_url else None
     if course_update.bundle_title is not None:
         course.bundle_title = course_update.bundle_title.strip() if course_update.bundle_title else None
+    if course_update.watermark_enabled is not None:
+        course.watermark_enabled = bool(course_update.watermark_enabled)
     if course_update.bundled_course_ids is not None:
         sync_course_bundles(db, course.id, course_update.bundled_course_ids)
 

@@ -50,3 +50,44 @@ def test_course_bundle_title_crud(admin_headers):
     # Limpeza
     del_res = client.delete(f"/api/v1/courses/{course_id}", headers=admin_headers)
     assert del_res.status_code == 200
+
+
+def test_course_watermark_enabled_toggle(admin_headers):
+    # 1. Cria curso com padrão (watermark_enabled = True)
+    create_payload = {
+        "title": "Curso Teste Marca Dagua",
+        "description": "Testando ativacao e desativacao de marca dagua",
+        "item_type": "course"
+    }
+    res = client.post("/api/v1/courses", json=create_payload, headers=admin_headers)
+    assert res.status_code in [200, 201], res.text
+    created = res.json()
+    course_id = created["id"]
+    assert created["watermark_enabled"] is True
+
+    # 2. Desativa a marca d'água na edição do curso
+    patch_res = client.patch(
+        f"/api/v1/courses/{course_id}",
+        json={"watermark_enabled": False},
+        headers=admin_headers
+    )
+    assert patch_res.status_code == 200, patch_res.text
+    assert patch_res.json()["watermark_enabled"] is False
+
+    # 3. Confirma em GET /courses/{course_id}
+    detail_res = client.get(f"/api/v1/courses/{course_id}", headers=admin_headers)
+    assert detail_res.status_code == 200
+    assert detail_res.json()["watermark_enabled"] is False
+
+    # 4. Reativa a marca d'água
+    patch_res2 = client.patch(
+        f"/api/v1/courses/{course_id}",
+        json={"watermark_enabled": True},
+        headers=admin_headers
+    )
+    assert patch_res2.status_code == 200
+    assert patch_res2.json()["watermark_enabled"] is True
+
+    # Limpeza
+    del_res = client.delete(f"/api/v1/courses/{course_id}", headers=admin_headers)
+    assert del_res.status_code == 200

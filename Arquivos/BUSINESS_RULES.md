@@ -62,6 +62,8 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - Botão **"+ Novo Evento"** no cabeçalho.
   - Ações de **Editar** e **Excluir** diretamente em cada card.
   - A exclusão exige confirmação obrigatória via popup modal centralizado com fundo escuro (`DeleteEventConfirmModal`), prevenindo deleções acidentais.
+- **Controle Individual de Marca d'Água Anti-Pirataria nas Aulas (`watermark_enabled`):**
+  - No modal de criação e edição de curso (`CourseModalInfoTab` em `CourseFormModal`), o administrador pode ativar ou desativar a exibição da marca d'água dinâmica anti-pirataria (identificação do aluno sobre os vídeos das aulas). Por padrão, novos cursos iniciam com `watermark_enabled = True`.
 
 ---
 

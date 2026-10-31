@@ -93,7 +93,7 @@ export function useTopNavbarSocket({
               if (callbacksRef.current.onDmUpdated) {
                 callbacksRef.current.onDmUpdated();
               }
-              window.dispatchEvent(new CustomEvent('dm_updated'));
+              window.dispatchEvent(new CustomEvent('dm_updated', { detail: data }));
             }
           }
 
@@ -107,14 +107,21 @@ export function useTopNavbarSocket({
             }
           }
 
+          // Cursos Liberados / Acesso a Cursos Atualizado em Tempo Real (WebSocket)
+          else if (type === 'courses_access_updated') {
+            if (!data?.user_id || Number(data.user_id) === Number(currentUserId)) {
+              window.dispatchEvent(new CustomEvent('courses_access_updated', { detail: data }));
+            }
+          }
+
           // 4. Nova mensagem global/canal/DM
           else if (type === 'new_message' && data) {
-            // Se for DM direta para o usuário
-            if (channel_type === 'dm' && Number(data?.recipient_id) === Number(currentUserId)) {
+            // Se for DM direta envolvendo o usuário (destinatário ou autor)
+            if (channel_type === 'dm' && (Number(data?.recipient_id) === Number(currentUserId) || Number(data?.user?.id) === Number(currentUserId))) {
               if (callbacksRef.current.onDmUpdated) {
                 callbacksRef.current.onDmUpdated();
               }
-              window.dispatchEvent(new CustomEvent('dm_updated'));
+              window.dispatchEvent(new CustomEvent('dm_updated', { detail: data }));
             }
 
             // Se a mensagem mencionar o usuário

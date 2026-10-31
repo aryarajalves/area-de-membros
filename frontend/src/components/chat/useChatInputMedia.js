@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 
-export function useChatInputMedia({ onSendMessage }) {
+export function useChatInputMedia({ onSendMessage, onClearText }) {
   const { addToast } = useToast();
   const [attachedMedia, setAttachedMedia] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -215,6 +215,7 @@ export function useChatInputMedia({ onSendMessage }) {
         const success = await onSendMessage(captionText, data.media_url, 'image');
         if (success) {
           setPendingImageForCaption(null);
+          if (typeof onClearText === 'function') onClearText();
           addToast('Imagem enviada com sucesso!', 'success');
         }
       }

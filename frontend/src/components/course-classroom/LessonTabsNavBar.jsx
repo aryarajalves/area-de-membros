@@ -8,48 +8,19 @@ import {
 } from 'lucide-react';
 
 const TABS = [
-  {
-    id: 'overview',
-    label: 'Visão Geral',
-    shortLabel: 'Visão Geral',
-    icon: FileText,
-    testId: 'tab-lesson-overview'
-  },
-  {
-    id: 'transcription',
-    label: 'Transcrição & Resumo IA',
-    shortLabel: 'Transcrição IA',
-    icon: Sparkles,
-    testId: 'tab-lesson-transcription'
-  },
-  {
-    id: 'attachments',
-    label: 'Materiais Complementares',
-    shortLabel: 'Materiais',
-    icon: Paperclip,
-    testId: 'tab-lesson-attachments',
-    hasCount: true
-  },
-  {
-    id: 'notes',
-    label: 'Minhas Anotações',
-    shortLabel: 'Anotações',
-    icon: BookOpen,
-    testId: 'tab-lesson-notes'
-  },
-  {
-    id: 'comments',
-    label: 'Comentários',
-    shortLabel: 'Comentários',
-    icon: MessageSquare,
-    testId: 'tab-lesson-comments'
-  }
+  { id: 'overview', label: 'Visão Geral', shortLabel: 'Visão Geral', icon: FileText, testId: 'tab-lesson-overview' },
+  { id: 'transcription', label: 'Transcrição & Resumo IA', shortLabel: 'Transcrição IA', icon: Sparkles, testId: 'tab-lesson-transcription' },
+  { id: 'attachments', label: 'Materiais Complementares', shortLabel: 'Materiais', icon: Paperclip, testId: 'tab-lesson-attachments', countKey: 'attachments' },
+  { id: 'notes', label: 'Minhas Anotações', shortLabel: 'Anotações', icon: BookOpen, testId: 'tab-lesson-notes', countKey: 'notes' },
+  { id: 'comments', label: 'Comentários', shortLabel: 'Comentários', icon: MessageSquare, testId: 'tab-lesson-comments', countKey: 'comments' }
 ];
 
 export default function LessonTabsNavBar({
   activeTab,
   onTabChange,
   attachmentsCount = 0,
+  notesCount = 0,
+  commentsCount = 0,
   borderColor = 'rgba(255, 255, 255, 0.08)',
   subTextColor = '#94a3b8'
 }) {
@@ -72,7 +43,7 @@ export default function LessonTabsNavBar({
       {TABS.map((tab) => {
         const Icon = tab.icon;
         const isTabActive = activeTab === tab.id;
-        const count = tab.hasCount ? attachmentsCount : 0;
+        const count = tab.countKey === 'attachments' ? attachmentsCount : tab.countKey === 'notes' ? notesCount : tab.countKey === 'comments' ? commentsCount : 0;
 
         return (
           <button

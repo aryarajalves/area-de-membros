@@ -61,7 +61,10 @@ export default function ChatInputBar({
     handleDrop,
     handleConfirmSendImageWithCaption,
     handleSendRecordedVideo,
-  } = useChatInputMedia({ onSendMessage });
+  } = useChatInputMedia({
+    onSendMessage,
+    onClearText: () => setText(''),
+  });
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 

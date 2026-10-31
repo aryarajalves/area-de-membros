@@ -8,6 +8,7 @@ import httpx
 from app.core.logger import logger
 from app.models.user import User
 from app.models.course import Course, UserCourse
+from app.services.course_access import notify_user_course_access_updated
 from app.models.gamification import GamificationPoint
 from app.models.chat import ChatMessage
 from app.services.chat_encryption_service import encrypt_dm_message
@@ -151,7 +152,8 @@ def execute_enrollment_node(
     """Concede matrícula automática / acesso a um curso bônus ou ferramenta ao aluno."""
     course_id_raw = node_data.get("course_id")
     if not course_id_raw:
-        return f"[MATRÍCULA] Ignorado: Curso não selecionado no Nó {node_id}"
+        notify_user_course_access_updated(student.id, [course_id])
+    return f"[MATRÍCULA] Ignorado: Curso não selecionado no Nó {node_id}"
 
     try:
         course_id = int(course_id_raw)

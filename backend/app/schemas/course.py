@@ -201,6 +201,7 @@ class CourseBase(BaseModel):
     item_type: Optional[str] = "course"
     tool_url: Optional[str] = None
     bundle_title: Optional[str] = None
+    watermark_enabled: Optional[bool] = True
     bundled_course_ids: Optional[List[int]] = []
 
 class CourseCreate(CourseBase):
@@ -221,6 +222,7 @@ class CourseUpdate(BaseModel):
     item_type: Optional[str] = None
     tool_url: Optional[str] = None
     bundle_title: Optional[str] = None
+    watermark_enabled: Optional[bool] = None
     bundled_course_ids: Optional[List[int]] = None
 
 class CourseResponse(CourseBase):

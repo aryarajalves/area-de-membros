@@ -57,7 +57,9 @@ export default function LessonNotes({ courseId, lessonId, currentUser, isLightBg
       });
       if (res.ok) {
         const data = await res.json();
-        setNotes(Array.isArray(data) ? data : (data.content ? [data] : []));
+        const loadedNotes = Array.isArray(data) ? data : (data.content ? [data] : []);
+        setNotes(loadedNotes);
+        window.dispatchEvent(new CustomEvent('lesson-notes-count-updated', { detail: { lessonId, count: loadedNotes.length } }));
       }
     } catch (err) {
       console.error('Erro ao buscar anotações:', err);

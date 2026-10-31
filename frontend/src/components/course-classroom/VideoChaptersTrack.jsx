@@ -64,7 +64,7 @@ export default function VideoChaptersTrack({
               position: 'relative',
               flex: `${segmentWidthPct} 0 0%`,
               height: '100%',
-              backgroundColor: 'rgba(255, 255, 255, 0.16)',
+              backgroundColor: 'rgba(255, 255, 255, 0.22)',
               borderRadius: idx === 0 ? '999px 0 0 999px' : (idx === sortedChapters.length - 1 ? '0 999px 999px 0' : '0'),
               overflow: 'hidden',
               cursor: 'pointer',
@@ -83,7 +83,8 @@ export default function VideoChaptersTrack({
                 bottom: 0,
                 left: 0,
                 width: `${Math.min(100, Math.max(0, chapterFilledPct))}%`,
-                backgroundColor: '#3b82f6',
+                background: 'linear-gradient(90deg, #eab308 0%, #facc15 100%)',
+                boxShadow: isCurrentActive ? '0 0 8px rgba(234, 179, 8, 0.6)' : 'none',
                 borderRadius: 'inherit',
                 transition: 'width 0.1s linear'
               }}

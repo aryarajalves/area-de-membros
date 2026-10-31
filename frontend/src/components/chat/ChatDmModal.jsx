@@ -100,6 +100,35 @@ export default function ChatDmModal({
     }
   }, [selectedContact?.id]);
 
+  // Sincronização em tempo real via WebSocket (recebe new_dm, dm_sent e dm_updated)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleDmRealtimeUpdate = (e) => {
+      const dmData = e?.detail;
+      if (selectedContact?.id) {
+        const contactId = Number(selectedContact.id);
+        const senderId = Number(dmData?.sender_id || dmData?.message?.user?.id || dmData?.user?.id);
+        const recipientId = Number(dmData?.recipient_id || dmData?.message?.recipient_id);
+
+        if (senderId === contactId || recipientId === contactId) {
+          const msgObj = dmData?.message || (dmData?.channel_type === 'dm' ? dmData : null);
+          if (msgObj && msgObj.id) {
+            setMessages((prev) => (prev.some((m) => m.id === msgObj.id) ? prev : [...prev, msgObj]));
+          } else {
+            fetchMessages(selectedContact.id);
+          }
+        }
+      }
+      fetchConversations();
+    };
+
+    window.addEventListener('dm_updated', handleDmRealtimeUpdate);
+    return () => {
+      window.removeEventListener('dm_updated', handleDmRealtimeUpdate);
+    };
+  }, [isOpen, selectedContact?.id]);
+
   // Enviar mensagem direta (com mídias, áudio, vídeo, imagens, GIFs e PDFs)
   const handleSendDmMessage = async (cleanText, mediaUrl = null, mediaType = null, buttonText = null, buttonUrl = null, buttonActionType = 'url') => {
     if ((!cleanText && !mediaUrl) || !selectedContact?.id) return false;
@@ -115,7 +144,16 @@ export default function ChatDmModal({
       });
       if (res.ok) {
         const newMsg = await res.json();
-        setMessages((prev) => [...prev, newMsg]);
+        setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+        fetchConversations();
+        window.dispatchEvent(new CustomEvent('dm_updated', {
+          detail: {
+            recipient_id: selectedContact.id,
+            sender_id: currentUser?.id,
+            message_id: newMsg.id,
+            message: newMsg,
+          }
+        }));
         return true;
       }
       return false;
@@ -133,30 +171,19 @@ export default function ChatDmModal({
     <div
       data-testid="chat-dm-modal"
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(5px)',
-        zIndex: 1000002,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(5px)', zIndex: 1000002, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: '16px',
       }}
     >
       <div
         style={{
-          width: '100%',
-          maxWidth: selectedContact ? '680px' : '490px',
-          height: selectedContact ? '660px' : '620px',
-          maxHeight: '90vh',
-          backgroundColor: '#0f172a',
-          borderRadius: '16px',
+          width: '100%', maxWidth: selectedContact ? '680px' : '490px',
+          height: selectedContact ? '660px' : '620px', maxHeight: '90vh',
+          backgroundColor: '#0f172a', borderRadius: '16px',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transition: 'max-width 0.2s ease',
         }}
       >

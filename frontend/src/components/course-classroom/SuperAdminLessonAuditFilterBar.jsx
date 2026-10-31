@@ -8,91 +8,15 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import BatchVideoOptimizationModal from './BatchVideoOptimizationModal';
+import BatchAiFixModal from './BatchAiFixModal';
 
-export function isClientBadLessonTitle(title, importIdentifier = '', hasDescription = false) {
-  const t = (title || '').trim();
-  if (t.length < 8) return true;
-
-  // UUID ou hash longo (ex: 2a8bcc96-3336-462f-a0a0-cacde04f86b9)
-  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(t)) {
-    return true;
-  }
-  if (/^[0-9a-fA-F_-]{16,}$/.test(t)) {
-    return true;
-  }
-
-  // Extensão de arquivo ou prefixo bruto de gravação
-  if (/\.(mp4|mov|mkv|webm|avi)$/i.test(t)) return true;
-  if (/(^vid_|^img_|^mvi_|whatsapp video|screen recording|_1080p|_720p)/i.test(t)) return true;
-  if (t.includes('_') && !t.includes(' ')) return true;
-
-  // Genérico demais ("Aula 1", "Vídeo 02", "Sem título")
-  if (/^(aula|video|vídeo|lesson|parte|modulo|módulo|sem t[íi]tulo)\s*[-#:]?\s*\d*$/i.test(t)) {
-    return true;
-  }
-
-  if (importIdentifier && !hasDescription) {
-    const rawBase = importIdentifier.replace(/\.[^/.]+$/, '').trim().toLowerCase();
-    const rawClean = rawBase.replace(/^[\d\s._-]+/, '').trim();
-    const tClean = t.toLowerCase().replace(/^[\d\s._-]+/, '').trim();
-    if (rawClean && tClean === rawClean && !t.includes(':') && t.length < 28) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-export function buildClientLessonAudit(lesson, serverEntry = null) {
-  const isVideo = (lesson?.content_type || 'video') === 'video';
-  const vUrl = lesson?.video_url || lesson?.videos?.[0]?.video_url || '';
-  const cleanUrl = vUrl.split('?')[0].toLowerCase();
-  const isRawExt = /\.(mov|mkv|avi|webm)$/i.test(cleanUrl);
-
-  const descText = (lesson?.description || '').trim();
-  const missingDescription = serverEntry?.missing_description ?? descText.length < 25;
-  const missingThumbnail = serverEntry?.missing_thumbnail ?? !Boolean((lesson?.thumbnail_url || '').trim());
-
-  const unoptimizedVideo =
-    serverEntry?.unoptimized_video ??
-    (isVideo && Boolean(vUrl) && (isRawExt || lesson?.is_optimized === false));
-
-  const hasLocalChapters =
-    Array.isArray(lesson?.chapters) && lesson.chapters.length > 0
-      ? true
-      : Boolean(lesson?.transcription?.chapters && lesson.transcription.chapters !== '[]');
-
-  const missingChapters =
-    serverEntry?.missing_chapters ??
-    (isVideo ? !hasLocalChapters && lesson?.has_chapters !== true : false);
-
-  const badTitle =
-    serverEntry?.bad_title ??
-    isClientBadLessonTitle(lesson?.title, lesson?.import_identifier, !missingDescription);
-
-  const anyIssue = Boolean(
-    unoptimizedVideo ||
-      missingDescription ||
-      missingChapters ||
-      missingThumbnail ||
-      badTitle
-  );
-
-  return {
-    lesson_id: lesson?.id,
-    unoptimized_video: Boolean(unoptimizedVideo),
-    missing_description: Boolean(missingDescription),
-    missing_chapters: Boolean(missingChapters),
-    missing_thumbnail: Boolean(missingThumbnail),
-    bad_title: Boolean(badTitle),
-    any_issue: anyIssue,
-    size_mb: serverEntry?.size_mb || 0,
-    format: serverEntry?.format || (isRawExt ? cleanUrl.split('.').pop().toUpperCase() : '')
-  };
-}
+export { isClientBadLessonTitle, buildClientLessonAudit } from './lessonAuditUtils';
+import { isClientBadLessonTitle, buildClientLessonAudit } from './lessonAuditUtils';
 
 export function useSuperAdminLessonAudit(courseId, modules = [], currentUser = null) {
   const isSuperAdmin = currentUser?.role === 'superadmin';
@@ -133,26 +57,20 @@ export function useSuperAdminLessonAudit(courseId, modules = [], currentUser = n
     return () => window.removeEventListener('lesson-title-updated', onUpdated);
   }, [isSuperAdmin, fetchServerAudit]);
 
-  const { auditByLessonId, counts, filteredFlatLessons, unoptimizedItems } = useMemo(() => {
+  const { auditByLessonId, counts, filteredFlatLessons, unoptimizedItems, aiPendingItems } = useMemo(() => {
     const map = {};
     const totals = {
-      all: 0,
-      any_issue: 0,
-      unoptimized_video: 0,
-      bad_title: 0,
-      missing_description: 0,
-      missing_chapters: 0,
-      missing_thumbnail: 0
+      all: 0, any_issue: 0, unoptimized_video: 0, bad_title: 0,
+      missing_description: 0, missing_chapters: 0, missing_thumbnail: 0
     };
     const matchingList = [];
     const unoptList = [];
+    const aiList = [];
 
     if (!isSuperAdmin) {
       return {
-        auditByLessonId: map,
-        counts: totals,
-        filteredFlatLessons: matchingList,
-        unoptimizedItems: unoptList
+        auditByLessonId: map, counts: totals, filteredFlatLessons: matchingList,
+        unoptimizedItems: unoptList, aiPendingItems: aiList
       };
     }
 
@@ -173,6 +91,10 @@ export function useSuperAdminLessonAudit(courseId, modules = [], currentUser = n
         if (audit.missing_chapters) totals.missing_chapters += 1;
         if (audit.missing_thumbnail) totals.missing_thumbnail += 1;
 
+        if (audit.bad_title || audit.missing_description || audit.missing_chapters) {
+          aiList.push({ mod, lesson, audit });
+        }
+
         if (activeFilter !== 'all' && audit[activeFilter]) {
           matchingList.push({ mod, lesson, audit });
         }
@@ -180,10 +102,8 @@ export function useSuperAdminLessonAudit(courseId, modules = [], currentUser = n
     }
 
     return {
-      auditByLessonId: map,
-      counts: totals,
-      filteredFlatLessons: matchingList,
-      unoptimizedItems: unoptList
+      auditByLessonId: map, counts: totals, filteredFlatLessons: matchingList,
+      unoptimizedItems: unoptList, aiPendingItems: aiList
     };
   }, [isSuperAdmin, modules, serverLessonsMap, activeFilter]);
 
@@ -197,15 +117,8 @@ export function useSuperAdminLessonAudit(courseId, modules = [], currentUser = n
   );
 
   return {
-    isSuperAdmin,
-    activeFilter,
-    setActiveFilter,
-    auditByLessonId,
-    counts,
-    filteredFlatLessons,
-    unoptimizedItems,
-    matchesFilter,
-    refreshAudit: fetchServerAudit
+    isSuperAdmin, activeFilter, setActiveFilter, auditByLessonId, counts,
+    filteredFlatLessons, unoptimizedItems, aiPendingItems, matchesFilter, refreshAudit: fetchServerAudit
   };
 }
 
@@ -262,18 +175,41 @@ const FILTER_BUTTONS = [
 
 export default function SuperAdminLessonAuditFilterBar({
   isSuperAdmin,
+  courseId,
   activeFilter,
   onSelectFilter,
   counts,
   filteredFlatLessons = [],
   unoptimizedItems = [],
+  aiPendingItems = [],
   onRefreshAudit,
   activeLessonId,
   onSelectLesson
 }) {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchAiModalOpen, setBatchAiModalOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('area_de_membros_superadmin_audit_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('area_de_membros_superadmin_audit_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   if (!isSuperAdmin) return null;
+
+  const isAiSpecificFilter = ['bad_title', 'missing_description', 'missing_chapters'].includes(activeFilter);
+  const effectiveAiItems = isAiSpecificFilter && filteredFlatLessons.length > 0 ? filteredFlatLessons : aiPendingItems;
 
   const handleJumpToNext = () => {
     if (!filteredFlatLessons.length || !onSelectLesson) return;
@@ -292,63 +228,46 @@ export default function SuperAdminLessonAuditFilterBar({
       <div
         data-testid="superadmin-lesson-audit-filter-bar"
         style={{
-          padding: '12px',
-          borderRadius: '14px',
+          padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px',
           background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(9, 13, 24, 0.92) 100%)',
-          border: '1px solid rgba(234, 179, 8, 0.28)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px'
+          border: '1px solid rgba(234, 179, 8, 0.28)'
         }}
       >
-        {/* Cabeçalho do Filtro Super Admin */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '8px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {/* Cabeçalho do Filtro Super Admin (Retrátil) */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <div
+            onClick={toggleCollapse}
+            data-testid="superadmin-audit-toggle-collapse-btn"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}
+            title={isCollapsed ? 'Clique para expandir filtros Super Admin' : 'Clique para recolher filtros Super Admin'}
+          >
             <Filter size={13} color="#facc15" />
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: '#facc15'
-              }}
-            >
-              Filtros Super Admin
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#facc15' }}>
+              Filtros Super Admin {counts?.any_issue > 0 && `(${counts.any_issue})`}
             </span>
+            {isCollapsed ? <ChevronDown size={13} color="#facc15" /> : <ChevronUp size={13} color="#facc15" />}
           </div>
 
-          {activeFilter !== 'all' && (
-            <button
-              type="button"
-              onClick={() => onSelectFilter('all')}
-              data-testid="superadmin-filter-reset-btn"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#94a3b8',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px 4px'
-              }}
-            >
-              <RotateCcw size={11} />
-              <span>Mostrar Todas ({counts.all})</span>
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {activeFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => onSelectFilter('all')}
+                data-testid="superadmin-filter-reset-btn"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600,
+                  color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px'
+                }}
+              >
+                <RotateCcw size={11} />
+                <span>Reset ({counts.all})</span>
+              </button>
+            )}
+          </div>
         </div>
 
+        {!isCollapsed && (
+          <>
         {/* Botão de Fila de Otimização Automática 1 a 1 */}
         {counts?.unoptimized_video > 0 && (
           <button
@@ -356,24 +275,32 @@ export default function SuperAdminLessonAuditFilterBar({
             onClick={() => setBatchModalOpen(true)}
             data-testid="superadmin-open-batch-opt-modal-btn"
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '7px',
-              padding: '8px 12px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              border: '1px solid rgba(234, 179, 8, 0.65)',
-              background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
-              color: '#0f172a',
-              boxShadow: '0 3px 12px rgba(234, 179, 8, 0.25)'
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+              padding: '8px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer',
+              border: '1px solid rgba(234, 179, 8, 0.65)', background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
+              color: '#0f172a', boxShadow: '0 3px 12px rgba(234, 179, 8, 0.25)'
             }}
           >
             <Zap size={14} />
             <span>Otimizar Aulas em Fila ({counts.unoptimized_video})</span>
+          </button>
+        )}
+
+        {/* Botão de Fila Automática de IA 1 a 1 (Sem Nome IA, Sem Descrição IA, Sem Capítulos IA) */}
+        {aiPendingItems.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setBatchAiModalOpen(true)}
+            data-testid="superadmin-open-batch-ai-modal-btn"
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+              padding: '8px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer',
+              border: '1px solid rgba(192, 132, 252, 0.6)', background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
+              color: '#ffffff', boxShadow: '0 3px 12px rgba(168, 85, 247, 0.28)'
+            }}
+          >
+            <Sparkles size={14} />
+            <span>Corrigir Pendências de IA em Fila ({effectiveAiItems.length})</span>
           </button>
         )}
 
@@ -479,13 +406,24 @@ export default function SuperAdminLessonAuditFilterBar({
             )}
           </div>
         )}
-      </div>
+
+          </>
+        )}      </div>
 
       {/* Popup Modal de Fila de Otimização de 1 em 1 */}
       <BatchVideoOptimizationModal
         isOpen={batchModalOpen}
         onClose={() => setBatchModalOpen(false)}
         unoptimizedItems={unoptimizedItems}
+        onQueueUpdated={onRefreshAudit}
+      />
+
+      {/* Popup Modal de Fila Automática de IA (1 em 1) */}
+      <BatchAiFixModal
+        isOpen={batchAiModalOpen}
+        onClose={() => setBatchAiModalOpen(false)}
+        courseId={courseId}
+        aiPendingItems={effectiveAiItems}
         onQueueUpdated={onRefreshAudit}
       />
     </>

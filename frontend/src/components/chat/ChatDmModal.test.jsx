@@ -374,4 +374,108 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
     expect(screen.queryByText('[📍 Apresente-se](internal://tab/introductions)')).not.toBeInTheDocument();
     expect(screen.queryByText('[📚 Astrowake](internal://course/3)')).not.toBeInTheDocument();
   });
+
+  it('envia mensagem com sucesso pelo ChatDmModal, limpa o campo de texto e adiciona a mensagem a tela', async () => {
+    const mockCreatedMsg = {
+      id: 555,
+      channel_type: 'dm',
+      recipient_id: 2,
+      message: 'Mensagem enviada com sucesso teste',
+      created_at: '2026-10-31T12:00:00Z',
+      user: { id: 1, name: 'Aryaraj' },
+    };
+
+    global.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/messages/2')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      if (url.includes('/api/v1/chat/messages') && opts?.method === 'POST') {
+        return Promise.resolve({ ok: true, json: async () => mockCreatedMsg });
+      }
+      if (url.includes('/conversations')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+          targetContact={mockContact}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-message-textarea')).toBeInTheDocument();
+    });
+
+    const textarea = screen.getByTestId('chat-message-textarea');
+    fireEvent.change(textarea, { target: { value: 'Mensagem enviada com sucesso teste' } });
+    expect(textarea.value).toBe('Mensagem enviada com sucesso teste');
+
+    const sendBtn = screen.getByTestId('chat-send-button');
+    fireEvent.click(sendBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/chat/messages',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('Mensagem enviada com sucesso teste'),
+        })
+      );
+      expect(screen.getByText('Mensagem enviada com sucesso teste')).toBeInTheDocument();
+      expect(textarea.value).toBe('');
+    });
+  });
+
+  it('recebe mensagem em tempo real via evento dm_updated do WebSocket e atualiza a conversa sem F5', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/messages/2')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      if (url.includes('/conversations')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+          targetContact={mockContact}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma mensagem nesta conversa.')).toBeInTheDocument();
+    });
+
+    // Dispara evento de WebSocket recebido
+    const wsDmPayload = {
+      sender_id: 2,
+      recipient_id: 1,
+      message: {
+        id: 777,
+        channel_type: 'dm',
+        message: 'Recebida em tempo real via WebSocket!',
+        created_at: new Date().toISOString(),
+        user: { id: 2, name: 'João Aluno' },
+      },
+    };
+
+    window.dispatchEvent(new CustomEvent('dm_updated', { detail: wsDmPayload }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Recebida em tempo real via WebSocket!')).toBeInTheDocument();
+    });
+  });
 });

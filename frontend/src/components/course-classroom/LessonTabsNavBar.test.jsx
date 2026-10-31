@@ -138,4 +138,34 @@ describe('LessonTabsNavBar Component', () => {
     );
     expect(screen.queryByTestId('badge-count-attachments')).not.toBeInTheDocument();
   });
+
+  it('Item 5 - exibe badges numéricos dinâmicos para Minhas Anotações e Comentários quando > 0', () => {
+    const { rerender } = render(
+      <LessonTabsNavBar
+        activeTab="overview"
+        onTabChange={() => {}}
+        attachmentsCount={2}
+        notesCount={4}
+        commentsCount={7}
+      />
+    );
+
+    expect(screen.getByTestId('badge-count-attachments')).toHaveTextContent('2');
+    expect(screen.getByTestId('badge-count-notes')).toHaveTextContent('4');
+    expect(screen.getByTestId('badge-count-comments')).toHaveTextContent('7');
+
+    rerender(
+      <LessonTabsNavBar
+        activeTab="overview"
+        onTabChange={() => {}}
+        attachmentsCount={0}
+        notesCount={0}
+        commentsCount={0}
+      />
+    );
+
+    expect(screen.queryByTestId('badge-count-attachments')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('badge-count-notes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('badge-count-comments')).not.toBeInTheDocument();
+  });
 });

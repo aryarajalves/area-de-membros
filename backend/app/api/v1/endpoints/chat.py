@@ -33,6 +33,7 @@ from app.schemas.chat import (
     ChatUnreadSummaryResponse,
 )
 from app.services.chat_ws_manager import chat_manager
+from app.services.chat_gamification import get_users_gamification_map, build_chat_user
 from app.services.chat_media_service import process_chat_media_upload, CHAT_MEDIA_DIR
 from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history
 from app.services.chat_encryption_service import encrypt_dm_message, decrypt_dm_message
@@ -460,16 +461,14 @@ def send_chat_message(
         )
 
         if payload.channel_type == "dm" and payload.recipient_id:
-            chat_manager.send_to_user_sync(
-                payload.recipient_id,
-                "new_dm",
-                {
-                    "recipient_id": payload.recipient_id,
-                    "sender_id": current_user.id,
-                    "message_id": new_msg.id,
-                    "message": resp.model_dump(mode="json"),
-                }
-            )
+            dm_payload = {
+                "recipient_id": payload.recipient_id,
+                "sender_id": current_user.id,
+                "message_id": new_msg.id,
+                "message": resp.model_dump(mode="json"),
+            }
+            chat_manager.send_to_user_sync(payload.recipient_id, "new_dm", dm_payload)
+            chat_manager.send_to_user_sync(current_user.id, "dm_sent", dm_payload)
 
 
         return resp

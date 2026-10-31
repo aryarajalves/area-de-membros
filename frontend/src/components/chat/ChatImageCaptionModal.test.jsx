@@ -68,4 +68,18 @@ describe('ChatImageCaptionModal Component', () => {
 
     expect(handleCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('nao exibe nome da imagem nem tamanho em KB no modal para visual limpo', () => {
+    render(
+      <ChatImageCaptionModal
+        imageFile={fakeFile}
+        onConfirmSend={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText(/screenshot\.png/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/KB/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/MB/i)).not.toBeInTheDocument();
+  });
 });

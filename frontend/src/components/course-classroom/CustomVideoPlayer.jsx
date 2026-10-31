@@ -4,6 +4,7 @@ import VideoControls from './VideoControls';
 import VideoChaptersDrawer from './VideoChaptersDrawer';
 import VideoPlayerOverlays from './VideoPlayerOverlays';
 import VideoWatermark from './VideoWatermark';
+import NextLessonAutoPlayOverlay from './NextLessonAutoPlayOverlay';
 import usePlayerKeyboardShortcuts from './usePlayerKeyboardShortcuts';
 import { savePlaybackRateApi } from '../../services/playerPreferencesApi';
 
@@ -17,7 +18,11 @@ export default function CustomVideoPlayer({
   chapters = EMPTY_CHAPTERS,
   isTheaterMode = false,
   onToggleTheaterMode,
-  userPlaybackRate = null
+  userPlaybackRate = null,
+  watermarkEnabled = true,
+  nextLesson = null,
+  onPlayNextLesson = null,
+  autoPlay = false
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -47,6 +52,7 @@ export default function CustomVideoPlayer({
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
   const [hasError, setHasError] = useState(false);
   const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
+  const [showAutoPlayOverlay, setShowAutoPlayOverlay] = useState(false);
 
   const hideControlsTimeoutRef = useRef(null);
 
@@ -83,6 +89,7 @@ export default function CustomVideoPlayer({
     setHasError(false);
     setCurrentTime(0);
     setDuration(fallbackDuration || 0);
+    setShowAutoPlayOverlay(false);
 
     // Timeout de prontidão rápida: se a conexão externa demorar a disparar canplay,
     // não deixa o usuário bloqueado no spinner "Carregando aula..."
@@ -114,6 +121,9 @@ export default function CustomVideoPlayer({
         setDuration(vidDuration);
       } else if (fallbackDuration > 0) {
         setDuration(fallbackDuration);
+      }
+      if (autoPlay) {
+        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
       }
     }
   };
@@ -355,6 +365,7 @@ export default function CustomVideoPlayer({
         src={src}
         preload="auto"
         playsInline
+        autoPlay={autoPlay}
         poster={poster || undefined}
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
@@ -399,6 +410,9 @@ export default function CustomVideoPlayer({
         onEnded={() => {
           setIsPlaying(false);
           setIsBuffering(false);
+          if (nextLesson && onPlayNextLesson) {
+            setShowAutoPlayOverlay(true);
+          }
         }}
         onError={() => {
           setIsLoading(false);
@@ -413,7 +427,19 @@ export default function CustomVideoPlayer({
       </video>
 
       {/* Marca d'Água Dinâmica Anti-Pirataria Flutuante */}
-      <VideoWatermark />
+      {watermarkEnabled !== false && <VideoWatermark />}
+
+      {/* Card Regressivo de Próxima Aula estilo Netflix */}
+      {showAutoPlayOverlay && nextLesson && (
+        <NextLessonAutoPlayOverlay
+          nextLesson={nextLesson}
+          onPlayNext={() => {
+            setShowAutoPlayOverlay(false);
+            onPlayNextLesson?.();
+          }}
+          onCancel={() => setShowAutoPlayOverlay(false)}
+        />
+      )}
 
       {/* Overlays do Player (Poster de transição, Loading, Buffering, Play central e Erro) */}
       <VideoPlayerOverlays

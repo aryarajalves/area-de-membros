@@ -24,6 +24,7 @@ class Course(Base):
     item_type = Column(String, default="course", nullable=True)  # 'course' ou 'tool'
     tool_url = Column(String, nullable=True)
     bundle_title = Column(String, nullable=True)
+    watermark_enabled = Column(Boolean, default=True, nullable=False)
     certificate_enabled = Column(Boolean, default=True, nullable=False)
     workload_hours = Column(Integer, default=10, nullable=True)
     instructor_name = Column(String, nullable=True)

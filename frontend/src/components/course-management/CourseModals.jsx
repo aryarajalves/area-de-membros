@@ -39,6 +39,8 @@ export function CourseFormModal({
   setBundledCourseIds,
   bundleTitle = '',
   setBundleTitle,
+  watermarkEnabled = true,
+  setWatermarkEnabled,
   availableCourses = [],
   bgColor = '#090d16',
   uploading,
@@ -149,6 +151,8 @@ export function CourseFormModal({
               setTitle={setTitle}
               description={description}
               setDescription={setDescription}
+              watermarkEnabled={watermarkEnabled}
+              setWatermarkEnabled={setWatermarkEnabled}
               editingCourse={editingCourse}
               textColor={textColor}
               isLightBg={isLightBg}

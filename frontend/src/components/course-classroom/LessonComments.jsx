@@ -53,7 +53,9 @@ export default function LessonComments({
       );
       if (res.ok) {
         const data = await res.json();
-        setComments(Array.isArray(data) ? data : []);
+        const loadedComments = Array.isArray(data) ? data : [];
+        setComments(loadedComments);
+        window.dispatchEvent(new CustomEvent('lesson-comments-count-updated', { detail: { lessonId, count: loadedComments.length } }));
       } else {
         const err = await res.json();
         throw new Error(err.detail || 'Erro ao carregar comentários.');

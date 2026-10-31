@@ -8,6 +8,9 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 ## ✨ Principais Funcionalidades
 
 ### 🚀 Novidades da Versão v1.2.0 (Fila de Otimização 1 a 1, Drip por Aula, Certificados e Gamificação Avançada)
+- **💬 DMs em Tempo Real e Correção de Envio:**
+  - Corrigido erro 500 no envio de mensagens (import de `get_users_gamification_map`), que impedia limpar o input e exibir a mensagem. Remetente e destinatário recebem `dm_sent`/`new_dm` via WebSocket e o `ChatDmModal` atualiza a conversa sem F5. Pré-visualização de imagem sem nome/tamanho do arquivo.
+- **🎓 Sala de Aula:** busca e filtros na sidebar, contadores nas abas, auto-play estilo Netflix, modo teatro, acordeão exclusivo de módulos (apenas um aberto por vez), remoção do duplo scroll ao abrir aula e liberação de cursos em tempo real via WebSocket (`courses_access_updated`).
 - **⚡ Fila Automática de Otimização de Vídeos 1 a 1 (`BatchVideoOptimizationModal`):**
   - Modal protegido contra fechamento acidental que enfileira todas as aulas não otimizadas do curso, permite selecionar/desmarcar aulas individualmente, exibe o progresso real de download/conversão/upload e conta com botão para parar a fila a qualquer momento.
 - **⏳ Liberação Programada por Aula Individual (7 Dias da Garantia / Drip Content):**

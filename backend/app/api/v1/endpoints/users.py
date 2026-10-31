@@ -16,6 +16,7 @@ from app.core.security import (
 from app.models.user import User, Invite, PasswordResetToken, RegistrationVerification
 from app.models.course import UserCourse
 from app.services.course_bundle_service import grant_bundle_access_for_user
+from app.services.course_access import notify_user_course_access_updated
 from app.services.email import send_verification_email
 from app.schemas.user import (
     UserLogin, Token, CourseAccessItem, UserResponse, UserUpdate, UserManualCreate,
@@ -403,6 +404,8 @@ def update_user(
     db.refresh(target_user)
 
     updated_ucs = db.query(UserCourse).filter(UserCourse.user_id == user_id).all()
+    if user_update.course_access is not None or user_update.course_ids is not None:
+        notify_user_course_access_updated(user_id, [uc.course_id for uc in updated_ucs])
     res = UserResponse.model_validate(target_user)
     res.course_ids = [uc.course_id for uc in updated_ucs]
     res.course_access = [
