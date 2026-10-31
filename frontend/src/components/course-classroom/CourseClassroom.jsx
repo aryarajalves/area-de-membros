@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, FolderPlus, FolderUp, X } from 'lucide-react';
+import { ArrowLeft, Plus, FolderPlus, FolderUp, X, Brain } from 'lucide-react';
 import { useCourseContent } from './useCourseContent';
 import LessonPlayer from './LessonPlayer';
 import LessonTextViewer from './LessonTextViewer';
@@ -10,6 +10,7 @@ import { ModuleModal, LessonModal, ConfirmDeleteModal } from './ModuleLessonModa
 import BatchCourseImportModal from './BatchCourseImportModal';
 import BatchLessonThumbnailModal from './BatchLessonThumbnailModal';
 import BatchLessonOrderModal from './BatchLessonOrderModal';
+import BatchMindmapModal from './BatchMindmapModal';
 import CourseUpsellManager from './CourseUpsellManager';
 import CourseCertificateManager from './CourseCertificateManager';
 import { scrollToClassroomSection } from './lessonUtils';
@@ -35,8 +36,8 @@ export default function CourseClassroom({
 
   const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
   useEffect(() => {
-    if (activeLesson?.module_id && selectedModuleId && activeLesson.module_id !== selectedModuleId) setSelectedModuleId(activeLesson.module_id);
-  }, [activeLesson?.id, activeLesson?.module_id, selectedModuleId]);
+    if (activeLesson?.module_id) setSelectedModuleId(activeLesson.module_id);
+  }, [activeLesson?.id, activeLesson?.module_id]);
 
   useEffect(() => {
     if (!modules || modules.length === 0) return;
@@ -95,11 +96,16 @@ export default function CourseClassroom({
   const [batchThumbnailModule, setBatchThumbnailModule] = useState(null);
   const [batchOrderOpen, setBatchOrderOpen] = useState(false);
   const [batchOrderModule, setBatchOrderModule] = useState(null);
+  const [batchMindmapOpen, setBatchMindmapOpen] = useState(false);
+  const [batchMindmapModule, setBatchMindmapModule] = useState(null);
 
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, type: null, id: null, parentId: null, title: '', message: '' });
 
   const handleSelectModule = (mod) => {
     setSelectedModuleId(mod.id);
+    if (mod.lessons?.length > 0 && activeLesson?.module_id !== mod.id) {
+      setActiveLesson(mod.lessons[0]);
+    }
   };
 
   const handleStartCourse = () => {
@@ -152,14 +158,12 @@ export default function CourseClassroom({
   // Confirmação de exclusão unificada
   const handleConfirmDelete = async () => {
     if (deleteModalState.type === 'module') {
-      const ok = await handleDeleteModule(deleteModalState.id);
-      if (ok) {
+      if (await handleDeleteModule(deleteModalState.id)) {
         if (selectedModuleId === deleteModalState.id) setSelectedModuleId(null);
         setDeleteModalState({ isOpen: false });
       }
     } else if (deleteModalState.type === 'lesson') {
-      const ok = await handleDeleteLesson(deleteModalState.parentId, deleteModalState.id);
-      if (ok) setDeleteModalState({ isOpen: false });
+      if (await handleDeleteLesson(deleteModalState.parentId, deleteModalState.id)) setDeleteModalState({ isOpen: false });
     }
   };
 
@@ -179,6 +183,7 @@ export default function CourseClassroom({
       onOpenEditLesson={handleOpenEditLesson} onPromptDeleteLesson={handlePromptDeleteLesson}
       onOpenBatchThumbnail={(mod) => { setBatchThumbnailModule(mod); setBatchThumbnailOpen(true); }}
       onOpenBatchOrder={(mod) => { setBatchOrderModule(mod); setBatchOrderOpen(true); }}
+      onOpenBatchMindmap={(mod) => { setBatchMindmapModule(mod); setBatchMindmapOpen(true); }}
     />
   );
 
@@ -225,6 +230,16 @@ export default function CourseClassroom({
 
         {isManager && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => { setBatchMindmapModule(null); setBatchMindmapOpen(true); }}
+              data-testid="open-batch-mindmaps-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 16px', fontSize: '13px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.4)', color: '#c084fc' }}
+            >
+              <Brain size={16} />
+              <span>Mapas Mentais (IA)</span>
+            </button>
             <button
               type="button"
               className="primary-btn"
@@ -427,19 +442,14 @@ export default function CourseClassroom({
         isOpen={moduleModalOpen} onClose={() => setModuleModalOpen(false)} editingModule={editingModule}
         courseId={course?.id || initialCourse.id} onModuleUpdated={fetchCourseData} loading={actionLoading}
         bgColor={bgColor} onUploadThumbnail={uploadLessonThumbnail}
-        onSave={async (payload) => {
-          const ok = await handleSaveModule(editingModule?.id, payload);
-          if (ok) setModuleModalOpen(false);
-        }}
+        onSave={async (payload) => { if (await handleSaveModule(editingModule?.id, payload)) setModuleModalOpen(false); }}
       />
-
       <LessonModal
         isOpen={lessonModalOpen} onClose={() => setLessonModalOpen(false)} editingLesson={editingLesson}
         moduleTitle={targetModuleTitle} courseId={course?.id || initialCourse.id} moduleId={targetModuleId}
         loading={actionLoading} bgColor={bgColor} onUploadVideo={uploadLessonVideo} onUploadThumbnail={uploadLessonThumbnail}
         onSave={async (payload) => {
-          const ok = await handleSaveLesson(targetModuleId, editingLesson?.id, payload);
-          if (ok) {
+          if (await handleSaveLesson(targetModuleId, editingLesson?.id, payload)) {
             setSelectedModuleId(targetModuleId);
             setLessonModalOpen(false);
           }
@@ -458,7 +468,7 @@ export default function CourseClassroom({
         />
       )}
 
-      {/* Modais de Lote: Capas e Ordem */}
+      {/* Modais de Lote: Capas, Ordem e Mapas Mentais (IA) */}
       <BatchLessonThumbnailModal
         isOpen={batchThumbnailOpen} onClose={() => { setBatchThumbnailOpen(false); setBatchThumbnailModule(null); }}
         courseId={course?.id || initialCourse.id} module={batchThumbnailModule}
@@ -469,19 +479,18 @@ export default function CourseClassroom({
         courseId={course?.id || initialCourse.id} module={batchOrderModule}
         onSuccess={fetchCourseData} isLightBg={isLightBg}
       />
-
-      {/* Gerenciador e Emissão de Certificados de Conclusão */}
-      <CourseCertificateManager isManager={isManager}
-        courseId={course?.id || initialCourse.id}
-        completedCount={completedLessonIds?.length || 0}
-        totalCount={totalLessonsCount || 0}
+      <BatchMindmapModal
+        isOpen={batchMindmapOpen} onClose={() => { setBatchMindmapOpen(false); setBatchMindmapModule(null); }}
+        courseId={course?.id || initialCourse.id} module={batchMindmapModule} modules={modules}
+        onSuccess={fetchCourseData} isLightBg={isLightBg}
       />
 
-      {/* Gerenciador de Anúncios e Ofertas de Upsell no Curso */}
-      <CourseUpsellManager
-        courseId={course?.id || initialCourse.id}
-        completedCount={completedLessonIds?.length || 0}
-        totalCount={totalLessonsCount || 0}
+      {/* Gerenciadores: Certificados e Upsell */}
+      <CourseCertificateManager isManager={isManager} courseId={course?.id || initialCourse.id}
+        completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0}
+      />
+      <CourseUpsellManager courseId={course?.id || initialCourse.id}
+        completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0}
       />
     </div>
   );

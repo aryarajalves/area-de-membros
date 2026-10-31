@@ -8,6 +8,11 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 ## ✨ Principais Funcionalidades
 
 ### 🚀 Novidades da Versão v1.2.0 (Fila de Otimização 1 a 1, Drip por Aula, Certificados e Gamificação Avançada)
+- **🧠 Mapas Mentais com IA (Dark Premium HTML & Mermaid.js Interativo):**
+  - Geração automática de mapas conceituais e diagramas mentais a partir da transcrição da aula via OpenAI (`gpt-4o-mini`).
+  - Template HTML5 autônomo em visual *Dark Premium Neon* com Mermaid.js interativo (controles de zoom in/out, reset de visualização, navegação panorâmica e sumário de tópicos).
+  - Abertura em nova aba com `target="_blank"` e `Content-Disposition: inline` diretamente na aba de **Materiais Complementares**.
+  - Botão individual por aula (`🧠 Gerar Mapa Mental (IA)`) e gerador em lote por módulo ou curso inteiro via modal dedicado (`BatchMindmapModal`), com visão geral de aulas transcritas e contadores em tempo real.
 - **💬 DMs em Tempo Real e Correção de Envio:**
   - Corrigido erro 500 no envio de mensagens (import de `get_users_gamification_map`), que impedia limpar o input e exibir a mensagem. Remetente e destinatário recebem `dm_sent`/`new_dm` via WebSocket e o `ChatDmModal` atualiza a conversa sem F5. Pré-visualização de imagem sem nome/tamanho do arquivo.
 - **🎓 Sala de Aula:** busca e filtros na sidebar, contadores nas abas, auto-play estilo Netflix, modo teatro, acordeão exclusivo de módulos (apenas um aberto por vez), remoção do duplo scroll ao abrir aula e liberação de cursos em tempo real via WebSocket (`courses_access_updated`).

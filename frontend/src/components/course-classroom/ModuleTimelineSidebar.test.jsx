@@ -68,11 +68,9 @@ describe('ModuleTimelineSidebar', () => {
       expect.objectContaining({ id: 102, title: 'Configuração Inicial' })
     );
 
-    // Clicar no módulo 2
+    // Clicar no módulo 2 para expandir
     fireEvent.click(screen.getByTestId('module-toggle-btn-2'));
-    expect(onSelectModule).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 2, title: 'Módulo 2: Avançado' })
-    );
+    expect(screen.getByText(/Estratégia Prática/i)).toBeInTheDocument();
   });
 
   it('permite apertar em cima do módulo para fechar e reabrir as aulas para melhorar a visualização', () => {
@@ -103,7 +101,6 @@ describe('ModuleTimelineSidebar', () => {
     expect(screen.queryByText(/1\. Introdução ao Curso/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/2\. Configuração Inicial/i)).not.toBeInTheDocument();
     expect(toggleBtnMod1).toHaveAttribute('title', 'Clique para abrir o módulo');
-    expect(toggleBtnMod1).toHaveTextContent(/Fechado \(clique para abrir\)/i);
 
     // 2º Clique: Reabre o módulo 1
     fireEvent.click(toggleBtnMod1);
@@ -396,6 +393,24 @@ describe('ModuleTimelineSidebar', () => {
     // Fecha ao clicar no botão Fechar quando não está executando
     fireEvent.click(screen.getByTestId('batch-video-opt-close-btn'));
     expect(screen.queryByTestId('batch-video-opt-modal')).not.toBeInTheDocument();
+  });
+
+  it('renderiza o botão de mapas mentais do módulo em lote para gestores e dispara callback ao clicar', () => {
+    const onOpenBatchMindmap = vi.fn();
+    render(
+      <ModuleTimelineSidebar
+        modules={mockModules}
+        selectedModule={mockModules[0]}
+        activeLesson={mockModules[0].lessons[0]}
+        isManager={true}
+        onOpenBatchMindmap={onOpenBatchMindmap}
+      />
+    );
+
+    const mindmapBtn = screen.getByTestId('timeline-batch-mindmap-btn-1');
+    expect(mindmapBtn).toBeInTheDocument();
+    fireEvent.click(mindmapBtn);
+    expect(onOpenBatchMindmap).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 });
 

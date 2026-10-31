@@ -443,4 +443,6 @@ def get_attachment(filename: str):
     filepath = os.path.join(ATTACHMENTS_DIR, safe_filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Arquivo anexo não encontrado.")
+    if safe_filename.lower().endswith('.html'):
+        return FileResponse(filepath, media_type='text/html', headers={'Content-Disposition': 'inline'})
     return FileResponse(filepath, filename=safe_filename)

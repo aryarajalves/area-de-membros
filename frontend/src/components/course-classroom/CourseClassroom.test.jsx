@@ -465,5 +465,64 @@ describe('CourseClassroom Component', () => {
       expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 02: Mindset e Estratégia');
     });
   });
+
+  it('permite alternar entre módulos diferentes sem reverter para o módulo anterior', async () => {
+    const multiModuleData = {
+      ...mockCourseData,
+      modules: [
+        ...mockCourseData.modules,
+        {
+          id: 20,
+          course_id: 1,
+          title: 'Módulo 2: O Impacto Prático',
+          order_index: 2,
+          lessons: [
+            {
+              id: 201,
+              module_id: 20,
+              title: 'Aula 2.1: Prática e Execução',
+              description: 'Aula do módulo 2',
+              video_type: 'url',
+              video_url: 'https://youtube.com/watch?v=abc',
+              duration: '10:00',
+              order_index: 1
+            }
+          ]
+        }
+      ]
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => multiModuleData,
+    });
+
+    render(
+      <ToastProvider>
+        <CourseClassroom
+          course={{ id: 1, title: 'Curso de Especialização' }}
+          currentUser={{ role: 'aluno' }}
+          onBack={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('netflix-module-card-10')).toBeInTheDocument();
+      expect(screen.getByTestId('netflix-module-card-20')).toBeInTheDocument();
+    });
+
+    // 1. Clica no Módulo 1 (id: 10)
+    fireEvent.click(screen.getByTestId('netflix-module-card-10'));
+    await waitFor(() => {
+      expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 01: Boas-vindas');
+    });
+
+    // 2. Clica no Módulo 2 (id: 20)
+    fireEvent.click(screen.getByTestId('netflix-module-card-20'));
+    await waitFor(() => {
+      expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Aula 2.1: Prática e Execução');
+    });
+  });
 });
 

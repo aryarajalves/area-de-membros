@@ -62,7 +62,7 @@ describe('LessonAttachmentsList Component', () => {
     expect(screen.queryByTestId('delete-attachment-btn-1')).not.toBeInTheDocument();
   });
 
-  it('renders manager toolbar with upload button when isManager is true', () => {
+  it('renders manager toolbar with upload button and mindmap button when isManager is true', () => {
     render(
       <ToastProvider>
         <LessonAttachmentsList
@@ -77,9 +77,87 @@ describe('LessonAttachmentsList Component', () => {
 
     expect(screen.getByTestId('manager-attachments-toolbar')).toBeInTheDocument();
     expect(screen.getByTestId('direct-upload-attachment-btn')).toBeInTheDocument();
-    expect(screen.getByText(/\+ Anexar Arquivo.* do PC/i)).toBeInTheDocument();
+    expect(screen.getByTestId('generate-mindmap-btn')).toBeInTheDocument();
+    expect(screen.getByText(/Gerar Mapa Mental \(IA\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+ Anexar Arquivo/i)).toBeInTheDocument();
     expect(screen.getByTestId('direct-attachment-file-input')).toHaveAttribute('multiple');
     expect(screen.getByTestId('delete-attachment-btn-1')).toBeInTheDocument();
+  });
+
+  it('triggers AI mindmap generation on button click and adds attachment', async () => {
+    const onAttachmentAdded = vi.fn();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: 'Mapa Mental gerado com sucesso com IA!',
+        attachment: {
+          id: 55,
+          title: 'Mapa Mental - Aula 10 (IA).html',
+          file_url: 'https://b2.com/mindmap.html',
+          file_type: 'html',
+          file_size_bytes: 4096
+        }
+      })
+    });
+
+    render(
+      <ToastProvider>
+        <LessonAttachmentsList
+          attachments={mockList}
+          isManager={true}
+          courseId={1}
+          moduleId={2}
+          lessonId={10}
+          onAttachmentAdded={onAttachmentAdded}
+        />
+      </ToastProvider>
+    );
+
+    const mindmapBtn = screen.getByTestId('generate-mindmap-btn');
+    fireEvent.click(mindmapBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/courses/1/modules/2/lessons/10/mindmap',
+        expect.objectContaining({ method: 'POST' })
+      );
+      expect(onAttachmentAdded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 55,
+          title: 'Mapa Mental - Aula 10 (IA).html',
+          file_type: 'html'
+        })
+      );
+    });
+  });
+
+  it('renders mindmap HTML attachment with view in new tab button and without download attribute', () => {
+    const listWithMindmap = [
+      {
+        id: 77,
+        title: 'Mapa Mental - Energia de Aquário.html',
+        description: 'Mapa mental interativo gerado por IA',
+        file_url: 'https://b2.com/mapa_aquario.html',
+        file_type: 'html',
+        file_size_bytes: 8192
+      }
+    ];
+
+    render(
+      <ToastProvider>
+        <LessonAttachmentsList attachments={listWithMindmap} isManager={false} />
+      </ToastProvider>
+    );
+
+    expect(screen.getByText('Mapa Mental - Energia de Aquário.html')).toBeInTheDocument();
+    expect(screen.getByText('MAPA MENTAL IA')).toBeInTheDocument();
+
+    const viewBtn = screen.getByTestId('access-attachment-btn-77');
+    expect(viewBtn).toBeInTheDocument();
+    expect(viewBtn).toHaveAttribute('href', 'https://b2.com/mapa_aquario.html');
+    expect(viewBtn).toHaveAttribute('target', '_blank');
+    expect(viewBtn).not.toHaveAttribute('download');
+    expect(screen.getByText(/Visualizar Mapa Mental/i)).toBeInTheDocument();
   });
 
   it('handles direct upload from PC for admin and calls onAttachmentAdded', async () => {

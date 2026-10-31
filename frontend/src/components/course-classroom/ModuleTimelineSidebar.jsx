@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown, Lock, Clock, Trophy } from 'lucide-react';
+import { Plus, Edit2, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, ArrowUpDown, Lock, Clock, Trophy, Brain } from 'lucide-react';
 import { calculateModuleStats, calculateCourseStats } from './lessonUtils';
 import CourseSidebarUpsellCard from './CourseSidebarUpsellCard';
 import { fetchSidebarUpsellOffer } from '../course-management/courseUpsellApi';
@@ -28,7 +28,8 @@ export default function ModuleTimelineSidebar({
   onOpenEditLesson,
   onPromptDeleteLesson,
   onOpenBatchThumbnail,
-  onOpenBatchOrder
+  onOpenBatchOrder,
+  onOpenBatchMindmap
 }) {
   const [sidebarOffer, setSidebarOffer] = useState(sidebarUpsellOffer || null);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
@@ -388,6 +389,15 @@ export default function ModuleTimelineSidebar({
                       style={{ background: 'transparent', border: 'none', color: '#06b6d4', padding: '3px', cursor: 'pointer', display: 'flex' }}
                     >
                       <ArrowUpDown size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Gerar mapas mentais com IA para este módulo"
+                      onClick={(e) => { e.stopPropagation(); onOpenBatchMindmap?.(mod); }}
+                      data-testid={`timeline-batch-mindmap-btn-${mod.id}`}
+                      style={{ background: 'transparent', border: 'none', color: '#c084fc', padding: '3px', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <Brain size={13} />
                     </button>
                     <button
                       type="button"

@@ -362,7 +362,7 @@ async def generate_tutorial_ai_description(
         except Exception as exc:
             logger.error(f"[Tutorials AI] Erro no Whisper: {exc}")
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Falha na transcrição de áudio com OpenAI Whisper: {exc}"
             )
 
@@ -423,9 +423,12 @@ Retorne estritamente um objeto JSON válido no formato:
 
             if gpt_res.status_code != 200:
                 logger.error(f"[Tutorials AI] Erro OpenAI GPT: {gpt_res.text}")
+                msg = "Erro na API da OpenAI ao processar a descrição do tutorial."
+                if "credit_balance_exhausted" in gpt_res.text.lower() or "insufficient_quota" in gpt_res.text.lower():
+                    msg = "Saldo de créditos da OpenAI esgotado. Recarregue seus créditos na OpenAI (platform.openai.com) para utilizar a IA."
                 raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Erro na API da OpenAI ao processar a descrição do tutorial."
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=msg
                 )
 
             gpt_data = gpt_res.json()

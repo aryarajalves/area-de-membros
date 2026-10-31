@@ -276,7 +276,7 @@ class AITranscriptionService:
             except Exception:
                 msg = res.text
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Erro na API da OpenAI (Whisper): {msg}"
             )
 
@@ -427,7 +427,7 @@ Instruções para o "summary_html":
             except Exception:
                 msg = res.text
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Erro na API da OpenAI (Resumo GPT): {msg}"
             )
 
@@ -726,9 +726,12 @@ Retorne estritamente um objeto JSON válido:
 
         if res.status_code != 200:
             logger.error(f"[AI Transcription] Erro OpenAI ao gerar visão do módulo: {res.text}")
+            msg = "Erro na API da OpenAI ao gerar título e descrição do módulo."
+            if "credit_balance_exhausted" in res.text.lower() or "insufficient_quota" in res.text.lower():
+                msg = "Saldo de créditos da OpenAI esgotado. Recarregue seus créditos na OpenAI (platform.openai.com) para utilizar a IA."
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Erro na API da OpenAI ao gerar título e descrição do módulo."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg
             )
 
         data = res.json()
@@ -788,9 +791,12 @@ Retorne estritamente um objeto JSON válido:
 
         if res.status_code != 200:
             logger.error(f"[AI Transcription] Erro OpenAI ao gerar título e descrição da aula: {res.text}")
+            msg = "Erro na API da OpenAI ao gerar título e descrição da aula."
+            if "credit_balance_exhausted" in res.text.lower() or "insufficient_quota" in res.text.lower():
+                msg = "Saldo de créditos da OpenAI esgotado. Recarregue seus créditos na OpenAI (platform.openai.com) para utilizar a IA."
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Erro na API da OpenAI ao gerar título e descrição da aula."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg
             )
 
         data = res.json()
@@ -870,9 +876,12 @@ Retorne estritamente um objeto JSON válido:
 
         if res.status_code != 200:
             logger.error(f"[AI Course Description] Erro OpenAI ao gerar descrição do curso: {res.text}")
+            msg = "Erro na API da OpenAI ao gerar descrição do curso."
+            if "credit_balance_exhausted" in res.text.lower() or "insufficient_quota" in res.text.lower():
+                msg = "Saldo de créditos da OpenAI esgotado. Recarregue seus créditos na OpenAI (platform.openai.com) para utilizar a IA."
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Erro na API da OpenAI ao gerar descrição do curso."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg
             )
 
         data = res.json()

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Download, FileText, FileSpreadsheet, FileArchive, File, ExternalLink, Paperclip, Upload, Trash2, Loader2, Plus } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, FileArchive, File, ExternalLink, Paperclip, Upload, Trash2, Loader2, Plus, Brain, Sparkles } from 'lucide-react';
 import { formatFileSize, getFileIcon } from './LessonAttachmentsManager';
 import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackModals';
 import { useToast } from '../../context/ToastContext';
@@ -15,12 +15,33 @@ export default function LessonAttachmentsList({
   onAttachmentDeleted
 }) {
   const [uploading, setUploading] = useState(false);
+  const [generatingMindmap, setGeneratingMindmap] = useState(false);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, item: null });
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
+
+  const handleGenerateMindmap = async () => {
+    if (!courseId || !moduleId || !lessonId || generatingMindmap) return;
+    setGeneratingMindmap(true);
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/mindmap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || 'Não foi possível gerar o mapa mental com IA.');
+      if (data.attachment && onAttachmentAdded) onAttachmentAdded(data.attachment);
+      addToast(data.message || 'Mapa Mental gerado com sucesso com IA!', 'success');
+    } catch (err) {
+      addToast(err.message || 'Falha ao gerar mapa mental.', 'error');
+    } finally {
+      setGeneratingMindmap(false);
+    }
+  };
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -61,7 +82,6 @@ export default function LessonAttachmentsList({
       setUploadProgress({ current: i + 1, total: validFiles.length });
 
       try {
-        // 1. Upload do arquivo para o storage
         const formData = new FormData();
         formData.append('file', file);
 
@@ -78,11 +98,8 @@ export default function LessonAttachmentsList({
 
         const uploadData = await uploadRes.json();
         const resolvedFileUrl = uploadData.file_url || uploadData.attachment_url;
-        if (!resolvedFileUrl) {
-          throw new Error(`Servidor não retornou a URL para "${file.name}".`);
-        }
+        if (!resolvedFileUrl) throw new Error(`Servidor não retornou a URL para "${file.name}".`);
 
-        // 2. Vincular o anexo à aula via API
         if (courseId && moduleId && lessonId) {
           const payload = {
             title: uploadData.title || uploadData.file_name || file.name,
@@ -96,10 +113,7 @@ export default function LessonAttachmentsList({
             `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/attachments`,
             {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-              },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify(payload)
             }
           );
@@ -108,13 +122,9 @@ export default function LessonAttachmentsList({
             const err = await attachRes.json().catch(() => ({}));
             throw new Error(err.detail || `Falha ao vincular "${file.name}" à aula.`);
           }
-
           const createdAtt = await attachRes.json();
-          if (onAttachmentAdded) {
-            onAttachmentAdded(createdAtt);
-          }
+          if (onAttachmentAdded) onAttachmentAdded(createdAtt);
         }
-
         successCount++;
       } catch (err) {
         lastError = err.message;
@@ -199,7 +209,40 @@ export default function LessonAttachmentsList({
             </div>
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleGenerateMindmap}
+              disabled={generatingMindmap || uploading}
+              className="secondary-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                fontSize: '12.5px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                cursor: generatingMindmap ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                color: '#c084fc'
+              }}
+              data-testid="generate-mindmap-btn"
+              title="Gera automaticamente um mapa mental interativo a partir da transcrição desta aula"
+            >
+              {generatingMindmap ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Gerando Mapa...</span>
+                </>
+              ) : (
+                <>
+                  <Brain size={14} />
+                  <span>🧠 Gerar Mapa Mental (IA)</span>
+                </>
+              )}
+            </button>
+
             <input
               type="file"
               ref={fileInputRef}
@@ -212,7 +255,7 @@ export default function LessonAttachmentsList({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || generatingMindmap}
               className="primary-btn"
               style={{
                 display: 'inline-flex',
@@ -237,7 +280,7 @@ export default function LessonAttachmentsList({
               ) : (
                 <>
                   <Upload size={14} />
-                  <span>+ Anexar Arquivos do PC</span>
+                  <span>+ Anexar Arquivos</span>
                 </>
               )}
             </button>
@@ -286,122 +329,130 @@ export default function LessonAttachmentsList({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {attachments.map((att, idx) => (
-            <div
-              key={att.id || idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 16px',
-                backgroundColor: cardBg,
-                border: cardBorder,
-                borderRadius: '8px',
-                backdropFilter: isLightBg ? 'none' : 'blur(8px)',
-                transition: 'all 0.15s ease'
-              }}
-              data-testid={`attachment-item-${att.id || idx}`}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                <div style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '8px',
-                  backgroundColor: iconBg,
+          {attachments.map((att, idx) => {
+            const isHtml = att.file_type?.toLowerCase() === 'html' || (att.file_url || '').toLowerCase().includes('.html');
+            const isMindmap = isHtml || (att.title || '').toLowerCase().includes('mapa mental');
+
+            return (
+              <div
+                key={att.id || idx}
+                style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  {getFileIcon(att.file_type)}
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <h4 style={{
-                    fontSize: '13.5px',
-                    fontWeight: 600,
-                    color: titleColor,
-                    margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  backgroundColor: isMindmap ? (isLightBg ? '#faf5ff' : 'rgba(168, 85, 247, 0.05)') : cardBg,
+                  border: isMindmap ? '1px solid rgba(168, 85, 247, 0.35)' : cardBorder,
+                  borderRadius: '8px',
+                  backdropFilter: isLightBg ? 'none' : 'blur(8px)',
+                  transition: 'all 0.15s ease'
+                }}
+                data-testid={`attachment-item-${att.id || idx}`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    backgroundColor: isMindmap ? 'rgba(168, 85, 247, 0.15)' : iconBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                   }}>
-                    {att.title || 'Documento Anexo'}
-                  </h4>
-                  {att.description && (
-                    <p style={{
-                      fontSize: '12px',
-                      color: descColor,
-                      margin: '3px 0 0 0',
-                      lineHeight: 1.4,
-                      whiteSpace: 'pre-wrap'
-                    }} data-testid={`attachment-description-${att.id || idx}`}>
-                      {att.description}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <span style={{
-                      fontSize: '11px',
+                    {isMindmap ? <Brain size={20} color="#a855f7" /> : getFileIcon(att.file_type)}
+                  </div>
+
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{
+                      fontSize: '13.5px',
                       fontWeight: 600,
-                      textTransform: 'uppercase',
-                      color: tagColor,
-                      backgroundColor: tagBg,
-                      padding: '1px 6px',
-                      borderRadius: '4px'
+                      color: titleColor,
+                      margin: 0,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}>
-                      {att.file_type || 'Arquivo'}
-                    </span>
-                    {att.file_size_bytes > 0 && (
-                      <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                        {formatFileSize(att.file_size_bytes)}
-                      </span>
+                      {att.title || 'Documento Anexo'}
+                    </h4>
+                    {att.description && (
+                      <p style={{
+                        fontSize: '12px',
+                        color: descColor,
+                        margin: '3px 0 0 0',
+                        lineHeight: 1.4,
+                        whiteSpace: 'pre-wrap'
+                      }} data-testid={`attachment-description-${att.id || idx}`}>
+                        {att.description}
+                      </p>
                     )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        color: isMindmap ? '#a855f7' : tagColor,
+                        backgroundColor: isMindmap ? 'rgba(168, 85, 247, 0.12)' : tagBg,
+                        padding: '1px 6px',
+                        borderRadius: '4px'
+                      }}>
+                        {isMindmap ? 'MAPA MENTAL IA' : (att.file_type || 'Arquivo')}
+                      </span>
+                      {att.file_size_bytes > 0 && (
+                        <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                          {formatFileSize(att.file_size_bytes)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                <a
-                  href={att.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={att.title || 'documento'}
-                  className="primary-btn"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12px',
-                    padding: '7px 14px',
-                    textDecoration: 'none'
-                  }}
-                  data-testid={`access-attachment-btn-${att.id || idx}`}
-                >
-                  <ExternalLink size={14} />
-                  <span>Acessar</span>
-                </a>
-
-                {isManager && att.id && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete({ isOpen: true, item: att })}
-                    className="secondary-btn"
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <a
+                    href={att.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={isHtml ? undefined : (att.title || 'documento')}
+                    className="primary-btn"
                     style={{
-                      padding: '7px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       fontSize: '12px',
-                      color: '#ef4444',
-                      borderColor: 'rgba(239, 68, 68, 0.3)',
-                      backgroundColor: 'rgba(239, 68, 68, 0.08)'
+                      padding: '7px 14px',
+                      textDecoration: 'none',
+                      background: isMindmap ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : undefined,
+                      border: isMindmap ? '1px solid rgba(168, 85, 247, 0.5)' : undefined,
+                      boxShadow: isMindmap ? '0 2px 8px rgba(147, 51, 234, 0.3)' : undefined
                     }}
-                    title="Excluir documento anexo"
-                    data-testid={`delete-attachment-btn-${att.id}`}
+                    data-testid={`access-attachment-btn-${att.id || idx}`}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                    <ExternalLink size={14} />
+                    <span>{isMindmap ? 'Visualizar Mapa Mental ↗' : (isHtml ? 'Abrir em Nova Aba ↗' : 'Acessar')}</span>
+                  </a>
+
+                  {isManager && att.id && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete({ isOpen: true, item: att })}
+                      className="secondary-btn"
+                      style={{
+                        padding: '7px 10px',
+                        fontSize: '12px',
+                        color: '#ef4444',
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)'
+                      }}
+                      title="Excluir documento anexo"
+                      data-testid={`delete-attachment-btn-${att.id}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
