@@ -48,6 +48,8 @@ def test_optimize_video_file_success(mock_run, tmp_path):
     assert "-movflags" in cmd_called
     assert "+faststart" in cmd_called
     assert "libx264" in cmd_called
+    assert "-threads" in cmd_called
+    assert "threads=1" in cmd_called
 
 
 @patch("app.services.video_optimizer.optimize_video_file")

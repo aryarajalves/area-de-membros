@@ -173,11 +173,11 @@ def probe_video_stream_info(input_path: str) -> dict:
         elif fmt.get("bit_rate"):
             info["bitrate_kbps"] = round(float(fmt["bit_rate"]) / 1000.0, 1)
 
-        # Se já é H.264 (yuv420p), até 1080p e bitrate <= 2000 kbps, basta aplicar +faststart sem re-encodar vídeo!
+        # Se já é H.264 (yuv420p), até 1080p e bitrate <= 2600 kbps, basta aplicar +faststart sem re-encodar vídeo!
         is_h264 = info["video_codec"] == "h264"
         height_ok = 0 < info["height"] <= 1080
         pix_ok = info["pix_fmt"] in ("yuv420p", "yuvj420p", "")
-        bitrate_ok = 0 < info["bitrate_kbps"] <= 2000.0
+        bitrate_ok = 0 < info["bitrate_kbps"] <= 2600.0
         if is_h264 and height_ok and pix_ok and bitrate_ok:
             info["can_fast_remux"] = True
 
@@ -197,6 +197,7 @@ def _run_faststart_remux(input_path: str, output_path: str, audio_codec: str = "
         "ffmpeg",
         "-y",
         "-i", input_path,
+        "-threads", "1",
         "-c:v", "copy",
         *a_args,
         "-movflags", "+faststart",
@@ -222,17 +223,14 @@ def optimize_video_file(
     input_path: str,
     output_path: str,
     crf: int = 27,
-    preset: str = "superfast",
+    preset: str = "ultrafast",
     max_height: int = 1080,
     s3_key: Optional[str] = None,
     probe_info: Optional[dict] = None
 ) -> bool:
     """
     Transcodifica ou aplica remux inteligente em um arquivo de vídeo local para MP4 Web (H.264 + AAC)
-    com flag +faststart.
-    - Se o vídeo já for H.264 até 1080p com bitrate otimizado, usa Stream Copy instantâneo (1-3s).
-    - Caso contrário, transcodifica com preset 'superfast' (3x a 4x mais veloz na CPU da VPS)
-      e fallback automático para FastStart Remux se o vídeo já for H.264.
+    com flag +faststart e limitação de 1 vCPU (-threads 1 + nice 15) para manter a VPS em ~50% de CPU.
     """
     if not os.path.exists(input_path) or os.path.getsize(input_path) < 512:
         return False
@@ -248,10 +246,11 @@ def optimize_video_file(
         if _run_faststart_remux(input_path, output_path, info.get("audio_codec") or "aac"):
             return True
 
-    # 2. Transcodificação H.264 otimizada para servidores VPS
+    # 2. Transcodificação H.264 otimizada para servidores VPS de 2 vCPUs (limitada a 1 thread / ~50% CPU)
     cmd = [
         "ffmpeg",
         "-y",
+        "-threads", "1",
         "-i", input_path,
         "-vf", f"scale=-2:'min({max_height},ih)'",
         "-c:v", "libx264",
@@ -259,6 +258,8 @@ def optimize_video_file(
         "-crf", str(crf),
         "-maxrate", "1800k",
         "-bufsize", "3600k",
+        "-x264-params", "threads=1",
+        "-threads", "1",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "128k",
@@ -267,11 +268,17 @@ def optimize_video_file(
     ]
 
     try:
-        # Se s3_key foi fornecida e subprocess.run não está mockado, gerencia via Popen cancelável
+        # Se s3_key foi fornecida e subprocess.run não está mockado, gerencia via Popen cancelável com nice(15)
         is_mocked_run = hasattr(subprocess.run, "_mock_name") or "MagicMock" in type(subprocess.run).__name__
         if s3_key and not is_mocked_run:
             import time
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            low_cpu_preexec = (lambda: os.nice(15)) if hasattr(os, "nice") else None
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=low_cpu_preexec
+            )
             with _lock:
                 _active_ffmpeg_procs[s3_key] = proc
 
