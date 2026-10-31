@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.0`** | **Docker Hub: `backend-1.2.0` / `frontend-1.2.0`**
+> **Versão Oficial: `v1.2.1`** | **Docker Hub: `backend-1.2.1` / `frontend-1.2.1`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -7,7 +7,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.2.0 (Fila de Otimização 1 a 1, Drip por Aula, Certificados e Gamificação Avançada)
+### 🚀 Novidades da Versão v1.2.1 (Mapas Mentais com IA, Fila de Otimização 1 a 1, Drip por Aula e Certificados)
 - **🧠 Mapas Mentais com IA (Dark Premium HTML & Mermaid.js Interativo):**
   - Geração automática de mapas conceituais e diagramas mentais a partir da transcrição da aula via OpenAI (`gpt-4o-mini`).
   - Template HTML5 autônomo em visual *Dark Premium Neon* com Mermaid.js interativo (controles de zoom in/out, reset de visualização, navegação panorâmica e sumário de tópicos).
