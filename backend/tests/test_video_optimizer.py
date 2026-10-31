@@ -206,3 +206,87 @@ def test_stop_video_optimization_endpoint():
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "cancelled"
+
+
+@patch("app.services.video_optimizer.subprocess.run")
+def test_optimize_video_file_fast_remux_when_already_h264(mock_run, tmp_path):
+    in_file = tmp_path / "input.mp4"
+    out_file = tmp_path / "output.mp4"
+    in_file.write_bytes(b"0" * 4096)
+
+    def side_effect(*args, **kwargs):
+        out_file.write_bytes(b"1" * 2048)
+        res = MagicMock()
+        res.returncode = 0
+        return res
+
+    mock_run.side_effect = side_effect
+    probe_info = {
+        "video_codec": "h264",
+        "audio_codec": "aac",
+        "height": 1080,
+        "bitrate_kbps": 750.0,
+        "can_fast_remux": True
+    }
+    ok = optimize_video_file(str(in_file), str(out_file), probe_info=probe_info)
+    assert ok is True
+    cmd_called = mock_run.call_args[0][0]
+    assert "-c:v" in cmd_called
+    assert "copy" in cmd_called
+    assert "+faststart" in cmd_called
+    assert "libx264" not in cmd_called
+
+
+@patch("app.services.video_optimizer.subprocess.run")
+def test_optimize_video_file_fallback_to_remux_on_mp4_timeout(mock_run, tmp_path):
+    import subprocess
+    in_file = tmp_path / "heavy_lesson.mp4"
+    out_file = tmp_path / "output.mp4"
+    # Arquivo >= 64 KB para habilitar fallback de remux em MP4 real
+    in_file.write_bytes(b"0" * (70 * 1024))
+
+    calls = {"count": 0}
+
+    def side_effect(cmd, *args, **kwargs):
+        calls["count"] += 1
+        if "libx264" in cmd:
+            raise subprocess.TimeoutExpired(cmd, 3600)
+        out_file.write_bytes(b"FASTSTART_REMUX_OK" * 100)
+        res = MagicMock()
+        res.returncode = 0
+        return res
+
+    mock_run.side_effect = side_effect
+    probe_info = {
+        "video_codec": "h264",
+        "audio_codec": "aac",
+        "height": 1080,
+        "bitrate_kbps": 2500.0,
+        "can_fast_remux": False
+    }
+    ok = optimize_video_file(str(in_file), str(out_file), probe_info=probe_info)
+    assert ok is True
+    assert calls["count"] == 2
+    assert out_file.exists()
+
+
+def test_cancel_video_optimization_terminates_active_ffmpeg_process():
+    from app.services.video_optimizer import (
+        cancel_video_optimization,
+        _active_ffmpeg_procs,
+        _active_optimizations
+    )
+
+    s3_key = "AreaDeMembros/videos/vid_running.mp4"
+    fake_proc = MagicMock()
+    _active_optimizations.add(s3_key)
+    _active_ffmpeg_procs[s3_key] = fake_proc
+
+    res = cancel_video_optimization(
+        "https://s3.us-west-004.backblazeb2.com/zap-voice/AreaDeMembros/videos/vid_running.mp4"
+    )
+    assert res["status"] == "cancelled"
+    assert s3_key in res["cancelled_keys"]
+    fake_proc.terminate.assert_called_once()
+    assert s3_key not in _active_ffmpeg_procs
+

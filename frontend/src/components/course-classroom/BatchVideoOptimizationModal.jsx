@@ -8,7 +8,8 @@ export default function BatchVideoOptimizationModal({
   isOpen,
   onClose,
   unoptimizedItems = [],
-  onQueueUpdated
+  onQueueUpdated,
+  pollIntervalMs = 2000
 }) {
   const { addToast } = useToast();
   const [selectedIds, setSelectedIds] = useState([]);
@@ -56,7 +57,7 @@ export default function BatchVideoOptimizationModal({
   const waitMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const pollUntilVideoOptimized = async (lessonId, videoUrl, initialMb) => {
-    for (let attempt = 0; attempt < 600; attempt += 1) {
+    for (let attempt = 0; attempt < 1800; attempt += 1) {
       if (stopRequestedRef.current) return { stopped: true };
       try {
         const res = await fetch(
@@ -85,14 +86,26 @@ export default function BatchVideoOptimizationModal({
           if (info.is_optimized || (!info.is_optimizing && info.stage === 'completed')) {
             return { completed: true, info };
           }
+          if (!info.is_optimizing && info.stage === 'cancelled') {
+            return { stopped: true };
+          }
           if (!info.is_optimizing && info.stage === 'failed') {
-            return { failed: true };
+            return { failed: true, errorLabel: info.stage_label };
           }
         }
       } catch {
         // Continua aguardando
       }
-      await waitMs(1000);
+      await waitMs(pollIntervalMs);
+    }
+    try {
+      await fetch('/api/v1/courses/stop-video-optimization', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ video_url: videoUrl })
+      });
+    } catch {
+      // Silencioso
     }
     return { failed: true };
   };

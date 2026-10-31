@@ -77,8 +77,10 @@ export default function SuperAdminVideoOptimizerBadge({
           `⚡ Vídeo otimizado com sucesso! Novo tamanho: ${updated.size_mb} MB (FastStart ativo).`,
           'success'
         );
+      } else if (updated && !updated.is_optimizing && (updated.stage === 'failed' || updated.stage === 'cancelled')) {
+        setTriggering(false);
       }
-    }, 1000);
+    }, 2500);
 
     return () => clearInterval(timer);
   }, [isSuperAdmin, videoUrl, triggering, info?.is_optimizing, fetchVideoInfo, addToast]);

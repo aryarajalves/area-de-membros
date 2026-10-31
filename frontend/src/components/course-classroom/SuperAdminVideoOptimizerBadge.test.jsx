@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SuperAdminVideoOptimizerBadge from './SuperAdminVideoOptimizerBadge';
+import BatchVideoOptimizationModal from './BatchVideoOptimizationModal';
 import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
 import { ToastProvider } from '../../context/ToastContext';
 
@@ -184,5 +185,77 @@ describe('SuperAdminVideoOptimizerBadge Component', () => {
     expect(screen.queryByTestId('ai-transcription-failed')).not.toBeInTheDocument();
     expect(screen.queryByText(/Saldo de créditos da OpenAI esgotado/i)).not.toBeInTheDocument();
     expect(screen.getByText(/ainda não foram gerados pelo instrutor/i)).toBeInTheDocument();
+  });
+
+  it('executa fila sequencial no BatchVideoOptimizationModal aguardando conclusao real sem abortar precoce', async () => {
+    const items = [
+      {
+        mod: { id: 10, title: 'Os Signos' },
+        lesson: {
+          id: 501,
+          title: 'Signos e Elementos: Compreendendo a Astrologia Prática',
+          video_url: 'https://b2.com/AreaDeMembros/videos/vid_501.mp4'
+        },
+        audit: { size_mb: 118.16, format: 'MP4' }
+      }
+    ];
+
+    global.fetch = vi
+      .fn()
+      // 1a chamada: POST optimize-video
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'processing' })
+      })
+      // 2a chamada: GET video-info (em andamento)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          is_optimized: false,
+          is_optimizing: true,
+          stage: 'converting',
+          progress_pct: 55,
+          stage_label: 'Aplicando FastStart instantâneo...',
+          original_size_mb: 118.16,
+          size_mb: 118.16
+        })
+      })
+      // 3a chamada: GET video-info (concluído)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          is_optimized: true,
+          is_optimizing: false,
+          stage: 'completed',
+          progress_pct: 100,
+          stage_label: 'Otimização concluída!',
+          original_size_mb: 118.16,
+          size_mb: 42.5
+        })
+      });
+
+    const onQueueUpdated = vi.fn();
+
+    render(
+      <ToastProvider>
+        <BatchVideoOptimizationModal
+          isOpen={true}
+          onClose={vi.fn()}
+          unoptimizedItems={items}
+          onQueueUpdated={onQueueUpdated}
+          pollIntervalMs={5}
+        />
+      </ToastProvider>
+    );
+
+    const startBtn = screen.getByTestId('batch-video-opt-start-btn');
+    fireEvent.click(startBtn);
+
+    await waitFor(() => {
+      expect(onQueueUpdated).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByTestId('batch-opt-item-501')).toHaveTextContent('Concluído');
+    expect(screen.getByTestId('batch-opt-item-501')).toHaveTextContent('42.5 MB (.MP4)');
   });
 });
