@@ -3,11 +3,19 @@ import { Gift, Copy, Trash2, BookOpen, Clock, CheckCircle2 } from 'lucide-react'
 
 const DURATION_OPTIONS = [
   { value: 'lifetime', label: 'Vitalício (Sem expiração)' },
+  { value: '1_day', label: '1 Dia' },
+  { value: '2_days', label: '2 Dias' },
+  { value: '3_days', label: '3 Dias' },
+  { value: '4_days', label: '4 Dias' },
+  { value: '5_days', label: '5 Dias' },
+  { value: '6_days', label: '6 Dias' },
+  { value: '7_days', label: '7 Dias' },
   { value: '1_month', label: '1 Mês (30 dias)' },
   { value: '3_months', label: '3 Meses (90 dias)' },
   { value: '6_months', label: '6 Meses (180 dias)' },
   { value: '1_year', label: '1 Ano (365 dias)' },
   { value: '2_years', label: '2 Anos (730 dias)' },
+  { value: '3_years', label: '3 Anos (1095 dias)' },
 ];
 
 export default function FunnelNodeEnrollment({

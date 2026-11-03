@@ -92,3 +92,32 @@ def test_upload_login_banner_and_reset(superadmin_token):
     reset_res = client.delete("/api/v1/whitelabel/login-banner", headers=headers)
     assert reset_res.status_code == 200
     assert reset_res.json()["login_banner_url"] is None
+
+
+def test_upload_platform_logo_and_reset(superadmin_token):
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+
+    # Simula imagem PNG de logo
+    file_bytes = io.BytesIO(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82")
+    files = {"file": ("minha_logo.png", file_bytes, "image/png")}
+
+    upload_res = client.post("/api/v1/whitelabel/logo", files=files, headers=headers)
+    assert upload_res.status_code == 200
+    data = upload_res.json()
+    assert data["logo_url"] is not None
+    assert "logo" in data["logo_url"].lower()
+
+    # Confirma que endpoint público retorna logo_url
+    pub_res = client.get("/api/v1/whitelabel")
+    assert pub_res.status_code == 200
+    assert pub_res.json()["logo_url"] == data["logo_url"]
+
+    # Reseta logo
+    reset_res = client.delete("/api/v1/whitelabel/logo", headers=headers)
+    assert reset_res.status_code == 200
+    assert reset_res.json()["logo_url"] is None
+
+    # Confirma que voltou ao padrão
+    pub_res_after = client.get("/api/v1/whitelabel")
+    assert pub_res_after.json()["logo_url"] is None
+

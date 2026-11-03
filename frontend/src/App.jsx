@@ -21,6 +21,7 @@ import ResetPassword from './components/ResetPassword';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import TopNavbar from './components/navigation/TopNavbar';
+import { SupportReportsSubTabs, ServerSystemSubTabs, RestrictedWelcomeScreen } from './components/navigation/UnifiedSectionSubTabs';
 import FunnelManagement from './components/funnels/FunnelManagement';
 import { HomeTutorials } from './components/home-tutorials';
 import { IntroductionManagement } from './components/introductions';
@@ -180,6 +181,13 @@ function App() {
         if (data?.platform_name) {
           localStorage.setItem('platform_name', data.platform_name);
           document.title = data.platform_name;
+        }
+        if (data?.logo_url !== undefined) {
+          if (data.logo_url) {
+            localStorage.setItem('platform_logo', data.logo_url);
+          } else {
+            localStorage.removeItem('platform_logo');
+          }
         }
       }
     } catch {
@@ -392,6 +400,14 @@ function App() {
             onNavigateTab={handleSelectTab}
           />
         )}
+        {['support', 'lesson-reports'].includes(activeTab) && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
+          <SupportReportsSubTabs
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            pendingReportsCount={pendingReportsCount}
+            isLightBg={isLightBg}
+          />
+        )}
         {activeTab === 'support' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <SupportManagement currentUser={user} bgColor={memberAreaBgColor} />
         )}
@@ -417,6 +433,9 @@ function App() {
         {activeTab === 'students' && ['superadmin', 'admin'].includes(user?.role) && (
           <StudentManagement bgColor={memberAreaBgColor} />
         )}
+        {activeTab === 'users' && ['superadmin', 'admin'].includes(user?.role) && (
+          <UserManagement currentUser={user} bgColor={memberAreaBgColor} />
+        )}
         {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && (
           <FunnelManagement onFunnelViewChange={setIsInsideFunnel} />
         )}
@@ -435,46 +454,25 @@ function App() {
             onNavigateTab={handleSelectTab}
           />
         )}
+        {isSuperAdmin && ['infrastructure', 'backup', 'logs'].includes(activeTab) && (
+          <ServerSystemSubTabs
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            isLightBg={isLightBg}
+          />
+        )}
         {isSuperAdmin && (
           <>
-            {activeTab === 'users' && <UserManagement currentUser={user} bgColor={memberAreaBgColor} />}
             {activeTab === 'backup' && <AutomatedBackup currentUser={user} bgColor={memberAreaBgColor} />}
             {activeTab === 'logs' && <LogManagement currentUser={user} bgColor={memberAreaBgColor} />}
             {activeTab === 'infrastructure' && <InfrastructureManagement currentUser={user} onSelectTab={handleSelectTab} bgColor={memberAreaBgColor} />}
           </>
         )}
         {!isSuperAdmin && !(
-          (['home', 'courses', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports'].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
-          (['students', 'funnels', 'integrations'].includes(activeTab) && user?.role === 'admin') ||
+          (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports'].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
+          (['students', 'users', 'funnels', 'integrations'].includes(activeTab) && user?.role === 'admin') ||
           (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
-        ) && (
-          <div className="restricted-access-container user-welcome-container" data-testid="restricted-access-screen">
-            <div className="restricted-card user-welcome-card">
-              <div className="user-welcome-icon-box">
-                <div className="welcome-avatar-badge" data-testid="welcome-avatar-badge">
-                  {(user?.name || 'U').charAt(0).toUpperCase()}
-                </div>
-              </div>
-              <h2>Olá, {user?.name || 'Usuário'}!</h2>
-              <p className="welcome-subtext">
-                Bem-vindo à <strong>Área de Membros</strong>. Sua conta está ativa e pronta para uso.
-              </p>
-
-              <div className="welcome-info-grid">
-                <div className="welcome-info-item">
-                  <span className="info-item-label">E-mail</span>
-                  <span className="info-item-value">{user?.email || '—'}</span>
-                </div>
-                <div className="welcome-info-item">
-                  <span className="info-item-label">Status</span>
-                  <span className="info-item-badge status-active">
-                    <span className="status-dot"></span> Ativo
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        ) && <RestrictedWelcomeScreen user={user} />}
       </main>
 
       <LogoutConfirmModal

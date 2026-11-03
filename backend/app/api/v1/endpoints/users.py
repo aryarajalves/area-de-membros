@@ -208,7 +208,7 @@ def get_me(current_user: User = Depends(get_current_user)):
 )
 def list_users(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     users = db.query(User).order_by(User.id.asc()).all()
     user_courses = db.query(UserCourse).all()
@@ -242,7 +242,7 @@ def list_users(
 def create_user_manual(
     user_in: UserManualCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     # 1. Verifica se já existe usuário com este e-mail
     existing = db.query(User).filter(User.email == user_in.email).first()
@@ -343,7 +343,7 @@ def update_user(
     user_id: int,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
@@ -426,7 +426,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
@@ -456,7 +456,7 @@ def delete_user(
 def bulk_delete_users(
     data: BulkDeleteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     if not data.ids:
         raise HTTPException(status_code=400, detail="Nenhum usuário selecionado.")
@@ -483,7 +483,7 @@ def bulk_delete_users(
 def request_password_reset(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
@@ -597,7 +597,7 @@ def confirm_password_reset(
 def create_invite(
     invite_in: InviteCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     if invite_in.role not in ["admin", "user", "aluno"]:
         raise HTTPException(
@@ -676,7 +676,7 @@ def format_time_remaining(expires_at: Optional[datetime]) -> str:
 )
 def list_invites(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     invites = db.query(Invite).order_by(Invite.id.desc()).all()
     results = []
@@ -711,7 +711,7 @@ def list_invites(
 def delete_invite(
     invite_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     target_invite = db.query(Invite).filter(Invite.id == invite_id).first()
     if not target_invite:
@@ -729,7 +729,7 @@ def delete_invite(
 def bulk_delete_invites(
     data: BulkDeleteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
     if not data.ids:
         raise HTTPException(status_code=400, detail="Nenhum convite selecionado.")

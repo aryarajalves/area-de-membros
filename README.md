@@ -26,6 +26,12 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Exibição de Toast no canto superior direito sempre que o aluno ganha XP (`+15 XP` aula, `+60 XP` módulo concluído, `+250 XP` curso concluído, `+5 XP` comentário/tópico, `+10 XP` resposta no suporte), popup comemorativo de subida de nível (`LevelUpWatcher`) e avanço automático para a próxima aula ao marcar uma aula como assistida.
 - **🛠️ Tratamento de Aplicativos/Ferramentas no Progresso do Aluno:**
   - Produtos do tipo Aplicativo/Ferramenta (`item_type = 'tool'`) exibem o selo `🛠️ Aplicativo / Ferramenta` na ficha do aluno sem barra de aulas e sem reduzir a média do `Progresso Geral`.
+- **🎨 Logotipo Personalizado da Plataforma no WhiteLabel (`PlatformWhiteLabelLogoCard`):**
+  - Upload e restauração de logotipo quadrado personalizado (PNG, WEBP, JPG, SVG) nas configurações de WhiteLabel, refletindo em tempo real no topo esquerdo da barra lateral (`Sidebar`) e na tela de `Login`.
+- **⏱️ Acesso de Degustação de 1 a 7 Dias e Proteção no Gatilho de Expiração:**
+  - Opção de conceder de **1 a 7 dias** (`1_day` até `7_days`) de acesso individual por curso em links de convite, criação/edição manual de usuários, importação de planilhas e nós de matrícula em funis. Contatos com acesso de curta duração (1 a 7 dias) não disparam o gatilho de *Aviso de Expiração* (`renewal_warning`) nos funis de mensagens.
+- **🗂️ Barra Lateral Sanfonada, Abas Unificadas e Gestão de Usuários para Admin:**
+  - Liberação da aba *Gestão de Usuários* para o perfil `Admin` (mantendo contas `Super Admin` protegidas), categorias recolhíveis em acordeão (`Área Pedagógica`, `Comunidade & Social`, `Gestão & Automação` e `Sistema & Configurações`) e unificação dos painéis de *Suporte & Relatos* e *Servidor & Logs* com navegação por sub-abas no topo (`UnifiedSectionSubTabs`).
 
 ### 🚀 Novidades da Versão v1.1.7 (Performance & Streaming Instantâneo)
 - **🎬 Otimização Automática de Vídeos com FFmpeg (`+faststart` + H.264):**

@@ -52,7 +52,12 @@ class RegistrationVerification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    invite_token = Column(String, nullable=False)
     code = Column(String, nullable=False)
+    phone = Column(String, nullable=True) # WhatsApp
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
     attempts = Column(Integer, default=0, nullable=False)

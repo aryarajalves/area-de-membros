@@ -37,6 +37,7 @@ def get_stored_whitelabel_data() -> dict:
     default_data = {
         "platform_name": "Área de Membros",
         "login_banner_url": None,
+        "logo_url": None,
         "bg_color": "#090d16"
     }
     if os.path.exists(PLATFORM_THEME_FILE):
@@ -46,6 +47,7 @@ def get_stored_whitelabel_data() -> dict:
                 return {
                     "platform_name": data.get("platform_name") or default_data["platform_name"],
                     "login_banner_url": data.get("login_banner_url") or None,
+                    "logo_url": data.get("logo_url") or None,
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
                 }
         except Exception as e:
@@ -94,6 +96,9 @@ def update_whitelabel_settings(
 
     if settings_in.login_banner_url is not None:
         current["login_banner_url"] = settings_in.login_banner_url.strip() if settings_in.login_banner_url.strip() else None
+
+    if settings_in.logo_url is not None:
+        current["logo_url"] = settings_in.logo_url.strip() if settings_in.logo_url.strip() else None
 
     if settings_in.bg_color is not None:
         clean_color = settings_in.bg_color.strip()
@@ -183,3 +188,76 @@ def reset_login_banner(
     save_stored_whitelabel_data(current)
     logger.info(f"[WhiteLabel] Banner de login restaurado ao padrão por {admin.email}")
     return current
+
+
+@router.post("/logo", response_model=WhiteLabelConfig)
+async def upload_platform_logo(
+    file: UploadFile = File(...),
+    admin: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Faz upload de um novo logotipo da plataforma (PNG, JPG, WEBP, SVG).
+    Armazena no Backblaze B2 com fallback local.
+    """
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp", ".svg"]
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de imagem não suportado. Utilize: {', '.join(allowed_extensions)}"
+        )
+
+    try:
+        content = await file.read()
+        unique_filename = f"platform_logo_{uuid.uuid4().hex[:12]}{file_ext}"
+
+        b2_url = upload_media_file(
+            file_bytes=content,
+            filename=unique_filename,
+            content_type=file.content_type or "image/png",
+            folder="AreaDeMembros/logos/"
+        )
+
+        if b2_url:
+            logo_url = b2_url
+        else:
+            local_path = os.path.join(THUMBNAILS_DIR, unique_filename)
+            with open(local_path, "wb") as f:
+                f.write(content)
+            logo_url = f"/api/v1/courses/thumbnails/{unique_filename}"
+
+        current = get_stored_whitelabel_data()
+        old_url = current.get("logo_url")
+        if old_url:
+            delete_media_file(old_url)
+
+        current["logo_url"] = logo_url
+        save_stored_whitelabel_data(current)
+
+        logger.info(f"[WhiteLabel] Novo logotipo enviado por {admin.email}: {logo_url}")
+        return current
+    except Exception as exc:
+        logger.error(f"[WhiteLabel] Erro no upload de logotipo: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao realizar upload do logotipo da plataforma."
+        )
+
+
+@router.delete("/logo", response_model=WhiteLabelConfig)
+def reset_platform_logo(
+    admin: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Restaura o logotipo padrão da plataforma (remove imagem customizada).
+    """
+    current = get_stored_whitelabel_data()
+    old_url = current.get("logo_url")
+    if old_url:
+        delete_media_file(old_url)
+
+    current["logo_url"] = None
+    save_stored_whitelabel_data(current)
+    logger.info(f"[WhiteLabel] Logotipo da plataforma restaurado ao padrão por {admin.email}")
+    return current
+

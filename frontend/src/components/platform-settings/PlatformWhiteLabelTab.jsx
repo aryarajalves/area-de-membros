@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Image, Upload, RotateCcw, Check, Sparkles, HelpCircle, Eye } from 'lucide-react';
 import defaultLoginBanner from '../../assets/login-banner.jpg';
+import PlatformWhiteLabelLogoCard from './PlatformWhiteLabelLogoCard';
 
 export default function PlatformWhiteLabelTab({
   cardBg,
@@ -12,6 +13,7 @@ export default function PlatformWhiteLabelTab({
 }) {
   const [platformName, setPlatformName] = useState('Área de Membros');
   const [loginBannerUrl, setLoginBannerUrl] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function PlatformWhiteLabelTab({
           const data = await res.json();
           setPlatformName(data.platform_name || 'Área de Membros');
           setLoginBannerUrl(data.login_banner_url || null);
+          setLogoUrl(data.logo_url || null);
         }
       } catch (err) {
         console.error('Erro ao carregar configurações WhiteLabel:', err);
@@ -230,7 +233,18 @@ export default function PlatformWhiteLabelTab({
         </form>
       </div>
 
-      {/* 2. Imagem da Tela de Login */}
+      {/* 2. Logotipo da Plataforma (Ícone da Barra Lateral / Topo) */}
+      <PlatformWhiteLabelLogoCard
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        addToast={addToast}
+        initialLogoUrl={logoUrl}
+        onLogoUpdated={(newLogo) => setLogoUrl(newLogo)}
+      />
+
+      {/* 3. Imagem da Tela de Login */}
       <div
         className="settings-section-card"
         style={{

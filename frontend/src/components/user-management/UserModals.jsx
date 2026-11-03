@@ -4,6 +4,13 @@ import { formatBrasiliaDateTime } from '../student-management/studentDateUtils';
 
 export const COURSE_ACCESS_DURATION_OPTIONS = [
   { value: 'lifetime', label: 'Vitalício' },
+  { value: '1_day', label: '1 dia' },
+  { value: '2_days', label: '2 dias' },
+  { value: '3_days', label: '3 dias' },
+  { value: '4_days', label: '4 dias' },
+  { value: '5_days', label: '5 dias' },
+  { value: '6_days', label: '6 dias' },
+  { value: '7_days', label: '7 dias' },
   { value: '1_month', label: '1 mês' },
   { value: '3_months', label: '3 meses' },
   { value: '6_months', label: '6 meses' },

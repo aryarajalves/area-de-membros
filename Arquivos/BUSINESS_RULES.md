@@ -79,6 +79,13 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 - **DefiniÃ§Ã£o de Acesso e Tempo de Acesso por Produto/Curso:**
   - **Na criaÃ§Ã£o de convite (`/invite`):** Ao selecionar o tipo **Aluno**, o administrador marca quais produtos/cursos aquele aluno terÃ¡ acesso e define, **para cada produto selecionado individualmente**, o **Tempo de Acesso**:
     - `VitalÃ­cio` (`lifetime` â sem expiraÃ§Ã£o)
+    - `1 dia` (`1_day` — 1 dia de degustação/trial)
+    - `2 dias` (`2_days` — 2 dias de degustação/trial)
+    - `3 dias` (`3_days` — 3 dias de degustação/trial)
+    - `4 dias` (`4_days` — 4 dias de degustação/trial)
+    - `5 dias` (`5_days` — 5 dias de degustação/trial)
+    - `6 dias` (`6_days` — 6 dias de degustação/trial)
+    - `7 dias` (`7_days` — 7 dias de degustação/trial)
     - `1 mÃªs` (`1_month` â 30 dias)
     - `3 meses` (`3_months` â 90 dias)
     - `6 meses` (`6_months` â 180 dias)
@@ -989,6 +996,10 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
      - **ConfiguraÃ§Ãµes** (`settings`):
        - **Alunos:** Visualizam as abas **"Cor de Fundo da Plataforma"** e **"Meu Perfil"**, permitindo customizar seu visual, foto/avatar e dados de cadastro. As abas "Tokens de API", "Links da Plataforma" e "WhiteLabel" ficam ocultas.
        - **Admin e Super Admin:** Visualizam as 5 abas completas (**"Cor de Fundo da Plataforma"**, **"Meu Perfil"**, **"Tokens de API"**, **"Links da Plataforma"** e **"WhiteLabel"**).
+       - **Configurações WhiteLabel (`PlatformWhiteLabelTab`):**
+         - **Nome da Plataforma:** Customiza o texto exibido no cabeçalho da barra lateral, topo e títulos da página.
+         - **Logotipo da Plataforma (`logo_url`):** Permite substituir o ícone padrão vermelho (estilo YouTube) no canto superior esquerdo da barra lateral e nas telas de autenticação por um logotipo próprio em formato PNG transparente, SVG, WEBP ou JPG. Suporta upload e opção de "Restaurar Padrão".
+         - **Banner da Tela de Login (`login_banner_url`):** Customiza a ilustração de fundo/lateral da página de login.
        - **ExibiÃ§Ã£o de NÃ­vel RPG e Ranking no Meu Perfil (`ProfileGamificationCard`):**
          - Localizado no topo da aba **"Meu Perfil"**, exibe em tempo real o status de gamificaÃ§Ã£o do usuÃ¡rio:
          - **Para Alunos:** Mostra o badge e escudo do Elo (Bronze, Prata, Ouro, Diamante ou Lenda), nÃºmero do nÃ­vel (1 ao 20), divisÃ£o, patente, barra de progresso animada de XP com porcentagem e pontos restantes para subir de nÃ­vel, alÃ©m da posiÃ§Ã£o ordinal no ranking mensal (`#X`), insÃ­gnia conquistada, total de pontos e atalhos rÃ¡pidos para "Ver 20 NÃ­veis" (`GamificationRpgLadderModal`) e "Ver Ranking" da comunidade.
@@ -1334,3 +1345,21 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 - **Notificação de Normalização:** Caso configurado, envia um aviso confirmando que o tráfego e os recursos retornaram aos patamares seguros.
 - **Teste de Webhook:** O administrador pode testar a entrega a qualquer momento através do botão *Testar Webhook*.
 
+- **Permissão de Acesso à Gestão de Usuários (`users`):**
+  - Tanto o perfil **`Super Admin` (`superadmin`)** quanto o perfil **`Administrador` (`admin`)** possuem acesso à aba **Gestão de Usuários** na barra lateral (`Sidebar`) e às rotas de gerenciamento de usuários e convites (`/api/v1/auth/users` e `/api/v1/auth/invites`).
+  - Contas com perfil **`Super Admin`** permanecem estritamente protegidas (`Protegido`) contra edição, exclusão ou redefinição de senha por outros usuários.
+  - As abas de infraestrutura crítica (**Backup Automático**, **Logs do Sistema** e **Infraestrutura & Recursos**) permanecem exclusivas do perfil **`Super Admin`**.
+- **Regra de Exceção do Gatilho "Aviso de Expiração" (`renewal_warning`) para Acessos de Curta Duração (1 a 7 dias):**
+  - Se o aluno recebeu acesso de degustação/curta duração a um curso com validade de **1 a 7 dias** (`1_day` até `7_days`, ou intervalo total entre concessão e vencimento $\le 7$ dias), o gatilho **"Aviso de Expiração"** nos Funis de Mensagens (`7 dias antes`, `3 dias antes` e `No vencimento`) **NÃO é disparado** para esse contato nesse curso.
+  - O gatilho de Aviso de Expiração ativa exclusivamente para acessos regulares de maior duração (`1 mês`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `3 anos`).
+
+- **Organização da Barra Lateral (`Sidebar.jsx` e `UnifiedSectionSubTabs.jsx`):**
+  - **Categorias Recolhíveis (Acordeão Inteligente):** Cada seção da barra lateral (`Área Pedagógica` / `Meu Aprendizado`, `Comunidade & Social`, `Gestão & Automação`, `Sistema & Configurações` e `Links`) possui cabeçalho clicável para expandir ou recolher seus itens, exibindo badge numérico de notificações mesmo quando recolhida e barra de rolagem discreta de 4px.
+  - **Separação Lógica de Categorias:**
+    1. **Área Pedagógica (ou Meu Aprendizado):** `Início`, `Cursos`, `Eventos` e `Suporte & Relatos`.
+    2. **Comunidade & Social:** `Chat da Comunidade`, `Ranking & Conquistas`, `Depoimentos` e `Apresente-se`.
+    3. **Gestão & Automação (`admin` e `superadmin`):** `Alunos`, `Gestão de Usuários`, `Funis de Mensagens` e `Integrações`.
+    4. **Sistema & Configurações:** `Configurações` e `Servidor & Logs` (`superadmin`).
+  - **Botões Unificados com Abas Superiores Internas:**
+    - **Suporte & Relatos (`support` / `lesson-reports`):** Unifica *Comunidade de Suporte & Dúvidas* e *Relatos de Aulas* em um único botão na Sidebar, com navegação rápida por abas no topo da página (`SupportReportsSubTabs`).
+    - **Servidor & Logs (`infrastructure` / `backup` / `logs`):** Unifica *Infraestrutura & Recursos*, *Backup Automático (S3)* e *Logs do Sistema* em um único botão na Sidebar para o `Super Admin`, com navegação por abas no topo da página (`ServerSystemSubTabs`).

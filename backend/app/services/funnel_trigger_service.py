@@ -408,11 +408,24 @@ def dispatch_renewal_warning_funnels(
 ) -> int:
     """
     Dispara funis com gatilho 'renewal_warning' para alunos cujos cursos
-    estão a X dias de expirar (ex: 7 dias antes ou 0 dias / expirado).
+    estão a X dias de expirar (ex: 7 dias antes, 3 dias antes ou 0 dias / expirado).
+    Ignora acessos de degustação/curta duração (de 1 a 7 dias).
     """
     dispatched = 0
     factory = db_session_factory or sessionmaker(bind=db.get_bind())
     try:
+        from app.services.course_access_utils import is_short_trial_access
+        uc = db.query(UserCourse).filter(
+            UserCourse.user_id == student_id,
+            UserCourse.course_id == course_id,
+        ).first()
+        if uc and is_short_trial_access(uc):
+            logger.info(
+                f"[FUNNEL RENOVACAO] Gatilho de expiração ignorado para aluno #{student_id} no curso #{course_id}: "
+                f"acesso de degustação/curta duração ({uc.access_duration})"
+            )
+            return 0
+
         active_funnels = db.query(Funnel).filter(Funnel.is_active == True).all()
         for f in active_funnels:
             try:

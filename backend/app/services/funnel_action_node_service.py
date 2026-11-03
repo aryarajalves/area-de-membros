@@ -169,6 +169,13 @@ def execute_enrollment_node(
     expires_at = None
 
     duration_days = {
+        "1_day": 1,
+        "2_days": 2,
+        "3_days": 3,
+        "4_days": 4,
+        "5_days": 5,
+        "6_days": 6,
+        "7_days": 7,
         "1_month": 30,
         "3_months": 90,
         "6_months": 180,

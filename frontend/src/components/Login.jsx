@@ -28,6 +28,7 @@ export default function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
   const [bannerUrl, setBannerUrl] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('platform_logo') || null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -43,6 +44,13 @@ export default function Login({ onLoginSuccess }) {
           }
           if (data.login_banner_url) {
             setBannerUrl(data.login_banner_url);
+          }
+          if (data.logo_url) {
+            setLogoUrl(data.logo_url);
+            localStorage.setItem('platform_logo', data.logo_url);
+          } else if (data.logo_url === null) {
+            setLogoUrl(null);
+            localStorage.removeItem('platform_logo');
           }
         }
       } catch {
@@ -129,10 +137,19 @@ export default function Login({ onLoginSuccess }) {
       <div className="login-form-side">
         <div className="login-form-container">
           <div className="auth-header text-left">
-            <div className="auth-logo-badge">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+            <div className="auth-logo-badge" style={logoUrl ? { background: 'transparent', boxShadow: 'none' } : undefined}>
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={platformName || 'Logo'}
+                  data-testid="login-custom-logo-img"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }}
+                />
+              ) : (
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
             </div>
             <h2>{platformName || 'Área de Membros'}</h2>
             <p>Informe suas credenciais para acessar o painel</p>

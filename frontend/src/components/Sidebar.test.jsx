@@ -1,8 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Sidebar from './Sidebar';
+import { SupportReportsSubTabs, ServerSystemSubTabs } from './navigation/UnifiedSectionSubTabs';
 
-describe('Sidebar Component', () => {
+describe('Sidebar Component & Unified SubTabs', () => {
+  beforeEach(() => {
+    localStorage.removeItem('sidebar_collapsed_categories');
+  });
+
   it('renders "Área de Membros" title and logo', () => {
     render(<Sidebar />);
     expect(screen.getByText('Área de Membros')).toBeInTheDocument();
@@ -10,7 +15,6 @@ describe('Sidebar Component', () => {
   });
 
   it('renders "Cursos" button for superadmin and aluno, and superadmin-only buttons', () => {
-    // Superadmin vê Início, Cursos, Backup, Logs e Gestão
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
     expect(screen.getByText('Início')).toBeInTheDocument();
@@ -19,12 +23,10 @@ describe('Sidebar Component', () => {
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
-    expect(screen.getByText('Backup Automático')).toBeInTheDocument();
-    expect(screen.getByText('Logs do Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Servidor & Logs')).toBeInTheDocument();
     expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê Início, Cursos, Depoimentos, Apresente-se e Ranking, mas NÃO vê Backup, Logs e Gestão de Usuários
     const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
     expect(screen.getByText('Início')).toBeInTheDocument();
@@ -33,17 +35,14 @@ describe('Sidebar Component', () => {
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
-    expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
-    expect(screen.queryByText('Logs do Sistema')).not.toBeInTheDocument();
+    expect(screen.queryByText('Servidor & Logs')).not.toBeInTheDocument();
     expect(screen.queryByText('Gestão de Usuários')).not.toBeInTheDocument();
     unmountAluno();
 
-    // Usuário comum NÃO vê Cursos, Backup, Logs ou Gestão
     const regularUser = { name: 'Comum', email: 'comum@test.com', role: 'user' };
     render(<Sidebar user={regularUser} />);
     expect(screen.queryByText('Cursos')).not.toBeInTheDocument();
-    expect(screen.queryByText('Backup Automático')).not.toBeInTheDocument();
-    expect(screen.queryByText('Logs do Sistema')).not.toBeInTheDocument();
+    expect(screen.queryByText('Servidor & Logs')).not.toBeInTheDocument();
     expect(screen.queryByText('Gestão de Usuários')).not.toBeInTheDocument();
   });
 
@@ -61,50 +60,74 @@ describe('Sidebar Component', () => {
     expect(handleLogout).toHaveBeenCalled();
   });
 
-  it('allows clicking buttons and changing active state for superadmin', () => {
+  it('allows clicking unified "Servidor & Logs" button and highlights it for infrastructure, backup, and logs tabs', () => {
     const onSelectTabMock = vi.fn();
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
-    render(<Sidebar user={superAdminUser} activeTab="users" onSelectTab={onSelectTabMock} />);
+    const { rerender } = render(<Sidebar user={superAdminUser} activeTab="backup" onSelectTab={onSelectTabMock} />);
 
-    const backupBtn = screen.getByTestId('nav-item-backup');
-    fireEvent.click(backupBtn);
-    expect(onSelectTabMock).toHaveBeenCalledWith('backup');
+    const infraBtn = screen.getByTestId('nav-item-infrastructure');
+    expect(infraBtn).toHaveClass('active');
+
+    rerender(<Sidebar user={superAdminUser} activeTab="logs" onSelectTab={onSelectTabMock} />);
+    expect(screen.getByTestId('nav-item-infrastructure')).toHaveClass('active');
+
+    fireEvent.click(screen.getByTestId('nav-item-infrastructure'));
+    expect(onSelectTabMock).toHaveBeenCalledWith('infrastructure');
   });
 
-  it('renders categories "Área Pedagógica", "Comunidade & Social" and "Sistema & Configurações" for superadmin and aluno', () => {
-    // Superadmin vê as 3 categorias modernas da Proposta 2
+  it('renders categories "Área Pedagógica", "Comunidade & Social", "Gestão & Automação" and "Sistema & Configurações"', () => {
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
     expect(screen.getByTestId('nav-category-pedagogica')).toBeInTheDocument();
     expect(screen.getByText('Área Pedagógica')).toBeInTheDocument();
     expect(screen.getByTestId('nav-category-comunidade')).toBeInTheDocument();
     expect(screen.getByText('Comunidade & Social')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-category-gestao')).toBeInTheDocument();
+    expect(screen.getByText('Gestão & Automação')).toBeInTheDocument();
     expect(screen.getByTestId('nav-category-sistema')).toBeInTheDocument();
     expect(screen.getByText('Sistema & Configurações')).toBeInTheDocument();
     unmount();
 
-    // Aluno vê Meu Aprendizado, Comunidade & Social e Sistema & Configurações (com Configurações)
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
     expect(screen.getByTestId('nav-category-pedagogica')).toBeInTheDocument();
     expect(screen.getByText('Meu Aprendizado')).toBeInTheDocument();
-    expect(screen.getByText('Relatos de Aulas')).toBeInTheDocument();
+    expect(screen.getByText('Suporte & Relatos')).toBeInTheDocument();
     expect(screen.getByTestId('nav-category-comunidade')).toBeInTheDocument();
-    expect(screen.getByText('Comunidade & Social')).toBeInTheDocument();
+    expect(screen.queryByTestId('nav-category-gestao')).not.toBeInTheDocument();
     expect(screen.getByTestId('nav-category-sistema')).toBeInTheDocument();
-    expect(screen.getByText('Sistema & Configurações')).toBeInTheDocument();
     expect(screen.getByTestId('nav-item-settings')).toBeInTheDocument();
     unmountAluno();
   });
 
-  it('renders "Relatos de Aulas" with notification badge for superadmin when pendingReportsCount > 0', () => {
+  it('renders unified "Suporte & Relatos" with notification badge when pendingReportsCount > 0 and highlights on lesson-reports', () => {
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
-    render(<Sidebar user={superAdminUser} pendingReportsCount={3} />);
+    render(<Sidebar user={superAdminUser} activeTab="lesson-reports" pendingReportsCount={3} />);
 
-    expect(screen.getByText('Relatos de Aulas')).toBeInTheDocument();
+    const supportBtn = screen.getByTestId('nav-item-support');
+    expect(supportBtn).toHaveClass('active');
+    expect(screen.getByText('Suporte & Relatos')).toBeInTheDocument();
     const badge = screen.getByTestId('pending-reports-badge');
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('3');
+  });
+
+  it('allows collapsing and expanding categories via accordion toggle buttons', () => {
+    const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
+    render(<Sidebar user={superAdminUser} pendingReportsCount={4} />);
+
+    expect(screen.getByTestId('nav-item-courses')).toBeInTheDocument();
+
+    const togglePedagogica = screen.getByTestId('nav-category-toggle-pedagogica');
+    fireEvent.click(togglePedagogica);
+
+    // Após recolher, os itens da categoria ficam ocultos e o badge de alerta aparece no cabeçalho
+    expect(screen.queryByTestId('nav-item-courses')).not.toBeInTheDocument();
+    expect(togglePedagogica).toHaveTextContent('4');
+
+    // Clicar novamente expande a categoria
+    fireEvent.click(togglePedagogica);
+    expect(screen.getByTestId('nav-item-courses')).toBeInTheDocument();
   });
 
   it('applies member area background color to Sidebar and renders Configurações button for managers and alunos', () => {
@@ -142,32 +165,30 @@ describe('Sidebar Component', () => {
     expect(onSelectTab).toHaveBeenCalledWith('integrations');
     unmount();
 
-    // Aluno NÃO deve ver o botão de Integrações
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
     render(<Sidebar user={alunoUser} />);
     expect(screen.queryByTestId('nav-item-integrations')).not.toBeInTheDocument();
     expect(screen.queryByText('Integrações')).not.toBeInTheDocument();
   });
 
-  it('renders "Suporte" button for superadmin and aluno, and handles tab selection', () => {
+  it('renders "Suporte & Relatos" button for superadmin and aluno, and handles tab selection', () => {
     const onSelectTab = vi.fn();
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} onSelectTab={onSelectTab} />);
 
     const supportBtn = screen.getByTestId('nav-item-support');
     expect(supportBtn).toBeInTheDocument();
-    expect(screen.getByText('Suporte')).toBeInTheDocument();
+    expect(screen.getByText('Suporte & Relatos')).toBeInTheDocument();
 
     fireEvent.click(supportBtn);
     expect(onSelectTab).toHaveBeenCalledWith('support');
     unmount();
 
-    // Aluno também DEVE ver o botão de Suporte
     const alunoUser = { name: 'Aluno Teste', email: 'aluno@test.com', role: 'aluno' };
     render(<Sidebar user={alunoUser} onSelectTab={onSelectTab} />);
     const alunoSupportBtn = screen.getByTestId('nav-item-support');
     expect(alunoSupportBtn).toBeInTheDocument();
-    expect(screen.getByText('Suporte')).toBeInTheDocument();
+    expect(screen.getByText('Suporte & Relatos')).toBeInTheDocument();
 
     fireEvent.click(alunoSupportBtn);
     expect(onSelectTab).toHaveBeenCalledWith('support');
@@ -178,7 +199,6 @@ describe('Sidebar Component', () => {
     const onSelectTabMock = vi.fn();
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
 
-    // Render fechado inicialmente
     const { rerender, container } = render(
       <Sidebar
         user={superAdminUser}
@@ -192,7 +212,6 @@ describe('Sidebar Component', () => {
     expect(aside).not.toHaveClass('mobile-open');
     expect(screen.queryByTestId('sidebar-backdrop')).not.toBeInTheDocument();
 
-    // Rerender aberto no mobile
     rerender(
       <Sidebar
         user={superAdminUser}
@@ -206,17 +225,14 @@ describe('Sidebar Component', () => {
     const backdrop = screen.getByTestId('sidebar-backdrop');
     expect(backdrop).toBeInTheDocument();
 
-    // Clicar no backdrop fecha
     fireEvent.click(backdrop);
     expect(onCloseMobileMock).toHaveBeenCalledTimes(1);
 
-    // Clicar no botão 'X' fecha
     const closeBtn = screen.getByTestId('sidebar-close-btn');
     expect(closeBtn).toBeInTheDocument();
     fireEvent.click(closeBtn);
     expect(onCloseMobileMock).toHaveBeenCalledTimes(2);
 
-    // Clicar em um item de navegação também fecha o drawer automaticamente
     const coursesBtn = screen.getByTestId('nav-item-courses');
     fireEvent.click(coursesBtn);
     expect(onSelectTabMock).toHaveBeenCalledWith('courses');
@@ -238,7 +254,6 @@ describe('Sidebar Component', () => {
     expect(onSelectTabMock).toHaveBeenCalledWith('chat');
     unmount();
 
-    // Aluno também tem acesso ao Chat
     const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
     render(<Sidebar user={alunoUser} onSelectTab={onSelectTabMock} />);
     expect(screen.getByText('Chat da Comunidade')).toBeInTheDocument();
@@ -296,7 +311,6 @@ describe('Sidebar Component', () => {
     expect(chatBtn).toHaveTextContent('5');
     unmount();
 
-    // Quando chatUnreadCount for 0, não exibe badge numérico
     render(<Sidebar user={alunoUser} chatUnreadCount={0} />);
     const chatBtnZero = screen.getByTestId('nav-item-chat');
     expect(chatBtnZero).not.toHaveTextContent('0');
@@ -307,7 +321,46 @@ describe('Sidebar Component', () => {
     render(<Sidebar />);
     expect(screen.getByText('Academia de Mestres')).toBeInTheDocument();
   });
+
+  it('exibe logotipo personalizado na barra lateral quando configurado no WhiteLabel', () => {
+    localStorage.setItem('platform_logo', 'https://cdn.example.com/logo-empresa.png');
+    render(<Sidebar />);
+    const logoImg = screen.getByTestId('sidebar-custom-logo-img');
+    expect(logoImg).toBeInTheDocument();
+    expect(logoImg).toHaveAttribute('src', 'https://cdn.example.com/logo-empresa.png');
+  });
+
+  it('exibe "Gestão de Usuários" para o perfil admin, mantendo "Servidor & Logs" exclusivo do superadmin', () => {
+    const onSelectTabMock = vi.fn();
+    const adminUser = { name: 'Admin Equipe', email: 'equipe@test.com', role: 'admin' };
+    render(<Sidebar user={adminUser} onSelectTab={onSelectTabMock} />);
+
+    const usersBtn = screen.getByTestId('nav-item-users');
+    expect(usersBtn).toBeInTheDocument();
+    expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument();
+
+    fireEvent.click(usersBtn);
+    expect(onSelectTabMock).toHaveBeenCalledWith('users');
+
+    expect(screen.queryByTestId('nav-item-infrastructure')).not.toBeInTheDocument();
+  });
+
+  it('alterna entre abas unificadas de Suporte & Relatos e Servidor & Logs', () => {
+    const onSelectTab = vi.fn();
+    const { unmount } = render(
+      <SupportReportsSubTabs activeTab="support" onSelectTab={onSelectTab} pendingReportsCount={2} />
+    );
+
+    expect(screen.getByTestId('subtab-pending-reports-badge')).toHaveTextContent('2');
+    fireEvent.click(screen.getByTestId('unified-subtab-lesson-reports'));
+    expect(onSelectTab).toHaveBeenCalledWith('lesson-reports');
+    unmount();
+
+    const onSelectServerTab = vi.fn();
+    render(<ServerSystemSubTabs activeTab="infrastructure" onSelectTab={onSelectServerTab} />);
+    fireEvent.click(screen.getByTestId('unified-subtab-backup'));
+    expect(onSelectServerTab).toHaveBeenCalledWith('backup');
+    fireEvent.click(screen.getByTestId('unified-subtab-logs'));
+    expect(onSelectServerTab).toHaveBeenCalledWith('logs');
+  });
 });
-
-
-

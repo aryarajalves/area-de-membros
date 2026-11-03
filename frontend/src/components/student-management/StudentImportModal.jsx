@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, FileSpreadsheet, Download, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { COURSE_ACCESS_DURATION_OPTIONS } from '../user-management/UserModals';
 
 export default function StudentImportModal({ isOpen, onClose, onSuccess }) {
   const [file, setFile] = useState(null);
@@ -383,13 +384,9 @@ export default function StudentImportModal({ isOpen, onClose, onSuccess }) {
             }}
             data-testid="default-duration-select"
           >
-            <option value="lifetime" style={{ backgroundColor: '#0f172a' }}>Vitalício</option>
-            <option value="1_month" style={{ backgroundColor: '#0f172a' }}>1 Mês</option>
-            <option value="3_months" style={{ backgroundColor: '#0f172a' }}>3 Meses</option>
-            <option value="6_months" style={{ backgroundColor: '#0f172a' }}>6 Meses</option>
-            <option value="1_year" style={{ backgroundColor: '#0f172a' }}>1 Ano</option>
-            <option value="2_years" style={{ backgroundColor: '#0f172a' }}>2 Anos</option>
-            <option value="3_years" style={{ backgroundColor: '#0f172a' }}>3 Anos</option>
+            {COURSE_ACCESS_DURATION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value} style={{ backgroundColor: '#0f172a' }}>{opt.label}</option>
+            ))}
           </select>
         </div>
 

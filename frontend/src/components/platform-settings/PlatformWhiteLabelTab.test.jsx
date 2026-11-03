@@ -13,12 +13,13 @@ describe('PlatformWhiteLabelTab Component', () => {
     global.URL.createObjectURL = vi.fn(() => 'blob:mock-preview-url');
   });
 
-  it('carrega configurações iniciais da API e exibe nome e banner padrão', async () => {
+  it('carrega configurações iniciais da API e exibe nome, logo e banner', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         platform_name: 'Minha Escola VIP',
         login_banner_url: null,
+        logo_url: null,
       }),
     });
 
@@ -34,6 +35,7 @@ describe('PlatformWhiteLabelTab Component', () => {
     );
 
     expect(screen.getByText('Nome da Plataforma (Marca / WhiteLabel)')).toBeInTheDocument();
+    expect(screen.getByText('Logotipo da Plataforma (Barra Lateral / Topo)')).toBeInTheDocument();
     expect(screen.getByText('Imagem de Banner da Tela de Login')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -48,7 +50,7 @@ describe('PlatformWhiteLabelTab Component', () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null }),
+        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null, logo_url: null }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -97,11 +99,11 @@ describe('PlatformWhiteLabelTab Component', () => {
     });
   });
 
-  it('permite selecionar um arquivo de imagem, exibe preview e realiza o upload', async () => {
+  it('permite selecionar um arquivo de imagem de banner, exibe preview e realiza o upload', async () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null }),
+        json: async () => ({ platform_name: 'Área de Membros', login_banner_url: null, logo_url: null }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -153,6 +155,7 @@ describe('PlatformWhiteLabelTab Component', () => {
         json: async () => ({
           platform_name: 'Área de Membros',
           login_banner_url: 'https://cdn.example.com/custom.png',
+          logo_url: null,
         }),
       })
       .mockResolvedValueOnce({
@@ -160,6 +163,7 @@ describe('PlatformWhiteLabelTab Component', () => {
         json: async () => ({
           platform_name: 'Área de Membros',
           login_banner_url: null,
+          logo_url: null,
         }),
       });
 

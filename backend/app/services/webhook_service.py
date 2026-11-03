@@ -332,6 +332,14 @@ def check_and_dispatch_renewal_events(db: Optional[Session] = None) -> Dict[str,
                 except Exception as rf_exc:
                     logger.error(f"Erro ao disparar funil de renovação 7 dias: {rf_exc}")
 
+            # Caso 3: Aviso de 3 dias antes (entre 2.5 e 3.5 dias para expirar)
+            elif 2.5 <= days_diff <= 3.5:
+                try:
+                    from app.services.funnel_trigger_service import dispatch_renewal_warning_funnels
+                    dispatch_renewal_warning_funnels(db=db, student_id=student.id, course_id=course.id, days_before=3)
+                except Exception as rf_exc:
+                    logger.error(f"Erro ao disparar funil de renovação 3 dias: {rf_exc}")
+
         return {"warnings_sent": warnings_sent, "expired_sent": expired_sent}
 
     except Exception as exc:
