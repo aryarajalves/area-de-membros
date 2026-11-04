@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, Wrench, Package, History } from 'lucide-react';
+import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, Wrench, Package, History, Clock } from 'lucide-react';
+import { formatCourseRemainingTime } from '../student-management/studentDateUtils';
 import ChainedLockOverlay from './ChainedLockOverlay';
 import { recordCourseSalesClick } from './courseSalesApi';
 
@@ -21,6 +22,8 @@ export default function CourseCard({
   const hasAccess = isManager || course.has_access !== false;
   const isTool = course.item_type === 'tool';
   const bundledCount = course.bundled_items_count || (course.bundled_courses ? course.bundled_courses.length : 0);
+  const expirationInfo = course.expires_at ? formatCourseRemainingTime(course.expires_at) : null;
+  const showExpirationBadge = !isManager && hasAccess && expirationInfo && expirationInfo.daysLeft <= 7 && !expirationInfo.isExpired;
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const imageSrc = course.thumbnail_url || course.cover_image_url;
@@ -62,6 +65,34 @@ export default function CourseCard({
       }}
       data-testid={`course-card-${course.id}`}
     >
+      {/* Badge de Expiração Próxima (Apenas para Alunos com acesso e menos de 7 dias para expirar) */}
+      {showExpirationBadge && (
+        <div
+          data-testid={`course-expiring-badge-${course.id}`}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            zIndex: 3,
+            backgroundColor: 'rgba(217, 119, 6, 0.92)',
+            backdropFilter: 'blur(6px)',
+            color: '#ffffff',
+            boxShadow: '0 2px 10px rgba(245, 158, 11, 0.45)',
+            border: '1px solid rgba(251, 191, 36, 0.6)',
+            borderRadius: '20px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+          }}
+        >
+          <Clock size={12} style={{ flexShrink: 0 }} />
+          <span>{expirationInfo.text}</span>
+        </div>
+      )}
+
       {/* Badges no topo esquerdo do card */}
       <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
         {!hasAccess && (

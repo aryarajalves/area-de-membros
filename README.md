@@ -1,11 +1,20 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.2`** | **Docker Hub: `backend-1.2.2` / `frontend-1.2.2`**
+> **Versão Oficial: `v1.2.4`** | **Docker Hub: `backend-1.2.4` / `frontend-1.2.4`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.2.4 (Correção de Edição de Módulos e Alerta de Expiração para Alunos)
+- **⏱️ Alerta de Expiração de Curso na Vitrine do Aluno (Regra dos 7 Dias):**
+  - Implementado badge luminoso no topo do card do curso para o aluno logado informando o tempo restante de acesso quando faltam 7 dias ou menos para expirar (`⏱️ Faltam X dias`, `⏱️ Expira amanhã!`, `⏱️ Expira hoje! (Xh Ymin restantes)`).
+  - Cursos com acesso vitalício ou com mais de 7 dias restantes mantêm a interface limpa (o alerta nunca é exibido).
+  - Endpoint `GET /courses` enriquecido com cálculo de `expires_at` e `access_duration` por aluno.
+- **🛠️ Correção Crítica na Edição de Módulos (PATCH / PUT):**
+  - Declarado `required_tier: Optional[str] = None` no schema Pydantic `ModuleUpdate` e adicionada leitura defensiva via `getattr`, eliminando o erro interno (HTTP 500) ao salvar alterações de módulos (título, descrição, capa, ordem, etc.).
+  - Cobertura de testes unitários automatizados para edição parcial e total de módulos e aulas.
 
 ### 🚀 Novidades da Versão v1.2.3 (Acesso por Horas, Personalização de Dias/Horas e Sincronização com Fuso de Brasília)
 - **⏱️ Liberação de Acesso por Horas e Seletor Customizado de Dias e Horas:**

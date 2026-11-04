@@ -94,8 +94,26 @@ export function formatBrasiliaTime(dateInput) {
 }
 
 /**
+ * Auxiliar para formatar horas e minutos restantes (ex: "3h 59min", "45 min", "2h").
+ */
+export function formatHoursAndMinutes(hours, minutes) {
+  const h = Math.max(0, hours || 0);
+  const m = Math.max(0, minutes || 0);
+  if (h > 0 && m > 0) {
+    return `${h}h ${m}min`;
+  }
+  if (h > 0) {
+    return `${h}h`;
+  }
+  if (m > 0) {
+    return `${m} min`;
+  }
+  return 'menos de 1 min';
+}
+
+/**
  * Calcula e formata o tempo restante de acesso no Horário Oficial de Brasília (America/Sao_Paulo).
- * Corrige o cálculo por calendário de Brasília (evita indicar "Expira hoje!" para cursos que expiram amanhã).
+ * Inclui detalhamento de horas e minutos quando a expiração for próxima.
  */
 export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, nowOverride = null) {
   if (!expiresAt) return null;
@@ -112,6 +130,8 @@ export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, 
       severity: 'expired',
       daysLeft: 0,
       hoursLeft: 0,
+      minutesLeft: 0,
+      totalMinutes: 0,
     };
   }
 
@@ -127,23 +147,24 @@ export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, 
   const expUtc = Date.UTC(eY, eM - 1, eD);
   const calendarDaysDiff = Math.round((expUtc - todayUtc) / 86400000);
 
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
 
   let text = '';
   if (calendarDaysDiff <= 0) {
     // Expira hoje no Horário de Brasília
-    if (diffHours >= 1) {
-      text = `Expira hoje! (${diffHours}h restantes)`;
-    } else if (diffMinutes > 1) {
-      text = `Expira hoje! (${diffMinutes} min restantes)`;
-    } else {
+    if (totalMinutes <= 1) {
       text = 'Expira em menos de 1 min!';
+    } else {
+      const timeStr = formatHoursAndMinutes(diffHours, remainingMinutes);
+      text = `Expira hoje! (${timeStr} restantes)`;
     }
   } else if (calendarDaysDiff === 1) {
     // Expira amanhã no Horário de Brasília
-    if (diffHours < 24 && diffHours >= 1) {
-      text = `Expira amanhã! (${diffHours}h restantes)`;
+    if (diffHours < 24) {
+      const timeStr = formatHoursAndMinutes(diffHours, remainingMinutes);
+      text = `Expira amanhã! (${timeStr} restantes)`;
     } else {
       text = 'Expira amanhã!';
     }
@@ -158,5 +179,7 @@ export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, 
     severity: calendarDaysDiff <= 7 ? 'warning' : 'ok',
     daysLeft: Math.max(0, calendarDaysDiff),
     hoursLeft: diffHours,
+    minutesLeft: remainingMinutes,
+    totalMinutes,
   };
 }

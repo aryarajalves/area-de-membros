@@ -185,6 +185,22 @@ def test_update_module_patch_and_put(setup_courses_and_users):
     assert res_mod.status_code == 201
     mod_id = res_mod.json()["id"]
 
+    # Atualiza via PATCH apenas o título e order_index (caso do erro em produção)
+    res_patch_title = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}", json={
+        "title": "Módulo 7 - Mercúrio Retrógrado",
+        "order_index": 7
+    }, headers=headers)
+    assert res_patch_title.status_code == 200
+    assert res_patch_title.json()["title"] == "Módulo 7 - Mercúrio Retrógrado"
+    assert res_patch_title.json()["order_index"] == 7
+
+    # Atualiza via PATCH com required_tier
+    res_patch_tier = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}", json={
+        "required_tier": "Ouro"
+    }, headers=headers)
+    assert res_patch_tier.status_code == 200
+    assert res_patch_tier.json()["required_tier"] == "Ouro"
+
     # Atualiza via PATCH
     res_patch = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}", json={
         "image_url": "https://storage.com/capa_patch.jpg"
@@ -285,6 +301,94 @@ def test_generate_course_ai_description_success(mock_generate, setup_courses_and
     assert data["description"] == "Descrição pedagógica completa gerada via IA mockada com sucesso."
     mock_generate.assert_called_once()
 
+def test_student_vitrine_returns_expires_at(setup_courses_and_users):
+    from datetime import datetime, timezone, timedelta
+    headers = get_headers("aluno_vitrine@test.com", "AlunoPass123!")
+    db = TestingSessionLocal()
 
+    # Cria curso com expiração de 3 dias
+    c_exp = Course(
+        title="Curso com Expiração Aluno",
+        description="Teste de expiração na vitrine",
+        is_published=True
+    )
+    db.add(c_exp)
+    db.commit()
+    db.refresh(c_exp)
 
+    aluno_id = setup_courses_and_users["aluno_id"]
+    c_exp_id = c_exp.id
+    exp_time = datetime.now(timezone.utc) + timedelta(days=3)
+    uc = UserCourse(user_id=aluno_id, course_id=c_exp_id, access_duration="3_days", expires_at=exp_time.replace(tzinfo=None))
+    db.add(uc)
+    db.commit()
+    db.close()
 
+    res = client.get("/api/v1/courses", headers=headers)
+    assert res.status_code == 200
+    courses = res.json()
+    item = next((c for c in courses if c["id"] == c_exp_id), None)
+    assert item is not None
+    assert item["has_access"] is True
+    assert item["expires_at"] is not None
+    assert item["access_duration"] == "3_days"
+
+def test_update_lesson_full_and_partial_modal_payload(setup_courses_and_users):
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    c1_id = setup_courses_and_users["c1_id"]
+
+    # Cria módulo
+    res_mod = client.post(f"/api/v1/courses/{c1_id}/modules", json={
+        "title": "Módulo Teste Aulas Edit",
+        "order_index": 1
+    }, headers=headers)
+    assert res_mod.status_code == 201
+    mod_id = res_mod.json()["id"]
+
+    # Cria aula inicial
+    res_l = client.post(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons", json={
+        "title": "Aula Antes da Edição",
+        "video_url": "https://storage.com/antigo.mp4"
+    }, headers=headers)
+    assert res_l.status_code == 201
+    l_id = res_l.json()["id"]
+
+    # 1. Edição parcial (somente título)
+    res_patch1 = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons/{l_id}", json={
+        "title": "Aula com Título Novo"
+    }, headers=headers)
+    assert res_patch1.status_code == 200
+    assert res_patch1.json()["title"] == "Aula com Título Novo"
+
+    # 2. Edição completa (payload exatamente como enviado pelo LessonModal)
+    full_payload = {
+        "title": "Aula 100% Atualizada",
+        "import_identifier": "Aula 100% Atualizada",
+        "description": "Descrição atualizada da aula",
+        "content_type": "video",
+        "text_content": None,
+        "duration": "15:30",
+        "order_index": 2,
+        "availability_status": "available",
+        "release_type": "immediate",
+        "release_days": 0,
+        "release_date": None,
+        "thumbnail_url": "https://storage.com/nova_thumb.png",
+        "videos": [{
+            "language": "pt",
+            "language_label": "Português",
+            "title": "Vídeo Principal",
+            "video_url": "https://storage.com/novo_video.mp4",
+            "video_type": "upload"
+        }],
+        "attachments": [],
+        "passing_score_pct": 70
+    }
+    res_patch2 = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons/{l_id}", json=full_payload, headers=headers)
+    assert res_patch2.status_code == 200
+    data2 = res_patch2.json()
+    assert data2["title"] == "Vídeo Principal"
+    assert data2["duration"] == "15:30"
+    assert data2["thumbnail_url"] == "https://storage.com/nova_thumb.png"
+    assert len(data2["videos"]) == 1
+    assert data2["videos"][0]["video_url"] == "https://storage.com/novo_video.mp4"

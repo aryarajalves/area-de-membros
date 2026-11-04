@@ -336,4 +336,108 @@ describe('CourseCard Component', () => {
     expect(screen.getByText('Área de Membros')).toBeInTheDocument();
     expect(screen.queryByAltText('Curso com Imagem Quebrada')).not.toBeInTheDocument();
   });
+
+  it('NÃO exibe badge de expiração se o curso for vitalício (sem expires_at)', () => {
+    const mockCourse = {
+      id: 20,
+      title: 'Curso Vitalício',
+      has_access: true,
+      expires_at: null,
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('course-expiring-badge-20')).not.toBeInTheDocument();
+  });
+
+  it('NÃO exibe badge de expiração se faltar mais de 7 dias para expirar (ex: 30 dias)', () => {
+    const in30Days = new Date(Date.now() + 30 * 86400000).toISOString();
+    const mockCourse = {
+      id: 21,
+      title: 'Curso de 1 Ano',
+      has_access: true,
+      expires_at: in30Days,
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('course-expiring-badge-21')).not.toBeInTheDocument();
+  });
+
+  it('exibe badge de expiração quando faltar menos de 7 dias (ex: 3 dias)', () => {
+    const in3Days = new Date(Date.now() + 3 * 86400000).toISOString();
+    const mockCourse = {
+      id: 22,
+      title: 'Curso Degustação',
+      has_access: true,
+      expires_at: in3Days,
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    const badge = screen.getByTestId('course-expiring-badge-22');
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toMatch(/Faltam [23] dias/);
+  });
+
+  it('exibe badge detalhando horas e minutos quando expirar hoje', () => {
+    const in3Hours = new Date(Date.now() + (3.5 * 3600000)).toISOString();
+    const mockCourse = {
+      id: 23,
+      title: 'Curso Horas Teste',
+      has_access: true,
+      expires_at: in3Hours,
+    };
+
+    render(
+      <CourseCard
+        course={mockCourse}
+        isManager={false}
+        isLightBg={false}
+        textColor="#fff"
+        subTextColor="#aaa"
+        cardBg="#111"
+        cardBorder="1px solid #333"
+        onSelectCourse={vi.fn()}
+      />
+    );
+
+    const badge = screen.getByTestId('course-expiring-badge-23');
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toContain('Expira hoje!');
+    expect(badge.textContent).toMatch(/\d+h/);
+  });
 });

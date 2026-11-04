@@ -108,9 +108,14 @@ def list_courses(
 
     if current_user.role == "aluno":
         user_course_ids = get_effective_user_course_ids(db, current_user.id)
+        user_courses = db.query(UserCourse).filter(UserCourse.user_id == current_user.id).all()
+        uc_map = {uc.course_id: uc for uc in user_courses}
         all_courses = db.query(Course).filter(Course.is_published == True).order_by(Course.order_index.asc(), Course.id.desc()).offset(skip).limit(limit).all()
         for c in all_courses:
             setattr(c, "has_access", c.id in user_course_ids)
+            uc = uc_map.get(c.id)
+            setattr(c, "expires_at", uc.expires_at if uc else None)
+            setattr(c, "access_duration", uc.access_duration if uc else None)
         attach_bundles_to_courses(db, all_courses)
         return all_courses
 
@@ -414,7 +419,7 @@ def update_module(
         module.release_days = module_in.release_days
     if module_in.release_date is not None:
         module.release_date = module_in.release_date
-    if module_in.required_tier is not None:
+    if getattr(module_in, "required_tier", None) is not None:
         module.required_tier = module_in.required_tier.strip() if module_in.required_tier else None
 
     db.commit()

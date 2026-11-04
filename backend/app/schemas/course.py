@@ -145,7 +145,6 @@ class ModuleBase(BaseModel):
     release_days: Optional[int] = 0
     release_date: Optional[datetime] = None
     required_tier: Optional[str] = None
-    required_tier: Optional[str] = None
 
 class ModuleCreate(ModuleBase):
     pass
@@ -158,6 +157,7 @@ class ModuleUpdate(BaseModel):
     release_type: Optional[str] = None
     release_days: Optional[int] = None
     release_date: Optional[datetime] = None
+    required_tier: Optional[str] = None
 
 class ModuleResponse(ModuleBase):
     id: int
@@ -230,6 +230,8 @@ class CourseResponse(CourseBase):
     has_access: Optional[bool] = True
     bundled_items_count: Optional[int] = 0
     bundled_courses: Optional[List[CourseBundleItemResponse]] = []
+    expires_at: Optional[datetime] = None
+    access_duration: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
