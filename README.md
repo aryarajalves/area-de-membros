@@ -7,7 +7,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.2.2 (Acesso por Horas, Personalização de Dias/Horas e Sincronização com Fuso de Brasília)
+### 🚀 Novidades da Versão v1.2.3 (Acesso por Horas, Personalização de Dias/Horas e Sincronização com Fuso de Brasília)
 - **⏱️ Liberação de Acesso por Horas e Seletor Customizado de Dias e Horas:**
   - Presets rápidos de horas no dropdown: `1 hora`, `2 horas`, `4 horas`, `6 horas` e `12 horas` para liberações temporárias de teste/degustação rápida.
   - Opção flexível `Personalizado (Dias e Horas)...` (`custom:Xd_Yh`) permitindo ao administrador digitar valores numéricos exatos de dias (0 a 3650) e horas (0 a 23) de acesso individual por curso no modal de edição de perfil de acesso (`EditUserRoleModal`).
