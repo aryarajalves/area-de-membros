@@ -1,117 +1,19 @@
 import React from 'react';
-import { X, ShieldCheck, Check, Copy, KeyRound, BookOpen, Layers, Clock } from 'lucide-react';
+import { X, ShieldCheck, Check, Copy, KeyRound, BookOpen } from 'lucide-react';
 import { formatBrasiliaDateTime } from '../student-management/studentDateUtils';
+import {
+  CourseSelectionList,
+  COURSE_ACCESS_DURATION_OPTIONS,
+  parseCustomDuration,
+  formatCustomDuration,
+} from './CourseSelectionList';
 
-export const COURSE_ACCESS_DURATION_OPTIONS = [
-  { value: 'lifetime', label: 'Vitalício' },
-  { value: '1_day', label: '1 dia' },
-  { value: '2_days', label: '2 dias' },
-  { value: '3_days', label: '3 dias' },
-  { value: '4_days', label: '4 dias' },
-  { value: '5_days', label: '5 dias' },
-  { value: '6_days', label: '6 dias' },
-  { value: '7_days', label: '7 dias' },
-  { value: '1_month', label: '1 mês' },
-  { value: '3_months', label: '3 meses' },
-  { value: '6_months', label: '6 meses' },
-  { value: '1_year', label: '1 ano' },
-  { value: '2_years', label: '2 anos' },
-  { value: '3_years', label: '3 anos' },
-];
-
-export function CourseSelectionList({
-  prefix,
-  courses,
-  selectedCourseIds,
-  courseAccessMap,
-  setCourseAccessMap,
-  toggleCourse,
-  emptyText,
-}) {
-  if (courses.length === 0) {
-    return (
-      <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12.5px', color: '#64748b' }}>
-        {emptyText}
-      </div>
-    );
-  }
-
-  return (
-    <div className="course-selection-list" data-testid={`${prefix}-courses-list`}>
-      {courses.map((course) => {
-        const isSelected = selectedCourseIds.includes(course.id);
-        const currentDuration = courseAccessMap[course.id] || 'lifetime';
-        return (
-          <div
-            key={course.id}
-            className={`course-selection-item ${isSelected ? 'selected' : ''}`}
-            onClick={() => toggleCourse(course.id, !isSelected)}
-            data-testid={`${prefix}-course-item-${course.id}`}
-          >
-            <div className="course-selection-info" style={{ flex: 1, minWidth: 0 }}>
-              {course.thumbnail_url ? (
-                <img src={course.thumbnail_url} alt={course.title} className="course-selection-thumb" />
-              ) : (
-                <div className="course-selection-icon-placeholder">
-                  <Layers size={16} />
-                </div>
-              )}
-              <span className="course-selection-title">{course.title}</span>
-            </div>
-
-            {isSelected && (
-              <div
-                className="course-duration-selector"
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', marginRight: '8px' }}
-              >
-                <Clock size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                <select
-                  value={currentDuration}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setCourseAccessMap((prev) => ({ ...prev, [course.id]: e.target.value }));
-                  }}
-                  className="course-duration-select"
-                  data-testid={`${prefix}-course-duration-${course.id}`}
-                  title="Tempo de acesso para este produto"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    border: '1px solid rgba(245, 158, 11, 0.45)',
-                    background: 'rgba(245, 158, 11, 0.14)',
-                    color: '#d97706',
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                >
-                  {COURSE_ACCESS_DURATION_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <input
-              type="checkbox"
-              className="course-selection-checkbox"
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                toggleCourse(course.id, e.target.checked);
-              }}
-              data-testid={`${prefix}-course-check-${course.id}`}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+export {
+  CourseSelectionList,
+  COURSE_ACCESS_DURATION_OPTIONS,
+  parseCustomDuration,
+  formatCustomDuration,
+};
 
 export function CreateInviteModal({
   isOpen,

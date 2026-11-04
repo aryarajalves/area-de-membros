@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen, CheckCircle, Clock, Calendar, AlertCircle, History, Hourglass, Zap } from 'lucide-react';
-import { formatBrasiliaDateTime, formatBrasiliaDate } from './studentDateUtils';
+import { formatBrasiliaDateTime, formatBrasiliaDate, formatCourseRemainingTime } from './studentDateUtils';
 
 export default function StudentCourseProgressItem({ course, isLightBg, onOpenHistory, onOpenTriggerWebhook }) {
   const isTool = course.item_type === 'tool';
@@ -15,23 +15,9 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
   const formatDateTime = (dateStr) => formatBrasiliaDateTime(dateStr);
   const formatDateOnly = (dateStr) => formatBrasiliaDate(dateStr);
 
-  // Cálculo de dias restantes se não vier do backend
-  const calculateDaysRemaining = () => {
-    if (course.days_remaining !== undefined && course.days_remaining !== null) {
-      return course.days_remaining;
-    }
-    if (!course.expires_at) return null;
-    try {
-      const exp = new Date(course.expires_at);
-      const now = new Date();
-      const diffMs = exp - now;
-      return diffMs > 0 ? Math.floor(diffMs / (1000 * 60 * 60 * 24)) : 0;
-    } catch {
-      return null;
-    }
-  };
-
-  const daysLeft = calculateDaysRemaining();
+  const expirationInfo = formatCourseRemainingTime(course.expires_at, course.is_expired);
+  const daysLeft = expirationInfo ? expirationInfo.daysLeft : (course.days_remaining ?? null);
+  const isEffectivelyExpired = course.is_expired || (expirationInfo && expirationInfo.isExpired);
   const timeProgress = course.time_progress_percent !== undefined && course.time_progress_percent !== null
     ? course.time_progress_percent
     : course.is_expired ? 100 : 50;
@@ -266,17 +252,17 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', marginBottom: '6px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: textMuted }}>
-              <Hourglass size={13} style={{ color: course.is_expired ? '#f87171' : daysLeft <= 7 ? '#fbbf24' : '#60a5fa' }} />
+              <Hourglass size={13} style={{ color: isEffectivelyExpired ? '#f87171' : daysLeft <= 7 ? '#fbbf24' : '#60a5fa' }} />
               <strong>Validade do Curso:</strong>
             </span>
             <span
               style={{
                 fontWeight: 700,
-                color: course.is_expired ? '#f87171' : daysLeft <= 7 ? '#fbbf24' : '#34d399',
+                color: isEffectivelyExpired ? '#f87171' : daysLeft <= 7 ? '#fbbf24' : '#34d399',
               }}
               data-testid={`time-left-text-${course.course_id}`}
             >
-              {course.is_expired ? 'Acesso Expirado' : daysLeft === 0 ? 'Expira hoje!' : `Faltam ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`}
+              {expirationInfo ? expirationInfo.text : (isEffectivelyExpired ? 'Acesso Expirado' : daysLeft === 0 ? 'Expira hoje!' : `Faltam ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`)}
             </span>
           </div>
 
@@ -294,7 +280,7 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
               style={{
                 height: '100%',
                 width: `${Math.min(timeProgress, 100)}%`,
-                backgroundColor: course.is_expired ? '#dc2626' : daysLeft <= 7 ? '#f59e0b' : '#3b82f6',
+                backgroundColor: isEffectivelyExpired ? '#dc2626' : daysLeft <= 7 ? '#f59e0b' : '#3b82f6',
                 borderRadius: '999px',
                 transition: 'width 0.4s ease',
               }}

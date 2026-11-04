@@ -1,11 +1,20 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.1`** | **Docker Hub: `backend-1.2.1` / `frontend-1.2.1`**
+> **Versão Oficial: `v1.2.2`** | **Docker Hub: `backend-1.2.2` / `frontend-1.2.2`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.2.2 (Acesso por Horas, Personalização de Dias/Horas e Sincronização com Fuso de Brasília)
+- **⏱️ Liberação de Acesso por Horas e Seletor Customizado de Dias e Horas:**
+  - Presets rápidos de horas no dropdown: `1 hora`, `2 horas`, `4 horas`, `6 horas` e `12 horas` para liberações temporárias de teste/degustação rápida.
+  - Opção flexível `Personalizado (Dias e Horas)...` (`custom:Xd_Yh`) permitindo ao administrador digitar valores numéricos exatos de dias (0 a 3650) e horas (0 a 23) de acesso individual por curso no modal de edição de perfil de acesso (`EditUserRoleModal`).
+  - Modularização da arquitetura frontend com extração do componente [`CourseSelectionList.jsx`](frontend/src/components/user-management/CourseSelectionList.jsx).
+- **🇧🇷 Sincronização da Linha do Tempo de Expiração no Fuso de Brasília (`America/Sao_Paulo`):**
+  - Correção no utilitário de datas e no endpoint de alunos: cálculo de dias e horas restantes realizado estritamente sobre a data de calendário no fuso oficial de Brasília (`ZoneInfo("America/Sao_Paulo")`).
+  - Eliminação do falso aviso de "Expira hoje!" para cursos que expiram no dia seguinte (ex: término em `04/11 às 01:36` quando hoje é `03/11`), exibindo com exatidão `Expira amanhã! (Xh restantes)` ou o tempo restante real.
 
 ### 🚀 Novidades da Versão v1.2.1 (Mapas Mentais com IA, Fila de Otimização 1 a 1, Drip por Aula e Certificados)
 - **🧠 Mapas Mentais com IA (Dark Premium HTML & Mermaid.js Interativo):**

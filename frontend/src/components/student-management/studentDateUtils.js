@@ -27,6 +27,21 @@ export function parseUtcDate(dateInput) {
 }
 
 /**
+ * Retorna a data em formato YYYY-MM-DD no fuso de Brasília (America/Sao_Paulo).
+ */
+export function getBrasiliaDateString(dateInput) {
+  const d = parseUtcDate(dateInput);
+  if (!d) return null;
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(d);
+}
+
+/**
  * Formata data e hora no Horário Oficial de Brasília: DD/MM/AAAA às HH:MM
  */
 export function formatBrasiliaDateTime(dateInput) {
@@ -76,4 +91,72 @@ export function formatBrasiliaTime(dateInput) {
   } catch {
     return '—';
   }
+}
+
+/**
+ * Calcula e formata o tempo restante de acesso no Horário Oficial de Brasília (America/Sao_Paulo).
+ * Corrige o cálculo por calendário de Brasília (evita indicar "Expira hoje!" para cursos que expiram amanhã).
+ */
+export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, nowOverride = null) {
+  if (!expiresAt) return null;
+  const exp = parseUtcDate(expiresAt);
+  if (!exp) return null;
+
+  const now = nowOverride ? parseUtcDate(nowOverride) : new Date();
+  const diffMs = exp.getTime() - now.getTime();
+
+  if (isExpiredOverride || diffMs <= 0) {
+    return {
+      text: 'Acesso Expirado',
+      isExpired: true,
+      severity: 'expired',
+      daysLeft: 0,
+      hoursLeft: 0,
+    };
+  }
+
+  const todayStr = getBrasiliaDateString(now);
+  const expStr = getBrasiliaDateString(exp);
+
+  if (!todayStr || !expStr) return null;
+
+  // Diferença em dias de calendário no Horário de Brasília
+  const [tY, tM, tD] = todayStr.split('-').map(Number);
+  const [eY, eM, eD] = expStr.split('-').map(Number);
+  const todayUtc = Date.UTC(tY, tM - 1, tD);
+  const expUtc = Date.UTC(eY, eM - 1, eD);
+  const calendarDaysDiff = Math.round((expUtc - todayUtc) / 86400000);
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+  let text = '';
+  if (calendarDaysDiff <= 0) {
+    // Expira hoje no Horário de Brasília
+    if (diffHours >= 1) {
+      text = `Expira hoje! (${diffHours}h restantes)`;
+    } else if (diffMinutes > 1) {
+      text = `Expira hoje! (${diffMinutes} min restantes)`;
+    } else {
+      text = 'Expira em menos de 1 min!';
+    }
+  } else if (calendarDaysDiff === 1) {
+    // Expira amanhã no Horário de Brasília
+    if (diffHours < 24 && diffHours >= 1) {
+      text = `Expira amanhã! (${diffHours}h restantes)`;
+    } else {
+      text = 'Expira amanhã!';
+    }
+  } else {
+    // Faltam 2 ou mais dias
+    text = `Faltam ${calendarDaysDiff} dias`;
+  }
+
+  return {
+    text,
+    isExpired: false,
+    severity: calendarDaysDiff <= 7 ? 'warning' : 'ok',
+    daysLeft: Math.max(0, calendarDaysDiff),
+    hoursLeft: diffHours,
+  };
 }

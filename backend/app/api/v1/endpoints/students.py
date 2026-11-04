@@ -2,6 +2,11 @@ import json
 from typing import Optional, List
 from math import ceil
 from datetime import datetime, timezone, timedelta
+try:
+    from zoneinfo import ZoneInfo
+    BR_TZ = ZoneInfo("America/Sao_Paulo")
+except Exception:
+    BR_TZ = timezone(timedelta(hours=-3))
 from fastapi import APIRouter, Depends, Query, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -146,7 +151,10 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 exp_dt = uc.expires_at if uc.expires_at.tzinfo else uc.expires_at.replace(tzinfo=timezone.utc)
                 is_expired = exp_dt < now
                 diff_seconds = (exp_dt - now).total_seconds()
-                days_remaining = int(diff_seconds // 86400) if diff_seconds > 0 else 0
+                now_br = now.astimezone(BR_TZ)
+                exp_br = exp_dt.astimezone(BR_TZ)
+                cal_days = (exp_br.date() - now_br.date()).days
+                days_remaining = max(0, cal_days) if not is_expired else 0
 
                 enrolled_dt = uc.created_at or student.created_at
                 if enrolled_dt:
@@ -768,8 +776,10 @@ def trigger_student_webhook(
     days_remaining = None
     if uc and uc.expires_at:
         exp_dt = uc.expires_at if uc.expires_at.tzinfo else uc.expires_at.replace(tzinfo=timezone.utc)
-        diff_seconds = (exp_dt - now).total_seconds()
-        days_remaining = int(diff_seconds // 86400) if diff_seconds > 0 else 0
+        now_br = now.astimezone(BR_TZ)
+        exp_br = exp_dt.astimezone(BR_TZ)
+        cal_days = (exp_br.date() - now_br.date()).days
+        days_remaining = max(0, cal_days) if exp_dt >= now else 0
 
     # Busca métricas de aulas
     lessons = (

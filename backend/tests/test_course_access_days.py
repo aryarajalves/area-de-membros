@@ -338,3 +338,115 @@ def test_admin_role_can_access_user_management_and_invites_with_superadmin_prote
     )
     assert del_sa.status_code == 403
 
+
+def test_calculate_course_expiration_hours_and_custom():
+    base = datetime(2026, 11, 3, 12, 0, 0, tzinfo=timezone.utc)
+
+    # 1. Testes de Presets de Horas
+    assert calculate_course_expiration("1_hour", base_time=base) == base + timedelta(hours=1)
+    assert calculate_course_expiration("2_hours", base_time=base) == base + timedelta(hours=2)
+    assert calculate_course_expiration("4_hours", base_time=base) == base + timedelta(hours=4)
+    assert calculate_course_expiration("6_hours", base_time=base) == base + timedelta(hours=6)
+    assert calculate_course_expiration("12_hours", base_time=base) == base + timedelta(hours=12)
+
+    # 2. Testes de Customizado (Dias e Horas combinados)
+    assert calculate_course_expiration("custom:0d_3h", base_time=base) == base + timedelta(hours=3)
+    assert calculate_course_expiration("custom:1d_12h", base_time=base) == base + timedelta(days=1, hours=12)
+    assert calculate_course_expiration("custom:3d_0h", base_time=base) == base + timedelta(days=3)
+    assert calculate_course_expiration("custom:0d_0h", base_time=base) == base + timedelta(hours=1)
+
+
+def test_user_course_access_with_hours_and_custom_via_patch():
+    headers = get_superadmin_headers()
+    db = TestingSessionLocal()
+
+    c1 = Course(title="Curso Horas", description="Liberado por algumas horas")
+    c2 = Course(title="Curso Custom", description="Liberado dias + horas")
+    db.add_all([c1, c2])
+    db.commit()
+    db.refresh(c1)
+    db.refresh(c2)
+
+    student = User(
+        name="Aluno Acesso Horas",
+        email="aluno_horas@teste.com",
+        hashed_password=get_password_hash("Senha@123456"),
+        role="aluno",
+        is_active=True,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    student_id = student.id
+    c1_id = c1.id
+    c2_id = c2.id
+    db.close()
+
+    # Atualiza acesso do aluno definindo horas para c1 e custom para c2
+    patch_res = client.patch(
+        f"/api/v1/auth/users/{student_id}",
+        json={
+            "role": "aluno",
+            "course_ids": [c1_id, c2_id],
+            "course_access": [
+                {"course_id": c1_id, "access_duration": "6_hours"},
+                {"course_id": c2_id, "access_duration": "custom:2d_6h"},
+            ],
+        },
+        headers=headers,
+    )
+    assert patch_res.status_code == 200
+    data = patch_res.json()
+    assert len(data["course_access"]) == 2
+
+    access_map = {item["course_id"]: item for item in data["course_access"]}
+    assert access_map[c1_id]["access_duration"] == "6_hours"
+    assert access_map[c1_id]["expires_at"] is not None
+
+    assert access_map[c2_id]["access_duration"] == "custom:2d_6h"
+    assert access_map[c2_id]["expires_at"] is not None
+
+def test_student_course_days_remaining_brasilia_timezone():
+    headers = get_superadmin_headers()
+    db = TestingSessionLocal()
+
+    course = Course(title="Curso Brasilia Timezone", description="Teste de fuso")
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    cid = course.id
+
+    student = User(
+        name="Aluno Fuso Brasilia",
+        email="fuso_brasilia@teste.com",
+        hashed_password=get_password_hash("Senha@123456"),
+        role="aluno",
+        is_active=True,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    sid = student.id
+
+    from zoneinfo import ZoneInfo
+    br_tz = ZoneInfo("America/Sao_Paulo")
+    now_utc = datetime.now(timezone.utc)
+    now_br = now_utc.astimezone(br_tz)
+
+    tomorrow_br = now_br + timedelta(days=1)
+    tomorrow_exp = datetime(tomorrow_br.year, tomorrow_br.month, tomorrow_br.day, 1, 36, tzinfo=br_tz)
+    tomorrow_utc = tomorrow_exp.astimezone(timezone.utc).replace(tzinfo=None)
+
+    uc = UserCourse(user_id=sid, course_id=cid, access_duration="custom:0d_5h", expires_at=tomorrow_utc)
+    db.add(uc)
+    db.commit()
+    db.close()
+
+    res = client.get("/api/v1/students", headers=headers)
+    assert res.status_code == 200
+    st_list = res.json()["items"]
+    target_st = next((s for s in st_list if s["id"] == sid), None)
+    assert target_st is not None
+    course_item = next((c for c in target_st["courses"] if c["course_id"] == cid), None)
+    assert course_item is not None
+    assert course_item["days_remaining"] == 1
