@@ -252,6 +252,102 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_active BOOLEAN DEFAULT FALSE NOT NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_expires_at TIMESTAMP NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_custom_monthly_limit INTEGER NULL;
+
+                        CREATE TABLE IF NOT EXISTS ai_tutor_settings (
+                            id SERIAL PRIMARY KEY,
+                            tutor_name VARCHAR(100) DEFAULT 'Tutor IA 24h' NOT NULL,
+                            default_monthly_free_questions INTEGER NOT NULL DEFAULT 3,
+                            system_prompt TEXT,
+                            temperature FLOAT NOT NULL DEFAULT 0.3,
+                            model_name VARCHAR(100) NOT NULL DEFAULT 'gpt-4o-mini',
+                            is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                            sales_checkout_url VARCHAR(500),
+                            monthly_price_brl FLOAT NOT NULL DEFAULT 10.0,
+                            rag_top_k INTEGER NOT NULL DEFAULT 4,
+                            rag_min_similarity FLOAT NOT NULL DEFAULT 0.35,
+                            access_mode VARCHAR(30) NOT NULL DEFAULT 'public',
+                            maintenance_message TEXT NULL,
+                            allowed_topics TEXT NULL,
+                            prohibited_topics TEXT NULL,
+                            redirect_app_url VARCHAR(500) NULL,
+                            redirect_app_name VARCHAR(150) NULL,
+                            prohibited_response_guideline TEXT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS tutor_name VARCHAR(100) DEFAULT 'Tutor IA 24h' NOT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS rag_top_k INTEGER DEFAULT 4 NOT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS rag_min_similarity FLOAT DEFAULT 0.35 NOT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS access_mode VARCHAR(30) DEFAULT 'public' NOT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS maintenance_message TEXT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS allowed_topics TEXT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS prohibited_topics TEXT NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS redirect_app_url VARCHAR(500) NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS redirect_app_name VARCHAR(150) NULL;
+                        ALTER TABLE ai_tutor_settings ADD COLUMN IF NOT EXISTS prohibited_response_guideline TEXT NULL;
+
+                        CREATE TABLE IF NOT EXISTS ai_tutor_messages (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            lesson_id INTEGER NULL REFERENCES lessons(id) ON DELETE SET NULL,
+                            role VARCHAR(20) NOT NULL,
+                            content TEXT NOT NULL,
+                            prompt_tokens INTEGER DEFAULT 0,
+                            completion_tokens INTEGER DEFAULT 0,
+                            cost_brl FLOAT NOT NULL DEFAULT 0.0,
+                            related_lessons_json TEXT NULL,
+                            feedback_rating VARCHAR(10) NULL,
+                            feedback_text TEXT NULL,
+                            feedback_at TIMESTAMP NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                        ALTER TABLE ai_tutor_messages ADD COLUMN IF NOT EXISTS feedback_rating VARCHAR(10) NULL;
+                        ALTER TABLE ai_tutor_messages ADD COLUMN IF NOT EXISTS feedback_text TEXT NULL;
+                        ALTER TABLE ai_tutor_messages ADD COLUMN IF NOT EXISTS feedback_at TIMESTAMP NULL;
+                        CREATE INDEX IF NOT EXISTS ix_ai_tutor_messages_user_id ON ai_tutor_messages(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_ai_tutor_messages_course_id ON ai_tutor_messages(course_id);
+                        CREATE INDEX IF NOT EXISTS ix_ai_tutor_messages_lesson_id ON ai_tutor_messages(lesson_id);
+
+                        CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
+                            id SERIAL PRIMARY KEY,
+                            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                            module_id INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+                            lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+                            chunk_index INTEGER NOT NULL DEFAULT 0,
+                            chunk_type VARCHAR(30) NOT NULL DEFAULT 'transcript',
+                            question_text TEXT NULL,
+                            answer_text TEXT NULL,
+                            content TEXT NOT NULL,
+                            start_time_seconds INTEGER NULL,
+                            end_time_seconds INTEGER NULL,
+                            embedding_json TEXT NOT NULL,
+                            token_count INTEGER NOT NULL DEFAULT 0,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS chunk_type VARCHAR(30) DEFAULT 'transcript' NOT NULL;
+                        ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS question_text TEXT NULL;
+                        ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS answer_text TEXT NULL;
+                        CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_course_id ON ai_knowledge_chunks(course_id);
+                        CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_module_id ON ai_knowledge_chunks(module_id);
+                        CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_lesson_id ON ai_knowledge_chunks(lesson_id);
+
+                        CREATE TABLE IF NOT EXISTS ai_tutor_suggestions (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            course_id INTEGER NULL REFERENCES courses(id) ON DELETE SET NULL,
+                            lesson_id INTEGER NULL REFERENCES lessons(id) ON DELETE SET NULL,
+                            suggestion_text TEXT NOT NULL,
+                            category VARCHAR(50) DEFAULT 'platform_improvement',
+                            status VARCHAR(30) DEFAULT 'new',
+                            admin_notes TEXT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
 
                     """))
                 else:
@@ -261,6 +357,9 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP",
                         "ALTER TABLE users ADD COLUMN playback_rate FLOAT DEFAULT 1.0",
+                        "ALTER TABLE users ADD COLUMN ai_tutor_active BOOLEAN DEFAULT 0",
+                        "ALTER TABLE users ADD COLUMN ai_tutor_expires_at TIMESTAMP NULL",
+                        "ALTER TABLE users ADD COLUMN ai_tutor_custom_monthly_limit INTEGER NULL",
                         "ALTER TABLE courses ADD COLUMN watermark_enabled BOOLEAN DEFAULT 1",
                         "ALTER TABLE courses ADD COLUMN release_type VARCHAR(50) DEFAULT 'immediate'",
                         "ALTER TABLE courses ADD COLUMN release_date TIMESTAMP NULL",

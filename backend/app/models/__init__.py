@@ -38,7 +38,7 @@ from app.models.tutorial import Tutorial
 from app.models.introduction import IntroductionPost, IntroductionComment, IntroductionLike
 from app.models.event import Event, EventAttendee
 from app.models.certificate import Certificate
-from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk
+from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk, AiTutorSuggestion
 
 __all__ = [
     "User",
@@ -92,4 +92,5 @@ __all__ = [
     "AiTutorSetting",
     "AiTutorMessage",
     "AiKnowledgeChunk",
+    "AiTutorSuggestion",
 ]
