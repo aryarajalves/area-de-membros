@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Sparkles, Flame, Clock, CheckCircle2, User, Pin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Flame, Clock, CheckCircle2, User, Pin, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react';
 
 export const PILL_FILTERS = [
   { id: 'all', label: 'Todas as Dúvidas', icon: Sparkles },
+  { id: 'tutor_suggestions', label: '💡 Sugestões Tech Tutor', icon: Lightbulb },
   { id: 'pinned', label: 'Fixadas por Mim', icon: Pin },
   { id: 'popular', label: 'Mais Populares', icon: Flame },
   { id: 'unanswered', label: 'Aguardando Resposta', icon: Clock },

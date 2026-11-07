@@ -8,6 +8,7 @@ import LessonAiTranscriptionProcessing from './LessonAiTranscriptionProcessing';
 import LessonChaptersCard from './LessonChaptersCard';
 import ConfirmRetriggerAiModal from './ConfirmRetriggerAiModal';
 import AgentFlowLessonSync from './AgentFlowLessonSync';
+import LessonAiTranscriptionErrorState from './LessonAiTranscriptionErrorState';
 
 // Cache em memória persistido por ID da aula para navegação instantânea e zero layout shift
 const transcriptionMemoryCache = new Map();
@@ -59,6 +60,10 @@ export default function LessonAiTranscriptionTab({
         if (Array.isArray(json?.chapters) && json.chapters.length > 0) {
           window.dispatchEvent(new CustomEvent('video-chapters-loaded', { detail: { chapters: json.chapters } }));
         }
+        const isDone = (json?.status === 'completed' || json?.status === 'ready') && Boolean(json?.full_transcript || json?.summary_markdown || json?.summary_html);
+        window.dispatchEvent(new CustomEvent('lesson-transcription-status-updated', {
+          detail: { lessonId: lesson.id, status: json?.status, isCompleted: isDone }
+        }));
         if (json?.status === 'completed' && ((json?.lesson_title && json.lesson_title !== lesson?.title) || (json?.lesson_description && json.lesson_description !== lesson?.description))) {
           window.dispatchEvent(new CustomEvent('lesson-title-updated', { detail: { lessonId: lesson.id, newTitle: json.lesson_title, newDescription: json.lesson_description } }));
         }
@@ -108,7 +113,14 @@ export default function LessonAiTranscriptionTab({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || 'Falha ao iniciar transcrição do vídeo com IA.');
+        const errorDetail = errJson.detail || 'Falha ao iniciar transcrição do vídeo com IA.';
+        setData((prev) => ({
+          ...(prev || {}),
+          status: 'failed',
+          error_message: errorDetail,
+          updated_at: new Date().toISOString()
+        }));
+        throw new Error(errorDetail);
       }
 
       const json = await res.json();
@@ -116,6 +128,12 @@ export default function LessonAiTranscriptionTab({
     } catch (err) {
       console.error('Erro ao processar transcrição:', err);
       addToast(err.message || 'Falha ao transcrever o vídeo com IA.', 'error');
+      setData((prev) => ({
+        ...(prev || {}),
+        status: 'failed',
+        error_message: err.message || 'Falha na conexão ao iniciar transcrição do vídeo.',
+        updated_at: new Date().toISOString()
+      }));
     } finally {
       setTranscribing(false);
     }
@@ -133,6 +151,9 @@ export default function LessonAiTranscriptionTab({
         addToast('Processamento cancelado / reiniciado.', 'info');
         const emptyState = { status: 'not_started', full_transcript: '' };
         if (lesson?.id) transcriptionMemoryCache.set(lesson.id, emptyState);
+        window.dispatchEvent(new CustomEvent('lesson-transcription-status-updated', {
+          detail: { lessonId: lesson.id, status: 'not_started', isCompleted: false }
+        }));
         setData(emptyState);
       }
     } catch (err) {
@@ -179,50 +200,17 @@ export default function LessonAiTranscriptionTab({
   const isCompleted = data?.status === 'completed' && (data?.full_transcript || data?.summary_markdown || data?.summary_html);
   const isProcessing = transcribing || data?.status === 'processing';
 
-  // Se falhou: exibe erro técnico exclusivamente para o Super Admin (alunos veem estado neutro)
-  if (data?.status === 'failed' && !isProcessing && currentUser?.role === 'superadmin') {
+  // Se falhou: exibe erro técnico exclusivamente para Administradores e Super Admins (alunos veem estado neutro)
+  if (data?.status === 'failed' && !isProcessing && isManager) {
     return (
-      <div
-        data-testid="ai-transcription-failed"
-        style={{
-          marginTop: '20px',
-          padding: '32px 24px',
-          borderRadius: '12px',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          backgroundColor: isLightBg ? '#fef2f2' : 'rgba(239, 68, 68, 0.05)',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '12px'
-        }}
-      >
-        <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#ef4444', margin: 0 }}>
-          Falha no Processamento da Transcrição
-        </h4>
-        <p style={{ fontSize: '13px', color: subTextColor, maxWidth: '480px', margin: 0 }}>
-          {data.error_message || 'Ocorreu um erro ao processar o vídeo da aula. Verifique se o vídeo possui áudio válido e tente novamente.'}
-        </p>
-        {isManager && (
-          <button
-            type="button"
-            data-testid="btn-retry-ai-transcription"
-            onClick={handleTriggerTranscription}
-            style={{
-              padding: '8px 18px',
-              backgroundColor: '#ef4444',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            Tentar Novamente
-          </button>
-        )}
-      </div>
+      <LessonAiTranscriptionErrorState
+        errorMessage={data?.error_message}
+        updatedAt={data?.updated_at}
+        createdAt={data?.created_at}
+        onRetry={handleTriggerTranscription}
+        isRetrying={transcribing}
+        isLightBg={isLightBg}
+      />
     );
   }
 
@@ -297,6 +285,8 @@ export default function LessonAiTranscriptionTab({
         borderColor={borderColor}
         isManager={isManager}
         onReset={handleResetTranscription}
+        lesson={lesson}
+        progressData={data}
       />
     );
   }

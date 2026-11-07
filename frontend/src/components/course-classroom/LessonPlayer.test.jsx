@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import LessonPlayer from './LessonPlayer';
 
@@ -233,6 +233,105 @@ describe('LessonPlayer Component', () => {
     const overviewTabBtn = screen.getByTestId('tab-lesson-overview');
     fireEvent.click(overviewTabBtn);
     expect(notesContainer).toBeInTheDocument();
+  });
+
+  it('não exibe a aba Tutor IA se a transcrição da aula não estiver concluída', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/transcription')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'not_started', full_transcript: '' })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <LessonPlayer
+        lesson={mockLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    // O botão da aba Tutor IA não deve existir no DOM
+    expect(screen.queryByTestId('tab-lesson-tutor')).not.toBeInTheDocument();
+  });
+
+  it('exibe a aba Tutor IA quando a transcrição da aula estiver concluída', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/transcription')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'completed', full_transcript: 'Texto transcrito da aula' })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <LessonPlayer
+        lesson={mockLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    // Com status completed, a aba do Tutor IA deve aparecer
+    const tutorTab = await screen.findByTestId('tab-lesson-tutor');
+    expect(tutorTab).toBeInTheDocument();
+    expect(tutorTab).toHaveTextContent('Tutor IA 24h');
+  });
+
+  it('reage ao evento lesson-transcription-status-updated exibindo a aba Tutor IA em tempo real', async () => {
+    let resolveTranscription;
+    const transcriptionPromise = new Promise((resolve) => {
+      resolveTranscription = resolve;
+    });
+
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/transcription')) {
+        return transcriptionPromise.then(() => ({
+          ok: true,
+          json: async () => ({ status: 'processing', full_transcript: '' })
+        }));
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <LessonPlayer
+        lesson={mockLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    // Conclui a primeira busca de transcrição como processing
+    await act(async () => {
+      resolveTranscription();
+    });
+
+    expect(screen.queryByTestId('tab-lesson-tutor')).not.toBeInTheDocument();
+
+    // Dispara evento informando conclusão da transcrição
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent('lesson-transcription-status-updated', {
+          detail: { lessonId: mockLesson.id, isCompleted: true, status: 'completed' }
+        })
+      );
+    });
+
+    // A aba do Tutor IA deve aparecer instantaneamente
+    const tutorTab = await screen.findByTestId('tab-lesson-tutor');
+    expect(tutorTab).toBeInTheDocument();
   });
 });
 

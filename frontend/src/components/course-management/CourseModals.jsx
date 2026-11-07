@@ -41,6 +41,10 @@ export function CourseFormModal({
   setBundleTitle,
   watermarkEnabled = true,
   setWatermarkEnabled,
+  releaseType = 'immediate',
+  setReleaseType,
+  releaseDate = '',
+  setReleaseDate,
   availableCourses = [],
   bgColor = '#090d16',
   uploading,
@@ -153,6 +157,10 @@ export function CourseFormModal({
               setDescription={setDescription}
               watermarkEnabled={watermarkEnabled}
               setWatermarkEnabled={setWatermarkEnabled}
+              releaseType={releaseType}
+              setReleaseType={setReleaseType}
+              releaseDate={releaseDate}
+              setReleaseDate={setReleaseDate}
               editingCourse={editingCourse}
               textColor={textColor}
               isLightBg={isLightBg}

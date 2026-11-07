@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, Wrench, Package, History, Clock } from 'lucide-react';
+import { Layers, PlayCircle, ExternalLink, Lock, Edit2, Trash2, Wrench, Package, History, Clock, Calendar } from 'lucide-react';
+import { formatReleaseDateTimePtBr } from './CourseReleaseScheduleCard';
 import { formatCourseRemainingTime } from '../student-management/studentDateUtils';
 import ChainedLockOverlay from './ChainedLockOverlay';
 import { recordCourseSalesClick } from './courseSalesApi';
@@ -21,6 +22,9 @@ export default function CourseCard({
 }) {
   const hasAccess = isManager || course.has_access !== false;
   const isTool = course.item_type === 'tool';
+  const isCourseLocked = Boolean(course.is_course_locked) || course.release_type === 'closed' || (course.release_type === 'specific_date' && course.release_date && new Date(course.release_date) > new Date());
+  const isLockedForStudent = !isManager && isCourseLocked;
+  const formattedReleaseDate = course.release_type === 'specific_date' && course.release_date ? formatReleaseDateTimePtBr(course.release_date) : '';
   const bundledCount = course.bundled_items_count || (course.bundled_courses ? course.bundled_courses.length : 0);
   const expirationInfo = course.expires_at ? formatCourseRemainingTime(course.expires_at) : null;
   const showExpirationBadge = !isManager && hasAccess && expirationInfo && expirationInfo.daysLeft <= 7 && !expirationInfo.isExpired;
@@ -29,6 +33,16 @@ export default function CourseCard({
   const imageSrc = course.thumbnail_url || course.cover_image_url;
 
   const handleCardClick = () => {
+    if (isLockedForStudent) {
+      if (onShowInfoToast) {
+        onShowInfoToast(
+          formattedReleaseDate
+            ? `Este curso será liberado em ${formattedReleaseDate}.`
+            : 'Este curso está temporariamente fechado pelo instrutor e será liberado em breve.'
+        );
+      }
+      return;
+    }
     if (hasAccess) {
       if (isTool) {
         if (course.tool_url) {
@@ -95,6 +109,28 @@ export default function CourseCard({
 
       {/* Badges no topo esquerdo do card */}
       <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        {isCourseLocked && (
+          <div
+            data-testid={`course-schedule-lock-badge-${course.id}`}
+            style={{
+              backgroundColor: formattedReleaseDate ? 'rgba(245, 158, 11, 0.92)' : 'rgba(239, 68, 68, 0.92)',
+              backdropFilter: 'blur(6px)',
+              color: '#ffffff',
+              border: formattedReleaseDate ? '1px solid rgba(251, 191, 36, 0.65)' : '1px solid rgba(248, 113, 113, 0.65)',
+              borderRadius: '20px',
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              width: 'fit-content'
+            }}
+          >
+            {formattedReleaseDate ? <Calendar size={12} /> : <Lock size={12} />}
+            <span>{formattedReleaseDate ? `Libera em ${formattedReleaseDate}` : 'Curso Fechado p/ Alunos'}</span>
+          </div>
+        )}
         {!hasAccess && (
           <div
             data-testid={`course-unpurchased-badge-${course.id}`}
@@ -209,7 +245,7 @@ export default function CourseCard({
         )}
 
         {/* Overlay de Cadeado com Correntes para produto fechado */}
-        {!hasAccess && <ChainedLockOverlay isLightBg={isLightBg} />}
+        {(!hasAccess || isLockedForStudent) && <ChainedLockOverlay isLightBg={isLightBg} />}
       </div>
 
       {/* Informações do Curso */}
@@ -238,7 +274,24 @@ export default function CourseCard({
 
         {/* Ações do Card */}
         <div className="course-card-footer" style={{ borderTop: cardBorder }}>
-          {hasAccess ? (
+          {isLockedForStudent ? (
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleCardClick}
+              data-testid={`locked-schedule-course-btn-${course.id}`}
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                gap: '6px',
+                backgroundColor: formattedReleaseDate ? '#d97706' : '#dc2626',
+                borderColor: formattedReleaseDate ? '#b45309' : '#b91c1c'
+              }}
+            >
+              {formattedReleaseDate ? <Calendar size={14} /> : <Lock size={14} />}
+              <span>{formattedReleaseDate ? `Libera ${formattedReleaseDate}` : 'Temporariamente Fechado'}</span>
+            </button>
+          ) : hasAccess ? (
             isTool ? (
               <button
                 type="button"

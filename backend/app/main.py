@@ -207,6 +207,7 @@ async def lifespan(app: FastAPI):
                         );
                         CREATE INDEX IF NOT EXISTS ix_events_start_time ON events(start_time);
                         CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id);
+                        ALTER TABLE events ADD COLUMN IF NOT EXISTS course_ids_json TEXT NULL;
 
                         CREATE TABLE IF NOT EXISTS funnel_folders (
                             id SERIAL PRIMARY KEY,
@@ -223,6 +224,8 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS certificate_enabled BOOLEAN DEFAULT TRUE;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS workload_hours INTEGER DEFAULT 10;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_name VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS release_type VARCHAR(50) DEFAULT 'immediate';
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         CREATE TABLE IF NOT EXISTS certificates (
                             id SERIAL PRIMARY KEY,
                             certificate_code VARCHAR(100) UNIQUE NOT NULL,
@@ -259,6 +262,9 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP",
                         "ALTER TABLE users ADD COLUMN playback_rate FLOAT DEFAULT 1.0",
                         "ALTER TABLE courses ADD COLUMN watermark_enabled BOOLEAN DEFAULT 1",
+                        "ALTER TABLE courses ADD COLUMN release_type VARCHAR(50) DEFAULT 'immediate'",
+                        "ALTER TABLE courses ADD COLUMN release_date TIMESTAMP NULL",
+                        "ALTER TABLE events ADD COLUMN course_ids_json TEXT NULL",
                     ]:
                         try:
                             conn.execute(text(col_sql))

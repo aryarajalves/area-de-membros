@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy, Tag, CalendarCheck } from 'lucide-react';
+import { Mail, MessageCircle, Calendar, BookOpen, ChevronDown, ChevronUp, UserCheck, Clock, Trophy, Tag, CalendarCheck, Bot } from 'lucide-react';
 import StudentCourseProgressItem from './StudentCourseProgressItem';
 import StudentAccessHistoryModal from './StudentAccessHistoryModal';
 import StudentTriggerWebhookModal from './StudentTriggerWebhookModal';
 import StudentGamificationHistoryModal from './StudentGamificationHistoryModal';
 import StudentAssignTagsModal from './StudentAssignTagsModal';
 import StudentRpgLevelBadge from './StudentRpgLevelBadge';
+import StudentAiTutorModal from './StudentAiTutorModal';
 import { formatBrasiliaDateTime } from './studentDateUtils';
 
 export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
@@ -14,6 +15,7 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
   const [selectedCourseForWebhook, setSelectedCourseForWebhook] = useState(null);
   const [showGamificationModal, setShowGamificationModal] = useState(false);
   const [showAssignTagsModal, setShowAssignTagsModal] = useState(false);
+  const [showAiTutorModal, setShowAiTutorModal] = useState(false);
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.035)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -287,6 +289,31 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             </span>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setShowAiTutorModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: student.ai_tutor_active ? 'rgba(124, 58, 237, 0.16)' : 'rgba(255, 255, 255, 0.05)',
+              border: student.ai_tutor_active ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid rgba(255, 255, 255, 0.12)',
+              color: student.ai_tutor_active ? '#c084fc' : textMuted,
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: student.ai_tutor_active ? '0 0 10px rgba(124, 58, 237, 0.2)' : 'none'
+            }}
+            title="Gerenciar acesso e consumo do Tutor IA deste aluno"
+            data-testid={`student-ai-tutor-btn-${student.id}`}
+          >
+            <Bot size={14} color={student.ai_tutor_active ? '#c084fc' : textMuted} />
+            <span>{student.ai_tutor_active ? 'Tutor IA Ativo' : 'Tutor IA'}</span>
+          </button>
+
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: '0.78rem', color: textMuted }}>Progresso Geral</div>
             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#38bdf8' }}>
@@ -385,6 +412,17 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
         onClose={() => setShowAssignTagsModal(false)}
         student={student}
         onSuccess={() => {
+          if (onRefreshStudents) onRefreshStudents();
+        }}
+      />
+
+      {/* Modal de Gestão do Tutor IA */}
+      <StudentAiTutorModal
+        isOpen={showAiTutorModal}
+        onClose={() => setShowAiTutorModal(false)}
+        student={student}
+        isLightBg={isLightBg}
+        onStudentUpdated={() => {
           if (onRefreshStudents) onRefreshStudents();
         }}
       />

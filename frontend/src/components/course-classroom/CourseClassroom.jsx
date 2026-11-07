@@ -13,6 +13,7 @@ import BatchLessonOrderModal from './BatchLessonOrderModal';
 import BatchMindmapModal from './BatchMindmapModal';
 import CourseUpsellManager from './CourseUpsellManager';
 import CourseCertificateManager from './CourseCertificateManager';
+import TutorFloatingWidget from '../tutor-ia/TutorFloatingWidget';
 import { scrollToClassroomSection } from './lessonUtils';
 import { useToast } from '../../context/ToastContext';
 
@@ -469,28 +470,19 @@ export default function CourseClassroom({
       )}
 
       {/* Modais de Lote: Capas, Ordem e Mapas Mentais (IA) */}
-      <BatchLessonThumbnailModal
-        isOpen={batchThumbnailOpen} onClose={() => { setBatchThumbnailOpen(false); setBatchThumbnailModule(null); }}
-        courseId={course?.id || initialCourse.id} module={batchThumbnailModule}
-        onUploadThumbnail={uploadLessonThumbnail} onSuccess={fetchCourseData} isLightBg={isLightBg}
-      />
-      <BatchLessonOrderModal
-        isOpen={batchOrderOpen} onClose={() => { setBatchOrderOpen(false); setBatchOrderModule(null); }}
-        courseId={course?.id || initialCourse.id} module={batchOrderModule}
-        onSuccess={fetchCourseData} isLightBg={isLightBg}
-      />
-      <BatchMindmapModal
-        isOpen={batchMindmapOpen} onClose={() => { setBatchMindmapOpen(false); setBatchMindmapModule(null); }}
-        courseId={course?.id || initialCourse.id} module={batchMindmapModule} modules={modules}
-        onSuccess={fetchCourseData} isLightBg={isLightBg}
-      />
+      <BatchLessonThumbnailModal isOpen={batchThumbnailOpen} onClose={() => { setBatchThumbnailOpen(false); setBatchThumbnailModule(null); }} courseId={course?.id || initialCourse.id} module={batchThumbnailModule} onUploadThumbnail={uploadLessonThumbnail} onSuccess={fetchCourseData} isLightBg={isLightBg} />
+      <BatchLessonOrderModal isOpen={batchOrderOpen} onClose={() => { setBatchOrderOpen(false); setBatchOrderModule(null); }} courseId={course?.id || initialCourse.id} module={batchOrderModule} onSuccess={fetchCourseData} isLightBg={isLightBg} />
+      <BatchMindmapModal isOpen={batchMindmapOpen} onClose={() => { setBatchMindmapOpen(false); setBatchMindmapModule(null); }} courseId={course?.id || initialCourse.id} module={batchMindmapModule} modules={modules} onSuccess={fetchCourseData} isLightBg={isLightBg} />
 
-      {/* Gerenciadores: Certificados e Upsell */}
-      <CourseCertificateManager isManager={isManager} courseId={course?.id || initialCourse.id}
-        completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0}
-      />
-      <CourseUpsellManager courseId={course?.id || initialCourse.id}
-        completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0}
+      {/* Gerenciadores: Certificados, Upsell e Tutor IA */}
+      <CourseCertificateManager isManager={isManager} courseId={course?.id || initialCourse.id} completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0} />
+      <CourseUpsellManager courseId={course?.id || initialCourse.id} completedCount={completedLessonIds?.length || 0} totalCount={totalLessonsCount || 0} />
+      <TutorFloatingWidget
+        courseId={course?.id || initialCourse.id}
+        moduleId={selectedModule?.id || selectedModuleId || activeLesson?.module_id} lessonId={activeLesson?.id}
+        currentUser={currentUser}
+        isLightBg={isLightBg}
+        onSelectLesson={(l) => { setActiveLesson(l); if (l.module_id) setSelectedModuleId(l.module_id); scrollToClassroomSection(); }}
       />
     </div>
   );

@@ -13,6 +13,35 @@ from app.models.course import Course, UserCourse, LessonProgress
 from app.services.funnel_service import execute_funnel_flow, get_system_sender_id
 
 
+def _launch_funnel_execution(funnel_id: int, student_id: int, sender_id: int, trigger_tag: str, execution_id: int, factory):
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            execute_funnel_flow(
+                funnel_id=funnel_id,
+                student_id=student_id,
+                sender_id=sender_id,
+                triggered_by=trigger_tag,
+                execution_id=execution_id,
+                db_session_factory=factory,
+            )
+        )
+    except RuntimeError:
+        try:
+            asyncio.run(
+                execute_funnel_flow(
+                    funnel_id=funnel_id,
+                    student_id=student_id,
+                    sender_id=sender_id,
+                    triggered_by=trigger_tag,
+                    execution_id=execution_id,
+                    db_session_factory=factory,
+                )
+            )
+        except Exception as run_err:
+            logger.error(f"[FUNNEL DISPATCH] Falha ao rodar fluxo: {run_err}")
+
+
 def dispatch_student_created_funnels(db: Session, student_id: int, db_session_factory=None) -> int:
     """Dispara funis ativos com gatilho imediato de aluno criado (days_after=0)."""
     dispatched = 0
@@ -320,74 +349,39 @@ def dispatch_progress_milestone_funnels(
                         if target_course_id and int(target_course_id) != course_id:
                             continue
 
-                        configured_milestone = data.get("milestone", "100")
-                        matched_m = None
+                        configured_milestones = data.get("milestones")
+                        if not configured_milestones:
+                            leg_m = data.get("milestone", "100")
+                            configured_milestones = ["25", "50", "75", "100"] if leg_m == "all" else [str(leg_m)]
 
-                        if configured_milestone == "all":
-                            # Pega o maior marco cruzado
-                            matched_m = crossed_milestones[-1]
-                        else:
-                            try:
-                                conf_int = int(configured_milestone)
-                                if conf_int in crossed_milestones:
-                                    matched_m = conf_int
-                            except (ValueError, TypeError):
-                                pass
+                        for matched_m in crossed_milestones:
+                            if str(matched_m) not in [str(x) for x in configured_milestones]:
+                                continue
 
-                        if matched_m is None:
-                            continue
+                            trigger_tag = f"trigger_progress_{course_id}_{matched_m}pct"
+                            already_run = db.query(FunnelExecution).filter(
+                                FunnelExecution.funnel_id == f.id,
+                                FunnelExecution.user_id == student_id,
+                                FunnelExecution.triggered_by == trigger_tag,
+                            ).first()
+                            if already_run:
+                                continue
 
-                        trigger_tag = f"trigger_progress_{course_id}_{matched_m}pct"
-                        already_run = db.query(FunnelExecution).filter(
-                            FunnelExecution.funnel_id == f.id,
-                            FunnelExecution.user_id == student_id,
-                            FunnelExecution.triggered_by == trigger_tag,
-                        ).first()
-                        if already_run:
-                            continue
-
-                        execution = FunnelExecution(
-                            funnel_id=f.id,
-                            user_id=student_id,
-                            triggered_by=trigger_tag,
-                            status="running",
-                            started_at=datetime.now(timezone.utc),
-                            logs=f"Gatilho de marco {matched_m}% no curso #{course_id} iniciado",
-                        )
-                        db.add(execution)
-                        db.commit()
-                        db.refresh(execution)
-
-                        sender_id = get_system_sender_id(db, f)
-
-                        try:
-                            loop = asyncio.get_running_loop()
-                            loop.create_task(
-                                execute_funnel_flow(
-                                    funnel_id=f.id,
-                                    student_id=student_id,
-                                    sender_id=sender_id,
-                                    triggered_by=trigger_tag,
-                                    execution_id=execution.id,
-                                    db_session_factory=factory,
-                                )
+                            execution = FunnelExecution(
+                                funnel_id=f.id,
+                                user_id=student_id,
+                                triggered_by=trigger_tag,
+                                status="running",
+                                started_at=datetime.now(timezone.utc),
+                                logs=f"Gatilho de marco {matched_m}% no curso #{course_id} iniciado",
                             )
-                        except RuntimeError:
-                            try:
-                                asyncio.run(
-                                    execute_funnel_flow(
-                                        funnel_id=f.id,
-                                        student_id=student_id,
-                                        sender_id=sender_id,
-                                        triggered_by=trigger_tag,
-                                        execution_id=execution.id,
-                                        db_session_factory=factory,
-                                    )
-                                )
-                            except Exception as run_err:
-                                logger.error(f"[FUNNEL MARCO] Falha ao rodar fluxo síncrono: {run_err}")
+                            db.add(execution)
+                            db.commit()
+                            db.refresh(execution)
 
-                        dispatched += 1
+                            sender_id = get_system_sender_id(db, f)
+                            _launch_funnel_execution(f.id, student_id, sender_id, trigger_tag, execution.id, factory)
+                            dispatched += 1
                         logger.info(
                             f"[FUNNEL MARCO] Funil #{f.id} disparado para aluno #{student_id} "
                             f"(Marco {matched_m}% do Curso #{course_id})"
@@ -630,4 +624,142 @@ def dispatch_student_inactivity_funnels(db: Session, db_session_factory=None) ->
     except Exception as exc:
         logger.error(f"[FUNNEL INATIVIDADE] Erro ao disparar funis de inatividade: {exc}")
 
+    return dispatched
+
+
+def dispatch_lesson_module_funnels(
+    db: Session,
+    student_id: int,
+    course_id: int,
+    event_type: str,
+    lesson_id: Optional[int] = None,
+    module_id: Optional[int] = None,
+    db_session_factory=None,
+) -> int:
+    """
+    Dispara funis com gatilho 'lesson_module_activity' quando o aluno conclui uma aula ou um módulo.
+    Suporta saídas ramificadas (output_lesson e output_module).
+    """
+    dispatched = 0
+    factory = db_session_factory or sessionmaker(bind=db.get_bind())
+    try:
+        active_funnels = db.query(Funnel).filter(Funnel.is_active == True).all()
+        for f in active_funnels:
+            try:
+                flow = json.loads(f.flow_data or "{}")
+            except Exception:
+                continue
+
+            nodes = flow.get("nodes", [])
+            for n in nodes:
+                if n.get("type") == "trigger":
+                    data = n.get("data", {})
+                    if data.get("trigger_event") == "lesson_module_activity":
+                        target_course_id = data.get("course_id")
+                        if target_course_id and int(target_course_id) != course_id:
+                            continue
+
+                        active_options = data.get("active_options", ["lesson", "module"])
+                        if event_type not in active_options:
+                            continue
+
+                        if event_type == "lesson":
+                            target_lesson_id = data.get("lesson_id")
+                            if target_lesson_id and lesson_id and int(target_lesson_id) != int(lesson_id):
+                                continue
+
+                        ref_id = lesson_id if event_type == "lesson" else module_id
+                        trigger_tag = f"trigger_{event_type}_activity_{course_id}_{ref_id or 'any'}"
+                        already_run = db.query(FunnelExecution).filter(
+                            FunnelExecution.funnel_id == f.id,
+                            FunnelExecution.user_id == student_id,
+                            FunnelExecution.triggered_by == trigger_tag,
+                        ).first()
+                        if already_run:
+                            continue
+
+                        execution = FunnelExecution(
+                            funnel_id=f.id,
+                            user_id=student_id,
+                            triggered_by=trigger_tag,
+                            status="running",
+                            started_at=datetime.now(timezone.utc),
+                            logs=f"Gatilho de atividade {event_type} no curso #{course_id} (ref #{ref_id}) iniciado",
+                        )
+                        db.add(execution)
+                        db.commit()
+                        db.refresh(execution)
+
+                        sender_id = get_system_sender_id(db, f)
+                        _launch_funnel_execution(f.id, student_id, sender_id, trigger_tag, execution.id, factory)
+                        dispatched += 1
+                        logger.info(f"[FUNNEL AULA/MODULO] Funil #{f.id} disparado para aluno #{student_id} ({trigger_tag})")
+    except Exception as exc:
+        logger.error(f"[FUNNEL AULA/MODULO] Erro ao disparar funis: {exc}")
+    return dispatched
+
+
+def dispatch_tutor_ia_lifecycle_funnels(
+    db: Session,
+    student_id: int,
+    event_type: str,
+    days_remaining: Optional[int] = None,
+    db_session_factory=None,
+) -> int:
+    """
+    Dispara funis com gatilho 'tutor_ia_lifecycle' em eventos da jornada do Tutor IA:
+    'first_chat', 'quota_exhausted', 'expiring_soon', 'expired'.
+    """
+    dispatched = 0
+    factory = db_session_factory or sessionmaker(bind=db.get_bind())
+    try:
+        active_funnels = db.query(Funnel).filter(Funnel.is_active == True).all()
+        for f in active_funnels:
+            try:
+                flow = json.loads(f.flow_data or "{}")
+            except Exception:
+                continue
+
+            nodes = flow.get("nodes", [])
+            for n in nodes:
+                if n.get("type") == "trigger":
+                    data = n.get("data", {})
+                    if data.get("trigger_event") == "tutor_ia_lifecycle":
+                        active_events = data.get("active_events", ["first_chat", "quota_exhausted"])
+                        if event_type not in active_events:
+                            continue
+
+                        if event_type == "expiring_soon":
+                            expiring_days_cfg = int(data.get("expiring_days", 3))
+                            if days_remaining is not None and days_remaining > expiring_days_cfg:
+                                continue
+
+                        date_suffix = datetime.now(timezone.utc).strftime("%Y%m%d") if event_type in ["expiring_soon", "expired"] else ""
+                        trigger_tag = f"trigger_tutor_ia_{event_type}_{student_id}_{date_suffix}".rstrip("_")
+                        already_run = db.query(FunnelExecution).filter(
+                            FunnelExecution.funnel_id == f.id,
+                            FunnelExecution.user_id == student_id,
+                            FunnelExecution.triggered_by == trigger_tag,
+                        ).first()
+                        if already_run:
+                            continue
+
+                        execution = FunnelExecution(
+                            funnel_id=f.id,
+                            user_id=student_id,
+                            triggered_by=trigger_tag,
+                            status="running",
+                            started_at=datetime.now(timezone.utc),
+                            logs=f"Gatilho Tutor IA ({event_type}) iniciado para aluno #{student_id}",
+                        )
+                        db.add(execution)
+                        db.commit()
+                        db.refresh(execution)
+
+                        sender_id = get_system_sender_id(db, f)
+                        _launch_funnel_execution(f.id, student_id, sender_id, trigger_tag, execution.id, factory)
+                        dispatched += 1
+                        logger.info(f"[FUNNEL TUTOR IA] Funil #{f.id} disparado ({trigger_tag})")
+    except Exception as exc:
+        logger.error(f"[FUNNEL TUTOR IA] Erro ao disparar funis: {exc}")
     return dispatched

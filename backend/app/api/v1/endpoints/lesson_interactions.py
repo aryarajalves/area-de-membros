@@ -165,6 +165,17 @@ def toggle_lesson_progress(
                         LessonProgress.is_completed == True
                     ).count()
                     if done_mod_count >= len(mod_lesson_ids):
+                        try:
+                            from app.services.funnel_trigger_service import dispatch_lesson_module_funnels
+                            dispatch_lesson_module_funnels(
+                                db=db,
+                                student_id=current_user.id,
+                                course_id=course_id,
+                                event_type="module",
+                                module_id=lesson.module_id,
+                            )
+                        except Exception as f_err:
+                            logger.error(f"Erro ao disparar funil de modulo concluido: {f_err}")
                         pt_mod = award_points(db, current_user, "module_completed", reference_id=lesson.module_id)
                         if pt_mod and getattr(pt_mod, "is_new_award", False):
                             module_xp_awarded = pt_mod.points
@@ -233,6 +244,7 @@ def toggle_lesson_progress(
             completed_lessons=completed_after_count,
             total_lessons=total_course_lessons,
             last_lesson_title=lesson.title or "",
+            lesson_id=lesson_id,
         )
 
     return record

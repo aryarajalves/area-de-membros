@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import EventsManagement from './EventsManagement';
 import EventCard from './EventCard';
+import EventAccessRuleSelector from './EventAccessRuleSelector';
 import DeleteEventConfirmModal from './DeleteEventConfirmModal';
 import ConfirmAttendanceModal from './ConfirmAttendanceModal';
 import { generateGoogleCalendarUrl, getEventStatus, formatBrasiliaDate } from './googleCalendarHelper';
@@ -286,5 +287,40 @@ describe('EventsManagement Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Live Semanal da Comunidade')).toBeInTheDocument();
     });
+  });
+});
+
+describe('EventAccessRuleSelector Multi-Course Component', () => {
+  const sampleCourses = [
+    { id: 1, title: 'AstroWake' },
+    { id: 2, title: 'Bússola Astrológica' },
+    { id: 3, title: 'Timing da Lua' },
+  ];
+
+  it('permite abrir o dropdown e selecionar mais de um curso ao mesmo tempo', () => {
+    const onChangeCourseIds = vi.fn();
+    const onChangeCourseId = vi.fn();
+
+    render(
+      <EventAccessRuleSelector
+        targetType="course"
+        onChangeTargetType={vi.fn()}
+        courseId="1"
+        onChangeCourseId={onChangeCourseId}
+        courseIds={[1]}
+        onChangeCourseIds={onChangeCourseIds}
+        courses={sampleCourses}
+      />
+    );
+
+    expect(screen.getByTestId('event-selected-course-chip-1')).toHaveTextContent('AstroWake');
+
+    // Abre o dropdown
+    fireEvent.click(screen.getByTestId('event-course-multiselect-trigger'));
+    expect(screen.getByTestId('event-course-multiselect-menu')).toBeInTheDocument();
+
+    // Clica no segundo curso para adicionar à seleção
+    fireEvent.click(screen.getByTestId('event-course-option-2'));
+    expect(onChangeCourseIds).toHaveBeenCalledWith([1, 2]);
   });
 });

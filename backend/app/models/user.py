@@ -20,6 +20,9 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False) # Contador de tentativas falhas de login
     locked_until = Column(DateTime, nullable=True) # Timestamp de bloqueio temporário por força bruta
     playback_rate = Column(Float, default=1.0, nullable=True) # Velocidade preferida de reprodução do player
+    ai_tutor_active = Column(Boolean, default=False, nullable=False) # Se o usuário possui assinatura ativa do Tutor IA
+    ai_tutor_expires_at = Column(DateTime, nullable=True) # Data de expiração/renovação da assinatura do Tutor IA
+    ai_tutor_custom_monthly_limit = Column(Integer, nullable=True) # Limite mensal customizado (None = global, -1 = VIP ilimitado)
     created_at = Column(DateTime, default=utc_now)
 
 

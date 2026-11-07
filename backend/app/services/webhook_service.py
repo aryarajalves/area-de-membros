@@ -173,6 +173,7 @@ def check_and_dispatch_progress_events(
     completed_lessons: int,
     total_lessons: int,
     last_lesson_title: str = "",
+    lesson_id: Optional[int] = None,
     db: Optional[Session] = None
 ):
     """
@@ -226,9 +227,12 @@ def check_and_dispatch_progress_events(
                 logger.info(f"Aluno {user.email} atingiu marco de {milestone_val}% no curso '{course.title}'!")
                 dispatch_event_to_webhooks(event_name, base_data, course_id=course.id, db=db)
 
-        # 3. Dispara funis com gatilho de marco de progresso (progress_milestone)
+        # 3. Dispara funis com gatilho de marco de progresso e atividade de aula/módulo
         try:
-            from app.services.funnel_trigger_service import dispatch_progress_milestone_funnels
+            from app.services.funnel_trigger_service import (
+                dispatch_progress_milestone_funnels,
+                dispatch_lesson_module_funnels,
+            )
             dispatch_progress_milestone_funnels(
                 db=db,
                 student_id=user.id,
@@ -236,8 +240,22 @@ def check_and_dispatch_progress_events(
                 previous_pct=previous_percent,
                 current_pct=current_percent,
             )
+            dispatch_lesson_module_funnels(
+                db=db,
+                student_id=user.id,
+                course_id=course.id,
+                event_type="lesson",
+                lesson_id=lesson_id,
+            )
+            if current_percent >= 100:
+                dispatch_lesson_module_funnels(
+                    db=db,
+                    student_id=user.id,
+                    course_id=course.id,
+                    event_type="module",
+                )
         except Exception as f_exc:
-            logger.error(f"Erro ao disparar funis de marco de progresso: {f_exc}")
+            logger.error(f"Erro ao disparar funis de progresso / aula / módulo: {f_exc}")
 
     except Exception as exc:
         logger.error(f"Erro ao verificar marcos de progresso do usuário {user_id}: {exc}")

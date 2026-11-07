@@ -78,6 +78,8 @@ export default function SupportManagement({ currentUser, bgColor }) {
       params.append('sort', 'unanswered');
     } else if (activePillFilter === 'popular') {
       params.append('sort', 'popular');
+    } else if (activePillFilter === 'tutor_suggestions') {
+      params.append('search', 'Sugestão Tech Tutor');
     } else if (activePillFilter === 'my_topics') {
       params.append('sort', 'my_topics');
     } else if (sortBy) {

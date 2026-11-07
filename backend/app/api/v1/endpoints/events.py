@@ -1,5 +1,6 @@
+import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc
@@ -11,6 +12,7 @@ from app.models.course import Course, UserCourse
 from app.models.event import Event, EventAttendee
 from app.schemas.event import EventCreate, EventUpdate, EventResponse
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
+from app.services.course_bundle_service import get_effective_user_course_ids
 
 router = APIRouter()
 
@@ -26,27 +28,86 @@ def _is_student_course_active(uc: UserCourse) -> bool:
     return exp > now
 
 
+def _extract_event_course_ids(event: Event) -> List[int]:
+    """Extrai a lista de IDs de cursos permitidos de um evento (suporta múltiplos cursos e legado course_id)."""
+    if getattr(event, "target_type", "all") != "course":
+        return []
+    ids: List[int] = []
+    raw_json = getattr(event, "course_ids_json", None)
+    if raw_json:
+        try:
+            parsed = json.loads(raw_json)
+            if isinstance(parsed, list):
+                for item in parsed:
+                    try:
+                        cid = int(item)
+                        if cid > 0 and cid not in ids:
+                            ids.append(cid)
+                    except (ValueError, TypeError):
+                        pass
+        except Exception:
+            pass
+    if event.course_id and event.course_id not in ids:
+        ids.insert(0, int(event.course_id))
+    return ids
+
+
+def _normalize_requested_course_ids(course_ids: Optional[List[int]], single_course_id: Optional[int]) -> List[int]:
+    """Unifica e remove duplicatas da lista de cursos enviada no payload."""
+    normalized: List[int] = []
+    if course_ids:
+        for cid in course_ids:
+            try:
+                val = int(cid)
+                if val > 0 and val not in normalized:
+                    normalized.append(val)
+            except (ValueError, TypeError):
+                pass
+    if single_course_id:
+        try:
+            val = int(single_course_id)
+            if val > 0 and val not in normalized:
+                normalized.append(val)
+        except (ValueError, TypeError):
+            pass
+    return normalized
+
+
 def _build_event_response(
     event: Event,
     current_user: User,
     active_course_ids: set,
     confirmed_event_ids: Optional[set] = None,
     attendees_counts: Optional[dict] = None,
+    courses_map: Optional[Dict[int, Course]] = None,
 ) -> EventResponse:
     """
     Constrói a resposta do evento aplicando as regras de privacidade e upsell.
-    Se o aluno não tiver acesso, oculta meeting_url e recording_url.
+    Se o aluno tiver acesso a pelo menos um dos cursos permitidos, o evento fica liberado.
     """
     is_admin = current_user.role in ["superadmin", "admin"]
+    allowed_course_ids = _extract_event_course_ids(event)
     has_access = True
 
     if not is_admin:
-        if event.target_type == "course" and event.course_id:
-            has_access = event.course_id in active_course_ids
+        if event.target_type == "course" and allowed_course_ids:
+            has_access = any(cid in active_course_ids for cid in allowed_course_ids)
 
-    # Carrega dados do curso vinculado se existir
-    course_title = event.course.title if event.course else None
-    course_sales_page_url = event.course.sales_page_url if event.course else None
+    course_titles: List[str] = []
+    course_sales_page_url: Optional[str] = None
+    for cid in allowed_course_ids:
+        c_obj = courses_map.get(cid) if courses_map else (event.course if event.course and event.course.id == cid else None)
+        if c_obj:
+            course_titles.append(c_obj.title)
+            if not course_sales_page_url and c_obj.sales_page_url:
+                course_sales_page_url = c_obj.sales_page_url
+
+    if not course_titles and event.course:
+        course_titles.append(event.course.title)
+        if not course_sales_page_url:
+            course_sales_page_url = event.course.sales_page_url
+
+    course_title = ", ".join(course_titles) if course_titles else None
 
     # Mascara URLs sensíveis se não tiver acesso
     meeting_url = event.meeting_url if has_access else None
@@ -70,9 +131,11 @@ def _build_event_response(
         recording_url=recording_url,
         thumbnail_url=event.thumbnail_url,
         target_type=event.target_type,
-        course_id=event.course_id,
+        course_id=allowed_course_ids[0] if allowed_course_ids else event.course_id,
+        course_ids=allowed_course_ids,
         is_active=event.is_active,
         course_title=course_title,
+        course_titles=course_titles,
         course_sales_page_url=course_sales_page_url,
         has_access=has_access,
         is_confirmed=is_confirmed,
@@ -80,6 +143,31 @@ def _build_event_response(
         created_at=event.created_at,
         updated_at=event.updated_at,
     )
+
+
+def _load_courses_map_for_events(db: Session, events: List[Event]) -> Dict[int, Course]:
+    """Carrega em lote todos os cursos referenciados pelos eventos."""
+    all_ids = set()
+    for ev in events:
+        for cid in _extract_event_course_ids(ev):
+            all_ids.add(cid)
+    if not all_ids:
+        return {}
+    rows = db.query(Course).filter(Course.id.in_(all_ids)).all()
+    return {c.id: c for c in rows}
+
+
+def _get_student_active_course_ids(db: Session, user_id: int) -> set:
+    """Retorna os IDs de cursos ativos do aluno (incluindo combos/pacotes)."""
+    try:
+        return set(get_effective_user_course_ids(db, user_id))
+    except Exception:
+        active_ids = set()
+        user_courses = db.query(UserCourse).filter(UserCourse.user_id == user_id).all()
+        for uc in user_courses:
+            if _is_student_course_active(uc):
+                active_ids.add(uc.course_id)
+        return active_ids
 
 
 @router.get("", response_model=List[EventResponse])
@@ -91,26 +179,23 @@ def list_events(
     """
     Lista todos os eventos cadastrados na plataforma.
     - Administradores veem todos os eventos (ativos ou inativos).
-    - Alunos veem eventos ativos. Se não possuírem acesso ao curso vinculado,
+    - Alunos veem eventos ativos. Se não possuírem acesso a nenhum dos cursos vinculados,
       os links de transmissão/gravação ficam ocultos e o evento é marcado com has_access=False.
     """
     try:
         query = db.query(Event)
 
-        # Alunos visualizam apenas eventos ativos
         if current_user.role not in ["superadmin", "admin"]:
             query = query.filter(Event.is_active == True)
 
         now = datetime.now(timezone.utc)
 
         if status_filter == "upcoming":
-            # Eventos futuros ou que terminam depois de agora (ou sem end_time mas começaram há menos de 4 horas)
             query = query.filter(
                 (Event.start_time >= now) |
                 ((Event.end_time != None) & (Event.end_time >= now))
             ).order_by(asc(Event.start_time))
         elif status_filter == "past":
-            # Eventos que já terminaram ou começaram antes de agora
             query = query.filter(
                 (Event.end_time != None) & (Event.end_time < now) |
                 ((Event.end_time == None) & (Event.start_time < now))
@@ -120,15 +205,9 @@ def list_events(
 
         events = query.all()
 
-        # Cache de cursos ativos do aluno
-        active_course_ids = set()
-        if current_user.role == "aluno":
-            user_courses = db.query(UserCourse).filter(UserCourse.user_id == current_user.id).all()
-            for uc in user_courses:
-                if _is_student_course_active(uc):
-                    active_course_ids.add(uc.course_id)
+        active_course_ids = _get_student_active_course_ids(db, current_user.id) if current_user.role == "aluno" else set()
+        courses_map = _load_courses_map_for_events(db, events)
 
-        # Carrega IDs dos eventos onde o usuário confirmou presença
         event_ids = [e.id for e in events]
         confirmed_event_ids = set()
         attendees_counts = {}
@@ -146,17 +225,17 @@ def list_events(
             ).filter(EventAttendee.event_id.in_(event_ids)).group_by(EventAttendee.event_id).all()
             attendees_counts = {row[0]: row[1] for row in counts_query}
 
-        response = [
+        return [
             _build_event_response(
                 event,
                 current_user,
                 active_course_ids,
                 confirmed_event_ids=confirmed_event_ids,
                 attendees_counts=attendees_counts,
+                courses_map=courses_map,
             )
             for event in events
         ]
-        return response
     except Exception as exc:
         logger.error(f"[Events] Erro ao listar eventos: {exc}")
         raise HTTPException(
@@ -186,14 +265,10 @@ def get_event(
                 detail="Evento indisponível."
             )
 
-        active_course_ids = set()
-        if current_user.role == "aluno":
-            user_courses = db.query(UserCourse).filter(UserCourse.user_id == current_user.id).all()
-            for uc in user_courses:
-                if _is_student_course_active(uc):
-                    active_course_ids.add(uc.course_id)
+        active_course_ids = _get_student_active_course_ids(db, current_user.id) if current_user.role == "aluno" else set()
+        courses_map = _load_courses_map_for_events(db, [event])
 
-        return _build_event_response(event, current_user, active_course_ids)
+        return _build_event_response(event, current_user, active_course_ids, courses_map=courses_map)
     except HTTPException:
         raise
     except Exception as exc:
@@ -212,21 +287,24 @@ def create_event(
 ):
     """Cria um novo evento (apenas administradores)."""
     try:
-        # Se restrito a curso, valida existência do curso
+        selected_ids = _normalize_requested_course_ids(payload.course_ids, payload.course_id)
         if payload.target_type == "course":
-            if not payload.course_id:
+            if not selected_ids:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Selecione um curso para o evento restrito."
+                    detail="Selecione pelo menos um curso para o evento restrito."
                 )
-            course = db.query(Course).filter(Course.id == payload.course_id).first()
-            if not course:
+            found_courses = db.query(Course).filter(Course.id.in_(selected_ids)).all()
+            if len(found_courses) != len(selected_ids):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Curso selecionado não encontrado."
+                    detail="Um ou mais cursos selecionados não foram encontrados."
                 )
+            primary_course_id = selected_ids[0]
+            course_ids_json = json.dumps(selected_ids)
         else:
-            payload.course_id = None
+            primary_course_id = None
+            course_ids_json = None
 
         new_event = Event(
             title=payload.title.strip(),
@@ -237,15 +315,17 @@ def create_event(
             recording_url=payload.recording_url.strip() if payload.recording_url else None,
             thumbnail_url=payload.thumbnail_url.strip() if payload.thumbnail_url else None,
             target_type=payload.target_type,
-            course_id=payload.course_id,
+            course_id=primary_course_id,
+            course_ids_json=course_ids_json,
             is_active=payload.is_active,
         )
         db.add(new_event)
         db.commit()
         db.refresh(new_event)
 
+        courses_map = _load_courses_map_for_events(db, [new_event])
         logger.info(f"[Events] Evento '{new_event.title}' (ID {new_event.id}) criado por {current_user.email}.")
-        return _build_event_response(new_event, current_user, set())
+        return _build_event_response(new_event, current_user, set(), courses_map=courses_map)
     except HTTPException:
         raise
     except Exception as exc:
@@ -274,23 +354,33 @@ def update_event(
             )
 
         data = payload.model_dump(exclude_unset=True)
+        effective_target_type = data.get("target_type", event.target_type)
 
-        if "target_type" in data:
-            if data["target_type"] == "course":
-                course_id = data.get("course_id", event.course_id)
-                if not course_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Selecione um curso para o evento restrito."
-                    )
-                course = db.query(Course).filter(Course.id == course_id).first()
-                if not course:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Curso selecionado não encontrado."
-                    )
+        if effective_target_type == "course":
+            if "course_ids" in data or "course_id" in data:
+                selected_ids = _normalize_requested_course_ids(data.get("course_ids"), data.get("course_id"))
             else:
-                data["course_id"] = None
+                selected_ids = _extract_event_course_ids(event)
+
+            if not selected_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Selecione pelo menos um curso para o evento restrito."
+                )
+            found_courses = db.query(Course).filter(Course.id.in_(selected_ids)).all()
+            if len(found_courses) != len(selected_ids):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Um ou mais cursos selecionados não foram encontrados."
+                )
+            event.course_id = selected_ids[0]
+            event.course_ids_json = json.dumps(selected_ids)
+        else:
+            event.course_id = None
+            event.course_ids_json = None
+
+        data.pop("course_ids", None)
+        data.pop("course_id", None)
 
         for field, value in data.items():
             if isinstance(value, str):
@@ -300,8 +390,9 @@ def update_event(
         db.commit()
         db.refresh(event)
 
+        courses_map = _load_courses_map_for_events(db, [event])
         logger.info(f"[Events] Evento ID {event.id} atualizado por {current_user.email}.")
-        return _build_event_response(event, current_user, set())
+        return _build_event_response(event, current_user, set(), courses_map=courses_map)
     except HTTPException:
         raise
     except Exception as exc:
@@ -358,17 +449,13 @@ def toggle_confirm_attendance(
     if not event or not event.is_active:
         raise HTTPException(status_code=404, detail="Evento não encontrado.")
 
-    # Se for evento restrito a curso, verifica se o aluno tem acesso ativo
-    if current_user.role not in ["superadmin", "admin"] and event.target_type == "course" and event.course_id:
-        active_ucs = (
-            db.query(UserCourse)
-            .filter(UserCourse.user_id == current_user.id, UserCourse.course_id == event.course_id)
-            .first()
-        )
-        if not active_ucs or not _is_student_course_active(active_ucs):
+    allowed_ids = _extract_event_course_ids(event)
+    if current_user.role not in ["superadmin", "admin"] and event.target_type == "course" and allowed_ids:
+        active_ids = _get_student_active_course_ids(db, current_user.id)
+        if not any(cid in active_ids for cid in allowed_ids):
             raise HTTPException(
                 status_code=403,
-                detail="Você precisa ter acesso ao curso deste evento para confirmar presença."
+                detail="Você precisa ter acesso a pelo menos um dos cursos deste evento para confirmar presença."
             )
 
     existing = (
@@ -389,7 +476,6 @@ def toggle_confirm_attendance(
         is_confirmed = True
         message = "Presença confirmada no evento!"
 
-        # Dispara funis com gatilho de presença em evento
         try:
             from app.services.funnel_community_triggers_service import dispatch_event_attendance_funnels
             dispatch_event_attendance_funnels(db, current_user.id, event_id)

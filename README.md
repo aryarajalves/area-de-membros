@@ -1,11 +1,21 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.4`** | **Docker Hub: `backend-1.2.4` / `frontend-1.2.4`**
+> **Versão Oficial: `v1.2.5`** | **Docker Hub: `backend-1.2.5` / `frontend-1.2.5`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.2.5 (Tutor IA 24h com RAG, Transcrição em Blocos, Fechamento/Agendamento de Cursos e Múltiplos Cursos em Eventos)
+- **🤖 Tutor IA 24h com RAG Avançado, Modos de Acesso e Gestão Financeira:**
+  - Assistente pedagógico interativo com busca semântica vetorial (RAG) sobre as transcrições das aulas, geração de Q&A sintético, simulador de respostas, controle de modos de acesso (`Liberado para Todos`, `Modo Manutenção`, `Privado Equipe` e `Desativado`) e ocultação automática do widget flutuante em aulas ainda não transcritas.
+- **🎙️ Fatiamento Automático de Áudio (Chunking) e Progresso em Tempo Real na Transcrição IA:**
+  - Divisão automática de vídeos longos (> 25 min) em blocos de 20 minutos via FFmpeg para transcrição contínua no OpenAI Whisper sem timeout, acompanhada de cronômetro em tempo real, porcentagem exata e estimativa de tempo restante.
+- **🔒 Fechamento Temporário e Liberação Programada por Data e Hora em Cursos:**
+  - Controle na aba `Dados Gerais` do curso permitindo mantê-lo `Liberado Normalmente`, `Fechar para Todos os Alunos` ou `Liberar em Data e Hora` com abertura automática no horário programado.
+- **📅 Seleção de Múltiplos Cursos Exclusivos em Eventos:**
+  - Dropdown multi-select na criação/edição de eventos permitindo vincular 1 ou mais cursos simultaneamente; alunos matriculados em qualquer um dos cursos selecionados recebem acesso liberado à transmissão e gravação.
 
 ### 🚀 Novidades da Versão v1.2.4 (Correção de Edição de Módulos e Alerta de Expiração para Alunos)
 - **⏱️ Alerta de Expiração de Curso na Vitrine do Aluno (Regra dos 7 Dias):**

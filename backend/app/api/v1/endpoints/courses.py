@@ -29,7 +29,9 @@ router = APIRouter(prefix="/courses", tags=["Courses"])
 
 from app.services.course_access import (
     is_user_course_active as _is_user_course_active,
-    verify_student_course_access as _verify_student_course_access
+    verify_student_course_access as _verify_student_course_access,
+    attach_course_schedule_state as _attach_course_schedule_state,
+    apply_course_update_fields as _apply_course_update_fields
 )
 
 BASE_UPLOAD_DIR = os.path.join(
@@ -104,6 +106,7 @@ def list_courses(
         for c in courses:
             setattr(c, "has_access", True)
         attach_bundles_to_courses(db, courses)
+        _attach_course_schedule_state(courses)
         return courses
 
     if current_user.role == "aluno":
@@ -117,6 +120,7 @@ def list_courses(
             setattr(c, "expires_at", uc.expires_at if uc else None)
             setattr(c, "access_duration", uc.access_duration if uc else None)
         attach_bundles_to_courses(db, all_courses)
+        _attach_course_schedule_state(all_courses)
         return all_courses
 
     return []
@@ -151,7 +155,9 @@ def create_course(
         item_type=course_in.item_type or "course",
         tool_url=course_in.tool_url.strip() if course_in.tool_url else None,
         bundle_title=course_in.bundle_title.strip() if course_in.bundle_title else None,
-        watermark_enabled=course_in.watermark_enabled if course_in.watermark_enabled is not None else True
+        watermark_enabled=course_in.watermark_enabled if course_in.watermark_enabled is not None else True,
+        release_type=course_in.release_type or "immediate",
+        release_date=course_in.release_date if course_in.release_type == "specific_date" else None
     )
     db.add(new_course)
     db.commit()
@@ -159,6 +165,7 @@ def create_course(
     if course_in.bundled_course_ids:
         sync_course_bundles(db, new_course.id, course_in.bundled_course_ids)
     attach_bundles_to_courses(db, [new_course])
+    _attach_course_schedule_state([new_course])
     setattr(new_course, "has_access", True)
     return new_course
 
@@ -183,6 +190,7 @@ def get_course(
         _verify_student_course_access(db, current_user.id, course_id)
 
     attach_bundles_to_courses(db, [course])
+    _attach_course_schedule_state([course])
     apply_drip_content_to_course_modules(db, current_user, course.id, course.modules)
     return course
 
@@ -204,46 +212,12 @@ def update_course(
     if not course:
         raise HTTPException(status_code=404, detail="Curso não encontrado.")
 
-    if course_update.title is not None:
-        course.title = course_update.title.strip()
-    if course_update.description is not None:
-        course.description = course_update.description
-    if course_update.thumbnail_url is not None:
-        if course.thumbnail_url and course.thumbnail_url != course_update.thumbnail_url:
-            delete_media_file(course.thumbnail_url)
-        course.thumbnail_url = course_update.thumbnail_url or None
-    if course_update.cover_image_url is not None:
-        if course.cover_image_url and course.cover_image_url != course_update.cover_image_url:
-            delete_media_file(course.cover_image_url)
-        course.cover_image_url = course_update.cover_image_url or None
-    if course_update.cover_image_position is not None:
-        course.cover_image_position = max(0, min(100, int(course_update.cover_image_position)))
-    if course_update.bg_color is not None:
-        course.bg_color = course_update.bg_color or "#090d16"
-    if course_update.is_published is not None:
-        course.is_published = course_update.is_published
-    if course_update.sales_page_url is not None:
-        course.sales_page_url = course_update.sales_page_url.strip() if course_update.sales_page_url else None
-    if course_update.order_index is not None:
-        course.order_index = course_update.order_index
-    if course_update.agentflow_kb_id is not None:
-        course.agentflow_kb_id = course_update.agentflow_kb_id if course_update.agentflow_kb_id > 0 else None
-    if course_update.agentflow_kb_name is not None:
-        course.agentflow_kb_name = course_update.agentflow_kb_name or None
-    if course_update.item_type is not None:
-        course.item_type = course_update.item_type
-    if course_update.tool_url is not None:
-        course.tool_url = course_update.tool_url.strip() if course_update.tool_url else None
-    if course_update.bundle_title is not None:
-        course.bundle_title = course_update.bundle_title.strip() if course_update.bundle_title else None
-    if course_update.watermark_enabled is not None:
-        course.watermark_enabled = bool(course_update.watermark_enabled)
-    if course_update.bundled_course_ids is not None:
-        sync_course_bundles(db, course.id, course_update.bundled_course_ids)
+    _apply_course_update_fields(db, course, course_update)
 
     db.commit()
     db.refresh(course)
     attach_bundles_to_courses(db, [course])
+    _attach_course_schedule_state([course])
     setattr(course, "has_access", True)
     return course
 

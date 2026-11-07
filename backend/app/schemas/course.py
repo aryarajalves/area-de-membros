@@ -202,6 +202,8 @@ class CourseBase(BaseModel):
     tool_url: Optional[str] = None
     bundle_title: Optional[str] = None
     watermark_enabled: Optional[bool] = True
+    release_type: Optional[str] = "immediate"
+    release_date: Optional[datetime] = None
     bundled_course_ids: Optional[List[int]] = []
 
 class CourseCreate(CourseBase):
@@ -223,11 +225,14 @@ class CourseUpdate(BaseModel):
     tool_url: Optional[str] = None
     bundle_title: Optional[str] = None
     watermark_enabled: Optional[bool] = None
+    release_type: Optional[str] = None
+    release_date: Optional[datetime] = None
     bundled_course_ids: Optional[List[int]] = None
 
 class CourseResponse(CourseBase):
     id: int
     has_access: Optional[bool] = True
+    is_course_locked: Optional[bool] = False
     bundled_items_count: Optional[int] = 0
     bundled_courses: Optional[List[CourseBundleItemResponse]] = []
     expires_at: Optional[datetime] = None
@@ -368,6 +373,9 @@ class LessonTranscriptionResponse(BaseModel):
     estimated_cost_formatted: Optional[str] = None
     agentflow_kb_id: Optional[int] = None
     agentflow_synced_at: Optional[datetime] = None
+    progress_percent: Optional[int] = None
+    progress_step: Optional[str] = None
+    estimated_remaining_seconds: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

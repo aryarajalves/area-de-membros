@@ -93,6 +93,8 @@ describe('PlatformSettings Component', () => {
     expect(screen.getByTestId('tab-profile-btn')).toBeInTheDocument();
     expect(screen.queryByTestId('tab-api-tokens-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-whitelabel-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-tutor-ia-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-knowledge-base-btn')).not.toBeInTheDocument();
   });
 
   it('exibe a aba Tokens de API e Links da Plataforma para administradores e permite alternar para Links', async () => {
@@ -210,6 +212,40 @@ describe('PlatformSettings Component', () => {
 
     expect(await screen.findByTestId('platform-whitelabel-tab')).toBeInTheDocument();
     expect(screen.getByText('Nome da Plataforma (Marca / WhiteLabel)')).toBeInTheDocument();
+  });
+
+  it('exibe a aba Base de Conhecimento RAG para administradores e permite alternar para ela', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        metrics: { total_lessons: 5, total_transcriptions: 3, indexed_lessons: 3, total_chunks: 30 },
+        lessons: []
+      }),
+    });
+
+    const adminUser = {
+      id: 1,
+      name: 'Admin Teste',
+      email: 'admin@test.com',
+      role: 'admin',
+    };
+
+    render(
+      <ToastProvider>
+        <PlatformSettings
+          bgColor="#090d16"
+          currentUser={adminUser}
+        />
+      </ToastProvider>
+    );
+
+    const kbBtn = screen.getByTestId('tab-knowledge-base-btn');
+    expect(kbBtn).toBeInTheDocument();
+
+    fireEvent.click(kbBtn);
+
+    expect(await screen.findByTestId('platform-knowledge-base-tab')).toBeInTheDocument();
+    expect(screen.getByText('Sincronização em Lote da Base de Conhecimento')).toBeInTheDocument();
   });
 });
 

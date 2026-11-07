@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
   PlayCircle, Clock, ChevronLeft, ChevronRight, Video, AlertCircle,
-  ExternalLink, FileText, MessageSquare, Globe, Paperclip, BookOpen, Sparkles,
-  Layers, Plus
+  ExternalLink, FileText, MessageSquare, Globe, Paperclip, BookOpen, Sparkles, Layers, Plus
 } from 'lucide-react';
 import LessonComments from './LessonComments';
 import LessonAttachmentsList from './LessonAttachmentsList';
 import LessonActionToolbar from './LessonActionToolbar';
 import LessonNotes from './LessonNotes';
 import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
+import TutorChatTab from '../tutor-ia/TutorChatTab';
 import LessonOverviewTab from './LessonOverviewTab';
 import LessonTabsNavBar from './LessonTabsNavBar';
 import LessonNavigationBar from './LessonNavigationBar';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import LessonComingSoonScreen from './LessonComingSoonScreen';
 import LessonEmptyState from './LessonEmptyState';
+import LessonPlayerHeader from './LessonPlayerHeader';
 import TheaterModeToggleBtn from './TheaterModeToggleBtn';
 import SuperAdminVideoOptimizerBadge from './SuperAdminVideoOptimizerBadge';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
@@ -61,6 +62,38 @@ export default function LessonPlayer({
   const [notesCount, setNotesCount] = useState(0);
   const [commentsCount, setCommentsCount] = useState(0);
   const [autoPlayActive, setAutoPlayActive] = useState(false);
+  const [isTranscriptionCompleted, setIsTranscriptionCompleted] = useState(false);
+
+  useEffect(() => {
+    setIsTranscriptionCompleted(false);
+    if (!courseId || !lesson?.id) return;
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const modId = moduleId || lesson.module_id;
+
+    if (modId) {
+      fetch(`/api/v1/courses/${courseId}/modules/${modId}/lessons/${lesson.id}/transcription`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const isDone = (data?.status === 'completed' || data?.status === 'ready') && Boolean(data?.full_transcript || data?.summary_markdown || data?.summary_html);
+          setIsTranscriptionCompleted(Boolean(isDone));
+        })
+        .catch(() => setIsTranscriptionCompleted(false));
+    }
+  }, [courseId, moduleId, lesson?.id]);
+
+  useEffect(() => {
+    const handleTranscriptionStatus = (e) => {
+      if (e?.detail?.lessonId === lesson?.id) {
+        const isDone = e.detail.isCompleted !== undefined
+          ? e.detail.isCompleted
+          : (e.detail.status === 'completed' || e.detail.status === 'ready');
+        setIsTranscriptionCompleted(Boolean(isDone));
+      }
+    };
+    window.addEventListener('lesson-transcription-status-updated', handleTranscriptionStatus);
+    return () => window.removeEventListener('lesson-transcription-status-updated', handleTranscriptionStatus);
+  }, [lesson?.id]);
 
   useEffect(() => {
     setNotesCount(0);
@@ -315,75 +348,25 @@ export default function LessonPlayer({
         {/* Coluna Esquerda: Título, Breadcrumb, Texto da Aula, Ações, Card de Próxima Aula e Abas */}
         <div style={{ minWidth: 0, maxWidth: '100%' }}>
           {/* Cabeçalho da Aula + Duração */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 0, maxWidth: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                <h2 style={{ fontSize: '26px', fontWeight: 700, color: textColor, margin: 0, letterSpacing: '-0.01em', wordBreak: 'break-word', overflowWrap: 'break-word' }} data-testid="active-lesson-title">
-                  {currentTitle}
-                </h2>
-                {isComingSoon && (
-                  <span
-                    data-testid="active-lesson-coming-soon-badge"
-                    style={{ fontSize: '11px', fontWeight: 700, backgroundColor: 'rgba(234, 179, 8, 0.16)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.4)', padding: '3px 10px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <Clock size={12} />
-                    <span>Em Breve</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Breadcrumb estilo referência: Início > Curso > Módulo / Editar esse conteúdo */}
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '12.5px', color: mutedColor }}>
-                <span onClick={onCloseModule} style={{ cursor: onCloseModule ? 'pointer' : 'default', color: subTextColor }}>
-                  Início
-                </span>
-                <ChevronRight size={13} />
-                <span onClick={onCloseModule} style={{ cursor: onCloseModule ? 'pointer' : 'default', color: subTextColor }}>
-                  {courseTitle || moduleTitle || 'Curso'}
-                </span>
-                {moduleTitle && (
-                  <>
-                    <ChevronRight size={13} />
-                    <span style={{ color: subTextColor }}>{moduleTitle}</span>
-                  </>
-                )}
-                {isManager && onEditLesson && (
-                  <>
-                    <ChevronRight size={13} />
-                    <button
-                      type="button"
-                      onClick={() => onEditLesson(lesson)}
-                      style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '12.5px', color: '#eab308', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      Editar esse conteúdo
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <TheaterModeToggleBtn
-                isTheaterMode={isTheaterMode}
-                onToggleTheaterMode={handleToggleTheaterMode}
-                isLightBg={isLightBg}
-              />
-              <SuperAdminVideoOptimizerBadge
-                videoUrl={currentVideoUrl}
-                currentUser={currentUser}
-                isLightBg={isLightBg}
-              />
-              {lesson.duration && (
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: subTextColor, fontSize: '12.5px', backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)', border: `1px solid ${borderColor}`, padding: '5px 12px', borderRadius: '999px' }}
-                  data-testid="lesson-duration-badge"
-                >
-                  <Clock size={14} />
-                  <span>{formatLessonDuration(lesson.duration)}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <LessonPlayerHeader
+            currentTitle={currentTitle}
+            isComingSoon={isComingSoon}
+            onCloseModule={onCloseModule}
+            courseTitle={courseTitle}
+            moduleTitle={moduleTitle}
+            isManager={isManager}
+            onEditLesson={onEditLesson}
+            lesson={lesson}
+            isTheaterMode={isTheaterMode}
+            handleToggleTheaterMode={handleToggleTheaterMode}
+            currentVideoUrl={currentVideoUrl}
+            currentUser={currentUser}
+            isLightBg={isLightBg}
+            borderColor={borderColor}
+            subTextColor={subTextColor}
+            textColor={textColor}
+            mutedColor={mutedColor}
+          />
 
           {isComingSoon && (
             <div
@@ -404,6 +387,7 @@ export default function LessonPlayer({
             commentsCount={commentsCount}
             borderColor={borderColor}
             subTextColor={subTextColor}
+            tutorVisible={isTranscriptionCompleted}
           />
 
           {/* Conteúdo das Abas: Altura mínima estável e preservação de componentes montados para eliminar layout shift / tela piscando */}
@@ -427,6 +411,11 @@ export default function LessonPlayer({
             <div style={{ display: activeTab === 'transcription' ? 'block' : 'none' }}>
               {visitedTabs.includes('transcription') && (
                 <LessonAiTranscriptionTab courseId={courseId} moduleId={moduleId || lesson.module_id} lesson={lesson} currentUser={currentUser} isLightBg={isLightBg} />
+              )}
+            </div>
+            <div style={{ display: activeTab === 'tutor' && isTranscriptionCompleted ? 'block' : 'none' }}>
+              {visitedTabs.includes('tutor') && isTranscriptionCompleted && (
+                <TutorChatTab courseId={courseId} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} onSelectLesson={onSelectLesson} />
               )}
             </div>
             <div style={{ display: activeTab === 'attachments' ? 'block' : 'none' }}>

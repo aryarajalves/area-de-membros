@@ -20,6 +20,7 @@ export default function EventFormModal({
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [targetType, setTargetType] = useState('all');
   const [courseId, setCourseId] = useState('');
+  const [courseIds, setCourseIds] = useState([]);
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,7 +46,11 @@ export default function EventFormModal({
       setRecordingUrl(eventData.recording_url || '');
       setThumbnailUrl(eventData.thumbnail_url || '');
       setTargetType(eventData.target_type || 'all');
-      setCourseId(eventData.course_id ? String(eventData.course_id) : '');
+      const initialIds = Array.isArray(eventData.course_ids) && eventData.course_ids.length > 0
+        ? eventData.course_ids.map(Number)
+        : (eventData.course_id ? [Number(eventData.course_id)] : []);
+      setCourseIds(initialIds);
+      setCourseId(initialIds.length > 0 ? String(initialIds[0]) : '');
       setIsActive(eventData.is_active !== false);
     } else {
       const tomorrow = new Date();
@@ -60,6 +65,7 @@ export default function EventFormModal({
       setThumbnailUrl('');
       setTargetType('all');
       setCourseId('');
+      setCourseIds([]);
       setIsActive(true);
     }
   }, [eventData, isOpen]);
@@ -79,8 +85,9 @@ export default function EventFormModal({
       return;
     }
 
-    if (targetType === 'course' && !courseId) {
-      addToast?.('Selecione o curso exclusivo para este evento.', 'error');
+    const effectiveCourseIds = courseIds.length > 0 ? courseIds : (courseId ? [Number(courseId)] : []);
+    if (targetType === 'course' && effectiveCourseIds.length === 0) {
+      addToast?.('Selecione pelo menos um curso exclusivo para este evento.', 'error');
       return;
     }
 
@@ -103,7 +110,8 @@ export default function EventFormModal({
         recording_url: recordingUrl.trim() || null,
         thumbnail_url: thumbnailUrl.trim() || null,
         target_type: targetType,
-        course_id: targetType === 'course' ? Number(courseId) : null,
+        course_id: targetType === 'course' ? Number(effectiveCourseIds[0]) : null,
+        course_ids: targetType === 'course' ? effectiveCourseIds.map(Number) : [],
         is_active: isActive,
       };
 
@@ -328,6 +336,8 @@ export default function EventFormModal({
             onChangeTargetType={setTargetType}
             courseId={courseId}
             onChangeCourseId={setCourseId}
+            courseIds={courseIds}
+            onChangeCourseIds={setCourseIds}
             courses={courses}
           />
 

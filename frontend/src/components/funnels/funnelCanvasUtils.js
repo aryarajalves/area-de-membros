@@ -74,6 +74,25 @@ export const getNodePortPos = (node, isOutput = false, nodeHeights = {}, portId 
     }
   }
 
+  // Suporte a Múltiplas Saídas Ramificadas em Nós Gatilho
+  if (isOutput && node.type === 'trigger') {
+    // 1. Marco de Progresso
+    if (portId === 'output_25') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.32) };
+    if (portId === 'output_50') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.47) };
+    if (portId === 'output_75') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.62) };
+    if (portId === 'output_100') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.77) };
+
+    // 2. Aulas e Módulos
+    if (portId === 'output_lesson') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.40) };
+    if (portId === 'output_module') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.68) };
+
+    // 3. Tutor IA / Tech Agente
+    if (portId === 'output_first_chat') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.28) };
+    if (portId === 'output_quota_exhausted') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.48) };
+    if (portId === 'output_expiring_soon') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.68) };
+    if (portId === 'output_expired') return { x: node.position.x + width, y: node.position.y + Math.round(height * 0.88) };
+  }
+
   const centerY = Math.round(height / 2);
   const x = isOutput ? node.position.x + width : node.position.x;
   const y = node.position.y + centerY;
@@ -102,8 +121,30 @@ export const getInitialNodeData = (type, extraData = {}) => {
     return {
       trigger_event: 'progress_milestone',
       milestone: '100',
+      milestones: ['100'],
       course_id: null,
       course_title: 'Todos os Cursos',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_lesson_module_activity' || (type === 'trigger' && extraData.trigger_event === 'lesson_module_activity')) {
+    return {
+      trigger_event: 'lesson_module_activity',
+      active_options: ['lesson', 'module'],
+      course_id: null,
+      lesson_id: null,
+      course_title: 'Todos os Cursos',
+      lesson_title: 'Qualquer Aula Concluída',
+      is_start: true,
+      ...extraData,
+    };
+  }
+  if (type === 'trigger_tutor_ia_lifecycle' || (type === 'trigger' && extraData.trigger_event === 'tutor_ia_lifecycle')) {
+    return {
+      trigger_event: 'tutor_ia_lifecycle',
+      active_events: ['first_chat', 'quota_exhausted'],
+      expiring_days: 3,
       is_start: true,
       ...extraData,
     };

@@ -58,7 +58,7 @@ describe('FunnelNodeTrigger - Novos Gatilhos Pedagógicos', () => {
 
       expect(onUpdateData).toHaveBeenCalledWith('trigger_progress_1', expect.objectContaining({
         trigger_event: 'progress_milestone',
-        milestone: '100',
+        milestones: expect.arrayContaining(['100']),
       }));
     });
 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Palette, KeyRound, User, Link2, Sparkles } from 'lucide-react';
+import { Settings, Palette, KeyRound, User, Link2, Sparkles, Bot, Database } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import PlatformAppearanceTab from './platform-settings/PlatformAppearanceTab';
 import PlatformApiTokensTab from './platform-settings/PlatformApiTokensTab';
 import PlatformProfileTab from './platform-settings/PlatformProfileTab';
 import PlatformLinksTab from './platform-settings/PlatformLinksTab';
 import PlatformWhiteLabelTab from './platform-settings/PlatformWhiteLabelTab';
+import PlatformAiTutorTab from './platform-settings/PlatformAiTutorTab';
+import PlatformKnowledgeBaseTab from './platform-settings/PlatformKnowledgeBaseTab';
 
 export default function PlatformSettings({
   bgColor = '#090d16',
@@ -14,7 +16,7 @@ export default function PlatformSettings({
   onUserUpdated,
   onNavigateTab
 }) {
-  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'profile' | 'api_tokens' | 'links' | 'whitelabel'
+  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'profile' | 'api_tokens' | 'links' | 'whitelabel' | 'tutor_ia'
   const [selectedColor, setSelectedColor] = useState(bgColor || '#090d16');
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
@@ -26,7 +28,7 @@ export default function PlatformSettings({
   }, [bgColor]);
 
   useEffect(() => {
-    if (currentUser?.role === 'aluno' && (activeTab === 'api_tokens' || activeTab === 'links' || activeTab === 'whitelabel')) {
+    if (currentUser?.role === 'aluno' && (activeTab === 'api_tokens' || activeTab === 'links' || activeTab === 'whitelabel' || activeTab === 'tutor_ia' || activeTab === 'knowledge_base')) {
       setActiveTab('appearance');
     }
   }, [currentUser?.role, activeTab]);
@@ -245,6 +247,60 @@ export default function PlatformSettings({
             <span>WhiteLabel</span>
           </button>
         )}
+
+        {currentUser?.role !== 'aluno' && (
+          <button
+            type="button"
+            className="platform-settings-tab-btn"
+            onClick={() => setActiveTab('tutor_ia')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'tutor_ia' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'tutor_ia' ? '#7c3aed' : 'transparent',
+              color: activeTab === 'tutor_ia' ? '#ffffff' : subTextColor,
+              border: activeTab === 'tutor_ia' ? 'none' : '1px solid transparent',
+              boxShadow: activeTab === 'tutor_ia' ? '0 4px 14px rgba(124, 58, 237, 0.45)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+            data-testid="tab-tutor-ia-btn"
+          >
+            <Bot size={16} />
+            <span>Tutor IA & Prompts</span>
+          </button>
+        )}
+
+        {currentUser?.role !== 'aluno' && (
+          <button
+            type="button"
+            className="platform-settings-tab-btn"
+            onClick={() => setActiveTab('knowledge_base')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'knowledge_base' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'knowledge_base' ? '#0d9488' : 'transparent',
+              color: activeTab === 'knowledge_base' ? '#ffffff' : subTextColor,
+              border: activeTab === 'knowledge_base' ? 'none' : '1px solid transparent',
+              boxShadow: activeTab === 'knowledge_base' ? '0 4px 14px rgba(13, 148, 136, 0.45)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+            data-testid="tab-knowledge-base-btn"
+          >
+            <Database size={16} />
+            <span>Base de Conhecimento RAG</span>
+          </button>
+        )}
       </div>
 
       {/* Conteúdo da Aba Ativa */}
@@ -302,6 +358,26 @@ export default function PlatformSettings({
           textColor={textColor}
           subTextColor={subTextColor}
           addToast={addToast}
+        />
+      )}
+
+      {activeTab === 'tutor_ia' && currentUser?.role !== 'aluno' && (
+        <PlatformAiTutorTab
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
+
+      {activeTab === 'knowledge_base' && currentUser?.role !== 'aluno' && (
+        <PlatformKnowledgeBaseTab
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
         />
       )}
     </div>

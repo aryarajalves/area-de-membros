@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -11,8 +11,9 @@ class EventBase(BaseModel):
     meeting_url: Optional[str] = Field(None, max_length=1024, description="Link da transmissão ao vivo (Zoom, Meet, YouTube)")
     recording_url: Optional[str] = Field(None, max_length=1024, description="Link da gravação pós-evento")
     thumbnail_url: Optional[str] = Field(None, max_length=1024, description="Thumbnail / Imagem de capa do evento")
-    target_type: str = Field("all", description="Público-alvo: 'all' para todos ou 'course' para curso específico")
-    course_id: Optional[int] = Field(None, description="ID do curso restrito quando target_type for 'course'")
+    target_type: str = Field("all", description="Público-alvo: 'all' para todos ou 'course' para cursos específicos")
+    course_id: Optional[int] = Field(None, description="ID do curso principal quando target_type for 'course'")
+    course_ids: Optional[List[int]] = Field(default_factory=list, description="Lista de IDs dos cursos permitidos quando target_type for 'course'")
     is_active: bool = Field(True, description="Indica se o evento está visível e ativo")
 
 
@@ -30,12 +31,14 @@ class EventUpdate(BaseModel):
     thumbnail_url: Optional[str] = None
     target_type: Optional[str] = None
     course_id: Optional[int] = None
+    course_ids: Optional[List[int]] = None
     is_active: Optional[bool] = None
 
 
 class EventResponse(EventBase):
     id: int
     course_title: Optional[str] = None
+    course_titles: List[str] = Field(default_factory=list)
     course_sales_page_url: Optional[str] = None
     has_access: bool = True
     is_confirmed: bool = False

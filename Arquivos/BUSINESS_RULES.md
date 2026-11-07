@@ -1260,6 +1260,30 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - Ao excluir uma pasta, o modal de confirmação reforça a regra de segurança: **os funis vinculados à pasta NUNCA são excluídos**.
     - O banco de dados e a camada de serviço desvinculam os funis automaticamente (`folder_id: null`), transferindo-os de forma segura e transparente para a seção "Sem Pasta", garantindo que nenhuma régua ou automação de mensagens seja perdida.
 
+- **Nós de Gatilho com Múltiplas Saídas Ramificadas (Multi-Handle Branching):**
+  - **Marco de Progresso (`progress_milestone` com Saídas Múltiplas):**
+    - O administrador pode marcar mais de uma porcentagem de progresso no mesmo card de nó (25%, 50%, 75%, 100%).
+    - O gatilho dispara se **qualquer uma das opções marcadas for atingida** pelo aluno.
+    - Cada marco ativado ganha sua própria porta/conector de saída (`output_25`, `output_50`, `output_75`, `output_100`) posicionada na lateral direita do card, com etiqueta visual e cálculo geométrico dinâmico para as conexões (`getNodePortPos`).
+    - Cada saída pode ser ligada a uma sequência independente de mensagens e recompensas (ex: incentivo inicial aos 25%, comemoração e dicas aos 50%, cupom de renovação antecipada aos 75% e entrega de certificado com pedido de depoimento aos 100%).
+  - **Gatilho de Atividade em Aula ou Módulo (`lesson_module_activity`):**
+    - Dispara automaticamente quando o aluno assistir/concluir uma aula ou quando finalizar todas as aulas de um módulo.
+    - Suporta seleção de curso específico ou qualquer curso, e de aula específica ou qualquer aula.
+    - Apresenta duas saídas ramificadas independentes na lateral direita:
+      - `output_lesson` ("AULA"): dispara para o fluxo específico de conclusão de aula.
+      - `output_module` ("MÓDULO"): dispara para o fluxo específico de conclusão de módulo (ex: envio de questionário de revisão ou felicitações de módulo).
+  - **Gatilho de Ciclo de Vida do Tutor IA (`tutor_ia_lifecycle`):**
+    - Dispara em marcos estratégicos da jornada do aluno com o Tutor IA (Tech Agente):
+      - `output_first_chat` ("1ª DÚVIDA"): acionado na primeira vez que o aluno interage com o Tutor IA, permitindo envio imediato de mensagem de boas-vindas pedagógicas ou onboarding.
+      - `output_quota_exhausted` ("COTA 0"): acionado quando o aluno esgota suas perguntas gratuitas do mês, permitindo envio de oferta/link de assinatura do plano ilimitado.
+      - `output_expiring_soon` ("VENCENDO"): acionado com antecedência configurável (padrão 3 dias) do vencimento do plano de Tutor IA para retenção ativa e incentivo à renovação.
+      - `output_expired` ("EXPIRADO"): acionado no vencimento da assinatura para recuperação imediata de churn.
+    - Cada evento ativado possui seu próprio ponto de conexão de saída lateral com badge temática.
+  - **Fallback Gracioso no Motor de Execução (`funnel_service.py`):**
+    - Ao disparar um gatilho ramificado, o motor avalia a porta associada ao evento (`branch_chosen`).
+    - Caso exista uma aresta conectada diretamente àquela porta de saída, o fluxo segue por ela.
+    - Se a porta específica não possuir aresta ligada mas houver uma conexão na porta padrão `output` geral do nó, o sistema executa o fallback transparente e segue o fluxo padrão sem interromper a automação.
+
 
 
 ---
@@ -1363,3 +1387,191 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - **Botões Unificados com Abas Superiores Internas:**
     - **Suporte & Relatos (`support` / `lesson-reports`):** Unifica *Comunidade de Suporte & Dúvidas* e *Relatos de Aulas* em um único botão na Sidebar, com navegação rápida por abas no topo da página (`SupportReportsSubTabs`).
     - **Servidor & Logs (`infrastructure` / `backup` / `logs`):** Unifica *Infraestrutura & Recursos*, *Backup Automático (S3)* e *Logs do Sistema* em um único botão na Sidebar para o `Super Admin`, com navegação por abas no topo da página (`ServerSystemSubTabs`).
+
+
+---
+
+## 17. Tutor IA Interativo 24h (Micro-SaaS, Assinatura e Base de Conhecimento RAG)
+
+### 17.1. Modelo de Negócio e Assinatura Recorrente
+- **Micro-SaaS Embutido:** O Tutor IA atua como um assistente pedagógico 24 horas pago via assinatura mensal (valor sugerido padrão de **R$ 10,00/mês**, configurável pelo administrador).
+- **Cota de Degustação Gratuita (Padrão: 3 perguntas/mês):**
+  - Todo aluno cadastrado na plataforma possui, por padrão, **3 perguntas gratuitas por mês** para degustação em qualquer curso/aula.
+  - A cota padrão global pode ser alterada nas Configurações da Plataforma (`default_monthly_free_questions`).
+  - O cálculo de uso considera as perguntas feitas no mês corrente (mês civil).
+- **Sobreposição Individual por Aluno (`StudentAiTutorModal`):**
+  - O administrador pode personalizar o acesso de cada aluno de três formas:
+    1. **Padrão Global:** Segue o limite da plataforma (ex: 3 perguntas/mês).
+    2. **Limite Customizado:** O admin define um número específico de perguntas mensais para aquele aluno (ex: 10, 20, 50).
+    3. **Acesso Ilimitado / VIP:** Definido com valor `-1`, sem restrição de perguntas.
+    4. **Assinatura Ativa Manual:** Toggle direto para conceder acesso ilimitado de assinante com data de validade opcional (`ai_tutor_active` e `ai_tutor_expires_at`).
+- **Paywall Amigável de Conversão (`TutorPaywallCard`):**
+  - Ao esgotar a cota gratuita mensal, o chat bloqueia novos envios e exibe um card com visual premium neon destacando os benefícios (respostas instantâneas, minutagem exata do vídeo, dúvidas ilimitadas) e o botão direto para o link de checkout.
+
+### 17.2. Interface e Experiência do Aluno (Chat Duplo)
+- **Aba "Tutor IA 24h" na Sala de Aula (`LessonTabsNavBar` e `TutorChatTab`):**
+  - Aba dedicada integrada ao lado das abas *Visão Geral*, *Transcrição & Resumo IA*, *Materiais* e *Comentários*.
+  - Histórico de mensagens completo da aula com balões de conversa, data/hora e badge de cota restante.
+  - Botão de "Limpar Histórico" com modal centralizado de confirmação estilizado (`TutorClearHistoryModal`): exibe backdrop translúcido escuro fixo, ícone destacado de lixeira vermelha, alerta informativo sobre a remoção permanente das mensagens daquela aula e botões claros *"Manter Histórico"* e *"Sim, Limpar Histórico"* com estado de carregamento (`Loader2`), sem fechar ao clicar fora.
+- **Reversão Automática em Falha de Envio (Rollback no Chat):**
+  - Se ocorrer qualquer falha no envio da mensagem (servidor inicializando, erro de rede ou limite 402), a mensagem temporária do usuário é imediatamente removida da tela do chat, evitando que mensagens sem resposta permaneçam exibidas como se tivessem sido processadas com sucesso.
+- **Streaming de Resposta em Tempo Real (Efeito Máquina de Escrever via SSE):**
+  - O chat utiliza Server-Sent Events (`POST /api/v1/tutor-ia/chat/stream`) para transmitir cada palavra gerada pela OpenAI instantaneamente para a tela do aluno.
+  - O início da resposta começa a aparecer na tela em menos de 1 segundo, com cursor piscante neon e indicador dinâmico `(digitando...)`.
+  - Ao concluir a transmissão, os metadados finais (tokens, custo em BRL, aulas correlatas e cota restante) são consolidados e persistidos com segurança no banco de dados.
+- **Avaliação de Respostas com Justificativa de Dislike (Like/Dislike e Feedback Pedagógico):**
+  - Cada resposta gerada pelo Tutor IA disponibiliza botões de avaliação (*Polegar para Cima / Like* e *Polegar para Baixo / Dislike*).
+  - **Like:** Registra imediatamente o voto positivo e destaca o botão em verde (`Útil`).
+  - **Dislike com Justificativa:** Ao clicar no polegar para baixo, abre um popup modal centralizado com backdrop escuro (`TutorFeedbackModal`) permitindo que o aluno relate o que ficou incorreto ou confuso (ex: minutagem errada, explicação incompleta). O envio com justificativa é opcional.
+  - **Persistência:** Os feedbacks são registrados na tabela `ai_tutor_messages` (`feedback_rating`, `feedback_text`, `feedback_at`) para controle de qualidade e aprimoramento pedagógico do prompt.
+- **Sugestões de Perguntas Rápidas por Aula (Quick Prompts Clicáveis):**
+- **Salvar Resposta nas Minhas Anotações com Edição Prévia (`TutorSaveNoteModal`):**
+  - Cada resposta do assistente conta com o botão *"Salvar Anotação"* na barra de ações inferior.
+  - Ao clicar, abre obrigatoriamente um popup modal centralizado (`TutorSaveNoteModal`) com backdrop translúcido escuro, impedindo salvamento acidental direto.
+  - O texto completo da explicação do Tutor IA já é pré-carregado no campo de texto (`textarea`), permitindo que o aluno revise, ajuste, resuma ou adicione suas próprias anotações pessoais antes de salvar.
+  - O modal segue as regras estritas de experiência: não fecha no clique fora do backdrop e possui apenas 1 botão de cancelar (*"Cancelar"*) e 1 botão de confirmação (*"Salvar Anotação"* com feedback de carregamento).
+  - Ao confirmar, o sistema grava a anotação na API nativa da aula (`POST /api/v1/courses/{course_id}/lessons/{lesson_id}/notes`), sincroniza a contagem da aba *"Minhas Anotações"* em tempo real via evento de janela (`lesson-note-created`), e exibe toast de confirmação.
+- **Sugestões de Perguntas Rápidas por Aula (Quick Prompts Clicáveis):**
+  - Ao entrar na aba do Tutor IA ou abrir a gaveta flutuante, o sistema consulta `GET /api/v1/tutor-ia/suggested-questions` e exibe pílulas/chips estilizados com as dúvidas frequentes daquela aula específica.
+  - **Prioridade para o Q&A do RAG:** Caso a aula já possua os pares de Perguntas & Respostas sintéticas geradas no banco (`chunk_type='qa_pair'`), essas perguntas reais são exibidas em destaque com a badge *"Baseado no vídeo"*.
+  - **Fallback Didático por Título:** Caso a aula ainda não possua Q&A gerado, o backend monta automaticamente 4 perguntas pedagógicas contextualizadas com o título da aula.
+  - **Visão Geral do Curso:** No escopo do curso geral (widget 'all'), exibe dúvidas sobre estrutura, carga horária e cronograma.
+  - **Envio com 1 Toque:** O aluno clica no chip e a pergunta é enviada instantaneamente para a IA, gerando a resposta com minutagens no player sem precisar digitar.
+  - **Acesso Contínuo:** Quando a conversa já tem histórico, um botão sutil *"Ver dúvidas frequentes desta aula"* permite reabrir as sugestões a qualquer momento.
+- **Exportar Histórico de Conversas da Aula (`TutorExportChatModal`):**
+  - No cabeçalho do Tutor IA na sala de aula (`TutorChatHeader`), quando existirem mensagens na conversa, é exibido o botão *"Exportar"* (`Download`).
+  - Ao clicar, abre o popup modal centralizado (`TutorExportChatModal`) com backdrop escuro translúcido e 2 opções de exportação para estudo offline:
+    1. **Markdown (.md):** Gera e baixa automaticamente um arquivo `.md` formatado com cabeçalho da aula, data/hora da exportação e blocos estruturados de perguntas do aluno e respostas do Tutor (ideal para Notion, Obsidian ou bloco de notas).
+    2. **PDF / Impressão (.pdf):** Abre a visualização prévia limpa de impressão e aciona `window.print()` com diagramação profissional, permitindo que o aluno salve em PDF ou imprima sem poluição visual.
+- **Widget Flutuante no Canto Inferior Direito (`TutorFloatingWidget`):**
+  - Botão flutuante moderno com gradiente neon roxo/azul e badge `24H`, posicionado fixo na tela da sala de aula.
+  - Ao clicar, abre uma **Gaveta Lateral (Drawer)** sem cobrir o vídeo da aula.
+  - **Seletor de Escopo:**
+    - `Esta Aula`: Contextualiza a IA com a transcrição da aula atualmente em reprodução.
+    - `Todas as Aulas`: Permite tirar dúvidas gerais de todo o curso.
+  - Suporte a fechamento pelo botão `X` e pelo atalho de teclado `Esc`.
+
+### 17.3. Base de Conhecimento RAG Vetorial e Metadados Estruturais
+- **Motor RAG Vetorial Nativo (Embeddings):**
+  - Utiliza o modelo `text-embedding-3-small` da OpenAI com vetores de 1536 dimensões normalizados em L2.
+  - A similaridade de cosseno é calculada via produto escalar de alta eficiência em Python puro (< 25ms para centenas de chunks), operando de forma 100% nativa sem dependência de extensões em C compiladas como `pgvector`.
+- **Particionamento Inteligente em Chunks (`ai_knowledge_chunks`):**
+  - Transcrições são fatiadas em blocos de até ~400 palavras respeitando quebras de frases e limites de capítulos com minutagens precisas (`start_time_seconds` e `end_time_seconds`).
+  - Cada chunk guarda texto do trecho, timestamps, contagem de tokens e vetor normalizado serializado.
+- **Indexação 100% Automática e Botões Manuais:**
+  - **Automático:** Toda vez que o sistema conclui a transcrição de uma aula com IA (`ai_transcription_service.py`), os chunks vetoriais são imediatamente gerados e salvos no banco.
+  - **Na Aula:** Na aba do Tutor IA da sala de aula (`TutorChatTab`), administradores contam com o botão *"Sincronizar RAG"* para re-indexar a aula individualmente sob demanda.
+  - **Em Lote:** Na tela de gestão da Base de Conhecimento, o botão *"⚡ Indexar Todas as Aulas no RAG"* permite sincronizar todas as aulas existentes com transcrição com 1 clique.
+- **Painel de Gestão da Base de Conhecimento (`Configurações > Base de Conhecimento RAG`):**
+  - **Métricas Globais:** Total de aulas no catálogo, aulas com transcrição IA, aulas indexadas no RAG e total de chunks vetoriais gerados.
+  - **Estrutura Hierárquica em Pastas (Curso > Módulos > Aulas):**
+    - Aulas não são listadas de forma plana/corrida; são agrupadas por Curso > Módulos > Aulas em acordeões expansíveis (`KnowledgeBaseCourseCard`).
+    - Exibe barra de progresso visual com percentual de indexação e status por curso e por módulo.
+    - Botões rápidos "Expandir Todos" e "Recolher Todos" para facilitar a navegação em catálogos extensos.
+  - **Seleção e Indexação em Lote via Checkboxes:**
+    - Checkboxes independentes para seleção por aula, por módulo completo ou curso inteiro.
+    - Barra de ação flutuante inferior com contador de aulas selecionadas e botão de disparo imediato da indexação em lote.
+  - **Modal de Progresso em Tempo Real da Sincronização em Lote (`KnowledgeBatchProgressModal`):**
+    - Ao acionar a indexação em lote (seja por seleção de checkboxes ou global), abre obrigatoriamente um modal centralizado com backdrop escuro (`rgba(0, 0, 0, 0.85)`).
+    - Exibe barra de progresso suave animada, porcentagem em tempo real (`0%` a `100%`) e contador de etapas (`Aula X de Y`).
+    - Exibe em destaque com spinner a aula que está sendo indexada no momento exato: *"INDEXANDO AGORA: [Título da Aula]"*.
+    - Apresenta um feed/log de histórico com rolagem interna listando cada aula finalizada com badge de chunks e perguntas Q&A geradas (`+X chunks (5 Q&A)`).
+    - Botão *"Interromper Sincronização"* disponível durante a execução para abortar o processo com segurança sem corromper as aulas já processadas.
+    - Ao concluir, o modal exibe cartões com o resumo do processamento e disponibiliza um único botão *"Concluir e Fechar"* (em conformidade com a regra UX de popups, não fechando ao clicar fora).
+  - **Geração Sintética de 5 Perguntas & Respostas Pedagógicas (Q&A):**
+    - Durante a indexação da aula (individual ou em lote), o sistema utiliza IA (`gpt-4o-mini`) para analisar a transcrição completa e gerar automaticamente 5 pares de perguntas e respostas pedagógicas com minutagens de referência (`chunk_type='qa_pair'`).
+    - Os vetores dessas perguntas são indexados junto com os chunks de transcrição, elevando a precisão semântica do RAG para 90-95% em perguntas diretas dos alunos.
+    - **Botões Dedicados de Geração sob Demanda:**
+      - **Na Linha da Aula (`KnowledgeBaseCourseCard`):** Botão direto roxo **`[✨ Gerar 5 Q&A]`** (ou **`[✨ Re-gerar Q&A]`**) para criar ou renovar especificamente as perguntas e respostas sem precisar refatiar e re-embedar os chunks de transcrição.
+      - **No Modal de Chunks (`KnowledgeChunksModal`):** Na aba *"Perguntas & Respostas IA (Q&A)"*, exibe o botão **`[⚡ Gerar 5 Perguntas & Respostas com IA]`** tanto no topo da lista quanto no card explicativo de empty state caso a aula ainda não possua perguntas geradas.
+      - **Badges Indicativos Separados:** A linha da aula exibe distintamente a contagem de fragmentos (`[✓ X chunks]`) e o status de Q&A (`[✨ 5 Q&A]` em roxo ou `[⚠️ Sem Q&A]` em âmbar para aulas pendentes).
+  - **Decomposição Inteligente de Múltiplas Perguntas (Multi-Query RAG):**
+    - Ao receber a mensagem do aluno, o assistente analisa via IA se a mensagem contém uma ou mais dúvidas (`decompose_user_query`).
+    - Se houver múltiplas perguntas, cada uma é consultada individualmente no banco vetorial e os fragmentos mais relevantes são consolidados e deduplicados por ID para a resposta final.
+  - **Simulador de Busca Semântica (`KnowledgeBaseSimulatorCard`):** Campo de teste para administradores auditarem quais fragmentos e percentuais de similaridade o RAG recupera para qualquer pergunta antes de ela ser feita pelos alunos.
+  - **Tabela de Auditoria e Inspeção de Chunks (`KnowledgeChunksModal`):** Modal com abas dedicadas para alternar entre "Fragmentos da Transcrição" e "Perguntas & Respostas IA (Q&A)", exibindo minutagens, textos completos e contagem de tokens de cada aula.
+- **Metadados de Carga Horária e Quantidade de Aulas:**
+  - O Tutor IA recebe no contexto a estrutura hierárquica completa do treinamento:
+    - Quantidade exata de aulas de cada módulo e do curso completo.
+    - Carga horária / duração formatada de cada aula individual, de cada módulo e do treinamento como um todo.
+  - O assistente responde instantaneamente a dúvidas estruturais como *"Quantas aulas tem o módulo 1?"*, *"Quantas horas de conteúdo tem o curso todo?"* ou *"Qual a duração da aula 3?"*.
+- **Minutagens Interativas no Player de Vídeo (`TutorMessageItem`):**
+  - Quando a resposta do Tutor cita timestamps como `01:20`, `05:45` ou `12:10`, o frontend detecta e renderiza botões interativos clicáveis.
+  - Ao clicar no botão de tempo, o player de vídeo salta instantaneamente (`onSeekTime`) para o segundo exato citado pelo tutor.
+- **Indicação de Aulas Correlatas e Upsell Pedagógico:**
+  - Se a dúvida envolver temas explicados em outras aulas, o Tutor lista as aulas recomendadas como cartões clicáveis (`related_lessons`).
+  - Cita cursos já adquiridos pelo aluno e faz menções educadas a cursos disponíveis na plataforma quando pertinente.
+  - **Popup de Confirmação para Navegação (`TutorConfirmNavigateLessonModal`):** Ao clicar sobre qualquer aula recomendada pelo Tutor IA no chat, o sistema não altera a aula abruptamente; em vez disso, exibe um modal centralizado de confirmação com backdrop translúcido fixo exibindo o Nome do Curso, Módulo e Título da Aula recomendada com botões claros de confirmação (*"Sim, Acessar Aula"*) e cancelamento (*"Permanecer nesta aula"*), evitando perda acidental do contexto atual.
+
+### 17.4. Rastreamento de Custos e Métricas Administrativas
+- **Cálculo de Custos em Tempo Real:**
+  - Cada interação registra os tokens de entrada (`prompt_tokens`), saída (`completion_tokens`) e o custo estimado em BRL (`cost_brl`) com base no modelo utilizado (`gpt-4o-mini` por padrão).
+- **Visibilidade Geral e Painel Financeiro (`PlatformAiTutorTab > TutorConversationsTab`):**
+  - Sub-aba *"Histórico & Custos"* em *Configurações > Tutor IA & Prompts*:
+    - **KPIs Financeiros:** Custo Total Acumulado (R$), Gasto no Mês Atual (R$), Total de Perguntas e Custo Médio por Dúvida (R$).
+    - **Top 5 Alunos com Maior Consumo:** Ranking com os alunos que mais consumiram API, com quantidade de dúvidas e custo em BRL.
+    - **Filtros e Busca:** Busca por palavra-chave e filtro dropdown por curso.
+    - **Auditoria Completa de Mensagens:** Exibição detalhada de cada mensagem com o nome e e-mail do aluno, curso/aula, texto da pergunta e resposta, custo exato da interação e feedback (Útil / Negativo).
+- **Visibilidade Individual no Modal do Aluno (`StudentAiTutorModal > StudentAiTutorMessagesTab`):**
+  - No modal de gestão do aluno (`/admin/alunos`), o administrador pode alternar entre *"⚙️ Cota & Acesso"* e *"💬 Conversas"*:
+    - Exibe o histórico exclusivo daquele aluno, com mini cards do Total Gasto (R$), Gasto no Mês Corrente e Total de Perguntas Enviadas.
+
+### 17.5. Configurações Globais e Prompt Personalizável (`PlatformAiTutorTab`)
+- **Painel Administrativo (`Configurações > Tutor IA & Prompts`):**
+  - Permite ativar ou desativar o Tutor IA globalmente na plataforma.
+  - **Modo de Acesso & Visibilidade (`access_mode`):**
+    1. **🌟 Liberado para Todos (`public`):** Alunos e administradores interagem normalmente com o assistente na sala de aula.
+    2. **🛠️ Modo Manutenção (`maintenance`):** A interface do chat permanece visível para os alunos na sala de aula, mas exibe um banner estilizado em tom âmbar com uma mensagem personalizada definida pelo gestor. A barra de digitação é bloqueada com aviso explicativo (*"Envio de dúvidas temporariamente pausado para manutenção"*). Administradores e Super Admins mantêm permissão total de teste pedagógico (com badge visual discreto *"Acesso de Teste (Administrador)"*).
+    3. **🔒 Oculto / Privado (`private_team`):** A aba *"Tutor IA 24h"* fica 100% oculta para todos os alunos na sala de aula (nem sequer aparece nas opções). Visível exclusivamente para Super Admin e Administradores realizarem testes internos antes de lançar o tutor para o público geral.
+  - **Nome de Exibição Personalizável do Tutor:** Campo direto para o administrador alterar o nome que é apresentado no cabeçalho do chat, no drawer e nos balões de resposta para os alunos (ex: "Sofia - Tutora IA", "Tutor Cósmico", ou o padrão "Tutor IA 24h").
+  - Configuração do modelo de IA (`gpt-4o-mini` ou `gpt-4o`).
+  - Ajuste de **Temperatura** (slider de 0.0 a 1.0, com padrão 0.3 para respostas precisas).
+  - Configuração da **Cota Padrão Gratuita**, **Preço Mensal (R$)** e **URL do Checkout de Vendas** (Hotmart ou checkout próprio).
+  - **Parâmetros Técnicos do RAG Configuráveis:**
+    - **Top Chunks Retornados (`rag_top_k`):** Quantidade máxima de fragmentos vetoriais injetados no contexto (padrão: 4, configurável entre 1 e 15).
+    - **Similaridade Mínima de Corte (`rag_min_similarity`):** Threshold mínimo de similaridade de cosseno (padrão: 0.35, configurável entre 0.0 e 1.0) para descartar trechos irrelevantes.
+  - **Editor Completo de Prompt de Sistema:**
+    - Botões de inserção com um clique para tags dinâmicas:
+      - `{nome_tutor}`: Nome de exibição do tutor configurado.
+      - `{nome_aluno}`: Nome do aluno autenticado.
+      - `{curso_atual}`: Título do treinamento ativo.
+      - `{aula_atual}`: Título da aula atual.
+      - `{outros_cursos_aluno}`: Lista de outros cursos adquiridos.
+      - `{cursos_nao_adquiridos}`: Catálogo de produtos para indicação.
+    - Botão para **Restaurar Padrão** de fábrica a qualquer momento.
+
+  - **Diretrizes de Conteúdo & Proibições Estritas (Permitido vs Proibido):**
+    - **Escopo Permitido (`allowed_topics`):** O que o Tutor IA é autorizado a ensinar (dúvidas pedagógicas, resumos, conceitos das aulas gravadas).
+    - **Proibições Inegociáveis (`prohibited_topics`):** O Tutor IA é **TERMINANTEMENTE PROIBIDO** de interpretar trânsitos astrológicos personalizados para os alunos.
+    - **Redirecionamento para Aplicativo Parceiro (`redirect_app_url` e `redirect_app_name`):** Sempre que o aluno solicitar algo proibido (ou interpretação de trânsitos), a IA deve recusar educadamente e fornecer o link oficial do aplicativo dedicado especializado.
+    - **Instrução de Tom de Recusa (`prohibited_response_guideline`):** Permite orientar o tom de voz da IA ao declinar o pedido proibido e encaminhar o estudante.
+
+### 17.5.1. Painel de Insights Pedagógicos & Dúvidas dos Alunos (`TutorInsightsAnalyticsCard`)
+- **Aba de Gestão (`Configurações > Tutor IA > Dúvidas & Feedback Pedagógico`):**
+  - **KPIs Principais:** Total de dúvidas submetidas pelos alunos, taxa geral de satisfação (% de aprovação), total de avaliações positivas (*Likes*) e volume de pontos de atenção (*Dislikes*).
+  - **Ranking de Aulas com Mais Dúvidas:** Lista ranqueada das aulas onde os alunos mais realizam perguntas para a IA, destacando o curso e a contagem de dislikes. Permite que o professor e a equipe pedagógica identifiquem com precisão quais aulas necessitam de revisão didática, edição ou regravação de conteúdos complementares.
+  - **Feedbacks Negativos e Motivos dos Alunos:** Exibição detalhada de cada avaliação negativa recebida com o nome do aluno, curso, aula, prévia da resposta gerada pela IA e a justificativa enviada pelo estudante no modal de feedback.
+  - **Atualização sob Demanda:** Botão *"Atualizar Dados"* sincronizando as estatísticas da API (`GET /api/v1/tutor-ia/analytics/insights`).
+
+### 17.5.2. Gestão de Sugestões e Feedbacks dos Alunos na Central de Suporte (Opção B)
+- **Abertura Automática na Central de Suporte (`/admin/suporte`):**
+  - **Coleta Automática Inteligente:** Quando um aluno envia uma mensagem no chat do Tutor IA contendo termos de sugestão, ideias ou feedback de melhoria (ex: "sugiro", "poderia ter", "áudio baixo", "adicionar material"), o sistema cria automaticamente um novo chamado/tópico interno em `support_topics` com o título `💡 [Sugestão Tech Tutor] <Nome da Aula>`.
+  - **Interação Direta com o Aluno:** O chamado fica aberto para que os professores e a equipe de suporte respondam diretamente ao aluno através do painel de suporte, transformando a sugestão em um canal direto de relacionamento.
+  - **Pílula de Filtro Rápido:** Na Central de Suporte, foi adicionado o filtro rápido `💡 Sugestões Tech Tutor` para listar exclusivamente esses chamados.
+  - **Histórico Consolidado:** O registro também é mantido na tabela `ai_tutor_suggestions` e disponível no painel de configurações para acompanhamento histórico.
+
+### 17.6. Integração com Webhook da Hotmart e Futuro Checkout Próprio
+- **Endpoint Webhook:** `/api/v1/tutor-ia/webhook/hotmart` (suporta token de segurança via query param `?token=...` ou header `X-Webhook-Token`).
+- **Ações Automáticas por Evento:**
+  - `PURCHASE_APPROVED` / `SUBSCRIPTION_APPROVED`: Ativa `ai_tutor_active = True` e atualiza a validade para 30 dias à frente.
+  - `PURCHASE_CANCELED` / `SUBSCRIPTION_CANCELED` / `PURCHASE_REFUNDED`: Desativa `ai_tutor_active = False`.
+  - `SUBSCRIPTION_RENEWED`: Prorroga a validade por mais 30 dias a partir da data de renovação.
+- **Arquitetura Aberta para Checkout Próprio:** A mesma lógica de concessão e validação de tokens está encapsulada em `AiTutorService`, permitindo conexão direta com Stripe, Asaas ou gateways nacionais no futuro.
+
+---
+
+### Perguntas Respondidas sobre Regras de Negócio do Tutor IA:
+- [x] Deseja que a renovação da cota gratuita mensal seja no dia 1º de cada mês civil ou exatos 30 dias após o cadastro/última pergunta do aluno?
+  - *Resposta do usuário:* No dia 01 de cada mês civil.
+- [x] Quando o checkout próprio personalizado for lançado, qual gateway de pagamento você pretende priorizar primeiro (ex: Asaas, Stripe, Mercado Pago)?
+  - *Resposta do usuário:* Asaas.

@@ -168,4 +168,21 @@ describe('LessonTabsNavBar Component', () => {
     expect(screen.queryByTestId('badge-count-notes')).not.toBeInTheDocument();
     expect(screen.queryByTestId('badge-count-comments')).not.toBeInTheDocument();
   });
+
+  it('renderiza a aba do Tutor IA quando tutorVisible for true ou default', () => {
+    render(<LessonTabsNavBar activeTab="overview" onTabChange={() => {}} tutorVisible={true} />);
+    expect(screen.getByTestId('tab-lesson-tutor')).toBeInTheDocument();
+    expect(screen.getByText('Tutor IA 24h')).toBeInTheDocument();
+  });
+
+  it('oculta a aba do Tutor IA quando tutorVisible for false', () => {
+    render(<LessonTabsNavBar activeTab="overview" onTabChange={() => {}} tutorVisible={false} />);
+    expect(screen.queryByTestId('tab-lesson-tutor')).not.toBeInTheDocument();
+  });
+
+  it('redireciona para visão geral se a aba ativa for tutor e tutorVisible se tornar false', () => {
+    const handleTabChange = vi.fn();
+    render(<LessonTabsNavBar activeTab="tutor" onTabChange={handleTabChange} tutorVisible={false} />);
+    expect(handleTabChange).toHaveBeenCalledWith('overview');
+  });
 });

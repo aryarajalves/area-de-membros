@@ -102,8 +102,24 @@ describe('funnelCanvasUtils Unit Tests', () => {
     expect(getInitialNodeData('trigger_progress_milestone')).toEqual({
       trigger_event: 'progress_milestone',
       milestone: '100',
+      milestones: ['100'],
       course_id: null,
       course_title: 'Todos os Cursos',
+      is_start: true,
+    });
+    expect(getInitialNodeData('trigger_lesson_module_activity')).toEqual({
+      trigger_event: 'lesson_module_activity',
+      active_options: ['lesson', 'module'],
+      course_id: null,
+      lesson_id: null,
+      course_title: 'Todos os Cursos',
+      lesson_title: 'Qualquer Aula Concluída',
+      is_start: true,
+    });
+    expect(getInitialNodeData('trigger_tutor_ia_lifecycle')).toEqual({
+      trigger_event: 'tutor_ia_lifecycle',
+      active_events: ['first_chat', 'quota_exhausted'],
+      expiring_days: 3,
       is_start: true,
     });
     expect(getInitialNodeData('trigger_renewal_warning')).toEqual({

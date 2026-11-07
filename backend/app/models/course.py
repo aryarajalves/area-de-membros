@@ -28,6 +28,8 @@ class Course(Base):
     certificate_enabled = Column(Boolean, default=True, nullable=False)
     workload_hours = Column(Integer, default=10, nullable=True)
     instructor_name = Column(String, nullable=True)
+    release_type = Column(String, default="immediate", nullable=True)  # 'immediate', 'closed', 'specific_date'
+    release_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

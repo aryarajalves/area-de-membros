@@ -14,12 +14,12 @@ describe('BatchAiFixModal & SuperAdminLessonAuditFilterBar (Item 4 - Fila Autom�
   const sampleAiPendingItems = [
     {
       mod: { id: 10, title: 'Módulo 1 - Fundamentos' },
-      lesson: { id: 101, title: 'vid_raw_01.mp4', description: '' },
+      lesson: { id: 101, title: 'vid_raw_01.mp4', description: '', duration: '14:35', order_index: 0 },
       audit: { bad_title: true, missing_description: true, missing_chapters: false }
     },
     {
       mod: { id: 10, title: 'Módulo 1 - Fundamentos' },
-      lesson: { id: 102, title: 'Aula 02', description: 'Descrição completa e detalhada com mais de 25 caracteres.' },
+      lesson: { id: 102, title: 'Aula 02', description: 'Descrição completa e detalhada com mais de 25 caracteres.', duration_seconds: 1320, order_index: 1 },
       audit: { bad_title: true, missing_description: false, missing_chapters: true }
     }
   ];
@@ -59,6 +59,39 @@ describe('BatchAiFixModal & SuperAdminLessonAuditFilterBar (Item 4 - Fila Autom�
     expect(screen.getByTestId('batch-ai-item-102')).toBeInTheDocument();
   });
 
+  it('exibe as informações detalhadas da Opção A: identificação da aula, módulo e duração do vídeo', () => {
+    render(
+      <ToastProvider>
+        <BatchAiFixModal
+          isOpen={true}
+          onClose={vi.fn()}
+          courseId={7}
+          aiPendingItems={sampleAiPendingItems}
+          onQueueUpdated={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    // Linha 1: Ordem na fila + Identificação da Aula
+    expect(screen.getByTestId('batch-ai-item-101')).toHaveTextContent('#1');
+    expect(screen.getByTestId('batch-ai-item-101')).toHaveTextContent('🎓 Aula 01');
+    expect(screen.getByTestId('batch-ai-item-101')).toHaveTextContent('vid_raw_01.mp4');
+
+    expect(screen.getByTestId('batch-ai-item-102')).toHaveTextContent('#2');
+    expect(screen.getByTestId('batch-ai-item-102')).toHaveTextContent('🎓 Aula 02');
+
+    // Duração dos vídeos
+    expect(screen.getByTestId('batch-ai-duration-101')).toHaveTextContent('14:35');
+    expect(screen.getByTestId('batch-ai-duration-102')).toHaveTextContent('22:00');
+
+    // Linha 2: Módulo e tags de pendências
+    expect(screen.getByTestId('batch-ai-module-101')).toHaveTextContent('Módulo: Módulo 1 - Fundamentos');
+    expect(screen.getByTestId('batch-ai-module-102')).toHaveTextContent('Módulo: Módulo 1 - Fundamentos');
+    expect(screen.getByTestId('batch-ai-item-101')).toHaveTextContent('✨ S/ Nome IA');
+    expect(screen.getByTestId('batch-ai-item-101')).toHaveTextContent('📝 S/ Descrição');
+    expect(screen.getByTestId('batch-ai-item-102')).toHaveTextContent('📑 S/ Capítulos');
+  });
+
   it('permite marcar/desmarcar aulas e executa a fila 1 a 1 de IA (generate-metadata e transcribe + polling)', async () => {
     const onQueueUpdated = vi.fn();
 
@@ -83,7 +116,8 @@ describe('BatchAiFixModal & SuperAdminLessonAuditFilterBar (Item 4 - Fila Autom�
         json: async () => ({
           status: 'completed',
           lesson_title: 'Dominando a Estrutura Avançada',
-          lesson_description: 'Aprenda a configurar toda a estrutura avançada com segurança e clareza.'
+          lesson_description: 'Aprenda a configurar toda a estrutura avançada com segurança e clareza.',
+          audio_duration_seconds: 1320
         })
       })
       // Aula 102: 3) POST generate-metadata (refinamento porque audit.bad_title era true)

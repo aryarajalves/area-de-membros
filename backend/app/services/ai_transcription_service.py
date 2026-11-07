@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import asyncio
 import subprocess
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import httpx
 from fastapi import HTTPException, status
@@ -20,6 +21,13 @@ from dotenv import load_dotenv
 from app.core.database import SessionLocal
 from app.core.logger import logger
 from app.models.course import Lesson, LessonTranscription
+from app.services.audio_chunker import (
+    get_audio_duration_seconds,
+    split_audio_into_chunks,
+    merge_transcription_chunks,
+    set_transcription_progress,
+    clear_transcription_progress
+)
 
 OPENAI_API_URL = "https://api.openai.com/v1"
 WHISPER_ENDPOINT = f"{OPENAI_API_URL}/audio/transcriptions"
@@ -120,19 +128,7 @@ def _execute_ffmpeg_cmd(input_video_path: str, output_audio_path: str) -> str:
 
 def _get_audio_duration_seconds(audio_path: str) -> float:
     """Extrai a duração exata do áudio em segundos via ffprobe com tratamento seguro."""
-    try:
-        cmd = [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            audio_path
-        ]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if res.returncode == 0 and res.stdout.strip():
-            return float(res.stdout.strip())
-    except Exception as e:
-        logger.warning(f"[AI Transcription] Falha ao ler duração com ffprobe: {e}")
-    return 0.0
+    return get_audio_duration_seconds(audio_path)
 
 
 def format_seconds_to_clock(seconds: Optional[float]) -> str:
@@ -231,39 +227,39 @@ class AITranscriptionService:
         logger.info(f"[AI Transcription] Extraindo áudio via FFmpeg de {input_video_path}...")
         return await asyncio.to_thread(_execute_ffmpeg_cmd, input_video_path, output_audio_path)
 
-    async def transcribe_audio_whisper(self, audio_path: str, language: str = "pt", api_key: str = None) -> Dict[str, Any]:
-        """
-        Envia o arquivo de áudio para a API OpenAI Whisper e retorna a transcrição textual completa
-        e os segmentos temporais (timestamps) para minutagem e capítulos automáticos.
-        """
+    async def _transcribe_single_file_whisper(self, audio_path: str, language: str = "pt", api_key: str = None) -> Dict[str, Any]:
+        """Envia um arquivo de áudio (ou fatia/chunk) de até 25 MB para a API Whisper da OpenAI."""
         if not api_key:
             api_key = get_openai_api_key()
 
         file_size = os.path.getsize(audio_path)
-        logger.info(f"[AI Transcription] Enviando áudio de {file_size / (1024*1024):.2f} MB para a API OpenAI Whisper...")
+        logger.info(f"[AI Transcription] Enviando áudio ({file_size / (1024*1024):.2f} MB) para a API OpenAI Whisper...")
 
         if file_size > 25 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O arquivo de áudio excede o limite máximo permitido de 25 MB da API Whisper."
+                detail="O arquivo de áudio excede o limite máximo de 25 MB da API Whisper."
             )
 
         with open(audio_path, "rb") as f:
-            files = {
-                "file": ("audio.mp3", f, "audio/mpeg")
-            }
+            files = {"file": ("audio.mp3", f, "audio/mpeg")}
             data = {
                 "model": "whisper-1",
                 "language": language,
                 "response_format": "verbose_json",
                 "timestamp_granularities[]": "segment"
             }
-            headers = {
-                "Authorization": f"Bearer {api_key}"
-            }
+            headers = {"Authorization": f"Bearer {api_key}"}
 
-            async with httpx.AsyncClient(timeout=300.0) as client:
-                res = await client.post(WHISPER_ENDPOINT, headers=headers, files=files, data=data)
+            try:
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    res = await client.post(WHISPER_ENDPOINT, headers=headers, files=files, data=data)
+            except (httpx.TimeoutException, httpx.ReadTimeout) as timeout_err:
+                logger.error(f"[AI Transcription] Timeout na chamada Whisper: {timeout_err}")
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Tempo limite esgotado ao aguardar transcrição da OpenAI (Timeout). Tente novamente."
+                )
 
         if res.status_code != 200:
             logger.error(f"[AI Transcription] Erro OpenAI Whisper ({res.status_code}): {res.text}")
@@ -284,18 +280,55 @@ class AITranscriptionService:
             whisper_json = res.json()
             full_text = whisper_json.get("text", "").strip()
             segments = whisper_json.get("segments", [])
-            return {
-                "text": full_text,
-                "full_transcript": full_text,
-                "segments": segments
-            }
+            return {"text": full_text, "full_transcript": full_text, "segments": segments}
         except Exception:
             raw_text = res.text.strip()
-            return {
-                "text": raw_text,
-                "full_transcript": raw_text,
-                "segments": []
-            }
+            return {"text": raw_text, "full_transcript": raw_text, "segments": []}
+
+    async def transcribe_audio_whisper(self, audio_path: str, language: str = "pt", api_key: str = None, lesson_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Envia o áudio para a API Whisper da OpenAI.
+        Se o vídeo/áudio for longo (> 25 minutos ou > 24 MB), realiza fatiamento automático (chunking)
+        em pedaços menores para garantir que não haja estouro de timeout (300s) e nem do limite de 25 MB.
+        """
+        if not api_key:
+            api_key = get_openai_api_key()
+
+        # Fatiamento em chunks assíncrono em thread
+        chunks = await asyncio.to_thread(split_audio_into_chunks, audio_path, 1200)
+
+        if len(chunks) == 1 and chunks[0].get("is_single"):
+            if lesson_id:
+                set_transcription_progress(lesson_id, 35, "Transcrevendo áudio com OpenAI Whisper...", estimated_remaining_seconds=35)
+            return await self._transcribe_single_file_whisper(chunks[0]["path"], language=language, api_key=api_key)
+
+        logger.info(f"[AI Transcription] Transcrevendo vídeo longo fatiado em {len(chunks)} blocos sequenciais...")
+        chunk_results = []
+        for chunk in chunks:
+            idx = chunk["chunk_index"] + 1
+            total = len(chunks)
+            dur = chunk.get("duration_sec", 0.0)
+            offset = chunk.get("offset_sec", 0.0)
+            if lesson_id:
+                pct = 18 + int(((idx - 1) / total) * 62)
+                rem_sec = ((total - idx + 1) * 38) + 25
+                set_transcription_progress(
+                    lesson_id,
+                    pct,
+                    f"Transcrevendo bloco {idx} de {total} com OpenAI Whisper...",
+                    estimated_remaining_seconds=rem_sec
+                )
+            logger.info(f"[AI Transcription] Processando bloco {idx}/{total} (Offset: {offset:.0f}s, Duração: {dur:.1f}s)...")
+            res = await self._transcribe_single_file_whisper(chunk["path"], language=language, api_key=api_key)
+            chunk_results.append({
+                "chunk_index": chunk["chunk_index"],
+                "offset_sec": offset,
+                "result": res
+            })
+
+        merged = merge_transcription_chunks(chunk_results)
+        logger.info(f"[AI Transcription] Fatiamento concluído com sucesso! {len(merged.get('segments', []))} segmentos sincronizados.")
+        return merged
 
     async def generate_summary_and_html(
         self,
@@ -533,6 +566,7 @@ Instruções para o "summary_html":
                 input_video = video_source
 
             # 1. Extração do áudio em thread não-bloqueante
+            set_transcription_progress(lesson_id, 10, "Extraindo e otimizando áudio do vídeo via FFmpeg...", estimated_remaining_seconds=60)
             await self.extract_audio_from_video(input_video, temp_audio_file)
             audio_duration_seconds = await asyncio.to_thread(_get_audio_duration_seconds, temp_audio_file)
             if not audio_duration_seconds or audio_duration_seconds <= 0:
@@ -540,7 +574,7 @@ Instruções para o "summary_html":
                     audio_duration_seconds = float(lesson.duration) * 60.0
 
             # 2. Transcrição com Whisper (obtém texto e segmentos com timestamps)
-            whisper_result = await self.transcribe_audio_whisper(temp_audio_file)
+            whisper_result = await self.transcribe_audio_whisper(temp_audio_file, lesson_id=lesson_id)
             if isinstance(whisper_result, dict):
                 full_transcript = whisper_result.get("text", "").strip()
                 segments = whisper_result.get("segments", [])
@@ -555,6 +589,7 @@ Instruções para o "summary_html":
                 )
 
             # 3. Resumo inteligente, minutagem/capítulos e HTML com GPT-4o-mini
+            set_transcription_progress(lesson_id, 85, "Elaborando título, resumo executivo e capítulos com GPT-4o-mini...", estimated_remaining_seconds=25)
             ai_data = await self.generate_summary_and_html(
                 transcript=full_transcript,
                 lesson_title=lesson.title,
@@ -641,17 +676,37 @@ Instruções para o "summary_html":
             except Exception as af_err:
                 logger.error(f"[AgentFlow AutoSync] Erro na sincronização automática da aula {lesson.id}: {af_err}")
 
+            # 9. Sincronização automática com o RAG Vetorial Nativo (Embeddings)
+            try:
+                from app.services.ai_rag_service import index_lesson_rag
+                await index_lesson_rag(db, lesson.id)
+                logger.info(f"[RAG Vetorial] Aula {lesson.id} indexada automaticamente no RAG!")
+            except Exception as rag_err:
+                logger.warning(f"[RAG Vetorial] Aviso: erro ao indexar aula {lesson.id} no RAG: {rag_err}")
+
             return transcription
 
         except Exception as e:
-            detail_msg = e.detail if isinstance(e, HTTPException) else str(e)
+            if isinstance(e, (httpx.TimeoutException, httpx.ReadTimeout)):
+                detail_msg = "Tempo limite esgotado ao aguardar resposta da OpenAI (Timeout). Para vídeos longos, tente novamente."
+            else:
+                detail_msg = getattr(e, "detail", None) or str(e) or "Falha inesperada durante a transcrição do vídeo."
+            if not isinstance(detail_msg, str):
+                detail_msg = str(detail_msg)
             logger.error(f"[AI Transcription] Falha no processamento da aula {lesson_id}: {detail_msg}")
-            transcription.status = "failed"
-            transcription.error_message = detail_msg
-            db.commit()
-            db.refresh(transcription)
+            if transcription:
+                transcription.status = "failed"
+                transcription.error_message = detail_msg
+                transcription.updated_at = datetime.now(timezone.utc)
+                try:
+                    db.commit()
+                    db.refresh(transcription)
+                except Exception as commit_err:
+                    logger.error(f"[AI Transcription] Erro ao gravar status failed no banco: {commit_err}")
+                    db.rollback()
             raise e
         finally:
+            clear_transcription_progress(lesson_id)
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception:
@@ -907,5 +962,19 @@ async def run_transcription_background_task(lesson_id: int, video_source: str, u
         logger.info(f"[Background Transcription] Aula {lesson_id} transcrita e resumida com sucesso!")
     except Exception as e:
         logger.error(f"[Background Transcription] Erro durante processamento da aula {lesson_id}: {e}")
+        try:
+            trans = db.query(LessonTranscription).filter(LessonTranscription.lesson_id == lesson_id).first()
+            if trans and trans.status == "processing":
+                trans.status = "failed"
+                if isinstance(e, (httpx.TimeoutException, httpx.ReadTimeout)):
+                    detail_msg = "Tempo limite esgotado ao aguardar resposta da OpenAI (Timeout)."
+                else:
+                    detail_msg = getattr(e, "detail", None) or str(e) or "Erro interno ao executar transcrição em segundo plano."
+                trans.error_message = str(detail_msg)
+                trans.updated_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception as db_err:
+            logger.error(f"[Background Transcription] Erro no fallback de status failed: {db_err}")
+            db.rollback()
     finally:
         db.close()

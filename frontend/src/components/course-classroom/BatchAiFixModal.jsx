@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, CheckCircle2, Loader2, Square, CheckSquare, StopCircle, Lock, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, StopCircle, Lock } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { isClientBadLessonTitle } from './SuperAdminLessonAuditFilterBar';
+import BatchAiFixItem from './BatchAiFixItem';
 
 export default function BatchAiFixModal({
   isOpen, onClose, courseId, aiPendingItems = [], onQueueUpdated, pollIntervalMs = 2500
@@ -68,7 +69,8 @@ export default function BatchAiFixModal({
               ...prev[lessonId],
               status: 'running',
               progressPct: Math.min(85, 25 + attempt * 4),
-              stageLabel: 'Transcrevendo áudio e gerando Capítulos/Resumo com IA...'
+              stageLabel: 'Transcrevendo áudio e gerando Capítulos/Resumo com IA...',
+              audioDurationSeconds: data.audio_duration_seconds || prev[lessonId]?.audioDurationSeconds
             }
           }));
         }
@@ -165,7 +167,12 @@ export default function BatchAiFixModal({
       })
     );
 
-    return { completed: true, newTitle: finalTitle, stageLabel: 'Nome, Descrição e Capítulos IA concluídos!' };
+    return {
+      completed: true,
+      newTitle: finalTitle,
+      stageLabel: 'Nome, Descrição e Capítulos IA concluídos!',
+      audioDurationSeconds: trData.audio_duration_seconds
+    };
   };
 
   const handleStartQueue = async () => {
@@ -205,7 +212,8 @@ export default function BatchAiFixModal({
               status: 'completed',
               progressPct: 100,
               stageLabel: result.stageLabel || 'Pendências de IA resolvidas!',
-              newTitle: result.newTitle || lesson.title
+              newTitle: result.newTitle || lesson.title,
+              audioDurationSeconds: result.audioDurationSeconds || prev[lesson.id]?.audioDurationSeconds
             }
           }));
         } else {
@@ -259,7 +267,7 @@ export default function BatchAiFixModal({
         role="dialog"
         aria-modal="true"
         style={{
-          width: '100%', maxWidth: '640px', maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+          width: '100%', maxWidth: '680px', maxHeight: '88vh', display: 'flex', flexDirection: 'column',
           borderRadius: '20px', background: 'linear-gradient(165deg, rgba(15, 23, 42, 0.98) 0%, rgba(9, 13, 24, 0.99) 100%)',
           border: isRunning ? '1px solid rgba(168, 85, 247, 0.55)' : '1px solid rgba(192, 132, 252, 0.45)',
           boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(168, 85, 247, 0.18)',
@@ -362,73 +370,21 @@ export default function BatchAiFixModal({
           data-testid="batch-ai-fix-list"
           style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px', marginBottom: '18px' }}
         >
-          {aiPendingItems.map(({ mod, lesson, audit }, idx) => {
+          {aiPendingItems.map((item, idx) => {
+            const { lesson } = item;
             const state = itemStates[lesson.id] || { status: 'idle', progressPct: 0 };
             const isChecked = selectedIds.includes(lesson.id);
-            const isDone = state.status === 'completed';
-            const isCurrent = state.status === 'running';
 
             return (
-              <div
+              <BatchAiFixItem
                 key={lesson.id}
-                data-testid={`batch-ai-item-${lesson.id}`}
-                onClick={() => toggleLessonSelection(lesson.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '12px',
-                  cursor: isRunning || isDone ? 'default' : 'pointer',
-                  backgroundColor: isCurrent ? 'rgba(168, 85, 247, 0.14)' : isDone ? 'rgba(16, 185, 129, 0.1)' : isChecked ? 'rgba(30, 41, 59, 0.65)' : 'rgba(15, 23, 42, 0.4)',
-                  border: isCurrent ? '1px solid rgba(168, 85, 247, 0.45)' : isDone ? '1px solid rgba(16, 185, 129, 0.35)' : isChecked ? '1px solid rgba(192, 132, 252, 0.25)' : '1px solid rgba(148, 163, 184, 0.1)',
-                  opacity: !isChecked && !isDone ? 0.55 : 1
-                }}
-              >
-                <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                  {isDone ? (
-                    <CheckCircle2 size={18} color="#34d399" />
-                  ) : isCurrent ? (
-                    <Loader2 size={18} color="#c084fc" className="animate-spin" />
-                  ) : isChecked ? (
-                    <CheckSquare size={18} color="#c084fc" />
-                  ) : (
-                    <Square size={18} color="#64748b" />
-                  )}
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: isDone ? '#d1fae5' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {idx + 1}. {state.newTitle || lesson.title}
-                  </div>
-                  <div style={{ fontSize: '11px', color: isCurrent ? '#d8b4fe' : isDone ? '#34d399' : '#94a3b8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span>{mod.title}</span>
-                    {!isDone && audit?.bad_title && <span style={{ color: '#c084fc' }}>• ✨ S/ Nome IA</span>}
-                    {!isDone && audit?.missing_description && <span style={{ color: '#38bdf8' }}>• 📝 S/ Descrição</span>}
-                    {!isDone && audit?.missing_chapters && <span style={{ color: '#fb923c' }}>• 📑 S/ Capítulos</span>}
-                    {state.stageLabel && <span>• {state.stageLabel}</span>}
-                  </div>
-                  {isCurrent && (
-                    <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(15, 23, 42, 0.85)', borderRadius: '999px', overflow: 'hidden', marginTop: '6px' }}>
-                      <div style={{ width: `${state.progressPct || 15}%`, height: '100%', background: 'linear-gradient(90deg, #8b5cf6 0%, #ec4899 100%)', transition: 'width 0.5s ease' }} />
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ flexShrink: 0, fontSize: '12px', fontWeight: 800 }}>
-                  {isCurrent ? (
-                    <span style={{ color: '#c084fc' }}>{state.progressPct || 15}%</span>
-                  ) : isDone ? (
-                    <span style={{ color: '#34d399' }}>Concluído</span>
-                  ) : state.status === 'stopped' ? (
-                    <span style={{ color: '#facc15' }}>Parado</span>
-                  ) : state.status === 'failed' ? (
-                    <span style={{ color: '#f87171', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                      <AlertCircle size={12} /> Falha
-                    </span>
-                  ) : isChecked ? (
-                    <span style={{ color: '#c084fc' }}>Na fila</span>
-                  ) : (
-                    <span style={{ color: '#64748b' }}>Ignorado</span>
-                  )}
-                </div>
-              </div>
+                item={item}
+                index={idx}
+                state={state}
+                isChecked={isChecked}
+                isRunning={isRunning}
+                onToggle={() => toggleLessonSelection(lesson.id)}
+              />
             );
           })}
         </div>

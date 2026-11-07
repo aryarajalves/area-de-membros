@@ -375,6 +375,8 @@ async def execute_funnel_flow(
             node_type = node.get("type", "message")
             node_data = node.get("data", {})
             execution.current_node_id = current_node_id
+            branch_chosen = None
+            branch_chosen = None
 
             # Resolver remetente do nó (se configurado especificamente no nó, ou fallback para sender_id padrão)
             effective_sender_id = sender_id
@@ -390,12 +392,22 @@ async def execute_funnel_flow(
 
             if node_type == "trigger":
                 trigger_event = node_data.get("trigger_event", "student_created")
-                if trigger_event == "course_interest":
-                    c_id = node_data.get("course_id")
-                    execution_logs.append(f"Gatilho 'Interesse em Curso' iniciado (Curso: {c_id or 'Todos'})")
-                else:
-                    days_after = int(node_data.get("days_after", 0))
-                    execution_logs.append(f"Gatilho '{trigger_event}' iniciado ({days_after} dias)")
+                execution_logs.append(f"Gatilho '{trigger_event}' iniciado")
+                trig_str = str(triggered_by or (execution.triggered_by if execution else "") or "")
+                if "_progress_" in trig_str and "pct" in trig_str:
+                    for pct in ["25", "50", "75", "100"]:
+                        if f"_{pct}pct" in trig_str:
+                            branch_chosen = f"output_{pct}"
+                            break
+                elif "lesson_activity" in trig_str:
+                    branch_chosen = "output_lesson"
+                elif "module_activity" in trig_str:
+                    branch_chosen = "output_module"
+                elif "tutor_ia_" in trig_str:
+                    for ev in ["first_chat", "quota_exhausted", "expiring_soon", "expired"]:
+                        if f"tutor_ia_{ev}" in trig_str:
+                            branch_chosen = f"output_{ev}"
+                            break
 
             elif node_type == "message":
                 raw_text = node_data.get("text", "")
@@ -571,7 +583,6 @@ async def execute_funnel_flow(
                     logger.warning(f"[FUNNEL #{funnel_id}] Falha ao emitir evento WS (áudio): {ws_err}")
                 execution_logs.append(f"Áudio enviado (Nó {current_node_id})")
 
-            branch_chosen = None
             if node_type == "tag":
                 tag_action = node_data.get("tag_action", "add")
                 if tag_action in ["condition", "check"]:
@@ -608,6 +619,7 @@ async def execute_funnel_flow(
                 next_target = (
                     edge_port_map.get((current_node_id, branch_chosen))
                     or edge_port_map.get((current_node_id, "yes" if branch_chosen == "output_yes" else "no" if branch_chosen == "output_no" else "a" if branch_chosen == "output_a" else "b"))
+                    or edge_port_map.get((current_node_id, "output"))
                 )
                 current_node_id = next_target
             else:

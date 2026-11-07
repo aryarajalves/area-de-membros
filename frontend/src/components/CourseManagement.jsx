@@ -3,6 +3,7 @@ import { Plus, BookOpen, Search, GraduationCap, ChevronLeft, ChevronRight } from
 import { useToast } from '../context/ToastContext';
 import CourseClassroom from './course-classroom/CourseClassroom';
 import { CourseCard, CourseBundleGroup, groupCoursesByBundles, CourseFormModal, CourseDeleteModal, CourseSalesHistoryModal } from './course-management';
+import { toDatetimeLocalValue } from './course-management/CourseReleaseScheduleCard';
 import { preloadCourseImages } from '../utils/imagePreloader';
 
 const ITEMS_PER_PAGE = 20;
@@ -71,29 +72,20 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     };
   }, [selectedCourse, onCourseViewChange]);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [courseToDelete, setCourseToDelete] = useState(null);
-  const [editingCourse, setEditingCourse] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false), [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState(null), [editingCourse, setEditingCourse] = useState(null);
   const [salesHistoryCourse, setSalesHistoryCourse] = useState(null);
 
   // Form states
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
-  const [coverImageUrl, setCoverImageUrl] = useState('');
-  const [coverImagePosition, setCoverImagePosition] = useState(50);
-  const [salesPageUrl, setSalesPageUrl] = useState('');
-  const [orderIndex, setOrderIndex] = useState(0);
-  const [agentflowKbId, setAgentflowKbId] = useState(null);
-  const [agentflowKbName, setAgentflowKbName] = useState(null);
-  const [itemType, setItemType] = useState('course');
-  const [toolUrl, setToolUrl] = useState('');
-  const [bundledCourseIds, setBundledCourseIds] = useState([]);
-  const [bundleTitle, setBundleTitle] = useState('');
-  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [title, setTitle] = useState(''), [description, setDescription] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState(''), [coverImageUrl, setCoverImageUrl] = useState('');
+  const [coverImagePosition, setCoverImagePosition] = useState(50), [salesPageUrl, setSalesPageUrl] = useState('');
+  const [orderIndex, setOrderIndex] = useState(0), [agentflowKbId, setAgentflowKbId] = useState(null);
+  const [agentflowKbName, setAgentflowKbName] = useState(null), [itemType, setItemType] = useState('course');
+  const [toolUrl, setToolUrl] = useState(''), [bundledCourseIds, setBundledCourseIds] = useState([]);
+  const [bundleTitle, setBundleTitle] = useState(''), [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [releaseType, setReleaseType] = useState('immediate'), [releaseDate, setReleaseDate] = useState('');
+  const [uploading, setUploading] = useState(false), [saving, setSaving] = useState(false);
 
   const activeBgColor = (courses[0]?.bg_color && propBgColor === '#090d16' ? courses[0].bg_color : propBgColor) || '#090d16';
 
@@ -146,7 +138,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setEditingCourse(null); setTitle(''); setDescription(''); setThumbnailUrl('');
     setCoverImageUrl(''); setCoverImagePosition(50); setSalesPageUrl(''); setOrderIndex(0);
     setAgentflowKbId(null); setAgentflowKbName(null); setItemType('course'); setToolUrl('');
-    setBundledCourseIds([]); setBundleTitle(''); setWatermarkEnabled(true); setModalOpen(true);
+    setBundledCourseIds([]); setBundleTitle(''); setWatermarkEnabled(true);
+    setReleaseType('immediate'); setReleaseDate(''); setModalOpen(true);
   };
 
   const handleOpenEditModal = (course) => {
@@ -158,6 +151,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setItemType(course.item_type || 'course'); setToolUrl(course.tool_url || '');
     setBundledCourseIds(course.bundled_course_ids || (course.bundled_courses ? course.bundled_courses.map((b) => b.id) : []));
     setBundleTitle(course.bundle_title || ''); setWatermarkEnabled(course.watermark_enabled !== false);
+    setReleaseType(course.release_type || 'immediate'); setReleaseDate(toDatetimeLocalValue(course.release_date));
     setModalOpen(true);
   };
 
@@ -215,6 +209,11 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       return;
     }
 
+    if (itemType !== 'tool' && releaseType === 'specific_date' && !releaseDate) {
+      addToast('Escolha a data e hora em que o curso será liberado.', 'error');
+      return;
+    }
+
     setSaving(true);
     const token = localStorage.getItem('auth_token');
     const payload = {
@@ -232,6 +231,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
       bundle_title: bundleTitle.trim() || null,
       watermark_enabled: Boolean(watermarkEnabled),
+      release_type: itemType === 'tool' ? 'immediate' : (releaseType || 'immediate'),
+      release_date: itemType !== 'tool' && releaseType === 'specific_date' && releaseDate ? new Date(releaseDate).toISOString() : null,
       bundled_course_ids: bundledCourseIds
     };
 
@@ -264,10 +265,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     }
   };
 
-  const handlePromptDelete = (course) => {
-    setCourseToDelete(course);
-    setDeleteModalOpen(true);
-  };
+  const handlePromptDelete = (course) => { setCourseToDelete(course); setDeleteModalOpen(true); };
 
   const handleConfirmDelete = async () => {
     if (!courseToDelete) return;
@@ -469,6 +467,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         bundledCourseIds={bundledCourseIds} setBundledCourseIds={setBundledCourseIds}
         bundleTitle={bundleTitle} setBundleTitle={setBundleTitle}
         watermarkEnabled={watermarkEnabled} setWatermarkEnabled={setWatermarkEnabled}
+        releaseType={releaseType} setReleaseType={setReleaseType}
+        releaseDate={releaseDate} setReleaseDate={setReleaseDate}
         availableCourses={courses} bgColor={activeBgColor} uploading={uploading} saving={saving}
         onUploadThumbnail={handleUploadThumbnail} onUploadCoverImage={handleUploadCoverImage}
         onSaveCourse={handleSaveCourse}

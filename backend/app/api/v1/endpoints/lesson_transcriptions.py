@@ -123,6 +123,9 @@ def get_lesson_transcription(
         except Exception:
             db.rollback()
 
+    from app.services.audio_chunker import get_transcription_progress
+    prog = get_transcription_progress(lesson_id) if transcription.status == "processing" else {}
+
     return LessonTranscriptionResponse(
         id=transcription.id,
         lesson_id=transcription.lesson_id,
@@ -144,7 +147,10 @@ def get_lesson_transcription(
         agentflow_kb_id=transcription.agentflow_kb_id,
         agentflow_synced_at=transcription.agentflow_synced_at,
         created_at=transcription.created_at,
-        updated_at=transcription.updated_at
+        updated_at=transcription.updated_at,
+        progress_percent=prog.get("progress_percent"),
+        progress_step=prog.get("progress_step"),
+        estimated_remaining_seconds=prog.get("estimated_remaining_seconds")
     )
 
 

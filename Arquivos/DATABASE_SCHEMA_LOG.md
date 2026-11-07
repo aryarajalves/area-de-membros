@@ -2,6 +2,90 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [07/11/2026] - Seleção de Múltiplos Cursos Exclusivos em Eventos (course_ids_json na tabela events)
+- **Objetivo:** Permitir que o administrador selecione mais de um curso ao configurar um evento/mentoria com acesso exclusivo (`target_type = 'course'`), liberando o acesso para alunos matriculados em qualquer um dos cursos selecionados.
+- **Tabela Afetada:**
+  - events:
+    - course_ids_json: TEXT NULL (Lista JSON de IDs dos cursos permitidos, ex: `[1, 2, 5]`)
+- **Script de Migração:** backend/scripts/add_event_multiple_courses_column.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [07/11/2026] - Controle de Fechamento e Liberação Programada por Data e Hora em Cursos (release_type e release_date na tabela courses)
+- **Objetivo:** Permitir ao administrador fechar temporariamente um curso para todos os alunos ou programar sua liberação automática em uma data e hora específicas (`release_type` e `release_date` na tabela `courses`).
+- **Tabela Afetada:**
+  - courses:
+    - release_type: VARCHAR(50) DEFAULT 'immediate' (Valores: 'immediate', 'closed', 'specific_date')
+    - release_date: TIMESTAMP WITH TIME ZONE NULL (Data e hora programada para abertura do curso)
+- **Script de Migração:** backend/scripts/add_course_release_columns.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py.
+
+---
+
+### [06/11/2026] - Modos de Acesso e Manutenção do Tutor IA (access_mode e maintenance_message)
+- **Objetivo:** Adicionar controle de visibilidade e modo manutenção para o Tutor IA nas configurações da plataforma (`ai_tutor_settings`), permitindo escolher entre 'Liberado para Todos', 'Modo Manutenção' (chat visível com aviso explicativo e input bloqueado) e 'Oculto / Privado' (visível apenas para Super Admin e Administradores).
+- **Tabelas Afetadas:**
+  - ai_tutor_settings:
+    - access_mode: VARCHAR(30) NOT NULL DEFAULT 'public' (Modo de acesso: 'public', 'maintenance', 'private_team', 'disabled')
+    - maintenance_message: TEXT NULL (Mensagem personalizada de manutenção exibida aos alunos)
+- **Script de Migração:** backend/scripts/add_tutor_access_mode_columns.py
+
+---
+
+### [05/11/2026] - RAG Avançado: Q&A Sintético e Parâmetros de Top-K e Similaridade Mínima
+- **Objetivo:** Adicionar parâmetros configuráveis de busca vetorial (Top-K e corte de similaridade mínima) e suporte à geração de perguntas & respostas sintéticas (Q&A) por aula.
+- **Tabelas Afetadas:**
+  - i_tutor_settings:
+    - 
+ag_top_k: INTEGER NOT NULL DEFAULT 4 (Quantidade máxima de trechos RAG a injetar no contexto da IA)
+    - 
+ag_min_similarity: FLOAT NOT NULL DEFAULT 0.35 (Corte mínimo de similaridade de cosseno)
+  - i_knowledge_chunks:
+    - chunk_type: VARCHAR(30) NOT NULL DEFAULT 'transcript' (Tipo do chunk: 'transcript' ou 'qa_pair')
+    - question_text: TEXT NULL (Pergunta sintética formulada a partir do conteúdo do vídeo)
+    - nswer_text: TEXT NULL (Resposta sintética fundamentada com minutagens)
+- **Script de Migração:** ackend/scripts/add_rag_advanced_columns.py
+
+---
+
+
+### [05/11/2026] - Sistema de Tutor IA Interativo com RAG e Assinatura Recorrente (ai_tutor_settings, ai_tutor_messages e colunas em users)
+- **Objetivo:** Adicionar tabelas e campos necessários para o módulo do Tutor IA Interativo com suporte a assinaturas de R$ 10/mês, degustação de 3 perguntas/mês, rastreamento de custos em R$ por aluno e parametrização do prompt no painel.
+- **Tabelas Afetadas:**
+  - users:
+    - i_tutor_active: BOOLEAN DEFAULT FALSE (Indica se o aluno possui assinatura ativa do Tutor IA)
+    - i_tutor_expires_at: TIMESTAMP NULL (Data de renovação ou expiração da assinatura do Tutor IA)
+    - i_tutor_custom_monthly_limit: INTEGER NULL (Cota customizada para o aluno: NULL = segue padrão global, -1 = VIP ilimitado)
+  - i_tutor_settings:
+    - id: INTEGER PRIMARY KEY
+    - default_monthly_free_questions: INTEGER DEFAULT 3
+    - system_prompt: TEXT (Prompt customizável com variáveis dinâmicas)
+    - 	emperature: FLOAT DEFAULT 0.3
+    - model_name: VARCHAR DEFAULT 'gpt-4o-mini'
+    - is_enabled: BOOLEAN DEFAULT TRUE
+    - sales_checkout_url: VARCHAR NULL
+    - monthly_price_brl: FLOAT DEFAULT 10.0
+    - created_at, updated_at: TIMESTAMP
+  - i_tutor_messages:
+    - id: INTEGER PRIMARY KEY
+    - user_id: INTEGER REFERENCES users(id) ON DELETE CASCADE
+    - course_id: INTEGER REFERENCES courses(id) ON DELETE CASCADE
+    - lesson_id: INTEGER REFERENCES lessons(id) ON DELETE SET NULL
+    - 
+ole: VARCHAR(20) ('user' ou 'assistant')
+    - content: TEXT
+    - prompt_tokens: INTEGER DEFAULT 0
+    - completion_tokens: INTEGER DEFAULT 0
+    - cost_brl: FLOAT DEFAULT 0.0
+    - 
+elated_lessons_json: TEXT NULL (JSON com aulas e minutagens referenciadas)
+    - created_at: TIMESTAMP
+- **Script de Migração:** ackend/scripts/migrate_ai_tutor.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de ackend/app/main.py.
+
+---
+
 ### [31/10/2026] - Controle Individual de Marca d'Água Anti-Pirataria nas Aulas (watermark_enabled na tabela courses)
 - **Objetivo:** Permitir ao administrador ativar ou desativar a marca d'água dinâmica anti-pirataria (identificação do aluno sobre os vídeos das aulas) individualmente na criação e edição de cada curso.
 - **Tabela Afetada:** courses
@@ -751,3 +835,68 @@ ecording_url: VARCHAR(1024).
 
 
 
+
+---
+
+### [05/11/2026] - Sistema de Tutor IA Interativo 24h (Micro-SaaS & Assinatura)
+- **Tabelas Afetadas e Criadas:**
+  - `users`: Adicionadas colunas `ai_tutor_active` (BOOLEAN DEFAULT FALSE), `ai_tutor_expires_at` (TIMESTAMP WITH TIME ZONE NULL) e `ai_tutor_custom_monthly_limit` (INTEGER NULL).
+  - `ai_tutor_settings`: Criada tabela para parâmetros globais (`id`, `tutor_name`, `default_monthly_free_questions`, `system_prompt`, `temperature`, `model_name`, `is_enabled`, `sales_checkout_url`, `monthly_price_brl`, `created_at`, `updated_at`).
+  - `ai_tutor_messages`: Criada tabela para histórico de conversas e métricas de consumo (`id`, `user_id`, `course_id`, `lesson_id`, `role`, `content`, `prompt_tokens`, `completion_tokens`, `cost_brl`, `related_lessons_json`, `created_at`).
+- **Scripts de Migração:**
+  - `backend/scripts/migrate_ai_tutor.py`
+  - `backend/scripts/add_tutor_name_column.py`
+
+---
+
+### [05/11/2026] - RAG Vetorial e Base de Conhecimento (ai_knowledge_chunks)
+- **Tabelas Afetadas e Criadas:**
+  - `modules`: Adicionada constraint de chave primária explícita (`pk_modules PRIMARY KEY (id)`).
+  - `ai_knowledge_chunks`: Tabela criada para armazenamento dos fragmentos de aulas e embeddings normalizados da OpenAI (`id`, `course_id`, `module_id`, `lesson_id`, `chunk_index`, `content`, `start_time_seconds`, `end_time_seconds`, `embedding_json`, `token_count`, `created_at`, `updated_at`).
+- **Índices Criados:**
+  - `ix_ai_knowledge_chunks_course_id`
+  - `ix_ai_knowledge_chunks_module_id`
+  - `ix_ai_knowledge_chunks_lesson_id`
+- **Script de Migração:** `backend/scripts/migrate_ai_knowledge_chunks.py`
+
+---
+
+### [06/11/2026] - Sistema de Avaliação de Respostas do Tutor IA (Like/Dislike e Feedback com Justificativa)
+- **Tabela Afetada:** `ai_tutor_messages`
+- **Colunas Adicionadas:**
+  - `feedback_rating`: VARCHAR(10) NULL (registra `'like'` ou `'dislike'`).
+  - `feedback_text`: TEXT NULL (armazena a justificativa/comentário pedagógico enviado pelo aluno ao avaliar negativamente a resposta).
+  - `feedback_at`: TIMESTAMP NULL (timestamp UTC do registro da avaliação).
+- **Script de Migração:** `backend/scripts/add_tutor_feedback_columns.py`
+
+
+---
+
+### [06/11/2026] - Modo de Acesso & Modo Manutenção do Tutor IA
+- **Tabela Afetada:** `ai_tutor_settings`
+- **Colunas Adicionadas:**
+  - `access_mode`: VARCHAR(30) DEFAULT 'public' ('public', 'maintenance', 'private_team', 'disabled')
+  - `maintenance_message`: TEXT NULL (mensagem personalizada exibida aos alunos no chat em manutenção)
+- **Script de Migração:** `backend/scripts/add_tutor_access_mode_columns.py`
+
+---
+
+### [06/11/2026] - Diretrizes de Conduta (Permitido vs Proibido) e Sugestões de Alunos do Tutor IA
+- **Tabela Afetada:** `ai_tutor_settings`
+  - `allowed_topics`: TEXT NULL (escopo pedagógico de tópicos permitidos)
+  - `prohibited_topics`: TEXT NULL (tópicos proibidos, ex: interpretação personalizada de trânsitos astrológicos)
+  - `redirect_app_url`: VARCHAR(500) NULL (link do aplicativo/agente focado para onde o aluno será direcionado)
+  - `redirect_app_name`: VARCHAR(150) NULL (nome de exibição do aplicativo parceiro)
+  - `prohibited_response_guideline`: TEXT NULL (instruções de tom de recusa e encaminhamento)
+- **Nova Tabela:** `ai_tutor_suggestions`
+  - `id`: SERIAL PRIMARY KEY
+  - `user_id`: INTEGER REFERENCES users(id) ON DELETE CASCADE
+  - `course_id`: INTEGER NULL REFERENCES courses(id) ON DELETE SET NULL
+  - `lesson_id`: INTEGER NULL REFERENCES lessons(id) ON DELETE SET NULL
+  - `suggestion_text`: TEXT NOT NULL
+  - `category`: VARCHAR(50) DEFAULT 'platform_improvement'
+  - `status`: VARCHAR(30) DEFAULT 'new' ('new', 'analyzing', 'implemented', 'dismissed')
+  - `admin_notes`: TEXT NULL
+  - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  - `updated_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+- **Script de Migração:** `backend/scripts/add_tutor_guidelines_and_suggestions.py`

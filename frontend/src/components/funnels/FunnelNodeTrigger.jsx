@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Zap,
-  Target,
-  Award,
-  Hourglass,
-  UserX,
-  Copy,
-  Trash2,
-  MessageSquareText,
-  Users,
-  Trophy,
-  CalendarCheck,
-} from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
 import FunnelTriggerStudentCreatedConfig from './FunnelTriggerStudentCreatedConfig';
 import FunnelTriggerCourseInterestConfig from './FunnelTriggerCourseInterestConfig';
 import FunnelTriggerProgressConfig from './FunnelTriggerProgressConfig';
@@ -21,72 +9,10 @@ import FunnelTriggerTestimonialConfig from './FunnelTriggerTestimonialConfig';
 import FunnelTriggerPresentationConfig from './FunnelTriggerPresentationConfig';
 import FunnelTriggerLevelUpConfig from './FunnelTriggerLevelUpConfig';
 import FunnelTriggerEventAttendanceConfig from './FunnelTriggerEventAttendanceConfig';
-
-const TRIGGER_METADATA = {
-  student_created: {
-    label: 'ALUNO CRIADO',
-    icon: Zap,
-    themeColor: '#eab308',
-    glowColor: 'rgba(234, 179, 8, 0.45)',
-    textColor: '#facc15',
-  },
-  course_interest: {
-    label: 'INTERESSE EM CURSO',
-    icon: Target,
-    themeColor: '#f59e0b',
-    glowColor: 'rgba(245, 158, 11, 0.45)',
-    textColor: '#fbbf24',
-  },
-  progress_milestone: {
-    label: 'MARCO DE PROGRESSO',
-    icon: Award,
-    themeColor: '#a855f7',
-    glowColor: 'rgba(168, 85, 247, 0.45)',
-    textColor: '#c084fc',
-  },
-  renewal_warning: {
-    label: 'AVISO DE EXPIRAÇÃO',
-    icon: Hourglass,
-    themeColor: '#f43f5e',
-    glowColor: 'rgba(244, 63, 94, 0.45)',
-    textColor: '#fb7185',
-  },
-  student_inactivity: {
-    label: 'ALERTA DE INATIVIDADE',
-    icon: UserX,
-    themeColor: '#ec4899',
-    glowColor: 'rgba(236, 72, 153, 0.45)',
-    textColor: '#f472b6',
-  },
-  first_testimonial: {
-    label: 'PRIMEIRO DEPOIMENTO',
-    icon: MessageSquareText,
-    themeColor: '#38bdf8',
-    glowColor: 'rgba(56, 189, 248, 0.45)',
-    textColor: '#7dd3fc',
-  },
-  first_presentation: {
-    label: 'PRIMEIRA APRESENTAÇÃO',
-    icon: Users,
-    themeColor: '#10b981',
-    glowColor: 'rgba(16, 185, 129, 0.45)',
-    textColor: '#34d399',
-  },
-  level_up: {
-    label: 'SUBIDA DE NÍVEL (LEVEL UP)',
-    icon: Trophy,
-    themeColor: '#c084fc',
-    glowColor: 'rgba(192, 132, 252, 0.45)',
-    textColor: '#e9d5ff',
-  },
-  event_attendance: {
-    label: 'PRESENÇA EM EVENTO',
-    icon: CalendarCheck,
-    themeColor: '#f472b6',
-    glowColor: 'rgba(244, 114, 182, 0.45)',
-    textColor: '#fbcfe8',
-  },
-};
+import FunnelTriggerLessonModuleConfig from './FunnelTriggerLessonModuleConfig';
+import FunnelTriggerTutorLifecycleConfig from './FunnelTriggerTutorLifecycleConfig';
+import FunnelNodeTriggerPorts from './FunnelNodeTriggerPorts';
+import { TRIGGER_METADATA } from './funnelTriggerMetadata';
 
 export default function FunnelNodeTrigger({
   node,
@@ -99,7 +25,7 @@ export default function FunnelNodeTrigger({
   onConnectTarget,
   isTargetActive = false,
 }) {
-  const data = node.data || {};
+  const data = node?.data || {};
   const triggerEvent = data.trigger_event || 'student_created';
   const meta = TRIGGER_METADATA[triggerEvent] || TRIGGER_METADATA.student_created;
   const IconComponent = meta.icon;
@@ -112,7 +38,14 @@ export default function FunnelNodeTrigger({
       setCourses(propCourses);
       return;
     }
-    const EVENTS_REQUIRING_COURSES = ['course_interest', 'progress_milestone', 'renewal_warning', 'student_inactivity', 'first_testimonial'];
+    const EVENTS_REQUIRING_COURSES = [
+      'course_interest',
+      'progress_milestone',
+      'renewal_warning',
+      'student_inactivity',
+      'first_testimonial',
+      'lesson_module_activity',
+    ];
     if (!EVENTS_REQUIRING_COURSES.includes(triggerEvent)) return;
     let isMounted = true;
     const fetchCourses = async () => {
@@ -136,7 +69,7 @@ export default function FunnelNodeTrigger({
     return () => {
       isMounted = false;
     };
-  }, [triggerEvent]);
+  }, [triggerEvent, propCourses]);
 
   return (
     <div
@@ -156,37 +89,15 @@ export default function FunnelNodeTrigger({
       }}
       data-testid={`funnel-node-trigger-${node.id}`}
     >
-      {/* Port de Saída (Conexão para a sequência de mensagens) */}
-      <div
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          if (onStartConnect) onStartConnect(node.id, e, node, 'output');
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (onStartConnect) onStartConnect(node.id, e, node, 'output');
-        }}
-        onMouseUp={(e) => {
-          e.stopPropagation();
-          if (onConnectTarget) onConnectTarget(node.id, 'output');
-        }}
-        style={{
-          position: 'absolute',
-          right: '-8px',
-          top: '50%',
-          transform: isTargetActive ? 'translateY(-50%) scale(1.3)' : 'translateY(-50%)',
-          width: '16px',
-          height: '16px',
-          borderRadius: '50%',
-          backgroundColor: meta.themeColor,
-          border: '2px solid #0f172a',
-          boxShadow: `0 0 10px ${meta.themeColor}`,
-          cursor: 'grab',
-          zIndex: 10,
-          transition: 'all 0.15s ease',
-        }}
-        title="Clique ou arraste para conectar ao próximo passo do funil"
-        data-testid={`node-output-handle-${node.id}`}
+      {/* Portas / Handles de Saída */}
+      <FunnelNodeTriggerPorts
+        node={node}
+        data={data}
+        triggerEvent={triggerEvent}
+        meta={meta}
+        onStartConnect={onStartConnect}
+        onConnectTarget={onConnectTarget}
+        isTargetActive={isTargetActive}
       />
 
       {/* Header do Nó */}
@@ -346,6 +257,24 @@ export default function FunnelNodeTrigger({
 
       {triggerEvent === 'event_attendance' && (
         <FunnelTriggerEventAttendanceConfig
+          nodeId={node.id}
+          data={data}
+          onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'lesson_module_activity' && (
+        <FunnelTriggerLessonModuleConfig
+          nodeId={node.id}
+          data={data}
+          courses={courses}
+          loadingCourses={loadingCourses}
+          onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'tutor_ia_lifecycle' && (
+        <FunnelTriggerTutorLifecycleConfig
           nodeId={node.id}
           data={data}
           onUpdateData={onUpdateData}

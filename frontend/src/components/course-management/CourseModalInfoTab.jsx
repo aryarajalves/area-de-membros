@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, Loader2, Shield } from 'lucide-react';
 import CourseTypeSelector from './CourseTypeSelector';
+import CourseReleaseScheduleCard from './CourseReleaseScheduleCard';
 import ExpandableTextarea from '../common/ExpandableTextarea';
 
 export default function CourseModalInfoTab({
@@ -14,6 +15,10 @@ export default function CourseModalInfoTab({
   setDescription,
   watermarkEnabled = true,
   setWatermarkEnabled,
+  releaseType = 'immediate',
+  setReleaseType,
+  releaseDate = '',
+  setReleaseDate,
   editingCourse,
   textColor,
   isLightBg,
@@ -192,6 +197,17 @@ export default function CourseModalInfoTab({
             />
           </button>
         </div>
+      )}
+
+      {itemType !== 'tool' && typeof setReleaseType === 'function' && (
+        <CourseReleaseScheduleCard
+          releaseType={releaseType}
+          setReleaseType={setReleaseType}
+          releaseDate={releaseDate}
+          setReleaseDate={setReleaseDate}
+          isLightBg={isLightBg}
+          textColor={textColor}
+        />
       )}
     </div>
   );
