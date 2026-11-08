@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Globe, BookOpen, Search, Sparkles, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Globe, BookOpen, Search, Sparkles, ArrowLeft, Lock } from 'lucide-react';
 
 export default function ChatSidebar({
   channels = [],
@@ -269,7 +269,11 @@ export default function ChatSidebar({
                         {generalChannel.unread_count}
                       </span>
                     )}
-                    <Sparkles size={12} color="#fbbf24" />
+                    {generalChannel.is_locked ? (
+                      <Lock size={13} color="#f59e0b" data-testid="locked-icon-general" />
+                    ) : (
+                      <Sparkles size={12} color="#fbbf24" />
+                    )}
                   </div>
                 </div>
                 <p
@@ -384,6 +388,9 @@ export default function ChatSidebar({
                     >
                       {channel.name}
                     </span>
+                    {channel.is_locked && (
+                      <Lock size={13} color="#f59e0b" data-testid={`locked-icon-${channel.id}`} style={{ marginLeft: '6px', flexShrink: 0 }} />
+                    )}
                     {channel.unread_count > 0 && (
                       <span
                         data-testid={`unread-badge-${channel.id}`}

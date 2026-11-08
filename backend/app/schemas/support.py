@@ -9,6 +9,9 @@ class SupportCourseItem(BaseModel):
     id: int
     title: str
     thumbnail_url: Optional[str] = None
+    is_support_locked: bool = False
+    support_locked_until: Optional[datetime] = None
+    support_locked_reason: Optional[str] = None
 
 
 class SupportAuthor(BaseModel):

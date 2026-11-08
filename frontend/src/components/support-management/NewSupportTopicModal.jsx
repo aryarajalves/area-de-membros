@@ -79,6 +79,11 @@ export default function NewSupportTopicModal({
       addToast('Selecione um curso para a sua dúvida.', 'error');
       return;
     }
+    const chosenCourse = courses.find((c) => String(c.id) === String(effectiveCourseId));
+    if (chosenCourse?.is_support_locked) {
+      addToast(chosenCourse.support_locked_reason || 'O suporte deste curso está temporariamente fechado.', 'error');
+      return;
+    }
     if (!title.trim()) {
       addToast('Informe o título da sua dúvida.', 'error');
       return;
@@ -226,7 +231,7 @@ export default function NewSupportTopicModal({
                 ) : (
                   courses.map((c) => (
                     <option key={c.id} value={c.id} style={{ backgroundColor: '#0f172a', color: '#fff' }}>
-                      {c.title}
+                      {c.is_support_locked ? `🔒 ${c.title} (Suporte Fechado)` : c.title}
                     </option>
                   ))
                 )}

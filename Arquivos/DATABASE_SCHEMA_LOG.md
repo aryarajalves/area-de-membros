@@ -2,6 +2,18 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [08/11/2026] - Bloqueio Independente e Programado de Canais, Chats e Suporte por Curso (channel_release_type, channel_release_date e locked_channels_json na tabela courses)
+- **Objetivo:** Permitir que o administrador bloqueie ou agende a abertura de canais específicos (`course_chat`, `support`, `general_chat`, `dm`) de forma independente do bloqueio das aulas gravadas do curso.
+- **Tabela Afetada:**
+  - courses:
+    - channel_release_type: VARCHAR(50) DEFAULT 'immediate' (Valores: 'immediate', 'closed', 'specific_date')
+    - channel_release_date: TIMESTAMP WITH TIME ZONE NULL (Data e hora programada para abertura automática dos canais)
+    - locked_channels_json: TEXT NULL (Lista JSON dos canais bloqueados, ex: `["course_chat", "support", "general_chat", "dm"]`)
+- **Script de Migração:** backend/scripts/add_course_channel_lock_columns.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
 ### [07/11/2026] - Seleção de Múltiplos Cursos Exclusivos em Eventos (course_ids_json na tabela events)
 - **Objetivo:** Permitir que o administrador selecione mais de um curso ao configurar um evento/mentoria com acesso exclusivo (`target_type = 'course'`), liberando o acesso para alunos matriculados em qualquer um dos cursos selecionados.
 - **Tabela Afetada:**

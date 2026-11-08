@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, Float
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime, timezone
+import json
 from app.core.database import Base
 
 def utc_now():
@@ -30,11 +31,26 @@ class Course(Base):
     instructor_name = Column(String, nullable=True)
     release_type = Column(String, default="immediate", nullable=True)  # 'immediate', 'closed', 'specific_date'
     release_date = Column(DateTime, nullable=True)
+    channel_release_type = Column(String, default="immediate", nullable=True)  # 'immediate', 'closed', 'specific_date'
+    channel_release_date = Column(DateTime, nullable=True)
+    locked_channels_json = Column(Text, nullable=True)  # JSON list: ['course_chat', 'support', 'general_chat', 'dm']
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     modules = relationship("Module", back_populates="course", cascade="all, delete-orphan", order_by="Module.order_index")
     certificates = relationship("Certificate", back_populates="course", cascade="all, delete-orphan")
+
+    @property
+    def locked_channels(self):
+        if not self.locked_channels_json:
+            return []
+        try:
+            parsed = json.loads(self.locked_channels_json)
+            if isinstance(parsed, list):
+                return [str(x) for x in parsed if x]
+        except Exception:
+            pass
+        return []
 
 
 class CourseBundle(Base):

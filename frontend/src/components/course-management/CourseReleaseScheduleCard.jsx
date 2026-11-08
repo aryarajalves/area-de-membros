@@ -1,5 +1,6 @@
 import React from 'react';
 import { Unlock, Lock, Calendar } from 'lucide-react';
+import CourseChannelLockSelector from './CourseChannelLockSelector';
 
 /**
  * Converte uma string ISO (ou Date) para o formato aceito por input[type="datetime-local"] (YYYY-MM-DDTHH:mm)
@@ -50,6 +51,12 @@ export default function CourseReleaseScheduleCard({
   setReleaseType,
   releaseDate = '',
   setReleaseDate,
+  channelReleaseType = 'immediate',
+  setChannelReleaseType,
+  channelReleaseDate = '',
+  setChannelReleaseDate,
+  lockedChannels = [],
+  setLockedChannels,
   isLightBg = false,
   textColor = '#f8fafc'
 }) {
@@ -91,17 +98,18 @@ export default function CourseReleaseScheduleCard({
   const activeOption = options.find((o) => o.value === currentType) || options[0];
 
   return (
-    <div
-      data-testid="course-release-schedule-card"
-      style={{
-        padding: '13px 14px',
-        marginTop: '10px',
-        borderRadius: '10px',
-        backgroundColor: isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-        border: `1px solid ${activeOption.activeBorder}`,
-        transition: 'all 0.2s ease'
-      }}
-    >
+    <>
+      <div
+        data-testid="course-release-schedule-card"
+        style={{
+          padding: '13px 14px',
+          marginTop: '10px',
+          borderRadius: '10px',
+          backgroundColor: isLightBg ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
+          border: `1px solid ${activeOption.activeBorder}`,
+          transition: 'all 0.2s ease'
+        }}
+      >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
         <div>
           <div style={{ fontSize: '13px', fontWeight: 700, color: textColor, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -215,6 +223,21 @@ export default function CourseReleaseScheduleCard({
           </span>
         </div>
       )}
-    </div>
+      </div>
+
+      {typeof setChannelReleaseType === 'function' && (
+        <CourseChannelLockSelector
+          channelReleaseType={channelReleaseType}
+          setChannelReleaseType={setChannelReleaseType}
+          channelReleaseDate={channelReleaseDate}
+          setChannelReleaseDate={setChannelReleaseDate}
+          lockedChannels={lockedChannels}
+          setLockedChannels={setLockedChannels}
+          courseReleaseDate={releaseDate}
+          isLightBg={isLightBg}
+          textColor={textColor}
+        />
+      )}
+    </>
   );
 }

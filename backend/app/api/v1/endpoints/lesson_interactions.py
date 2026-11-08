@@ -386,6 +386,11 @@ def report_lesson_issue(
     """Envia um reporte de problema na aula (vídeo fora do ar, áudio com falha, material quebrado, etc)."""
     verify_course_access(db, current_user, course_id)
 
+    from app.services.course_access import is_course_channel_locked_for_user
+    s_locked, _, s_reason = is_course_channel_locked_for_user(db, current_user, course_id, "support")
+    if s_locked:
+        raise HTTPException(status_code=403, detail=s_reason or "O envio de relatos e suporte deste curso está temporariamente fechado.")
+
     if not report_in.description or not report_in.description.strip():
         raise HTTPException(status_code=400, detail="Por favor, descreva detalhadamente o problema encontrado.")
 

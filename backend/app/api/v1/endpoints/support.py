@@ -59,6 +59,8 @@ def get_my_courses_for_support(
     Retorna os cursos aos quais o usuário logado tem acesso.
     Usado no dropdown de criação de novas dúvidas no suporte.
     """
+    from app.services.course_access import is_course_channel_locked_for_user
+
     if current_user.role in ("superadmin", "admin"):
         courses = db.query(Course).order_by(Course.title.asc()).all()
     else:
@@ -73,6 +75,11 @@ def get_my_courses_for_support(
             .order_by(Course.title.asc())
             .all()
         )
+    for c in courses:
+        s_locked, s_until, s_reason = is_course_channel_locked_for_user(db, current_user, c.id, "support")
+        setattr(c, "is_support_locked", s_locked)
+        setattr(c, "support_locked_until", s_until)
+        setattr(c, "support_locked_reason", s_reason)
     return courses
 
 
@@ -90,7 +97,20 @@ def get_support_community_stats(
     """Retorna métricas consolidadas do suporte e comunidade de alunos."""
     query = db.query(SupportTopic)
     if course_id:
+        from app.services.course_access import is_course_channel_locked_for_user
+        s_locked, _, s_reason = is_course_channel_locked_for_user(db, current_user, course_id, "support")
+        if s_locked:
+            raise HTTPException(status_code=403, detail=s_reason or "O suporte deste curso está temporariamente fechado.")
         query = query.filter(SupportTopic.course_id == course_id)
+    elif current_user.role == "aluno":
+        from app.services.course_access import is_course_channels_locked_by_schedule
+        all_courses = db.query(Course).all()
+        locked_support_course_ids = [
+            c.id for c in all_courses
+            if is_course_channels_locked_by_schedule(c)[0] and "support" in is_course_channels_locked_by_schedule(c)[1]
+        ]
+        if locked_support_course_ids:
+            query = query.filter(~SupportTopic.course_id.in_(locked_support_course_ids))
 
     total_topics = query.count()
     has_replies_sub = db.query(SupportReply.topic_id).subquery()
@@ -143,7 +163,20 @@ def list_support_topics(
     user_pinned_ids = {p[0] for p in user_pinned_pins}
 
     if course_id:
+        from app.services.course_access import is_course_channel_locked_for_user
+        s_locked, _, s_reason = is_course_channel_locked_for_user(db, current_user, course_id, "support")
+        if s_locked:
+            raise HTTPException(status_code=403, detail=s_reason or "O suporte deste curso está temporariamente fechado.")
         query = query.filter(SupportTopic.course_id == course_id)
+    elif current_user.role == "aluno":
+        from app.services.course_access import is_course_channels_locked_by_schedule
+        all_courses = db.query(Course).all()
+        locked_support_course_ids = [
+            c.id for c in all_courses
+            if is_course_channels_locked_by_schedule(c)[0] and "support" in is_course_channels_locked_by_schedule(c)[1]
+        ]
+        if locked_support_course_ids:
+            query = query.filter(~SupportTopic.course_id.in_(locked_support_course_ids))
 
     if status:
         query = query.filter(SupportTopic.status == status)
@@ -289,6 +322,11 @@ def create_support_topic(
             status_code=403,
             detail="Você não possui acesso liberado a este curso para abrir dúvidas.",
         )
+
+    from app.services.course_access import is_course_channel_locked_for_user
+    s_locked, _, s_reason = is_course_channel_locked_for_user(db, current_user, payload.course_id, "support")
+    if s_locked:
+        raise HTTPException(status_code=403, detail=s_reason or "O suporte deste curso está temporariamente fechado.")
 
     topic = SupportTopic(
         user_id=current_user.id,

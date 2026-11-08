@@ -60,14 +60,20 @@ router = APIRouter(tags=["Chat da Comunidade"])
 
 def check_channel_access(user: User, channel_type: str, course_id: Optional[int], db: Session) -> bool:
     """
-    Verifica se o usuário tem permissão para visualizar e enviar mensagens no canal.
-    - 'general': Liberado para todos os usuários ativos.
-    - 'course': Se admin/superadmin, liberado. Se aluno, requer vínculo ativo ao curso.
+    Verifica se o usuário tem permissão para visualizar e enviar mensagens no canal e se o canal não está bloqueado.
     """
+    from app.services.course_access import is_course_channel_locked_for_user, is_global_channel_locked_for_user
+
     if channel_type == "general":
+        locked, _, reason = is_global_channel_locked_for_user(db, user, "general_chat")
+        if locked:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Canal bloqueado.")
         return True
 
     if channel_type == "dm":
+        locked, _, reason = is_global_channel_locked_for_user(db, user, "dm")
+        if locked:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Mensagens diretas bloqueadas.")
         return True
 
     if channel_type == "course":
@@ -81,7 +87,12 @@ def check_channel_access(user: User, channel_type: str, course_id: Optional[int]
             UserCourse.course_id == course_id,
             or_(UserCourse.expires_at.is_(None), UserCourse.expires_at > now),
         ).first()
-        return user_course is not None
+        if user_course is None:
+            return False
+        locked, _, reason = is_course_channel_locked_for_user(db, user, course_id, "course_chat")
+        if locked:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Canal do curso bloqueado.")
+        return True
 
     return False
 
@@ -877,6 +888,7 @@ def list_dm_conversations(
     current_user: User = Depends(get_current_user),
 ):
     """Retorna as conversas da inbox privada de DMs."""
+    check_channel_access(current_user, "dm", None, db)
     return get_user_dm_conversations(db, current_user, unread_only=unread_only, limit=limit)
 
 
@@ -894,6 +906,7 @@ def list_dm_messages(
     current_user: User = Depends(get_current_user),
 ):
     """Busca as mensagens privadas trocadas com o contato especificado."""
+    check_channel_access(current_user, "dm", None, db)
     return get_dm_messages_history(db, current_user, contact_id=contact_id, limit=limit, before_id=before_id)
 
 

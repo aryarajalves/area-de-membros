@@ -62,7 +62,7 @@ export function useChat(currentUser) {
 
   // Carrega mensagem fixada do canal
   const fetchPinnedMessage = useCallback(async (channel) => {
-    if (!channel) {
+    if (!channel || channel.is_locked) {
       setPinnedMessage(null);
       return;
     }
@@ -90,7 +90,7 @@ export function useChat(currentUser) {
 
   // Carrega histórico de mensagens do canal ativo
   const fetchMessages = useCallback(async (channel, isFavOnly = false) => {
-    if (!channel) return;
+    if (!channel || channel.is_locked) { setMessages([]); return; }
     const token = getAuthToken();
     if (!token) return;
     setLoadingMessages(true);

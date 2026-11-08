@@ -1575,3 +1575,24 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - *Resposta do usuário:* No dia 01 de cada mês civil.
 - [x] Quando o checkout próprio personalizado for lançado, qual gateway de pagamento você pretende priorizar primeiro (ex: Asaas, Stripe, Mercado Pago)?
   - *Resposta do usuário:* Asaas.
+
+
+---
+
+## 18. Bloqueio Independente e Programado de Canais, Chats e Suporte por Curso
+- **Controle Independente das Aulas (`channel_release_type`, `channel_release_date`, `locked_channels`):**
+  - No modal de criação e edição de curso (`CourseChannelLockSelector` integrado ao `CourseReleaseScheduleCard`), o administrador pode bloquear apenas os canais de interação e suporte (mesmo mantendo as aulas liberadas normalmente) ou agendar a data e hora de liberação dos canais.
+  - **Modos de Liberação dos Canais:**
+    1. `immediate` (**Canais Liberados**): Chats e suporte abertos normalmente.
+    2. `closed` (**Bloquear Canais Agora**): Tranca os canais escolhidos até liberação manual.
+    3. `specific_date` (**Liberar Canais em Data e Hora**): Tranca agora e abre automaticamente na data e hora programadas.
+  - **Lista Multi-Escolha de Canais Bloqueáveis:**
+    - `course_chat`: Chat Exclusivo deste Curso (na aba Chat da Comunidade).
+    - `support`: Suporte & Relatos (Fórum de Dúvidas e botão de Relatar Problema nas Aulas).
+    - `general_chat`: Chat Geral da Comunidade.
+    - `dm`: Mensagens Diretas / Privadas (DMs).
+  - **Experiência do Aluno (Bloqueio Total com Cadeado):**
+    - Canais bloqueados exibem o ícone de cadeado (`Lock`) e um painel explicativo informando que o canal está temporariamente fechado (ou exibindo o horário exato de liberação programada).
+  - **Regra para Alunos com Mais de 1 Curso:**
+    - Os canais exclusivos do curso fechado (`course_chat` e `support` daquele curso) ficam bloqueados para todos os alunos daquele curso.
+    - Já os canais globais (`general_chat` e `dm`) continuam liberados se o aluno possuir ao menos outro curso ativo e aberto que não restrinja esses canais globais.

@@ -157,7 +157,10 @@ def create_course(
         bundle_title=course_in.bundle_title.strip() if course_in.bundle_title else None,
         watermark_enabled=course_in.watermark_enabled if course_in.watermark_enabled is not None else True,
         release_type=course_in.release_type or "immediate",
-        release_date=course_in.release_date if course_in.release_type == "specific_date" else None
+        release_date=course_in.release_date if course_in.release_type == "specific_date" else None,
+        channel_release_type=course_in.channel_release_type or "immediate",
+        channel_release_date=course_in.channel_release_date if course_in.channel_release_type == "specific_date" else None,
+        locked_channels_json=json.dumps([str(ch).strip() for ch in (course_in.locked_channels or []) if ch]) if course_in.locked_channels else None
     )
     db.add(new_course)
     db.commit()

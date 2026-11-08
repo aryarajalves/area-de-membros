@@ -204,6 +204,9 @@ class CourseBase(BaseModel):
     watermark_enabled: Optional[bool] = True
     release_type: Optional[str] = "immediate"
     release_date: Optional[datetime] = None
+    channel_release_type: Optional[str] = "immediate"
+    channel_release_date: Optional[datetime] = None
+    locked_channels: Optional[List[str]] = []
     bundled_course_ids: Optional[List[int]] = []
 
 class CourseCreate(CourseBase):
@@ -227,12 +230,16 @@ class CourseUpdate(BaseModel):
     watermark_enabled: Optional[bool] = None
     release_type: Optional[str] = None
     release_date: Optional[datetime] = None
+    channel_release_type: Optional[str] = None
+    channel_release_date: Optional[datetime] = None
+    locked_channels: Optional[List[str]] = None
     bundled_course_ids: Optional[List[int]] = None
 
 class CourseResponse(CourseBase):
     id: int
     has_access: Optional[bool] = True
     is_course_locked: Optional[bool] = False
+    is_channel_locked: Optional[bool] = False
     bundled_items_count: Optional[int] = 0
     bundled_courses: Optional[List[CourseBundleItemResponse]] = []
     expires_at: Optional[datetime] = None

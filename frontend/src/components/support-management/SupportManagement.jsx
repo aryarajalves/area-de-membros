@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, BookOpen, Filter, MessageCircleQuestion, Loader2, Sparkles } from 'lucide-react';
+import { Search, Plus, BookOpen, Filter, MessageCircleQuestion, Loader2, Sparkles, Lock } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import SupportTopicCard from './SupportTopicCard';
 import NewSupportTopicModal from './NewSupportTopicModal';
@@ -361,7 +361,7 @@ export default function SupportManagement({ currentUser, bgColor }) {
             <option value="">Todos os cursos</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.title}
+                {course.is_support_locked ? `🔒 ${course.title}` : course.title}
               </option>
             ))}
           </select>
@@ -373,17 +373,7 @@ export default function SupportManagement({ currentUser, bgColor }) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              backgroundColor: 'rgba(15, 23, 42, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '8px',
-              color: '#f8fafc',
-              fontSize: '13px',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
+            style={{ width: '100%', padding: '10px 12px', backgroundColor: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', color: '#f8fafc', fontSize: '13px', outline: 'none', cursor: 'pointer' }}
             data-testid="sort-topics-select"
           >
             <option value="recent">Mais recentes</option>
@@ -393,69 +383,76 @@ export default function SupportManagement({ currentUser, bgColor }) {
         </div>
       </div>
 
-      {/* Lista de Dúvidas */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-          <Loader2 size={36} className="spin-animation" style={{ margin: '0 auto 12px' }} />
-          <p style={{ fontSize: '14px' }}>Buscando dúvidas...</p>
-        </div>
-      ) : topics.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            backgroundColor: 'rgba(30, 41, 59, 0.3)',
-            borderRadius: '16px',
-            border: '1px dashed rgba(255, 255, 255, 0.12)',
-          }}
-          data-testid="empty-topics-state"
-        >
-          <MessageCircleQuestion size={44} color="#64748b" style={{ margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: '17px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>
-            Nenhuma dúvida encontrada
-          </h3>
-          <p style={{ fontSize: '14px', color: '#94a3b8', maxWidth: '400px', margin: '0 auto 20px' }}>
-            {searchQuery || selectedCourseId
-              ? 'Nenhum resultado corresponde aos filtros aplicados. Tente ajustar os termos.'
-              : 'Ainda não há dúvidas publicadas para estes cursos. Seja o primeiro a perguntar!'}
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsNewTopicModalOpen(true)}
-            style={{
-              padding: '8px 18px',
-              backgroundColor: '#0284c7',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '13px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-            data-testid="empty-new-topic-btn"
-          >
-            Criar primeira publicação
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {topics.map((topic) => (
-            <SupportTopicCard
-              key={topic.id}
-              topic={topic}
-              currentUser={currentUser}
-              onClick={() => handleOpenDetail(topic)}
-              onCommentClick={() => handleOpenDetail(topic)}
-              onLike={() => handleToggleLike(topic.id)}
-              onToggleLike={() => handleToggleLike(topic.id)}
-              onPin={() => handleTogglePin(topic.id)}
-              onTogglePin={() => handleTogglePin(topic.id)}
-              onDelete={() => setTopicToDelete(topic)}
-              onDeleteTopic={() => setTopicToDelete(topic)}
-            />
-          ))}
-        </div>
-      )}
+      {/* Lista de Dúvidas ou Banner de Bloqueio */}
+      {(() => {
+        const selectedCourseObj = selectedCourseId ? courses.find((c) => String(c.id) === String(selectedCourseId)) : null;
+        const allLocked = courses.length > 0 && courses.every((c) => c.is_support_locked);
+        const lockedTarget = selectedCourseObj?.is_support_locked ? selectedCourseObj : (allLocked ? courses[0] : null);
+        if (lockedTarget) {
+          return (
+            <div
+              data-testid="support-locked-banner"
+              style={{ textAlign: 'center', padding: '56px 24px', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '16px', border: '1.5px solid rgba(245, 158, 11, 0.4)' }}
+            >
+              <Lock size={42} color="#fbbf24" style={{ margin: '0 auto 14px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', marginBottom: '8px' }}>
+                Suporte Temporariamente Fechado
+              </h3>
+              <p style={{ fontSize: '14px', color: '#cbd5e1', maxWidth: '460px', margin: '0 auto' }}>
+                {lockedTarget.support_locked_reason || 'O fórum de dúvidas e relatos deste curso está temporariamente fechado pelo instrutor.'}
+              </p>
+            </div>
+          );
+        }
+        if (loading) {
+          return (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+              <Loader2 size={36} className="spin-animation" style={{ margin: '0 auto 12px' }} />
+              <p style={{ fontSize: '14px' }}>Buscando dúvidas...</p>
+            </div>
+          );
+        }
+        if (topics.length === 0) {
+          return (
+            <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'rgba(30, 41, 59, 0.3)', borderRadius: '16px', border: '1px dashed rgba(255, 255, 255, 0.12)' }} data-testid="empty-topics-state">
+              <MessageCircleQuestion size={44} color="#64748b" style={{ margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '17px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>Nenhuma dúvida encontrada</h3>
+              <p style={{ fontSize: '14px', color: '#94a3b8', maxWidth: '400px', margin: '0 auto 20px' }}>
+                {searchQuery || selectedCourseId
+                  ? 'Nenhum resultado corresponde aos filtros aplicados. Tente ajustar os termos.'
+                  : 'Ainda não há dúvidas publicadas para estes cursos. Seja o primeiro a perguntar!'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsNewTopicModalOpen(true)}
+                style={{ padding: '8px 18px', backgroundColor: '#0284c7', color: '#fff', fontWeight: 600, fontSize: '13px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                data-testid="empty-new-topic-btn"
+              >
+                Criar primeira publicação
+              </button>
+            </div>
+          );
+        }
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {topics.map((topic) => (
+              <SupportTopicCard
+                key={topic.id}
+                topic={topic}
+                currentUser={currentUser}
+                onClick={() => handleOpenDetail(topic)}
+                onCommentClick={() => handleOpenDetail(topic)}
+                onLike={() => handleToggleLike(topic.id)}
+                onToggleLike={() => handleToggleLike(topic.id)}
+                onPin={() => handleTogglePin(topic.id)}
+                onTogglePin={() => handleTogglePin(topic.id)}
+                onDelete={() => setTopicToDelete(topic)}
+                onDeleteTopic={() => setTopicToDelete(topic)}
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Modais */}
       <NewSupportTopicModal

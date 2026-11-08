@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Lock, Calendar } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { formatReleaseDateTimePtBr } from '../course-management/CourseReleaseScheduleCard';
 import { useChat } from './useChat';
 import ChatSidebar from './ChatSidebar';
 import ChatHeader from './ChatHeader';
@@ -22,6 +25,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
   const [targetDmContact, setTargetDmContact] = useState(null);
   const [activeThreadMessage, setActiveThreadMessage] = useState(null);
   const [mobileTab, setMobileTab] = useState('channels');
+  const { addToast } = useToast();
 
   const {
     channels,
@@ -126,7 +130,13 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onToggleFavoritesOnly={() => setFavoritesOnly((prev) => !prev)}
           onOpenMediaGallery={() => setIsMediaGalleryOpen(true)}
           onOpenMentions={() => setIsMentionsModalOpen(true)}
-          onOpenDm={() => setIsDmModalOpen(true)}
+          onOpenDm={() => {
+            if (selectedChannel?.dm_locked || channels[0]?.dm_locked) {
+              addToast(selectedChannel?.dm_locked_reason || channels[0]?.dm_locked_reason || 'O envio de Mensagens Diretas (DMs) está temporariamente fechado.', 'info');
+              return;
+            }
+            setIsDmModalOpen(true);
+          }}
           onToggleMembers={() => setIsMembersSidebarOpen((prev) => !prev)}
           isMembersOpen={isMembersSidebarOpen}
           onUnpinMessage={togglePin}
@@ -135,24 +145,99 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           onBackToChannels={() => setMobileTab('channels')}
         />
 
-        <ChatMessagesList
-          messages={messages}
-          loading={loadingMessages}
-          currentUser={currentUser}
-          selectedChannel={selectedChannel}
-          onDeleteMessage={promptDeleteMessage}
-          onToggleLike={toggleLike}
-          onToggleFavorite={toggleFavorite}
-          onTogglePin={togglePin}
-          onOpenThread={(msg) => setActiveThreadMessage(msg)}
-          highlightedMessageId={highlightedMessageId}
-        />
+        {selectedChannel?.is_locked ? (
+          <div
+            data-testid="chat-channel-locked-view"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '32px 24px',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '460px',
+                padding: '32px 28px',
+                borderRadius: '18px',
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '14px',
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(245, 158, 11, 0.16)',
+                  border: '1px solid rgba(245, 158, 11, 0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fbbf24',
+                }}
+              >
+                <Lock size={26} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+                Canal Temporariamente Fechado
+              </h3>
+              <p style={{ margin: 0, fontSize: '13.5px', color: '#cbd5e1', lineHeight: 1.5 }}>
+                {selectedChannel.locked_reason || 'Este canal está temporariamente fechado pelo instrutor e será liberado em breve.'}
+              </p>
+              {selectedChannel.locked_until && (
+                <div
+                  data-testid="chat-channel-locked-until-badge"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '6px 14px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(245, 158, 11, 0.14)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    color: '#fbbf24',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    marginTop: '4px',
+                  }}
+                >
+                  <Calendar size={14} />
+                  <span>Liberação em {formatReleaseDateTimePtBr(selectedChannel.locked_until)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <ChatMessagesList
+              messages={messages}
+              loading={loadingMessages}
+              currentUser={currentUser}
+              selectedChannel={selectedChannel}
+              onDeleteMessage={promptDeleteMessage}
+              onToggleLike={toggleLike}
+              onToggleFavorite={toggleFavorite}
+              onTogglePin={togglePin}
+              onOpenThread={(msg) => setActiveThreadMessage(msg)}
+              highlightedMessageId={highlightedMessageId}
+            />
 
-        <ChatInputBar
-          onSendMessage={sendMessage}
-          sending={sending}
-          channelName={selectedChannel?.name}
-        />
+            <ChatInputBar
+              onSendMessage={sendMessage}
+              sending={sending}
+              channelName={selectedChannel?.name}
+            />
+          </>
+        )}
       </section>
 
       {/* Barra Lateral Direita com os Membros com Acesso ao Chat */}
@@ -164,6 +249,10 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
           currentUser={currentUser}
           onSelectMember={(m) => setSelectedMemberProfile(m)}
           onStartDm={(m) => {
+            if (selectedChannel?.dm_locked || channels[0]?.dm_locked) {
+              addToast(selectedChannel?.dm_locked_reason || channels[0]?.dm_locked_reason || 'O envio de Mensagens Diretas (DMs) está temporariamente fechado.', 'info');
+              return;
+            }
             setTargetDmContact(m);
             setIsDmModalOpen(true);
           }}

@@ -45,6 +45,12 @@ export function CourseFormModal({
   setReleaseType,
   releaseDate = '',
   setReleaseDate,
+  channelReleaseType = 'immediate',
+  setChannelReleaseType,
+  channelReleaseDate = '',
+  setChannelReleaseDate,
+  lockedChannels = [],
+  setLockedChannels,
   availableCourses = [],
   bgColor = '#090d16',
   uploading,
@@ -161,6 +167,12 @@ export function CourseFormModal({
               setReleaseType={setReleaseType}
               releaseDate={releaseDate}
               setReleaseDate={setReleaseDate}
+              channelReleaseType={channelReleaseType}
+              setChannelReleaseType={setChannelReleaseType}
+              channelReleaseDate={channelReleaseDate}
+              setChannelReleaseDate={setChannelReleaseDate}
+              lockedChannels={lockedChannels}
+              setLockedChannels={setLockedChannels}
               editingCourse={editingCourse}
               textColor={textColor}
               isLightBg={isLightBg}

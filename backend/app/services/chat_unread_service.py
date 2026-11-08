@@ -172,23 +172,38 @@ def get_user_chat_unread_summary(db: Session, current_user: User) -> ChatUnreadS
 
 
 def get_channel_items_list(db: Session, current_user: User):
-    """Retorna lista de canais disponíveis com contagens de não lidas."""
+    """Retorna lista de canais disponíveis com contagens de não lidas e status de bloqueio."""
     from app.schemas.chat import ChatChannelItem
+    from app.services.course_access import (
+        is_course_channel_locked_for_user,
+        is_global_channel_locked_for_user,
+    )
     from sqlalchemy import desc
 
     channels = []
     last_read_map = get_channel_last_read_map(db, current_user.id)
 
-    # 1. Canal Geral da Comunidade
-    last_gen_msg = (
-        db.query(ChatMessage)
-        .filter(ChatMessage.channel_type == "general")
-        .order_by(desc(ChatMessage.created_at))
-        .first()
+    # 1. Canal Geral da Comunidade e status de DM
+    gen_locked, gen_unlock_at, gen_reason = is_global_channel_locked_for_user(
+        db, current_user, "general_chat"
     )
-    gen_unread = get_channel_unread_count(
-        db, current_user.id, channel_type="general", last_read_id=last_read_map.get("general", 0)
+    dm_locked, dm_unlock_at, dm_reason = is_global_channel_locked_for_user(
+        db, current_user, "dm"
     )
+
+    last_gen_msg = None
+    gen_unread = 0
+    if not gen_locked:
+        last_gen_msg = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.channel_type == "general")
+            .order_by(desc(ChatMessage.created_at))
+            .first()
+        )
+        gen_unread = get_channel_unread_count(
+            db, current_user.id, channel_type="general", last_read_id=last_read_map.get("general", 0)
+        )
+
     channels.append(
         ChatChannelItem(
             id="general",
@@ -196,9 +211,15 @@ def get_channel_items_list(db: Session, current_user: User):
             type="general",
             course_id=None,
             description="Bate-papo aberto para todos os alunos e instrutores",
-            last_message=last_gen_msg.message if last_gen_msg else None,
-            last_message_at=last_gen_msg.created_at if last_gen_msg else None,
-            unread_count=gen_unread,
+            last_message="🔒 Canal fechado temporariamente" if gen_locked else (last_gen_msg.message if last_gen_msg else None),
+            last_message_at=None if gen_locked else (last_gen_msg.created_at if last_gen_msg else None),
+            unread_count=0 if gen_locked else gen_unread,
+            is_locked=gen_locked,
+            locked_until=gen_unlock_at,
+            locked_reason=gen_reason,
+            dm_locked=dm_locked,
+            dm_locked_until=dm_unlock_at,
+            dm_locked_reason=dm_reason,
         )
     )
 
@@ -219,22 +240,28 @@ def get_channel_items_list(db: Session, current_user: User):
         )
 
     for c in courses:
-        last_course_msg = (
-            db.query(ChatMessage)
-            .filter(
-                ChatMessage.channel_type == "course",
-                ChatMessage.course_id == c.id,
+        c_locked, c_unlock_at, c_reason = is_course_channel_locked_for_user(
+            db, current_user, c.id, "course_chat"
+        )
+        last_course_msg = None
+        c_unread = 0
+        if not c_locked:
+            last_course_msg = (
+                db.query(ChatMessage)
+                .filter(
+                    ChatMessage.channel_type == "course",
+                    ChatMessage.course_id == c.id,
+                )
+                .order_by(desc(ChatMessage.created_at))
+                .first()
             )
-            .order_by(desc(ChatMessage.created_at))
-            .first()
-        )
-        c_unread = get_channel_unread_count(
-            db,
-            current_user.id,
-            channel_type="course",
-            course_id=c.id,
-            last_read_id=last_read_map.get(f"course_{c.id}", 0),
-        )
+            c_unread = get_channel_unread_count(
+                db,
+                current_user.id,
+                channel_type="course",
+                course_id=c.id,
+                last_read_id=last_read_map.get(f"course_{c.id}", 0),
+            )
         channels.append(
             ChatChannelItem(
                 id=f"course_{c.id}",
@@ -242,9 +269,15 @@ def get_channel_items_list(db: Session, current_user: User):
                 type="course",
                 course_id=c.id,
                 description=f"Canal exclusivo dos alunos de {c.title}",
-                last_message=last_course_msg.message if last_course_msg else None,
-                last_message_at=last_course_msg.created_at if last_course_msg else None,
-                unread_count=c_unread,
+                last_message="🔒 Canal fechado temporariamente" if c_locked else (last_course_msg.message if last_course_msg else None),
+                last_message_at=None if c_locked else (last_course_msg.created_at if last_course_msg else None),
+                unread_count=0 if c_locked else c_unread,
+                is_locked=c_locked,
+                locked_until=c_unlock_at,
+                locked_reason=c_reason,
+                dm_locked=dm_locked,
+                dm_locked_until=dm_unlock_at,
+                dm_locked_reason=dm_reason,
             )
         )
 

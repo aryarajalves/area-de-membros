@@ -1,7 +1,8 @@
 """
-Serviço de verificação de permissões, vigência de acesso e bloqueio programado de cursos.
+Serviço de verificação de permissões, vigência de acesso, bloqueio programado de cursos e bloqueio independente de canais/chats/suporte.
 """
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -22,6 +23,15 @@ def is_user_course_active(uc: UserCourse) -> bool:
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
     return exp > now
+
+
+def format_unlock_datetime_brt(unlock_at: Optional[datetime]) -> str:
+    """Formata um datetime UTC para DD/MM/AAAA às HH:MM no Horário Oficial de Brasília (UTC-3)."""
+    if not unlock_at:
+        return ""
+    dt = unlock_at if unlock_at.tzinfo is not None else unlock_at.replace(tzinfo=timezone.utc)
+    brt_dt = dt.astimezone(timezone(timedelta(hours=-3)))
+    return brt_dt.strftime("%d/%m/%Y às %H:%M")
 
 
 def is_course_locked_by_schedule(course: Optional[Course]) -> Tuple[bool, Optional[datetime]]:
@@ -50,11 +60,130 @@ def is_course_locked_by_schedule(course: Optional[Course]) -> Tuple[bool, Option
     return False, None
 
 
+def is_course_channels_locked_by_schedule(course: Optional[Course]) -> Tuple[bool, List[str], Optional[datetime]]:
+    """
+    Verifica se os canais/chats/suporte configurados no curso estão bloqueados no momento.
+    Retorna (is_locked, locked_channels_list, unlock_at_utc).
+    """
+    if not course:
+        return False, [], None
+
+    locked_list = getattr(course, "locked_channels", None) or []
+    if not locked_list:
+        return False, [], None
+
+    ch_type = getattr(course, "channel_release_type", None) or "immediate"
+    if ch_type == "closed":
+        return True, locked_list, None
+
+    if ch_type == "specific_date":
+        ch_date = getattr(course, "channel_release_date", None)
+        if not ch_date:
+            return False, [], None
+        now = datetime.now(timezone.utc)
+        unlock_at = ch_date if ch_date.tzinfo is not None else ch_date.replace(tzinfo=timezone.utc)
+        unlock_at = unlock_at.astimezone(timezone.utc)
+        if now < unlock_at:
+            return True, locked_list, unlock_at
+        return False, [], unlock_at
+
+    return False, [], None
+
+
+def is_course_channel_locked_for_user(
+    db: Session,
+    user: Any,
+    course_id: int,
+    channel_key: str,
+) -> Tuple[bool, Optional[datetime], Optional[str]]:
+    """
+    Verifica se um canal específico de um curso ('course_chat' ou 'support') está bloqueado para o usuário.
+    Administradores e Super Admins nunca são bloqueados.
+    """
+    if not user or getattr(user, "role", None) in ("superadmin", "admin"):
+        return False, None, None
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        return False, None, None
+
+    is_locked, locked_list, unlock_at = is_course_channels_locked_by_schedule(course)
+    if is_locked and channel_key in locked_list:
+        if unlock_at:
+            formatted = format_unlock_datetime_brt(unlock_at)
+            reason = f"Este canal do curso '{course.title}' está fechado e será liberado automaticamente em {formatted}."
+        else:
+            reason = f"Este canal do curso '{course.title}' está temporariamente fechado pelo instrutor e será liberado em breve."
+        return True, unlock_at, reason
+
+    return False, None, None
+
+
+def is_global_channel_locked_for_user(
+    db: Session,
+    user: Any,
+    channel_key: str,
+) -> Tuple[bool, Optional[datetime], Optional[str]]:
+    """
+    Verifica se um canal global ('general_chat' ou 'dm') está bloqueado para o aluno.
+    Regra de Negócio (A3):
+    - Se o aluno possuir ao menos 1 curso ativo cujo canal global correspondente NÃO esteja bloqueado
+      (e o curso esteja liberado), o canal global permanece liberado para ele.
+    - Se todos os cursos ativos do aluno estiverem com esse canal global bloqueado, retorna (True, unlock_at, reason).
+    """
+    if not user or getattr(user, "role", None) in ("superadmin", "admin"):
+        return False, None, None
+
+    effective_course_ids = get_effective_user_course_ids(db, user.id)
+    if not effective_course_ids:
+        return False, None, None
+
+    courses = db.query(Course).filter(
+        Course.id.in_(effective_course_ids),
+        Course.item_type != "tool",
+    ).all()
+    if not courses:
+        return False, None, None
+
+    locked_courses_info: List[Tuple[Course, Optional[datetime]]] = []
+    has_unlocked_course = False
+
+    for c in courses:
+        ch_locked, locked_list, ch_unlock_at = is_course_channels_locked_by_schedule(c)
+        if ch_locked and channel_key in locked_list:
+            locked_courses_info.append((c, ch_unlock_at))
+        else:
+            # Verifica se o curso em si não está fechado sem bloqueio de canais ou se é um curso aberto
+            course_locked, _ = is_course_locked_by_schedule(c)
+            if not course_locked:
+                has_unlocked_course = True
+
+    if has_unlocked_course or not locked_courses_info:
+        return False, None, None
+
+    # Todos os cursos ativos do aluno bloqueiam este canal global
+    first_course, first_unlock = locked_courses_info[0]
+    # Se houver datas programadas, pega a mais próxima a liberar
+    scheduled_dates = [dt for _, dt in locked_courses_info if dt is not None]
+    earliest_unlock = min(scheduled_dates) if scheduled_dates else first_unlock
+
+    label = "O Chat Geral da Comunidade" if channel_key == "general_chat" else "O envio de Mensagens Diretas (DMs)"
+    if earliest_unlock:
+        formatted = format_unlock_datetime_brt(earliest_unlock)
+        reason = f"{label} está fechado temporariamente e será liberado em {formatted}."
+    else:
+        reason = f"{label} está temporariamente fechado pelo instrutor e será liberado em breve."
+
+    return True, earliest_unlock, reason
+
+
 def attach_course_schedule_state(courses: List[Course]) -> None:
-    """Atribui dinamicamente `is_course_locked` a cada curso da lista."""
+    """Atribui dinamicamente `is_course_locked` e `is_channel_locked` a cada curso da lista."""
     for c in courses:
         locked, _ = is_course_locked_by_schedule(c)
+        ch_locked, _, _ = is_course_channels_locked_by_schedule(c)
         setattr(c, "is_course_locked", locked)
+        setattr(c, "is_channel_locked", ch_locked)
 
 
 def verify_student_course_access(db: Session, user_id: int, course_id: int) -> None:
@@ -64,9 +193,7 @@ def verify_student_course_access(db: Session, user_id: int, course_id: int) -> N
         locked, unlock_at = is_course_locked_by_schedule(course)
         if locked:
             if unlock_at:
-                from datetime import timedelta
-                brt_dt = unlock_at.astimezone(timezone(timedelta(hours=-3)))
-                formatted = brt_dt.strftime("%d/%m/%Y às %H:%M")
+                formatted = format_unlock_datetime_brt(unlock_at)
                 raise HTTPException(
                     status_code=403,
                     detail=f"Este curso será liberado em {formatted}."
@@ -136,6 +263,19 @@ def apply_course_update_fields(db: Session, course: Course, course_update: Any) 
     if getattr(course_update, "release_date", None) is not None or getattr(course_update, "release_type", None) == "specific_date":
         if getattr(course_update, "release_type", course.release_type) == "specific_date":
             course.release_date = course_update.release_date
+
+    # Bloqueio independente de canais, chats e suporte
+    if getattr(course_update, "channel_release_type", None) is not None:
+        course.channel_release_type = course_update.channel_release_type or "immediate"
+        if course.channel_release_type != "specific_date":
+            course.channel_release_date = None
+    if getattr(course_update, "channel_release_date", None) is not None or getattr(course_update, "channel_release_type", None) == "specific_date":
+        if getattr(course_update, "channel_release_type", course.channel_release_type) == "specific_date":
+            course.channel_release_date = course_update.channel_release_date
+    if getattr(course_update, "locked_channels", None) is not None:
+        clean_channels = [str(ch).strip() for ch in (course_update.locked_channels or []) if ch]
+        course.locked_channels_json = json.dumps(clean_channels) if clean_channels else None
+
     if course_update.bundled_course_ids is not None:
         sync_course_bundles(db, course.id, course_update.bundled_course_ids)
 

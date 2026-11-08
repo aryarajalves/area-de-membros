@@ -226,6 +226,9 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_name VARCHAR;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS release_type VARCHAR(50) DEFAULT 'immediate';
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS channel_release_type VARCHAR(50) DEFAULT 'immediate';
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS channel_release_date TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS locked_channels_json TEXT NULL;
                         CREATE TABLE IF NOT EXISTS certificates (
                             id SERIAL PRIMARY KEY,
                             certificate_code VARCHAR(100) UNIQUE NOT NULL,
@@ -363,6 +366,9 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE courses ADD COLUMN watermark_enabled BOOLEAN DEFAULT 1",
                         "ALTER TABLE courses ADD COLUMN release_type VARCHAR(50) DEFAULT 'immediate'",
                         "ALTER TABLE courses ADD COLUMN release_date TIMESTAMP NULL",
+                        "ALTER TABLE courses ADD COLUMN channel_release_type VARCHAR(50) DEFAULT 'immediate'",
+                        "ALTER TABLE courses ADD COLUMN channel_release_date TIMESTAMP NULL",
+                        "ALTER TABLE courses ADD COLUMN locked_channels_json TEXT NULL",
                         "ALTER TABLE events ADD COLUMN course_ids_json TEXT NULL",
                     ]:
                         try:

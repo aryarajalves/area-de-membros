@@ -14,6 +14,8 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Divisão automática de vídeos longos (> 25 min) em blocos de 20 minutos via FFmpeg para transcrição contínua no OpenAI Whisper sem timeout, acompanhada de cronômetro em tempo real, porcentagem exata e estimativa de tempo restante.
 - **🔒 Fechamento Temporário e Liberação Programada por Data e Hora em Cursos:**
   - Controle na aba `Dados Gerais` do curso permitindo mantê-lo `Liberado Normalmente`, `Fechar para Todos os Alunos` ou `Liberar em Data e Hora` com abertura automática no horário programado.
+- **💬 Bloqueio Independente e Programado de Canais, Chats & Suporte por Curso (`CourseChannelLockSelector`):**
+  - Controle independente das aulas permitindo deixar os canais `Canais Liberados`, `Bloquear Canais Agora` ou `Liberar Canais em Data/Hora`, com seletor multi-escolha para escolher quais áreas bloquear (`Chat Exclusivo deste Curso`, `Suporte & Relatos`, `Chat Geral da Comunidade` e `Mensagens Diretas / DMs`).
 - **📅 Seleção de Múltiplos Cursos Exclusivos em Eventos:**
   - Dropdown multi-select na criação/edição de eventos permitindo vincular 1 ou mais cursos simultaneamente; alunos matriculados em qualquer um dos cursos selecionados recebem acesso liberado à transmissão e gravação.
 

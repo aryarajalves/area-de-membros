@@ -19,6 +19,12 @@ export default function CourseModalInfoTab({
   setReleaseType,
   releaseDate = '',
   setReleaseDate,
+  channelReleaseType = 'immediate',
+  setChannelReleaseType,
+  channelReleaseDate = '',
+  setChannelReleaseDate,
+  lockedChannels = [],
+  setLockedChannels,
   editingCourse,
   textColor,
   isLightBg,
@@ -205,6 +211,12 @@ export default function CourseModalInfoTab({
           setReleaseType={setReleaseType}
           releaseDate={releaseDate}
           setReleaseDate={setReleaseDate}
+          channelReleaseType={channelReleaseType}
+          setChannelReleaseType={setChannelReleaseType}
+          channelReleaseDate={channelReleaseDate}
+          setChannelReleaseDate={setChannelReleaseDate}
+          lockedChannels={lockedChannels}
+          setLockedChannels={setLockedChannels}
           isLightBg={isLightBg}
           textColor={textColor}
         />

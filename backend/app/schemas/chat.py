@@ -27,6 +27,12 @@ class ChatChannelItem(BaseModel):
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
     unread_count: int = 0
+    is_locked: bool = False
+    locked_until: Optional[datetime] = None
+    locked_reason: Optional[str] = None
+    dm_locked: bool = False
+    dm_locked_until: Optional[datetime] = None
+    dm_locked_reason: Optional[str] = None
 
 
 class ChatUnreadSummaryResponse(BaseModel):

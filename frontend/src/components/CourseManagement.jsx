@@ -85,7 +85,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
   const [toolUrl, setToolUrl] = useState(''), [bundledCourseIds, setBundledCourseIds] = useState([]);
   const [bundleTitle, setBundleTitle] = useState(''), [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [releaseType, setReleaseType] = useState('immediate'), [releaseDate, setReleaseDate] = useState('');
-  const [uploading, setUploading] = useState(false), [saving, setSaving] = useState(false);
+  const [channelReleaseType, setChannelReleaseType] = useState('immediate'), [channelReleaseDate, setChannelReleaseDate] = useState('');
+  const [lockedChannels, setLockedChannels] = useState([]), [uploading, setUploading] = useState(false), [saving, setSaving] = useState(false);
 
   const activeBgColor = (courses[0]?.bg_color && propBgColor === '#090d16' ? courses[0].bg_color : propBgColor) || '#090d16';
 
@@ -139,7 +140,7 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setCoverImageUrl(''); setCoverImagePosition(50); setSalesPageUrl(''); setOrderIndex(0);
     setAgentflowKbId(null); setAgentflowKbName(null); setItemType('course'); setToolUrl('');
     setBundledCourseIds([]); setBundleTitle(''); setWatermarkEnabled(true);
-    setReleaseType('immediate'); setReleaseDate(''); setModalOpen(true);
+    setReleaseType('immediate'); setReleaseDate(''); setChannelReleaseType('immediate'); setChannelReleaseDate(''); setLockedChannels([]); setModalOpen(true);
   };
 
   const handleOpenEditModal = (course) => {
@@ -152,6 +153,8 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
     setBundledCourseIds(course.bundled_course_ids || (course.bundled_courses ? course.bundled_courses.map((b) => b.id) : []));
     setBundleTitle(course.bundle_title || ''); setWatermarkEnabled(course.watermark_enabled !== false);
     setReleaseType(course.release_type || 'immediate'); setReleaseDate(toDatetimeLocalValue(course.release_date));
+    setChannelReleaseType(course.channel_release_type || 'immediate'); setChannelReleaseDate(toDatetimeLocalValue(course.channel_release_date));
+    setLockedChannels(Array.isArray(course.locked_channels) ? course.locked_channels : []);
     setModalOpen(true);
   };
 
@@ -203,36 +206,38 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
       addToast(itemType === 'tool' ? 'O nome da ferramenta é obrigatório.' : 'O título do curso é obrigatório.', 'error');
       return;
     }
-
     if (itemType === 'tool' && !toolUrl.trim()) {
       addToast('O link de acesso da ferramenta é obrigatório.', 'error');
       return;
     }
-
     if (itemType !== 'tool' && releaseType === 'specific_date' && !releaseDate) {
       addToast('Escolha a data e hora em que o curso será liberado.', 'error');
+      return;
+    }
+    if (itemType !== 'tool' && channelReleaseType !== 'immediate' && (!lockedChannels || lockedChannels.length === 0)) {
+      addToast('Selecione pelo menos 1 canal para bloquear.', 'error');
+      return;
+    }
+    if (itemType !== 'tool' && channelReleaseType === 'specific_date' && !channelReleaseDate) {
+      addToast('Escolha a data e hora em que os canais serão liberados.', 'error');
       return;
     }
 
     setSaving(true);
     const token = localStorage.getItem('auth_token');
     const payload = {
-      title: title.trim(),
-      description: description.trim() || null,
-      thumbnail_url: thumbnailUrl.trim() || null,
-      cover_image_url: coverImageUrl.trim() || null,
+      title: title.trim(), description: description.trim() || null,
+      thumbnail_url: thumbnailUrl.trim() || null, cover_image_url: coverImageUrl.trim() || null,
       cover_image_position: parseInt(coverImagePosition, 10) || 50,
-      sales_page_url: salesPageUrl.trim() || null,
-      order_index: parseInt(orderIndex, 10) || 0,
-      agentflow_kb_id: agentflowKbId,
-      agentflow_kb_name: agentflowKbName,
-      bg_color: activeBgColor,
-      item_type: itemType,
-      tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
-      bundle_title: bundleTitle.trim() || null,
-      watermark_enabled: Boolean(watermarkEnabled),
+      sales_page_url: salesPageUrl.trim() || null, order_index: parseInt(orderIndex, 10) || 0,
+      agentflow_kb_id: agentflowKbId, agentflow_kb_name: agentflowKbName, bg_color: activeBgColor,
+      item_type: itemType, tool_url: itemType === 'tool' ? (toolUrl.trim() || null) : null,
+      bundle_title: bundleTitle.trim() || null, watermark_enabled: Boolean(watermarkEnabled),
       release_type: itemType === 'tool' ? 'immediate' : (releaseType || 'immediate'),
       release_date: itemType !== 'tool' && releaseType === 'specific_date' && releaseDate ? new Date(releaseDate).toISOString() : null,
+      channel_release_type: itemType === 'tool' ? 'immediate' : (channelReleaseType || 'immediate'),
+      channel_release_date: itemType !== 'tool' && channelReleaseType === 'specific_date' && channelReleaseDate ? new Date(channelReleaseDate).toISOString() : null,
+      locked_channels: itemType === 'tool' || channelReleaseType === 'immediate' ? [] : lockedChannels,
       bundled_course_ids: bundledCourseIds
     };
 
@@ -452,7 +457,6 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         </>
       )}
 
-      {/* Modal de Criação / Edição de Curso ou Ferramenta */}
       <CourseFormModal
         isOpen={modalOpen} onClose={() => setModalOpen(false)} editingCourse={editingCourse}
         title={title} setTitle={setTitle} description={description} setDescription={setDescription}
@@ -469,26 +473,22 @@ export default function CourseManagement({ currentUser, onCourseViewChange, bgCo
         watermarkEnabled={watermarkEnabled} setWatermarkEnabled={setWatermarkEnabled}
         releaseType={releaseType} setReleaseType={setReleaseType}
         releaseDate={releaseDate} setReleaseDate={setReleaseDate}
+        channelReleaseType={channelReleaseType} setChannelReleaseType={setChannelReleaseType}
+        channelReleaseDate={channelReleaseDate} setChannelReleaseDate={setChannelReleaseDate}
+        lockedChannels={lockedChannels} setLockedChannels={setLockedChannels}
         availableCourses={courses} bgColor={activeBgColor} uploading={uploading} saving={saving}
         onUploadThumbnail={handleUploadThumbnail} onUploadCoverImage={handleUploadCoverImage}
         onSaveCourse={handleSaveCourse}
       />
 
-      {/* Modal de Confirmação de Exclusão de Curso */}
       <CourseDeleteModal
-        isOpen={deleteModalOpen}
-        courseToDelete={courseToDelete}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirmDelete={handleConfirmDelete}
-        bgColor={activeBgColor}
+        isOpen={deleteModalOpen} courseToDelete={courseToDelete}
+        onClose={() => setDeleteModalOpen(false)} onConfirmDelete={handleConfirmDelete} bgColor={activeBgColor}
       />
 
-      {/* Modal de Histórico de Interesse na Página de Vendas */}
       <CourseSalesHistoryModal
-        isOpen={Boolean(salesHistoryCourse)}
-        course={salesHistoryCourse}
-        onClose={() => setSalesHistoryCourse(null)}
-        isLightBg={isLightBg}
+        isOpen={Boolean(salesHistoryCourse)} course={salesHistoryCourse}
+        onClose={() => setSalesHistoryCourse(null)} isLightBg={isLightBg}
       />
     </div>
   );
