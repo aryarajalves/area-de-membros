@@ -1,11 +1,18 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.5`** | **Docker Hub: `backend-1.2.5` / `frontend-1.2.5`**
+> **Versão Oficial: `v1.2.6`** | **Docker Hub: `backend-1.2.6` / `frontend-1.2.6`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.2.6 (Bloqueio Independente de Canais, Chats e Suporte por Curso)
+- **💬 Bloqueio Independente e Programado de Canais, Chats & Suporte por Curso (`CourseChannelLockSelector`):**
+  - Controle independente das aulas permitindo deixar os canais `Canais Liberados`, `Bloquear Canais Agora` ou `Liberar Canais em Data/Hora`, com seletor multi-escolha para escolher quais áreas bloquear (`Chat Exclusivo deste Curso`, `Suporte & Relatos`, `Chat Geral da Comunidade` e `Mensagens Diretas / DMs`).
+  - Suporte completo no backend com auto-migração preventiva das colunas `channel_release_type`, `channel_release_date` e `locked_channels_json` no startup.
+- **🔒 Liberação Inteligente de Canais Globais para Alunos Veteranos:**
+  - Alunos matriculados em cursos com bloqueio de canais globais mantêm acesso ao Chat Geral e DMs caso possuam outro curso aberto e liberado na plataforma.
 
 ### 🚀 Novidades da Versão v1.2.5 (Tutor IA 24h com RAG, Transcrição em Blocos, Fechamento/Agendamento de Cursos e Múltiplos Cursos em Eventos)
 - **🤖 Tutor IA 24h com RAG Avançado, Modos de Acesso e Gestão Financeira:**
@@ -14,8 +21,6 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - Divisão automática de vídeos longos (> 25 min) em blocos de 20 minutos via FFmpeg para transcrição contínua no OpenAI Whisper sem timeout, acompanhada de cronômetro em tempo real, porcentagem exata e estimativa de tempo restante.
 - **🔒 Fechamento Temporário e Liberação Programada por Data e Hora em Cursos:**
   - Controle na aba `Dados Gerais` do curso permitindo mantê-lo `Liberado Normalmente`, `Fechar para Todos os Alunos` ou `Liberar em Data e Hora` com abertura automática no horário programado.
-- **💬 Bloqueio Independente e Programado de Canais, Chats & Suporte por Curso (`CourseChannelLockSelector`):**
-  - Controle independente das aulas permitindo deixar os canais `Canais Liberados`, `Bloquear Canais Agora` ou `Liberar Canais em Data/Hora`, com seletor multi-escolha para escolher quais áreas bloquear (`Chat Exclusivo deste Curso`, `Suporte & Relatos`, `Chat Geral da Comunidade` e `Mensagens Diretas / DMs`).
 - **📅 Seleção de Múltiplos Cursos Exclusivos em Eventos:**
   - Dropdown multi-select na criação/edição de eventos permitindo vincular 1 ou mais cursos simultaneamente; alunos matriculados em qualquer um dos cursos selecionados recebem acesso liberado à transmissão e gravação.
 
