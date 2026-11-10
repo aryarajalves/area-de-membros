@@ -1,0 +1,265 @@
+version: "3.7"
+
+# ==============================================================================
+# Stack de Produção - Área de Membros (Docker Swarm + Traefik)
+# ==============================================================================
+# Observações:
+# 1. O banco de dados PostgreSQL é externo (já existente na infraestrutura / Swarm).
+# 2. Todas as variáveis de ambiente estão declaradas explicitamente em cada serviço.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Serviço de Backend (FastAPI + Python)
+  # ----------------------------------------------------------------------------
+  area_aulas_backend:
+    # Imagem oficial do Backend da Área de Membros
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.2.0}
+    # Define o hostname do container no Swarm
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+    # Volumes do Backend (Uploads locais de arquivos e socket Docker para logs)
+    volumes:
+      - area_de_membros_uploads:/app/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Redes do Swarm
+    networks:
+      network_swarm_public:
+        aliases:
+          - area_de_membros_backend
+          - area_aulas_backend
+      area_de_membros_internal:
+        aliases:
+          - area_de_membros_backend
+          - area_aulas_backend
+    # Variáveis de Ambiente do Backend
+    environment:
+      #########################################################
+      # Configurações Gerais da Aplicação #####################
+      #########################################################
+      - TZ=America/Sao_Paulo
+      - PROJECT_NAME=Área de Membros
+      - API_V1_STR=/api/v1
+      - SERVER_URL=${SERVER_URL:-https://${FRONTEND_DOMAIN:-membros.seudominio.com}}
+      - FRONTEND_DOMAIN=${FRONTEND_DOMAIN:-membros.seudominio.com}
+      - API_DOMAIN=${API_DOMAIN:-api-membros.seudominio.com}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://${API_DOMAIN:-api-membros.seudominio.com}}
+
+      #########################################################
+      # Configuração do Banco de Dados (PostgreSQL) ###########
+      #########################################################
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-30}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-50}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-20}
+
+      #########################################################
+      # Configurações de Segurança e Autenticação (JWT) #######
+      #########################################################
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      - SECURITY_PASSWORD_PEPPER=${SECURITY_PASSWORD_PEPPER}
+
+      #########################################################
+      # Credenciais Iniciais do Super Administrador ##########
+      #########################################################
+      - SUPERADMIN_NAME=${SUPERADMIN_NAME:-Super Admin}
+      - SUPERADMIN_EMAIL=${SUPERADMIN_EMAIL:-admin@seudominio.com}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
+
+      #########################################################
+      # Envio de E-mails Transacionais (Brevo API) ############
+      #########################################################
+      - BREVO_API_KEY=${BREVO_API_KEY:-xkeysib-sua-chave-aqui}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL:-suporte@seudominio.com}
+      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Área de Membros}
+
+      #########################################################
+      # Armazenamento em Nuvem / Backups (Backblaze B2 / S3) ##
+      #########################################################
+      - BACKBLAZE_ENDPOINT_URL=${BACKBLAZE_ENDPOINT_URL:-https://s3.us-west-004.backblazeb2.com}
+      - BACKBLAZE_KEY_ID=${BACKBLAZE_KEY_ID:-seu-key-id}
+      - BACKBLAZE_APPLICATION_KEY=${BACKBLAZE_APPLICATION_KEY:-sua-application-key}
+      - BACKBLAZE_BUCKET_NAME=${BACKBLAZE_BUCKET_NAME:-area-de-membros-producao}
+      - BACKBLAZE_CDN_URL=${BACKBLAZE_CDN_URL:-https://s3.us-west-004.backblazeb2.com/area-de-membros-producao}
+      - B2_FOLDER=${B2_FOLDER:-areademembros/backups/}
+      - B2_RETENTION_MAX=${B2_RETENTION_MAX:-30}
+
+      #########################################################
+      # Configurações do Worker de Verificações Periódicas ####
+      #########################################################
+      - WORKER_RENEWAL_CHECK_INTERVAL_HOURS=${WORKER_RENEWAL_CHECK_INTERVAL_HOURS:-24}
+    # Modo de Deploy no Swarm
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2048M
+      labels:
+        # Habilita o Traefik para o Backend
+        - traefik.enable=true
+        # Define as regras de roteamento do Traefik para a API Backend
+        - traefik.http.routers.area_membros_backend.rule=Host(`${API_DOMAIN:-api-membros.seudominio.com}`)
+        # Define o entrypoint seguro com SSL
+        - traefik.http.routers.area_membros_backend.entrypoints=websecure
+        # Certificado SSL Let's Encrypt
+        - traefik.http.routers.area_membros_backend.tls.certresolver=letsencryptresolver
+        # Define o serviço do Traefik
+        - traefik.http.routers.area_membros_backend.service=area_membros_backend
+        # Porta interna do FastAPI
+        - traefik.http.services.area_membros_backend.loadbalancer.server.port=8000
+        - traefik.http.services.area_membros_backend.loadbalancer.passHostHeader=true
+
+  # ----------------------------------------------------------------------------
+  # 2. Serviço de Worker (Verificações Periódicas e Backups em Background)
+  # ----------------------------------------------------------------------------
+  area_aulas_worker:
+    # Utiliza a imagem do Backend com execução isolada das rotinas agendadas
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.2.0}
+    # Define o hostname do container no Swarm
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+    # Comando de inicialização do Worker de rotinas periódicas
+    command: ["python", "-m", "app.worker"]
+    # Volumes do Worker (acesso a arquivos e socket Docker se necessário)
+    volumes:
+      - area_de_membros_uploads:/app/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Redes do Swarm
+    networks:
+      - network_swarm_public
+      - area_de_membros_internal
+    # Variáveis de Ambiente do Worker
+    environment:
+      #########################################################
+      # Configurações Gerais da Aplicação #####################
+      #########################################################
+      - TZ=America/Sao_Paulo
+      - PROJECT_NAME=Área de Membros
+      - API_V1_STR=/api/v1
+      - SERVER_URL=${SERVER_URL:-https://${FRONTEND_DOMAIN:-membros.seudominio.com}}
+      - FRONTEND_DOMAIN=${FRONTEND_DOMAIN:-membros.seudominio.com}
+      - API_DOMAIN=${API_DOMAIN:-api-membros.seudominio.com}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://${API_DOMAIN:-api-membros.seudominio.com}}
+
+      #########################################################
+      # Configuração do Banco de Dados (PostgreSQL) ###########
+      #########################################################
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-30}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-50}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-20}
+
+      #########################################################
+      # Configurações de Segurança e Autenticação (JWT) #######
+      #########################################################
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      - SECURITY_PASSWORD_PEPPER=${SECURITY_PASSWORD_PEPPER}
+
+      #########################################################
+      # Credenciais Iniciais do Super Administrador ##########
+      #########################################################
+      - SUPERADMIN_NAME=${SUPERADMIN_NAME:-Super Admin}
+      - SUPERADMIN_EMAIL=${SUPERADMIN_EMAIL:-admin@seudominio.com}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
+
+      #########################################################
+      # Envio de E-mails Transacionais (Brevo API) ############
+      #########################################################
+      - BREVO_API_KEY=${BREVO_API_KEY:-xkeysib-sua-chave-aqui}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL:-suporte@seudominio.com}
+      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Área de Membros}
+
+      #########################################################
+      # Armazenamento em Nuvem / Backups (Backblaze B2 / S3) ##
+      #########################################################
+      - BACKBLAZE_ENDPOINT_URL=${BACKBLAZE_ENDPOINT_URL:-https://s3.us-west-004.backblazeb2.com}
+      - BACKBLAZE_KEY_ID=${BACKBLAZE_KEY_ID:-seu-key-id}
+      - BACKBLAZE_APPLICATION_KEY=${BACKBLAZE_APPLICATION_KEY:-sua-application-key}
+      - BACKBLAZE_BUCKET_NAME=${BACKBLAZE_BUCKET_NAME:-area-de-membros-producao}
+      - BACKBLAZE_CDN_URL=${BACKBLAZE_CDN_URL:-https://s3.us-west-004.backblazeb2.com/area-de-membros-producao}
+      - B2_FOLDER=${B2_FOLDER:-areademembros/backups/}
+      - B2_RETENTION_MAX=${B2_RETENTION_MAX:-30}
+
+      #########################################################
+      # Configurações do Worker de Verificações Periódicas ####
+      #########################################################
+      - WORKER_RENEWAL_CHECK_INTERVAL_HOURS=${WORKER_RENEWAL_CHECK_INTERVAL_HOURS:-24}
+    # Modo de Deploy no Swarm (Não necessita de rotas Traefik externas)
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+  # ----------------------------------------------------------------------------
+  # 3. Serviço de Frontend (Nginx + React App Compilado)
+  # ----------------------------------------------------------------------------
+  area_aulas_frontend:
+    # Imagem da aplicação Frontend (Nginx servindo dist/)
+    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.2.0}
+    # Define o hostname do container no Swarm
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+    # Redes do Swarm
+    networks:
+      - network_swarm_public
+      - area_de_membros_internal
+    # Variáveis de Ambiente do Frontend (Nginx)
+    environment:
+      - TZ=America/Sao_Paulo
+    # Modo de Deploy no Swarm
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        # Habilita o Traefik para o Frontend
+        - traefik.enable=true
+        # Define as regras de roteamento do Traefik para o Frontend
+        - traefik.http.routers.area_membros_frontend.rule=Host(`${FRONTEND_DOMAIN:-membros.seudominio.com}`)
+        # Define o entrypoint seguro com SSL
+        - traefik.http.routers.area_membros_frontend.entrypoints=websecure
+        # Certificado SSL Let's Encrypt
+        - traefik.http.routers.area_membros_frontend.tls.certresolver=letsencryptresolver
+        # Define o serviço do Traefik
+        - traefik.http.routers.area_membros_frontend.service=area_membros_frontend
+        # Porta interna do Nginx
+        - traefik.http.services.area_membros_frontend.loadbalancer.server.port=80
+        - traefik.http.services.area_membros_frontend.loadbalancer.passHostHeader=true
+
+# ==============================================================================
+# Definição Global dos Volumes da Área de Membros
+# ==============================================================================
+volumes:
+  # Volume para mídias/uploads locais persistentes
+  area_de_membros_uploads:
+    external: false
+    name: area_de_membros_uploads
+
+# ==============================================================================
+# Definição Global das Redes Swarm
+# ==============================================================================
+networks:
+  # Rede pública existente para comunicação externa com Traefik
+  network_swarm_public:
+    external: true
+    name: network_swarm_public
+  # Rede interna privada isolada para comunicação direta entre Nginx Frontend e FastAPI Backend
+  area_de_membros_internal:
+    driver: overlay
+    attachable: true

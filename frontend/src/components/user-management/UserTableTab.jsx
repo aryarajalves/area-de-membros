@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, Edit2, KeyRound, Filter, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
+import OnlineStatusBadge, { OnlineStatusDot } from '../common/OnlineStatusBadge';
 
 export default function UserTableTab({
   currentUser,
@@ -125,7 +126,21 @@ export default function UserTableTab({
                         />
                       )}
                     </td>
-                    <td className="font-semibold">{u.name}</td>
+                    <td className="font-semibold">
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ position: 'relative', width: '28px', height: '28px', flexShrink: 0 }}>
+                          {u.avatar_url ? (
+                            <img src={u.avatar_url} alt={u.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1e293b', color: '#93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
+                              {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                            </div>
+                          )}
+                          <OnlineStatusDot isOnline={u.is_online} size={9} />
+                        </div>
+                        <span>{u.name}</span>
+                      </div>
+                    </td>
                     <td className="text-secondary">{u.email}</td>
                     <td>
                       {u.phone ? (
@@ -160,10 +175,7 @@ export default function UserTableTab({
                       </span>
                     </td>
                     <td>
-                      <span className="status-indicator">
-                        <span className="dot dot-active"></span>
-                        Ativo
-                      </span>
+                      <OnlineStatusBadge isOnline={u.is_online} lastSeenAt={u.last_seen_at} size="sm" />
                     </td>
                     <td className="text-secondary">
                       {new Date(u.created_at).toLocaleDateString('pt-BR')}

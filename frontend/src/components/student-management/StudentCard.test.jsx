@@ -184,4 +184,68 @@ describe('StudentCard Component', () => {
     expect(screen.getByTestId('tool-badge-2')).toHaveTextContent('🛠️ Aplicativo / Ferramenta');
     expect(screen.queryByText(/0 de 0 aulas/i)).not.toBeInTheDocument();
   });
+
+  it('starts with courses list collapsed by default and toggles open/close on button click', () => {
+    renderWithToast(<StudentCard student={mockStudent} isLightBg={false} />);
+
+    // Por padrão a aba de cursos deve começar fechada para evitar poluição visual
+    expect(screen.queryByTestId('student-course-1')).not.toBeInTheDocument();
+
+    const toggleBtn = screen.getByTestId('toggle-courses-btn-42');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveTextContent('1 curso');
+
+    // Ao clicar no botão, expande a lista de cursos
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId('student-course-1')).toBeInTheDocument();
+    expect(screen.getByText('Bussola Astrologica')).toBeInTheDocument();
+
+    // Ao clicar novamente, fecha a lista de cursos
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByTestId('student-course-1')).not.toBeInTheDocument();
+  });
+
+  it('exibe o badge do signo do aluno quando o módulo de Astrologia estiver ativo e o aluno tiver data de nascimento', () => {
+    localStorage.setItem('is_astrology_platform', 'true');
+    const studentWithBirthDate = {
+      ...mockStudent,
+      birth_date: '1995-10-24',
+    };
+
+    renderWithToast(<StudentCard student={studentWithBirthDate} isLightBg={false} />);
+    expect(screen.getByTestId('zodiac-badge')).toBeInTheDocument();
+    expect(screen.getByText('Escorpião')).toBeInTheDocument();
+    expect(screen.getByText('♏')).toBeInTheDocument();
+  });
+
+  it('oculta o badge do signo quando o módulo de Astrologia estiver desativado', () => {
+    localStorage.setItem('is_astrology_platform', 'false');
+    const studentWithBirthDate = {
+      ...mockStudent,
+      birth_date: '1995-10-24',
+    };
+
+    renderWithToast(<StudentCard student={studentWithBirthDate} isLightBg={false} />);
+    expect(screen.queryByTestId('zodiac-badge')).not.toBeInTheDocument();
+  });
+
+  it('exibe o badge de status online e o dot no avatar quando o aluno está online', () => {
+    const onlineStudent = {
+      ...mockStudent,
+      is_online: true,
+    };
+    renderWithToast(<StudentCard student={onlineStudent} isLightBg={false} />);
+    expect(screen.getByTestId('online-status-dot')).toBeInTheDocument();
+    expect(screen.getByTestId('online-status-badge')).toHaveTextContent('Online agora');
+  });
+
+  it('exibe badge offline/visto por último quando o aluno está desconectado', () => {
+    const offlineStudent = {
+      ...mockStudent,
+      is_online: false,
+      last_seen_at: null,
+    };
+    renderWithToast(<StudentCard student={offlineStudent} isLightBg={false} />);
+    expect(screen.getByTestId('online-status-badge')).toHaveTextContent('Offline');
+  });
 });

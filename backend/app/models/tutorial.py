@@ -8,7 +8,9 @@ class Tutorial(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    video_url = Column(String(1024), nullable=False)
+    content_type = Column(String(50), default="video", nullable=False)  # 'video' ou 'text'
+    text_content = Column(Text, nullable=True)
+    video_url = Column(String(1024), nullable=True)
     video_key = Column(String(512), nullable=True)
     thumbnail_url = Column(String(1024), nullable=True)
     duration = Column(String(50), nullable=True)

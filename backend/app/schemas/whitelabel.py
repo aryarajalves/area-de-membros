@@ -7,6 +7,7 @@ class WhiteLabelConfig(BaseModel):
     login_banner_url: Optional[str] = Field(default=None, description="URL da imagem de banner da tela de login")
     logo_url: Optional[str] = Field(default=None, description="URL do logotipo personalizado da plataforma (Sidebar e Cabeçalho)")
     bg_color: str = Field(default="#090d16", description="Cor de fundo global da plataforma")
+    is_astrology_platform: bool = Field(default=False, description="Ativa recursos de Astrologia (Signos Zodiacais)")
 
 
 class WhiteLabelUpdate(BaseModel):
@@ -14,3 +15,4 @@ class WhiteLabelUpdate(BaseModel):
     login_banner_url: Optional[str] = None
     logo_url: Optional[str] = None
     bg_color: Optional[str] = None
+    is_astrology_platform: Optional[bool] = None

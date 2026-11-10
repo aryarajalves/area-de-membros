@@ -2,7 +2,7 @@
 # Isso garante que todos os mappers e relacionamentos (ex: Course -> User, LessonComment -> User)
 # sejam devidamente carregados e resolvidos pelo SQLAlchemy em qualquer contexto (API, Worker, Scripts).
 
-from app.models.user import User, Invite
+from app.models.user import User, Invite, PasswordResetToken, RegistrationVerification
 from app.models.course import (
     Course,
     UserCourse,
@@ -36,6 +36,15 @@ from app.models.chat_broadcast import ChatBroadcastCampaign, ChatBroadcastRecipi
 from app.models.funnel import Funnel, FunnelExecution
 from app.models.tutorial import Tutorial
 from app.models.introduction import IntroductionPost, IntroductionComment, IntroductionLike
+from app.models.community_feed import (
+    CommunityPost,
+    CommunityPostComment,
+    CommunityPostLike,
+    CommunityPostBookmark,
+    CommunityNotification,
+    CommunityFollow,
+    CommunityPostView,
+)
 from app.models.event import Event, EventAttendee
 from app.models.certificate import Certificate
 from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk, AiTutorSuggestion
@@ -43,6 +52,8 @@ from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk
 __all__ = [
     "User",
     "Invite",
+    "PasswordResetToken",
+    "RegistrationVerification",
     "Course",
     "UserCourse",
     "Module",
@@ -83,6 +94,12 @@ __all__ = [
     "IntroductionPost",
     "IntroductionComment",
     "IntroductionLike",
+    "CommunityPost",
+    "CommunityPostComment",
+    "CommunityPostLike",
+    "CommunityPostBookmark",
+    "CommunityNotification",
+    "CommunityFollow",
     "CourseSalesClick",
     "CourseUpsellOffer",
     "CourseUpsellView",

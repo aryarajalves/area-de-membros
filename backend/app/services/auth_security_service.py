@@ -129,3 +129,29 @@ def validate_token_version(user: User, token_version_claim: Optional[int]) -> bo
     if token_version_claim is None or user.token_version is None:
         return True
     return int(token_version_claim) == int(user.token_version)
+
+
+def track_user_login_and_dispatch(user: User, db: Session) -> bool:
+    """
+    Rastreia e persiste o 1º login e o contador de acessos do usuário.
+    Se for o primeiro login de um aluno, aciona os funis automáticos de primeiro login.
+    Retorna True se foi o primeiro login, False caso contrário.
+    """
+    is_first_login = (user.first_login_at is None and (user.login_count or 0) == 0)
+    now_utc = datetime.now(timezone.utc)
+    if is_first_login:
+        user.first_login_at = now_utc
+    user.last_login_at = now_utc
+    user.login_count = (user.login_count or 0) + 1
+    db.commit()
+    db.refresh(user)
+
+    if is_first_login and user.role in ("aluno", "user"):
+        try:
+            from app.services.funnel_trigger_service import dispatch_first_login_funnels
+            dispatch_first_login_funnels(db, user.id)
+        except Exception as fn_err:
+            logger.error(f"[Login] Falha ao acionar funis de primeiro login para aluno #{user.id}: {fn_err}")
+
+    return is_first_login
+

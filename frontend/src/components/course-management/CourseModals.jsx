@@ -161,6 +161,8 @@ export function CourseFormModal({
               setTitle={setTitle}
               description={description}
               setDescription={setDescription}
+              orderIndex={orderIndex}
+              setOrderIndex={setOrderIndex}
               watermarkEnabled={watermarkEnabled}
               setWatermarkEnabled={setWatermarkEnabled}
               releaseType={releaseType}

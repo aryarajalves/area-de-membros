@@ -10,7 +10,32 @@ version: "3.7"
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. Serviço de Backend (FastAPI + Python)
+  # 0. Serviço Redis (Pub/Sub de WebSockets e Sessões Distribuídas)
+  # ----------------------------------------------------------------------------
+  area_aulas_redis:
+    image: redis:7-alpine
+    hostname: "{{.Service.Name}}.{{.Task.Slot}}"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - area_de_membros_redis_data:/data
+    networks:
+      area_de_membros_internal:
+        aliases:
+          - area_de_membros_redis
+          - redis
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ----------------------------------------------------------------------------
+  # 1. Serviço de Backend (FastAPI + Python Multi-Worker)
   # ----------------------------------------------------------------------------
   area_aulas_backend:
     # Imagem oficial do Backend da Área de Membros
@@ -48,6 +73,9 @@ services:
       # Configuração do Banco de Dados (PostgreSQL) ###########
       #########################################################
       - DATABASE_URL=${DATABASE_URL}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-30}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-50}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-20}
 
       #########################################################
       # Configurações de Segurança e Autenticação (JWT) #######
@@ -82,13 +110,19 @@ services:
       - B2_RETENTION_MAX=${B2_RETENTION_MAX:-30}
 
       #########################################################
+      # Configuração Redis para WebSockets e Sessões ##########
+      #########################################################
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - WORKERS=${WORKERS:-4}
+
+      #########################################################
       # Configurações do Worker de Verificações Periódicas ####
       #########################################################
       - WORKER_RENEWAL_CHECK_INTERVAL_HOURS=${WORKER_RENEWAL_CHECK_INTERVAL_HOURS:-24}
-    # Modo de Deploy no Swarm
+    # Modo de Deploy no Swarm (Multi-Réplicas)
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: ${BACKEND_REPLICAS:-3}
       placement:
         constraints:
           - node.role == manager
@@ -146,6 +180,9 @@ services:
       # Configuração do Banco de Dados (PostgreSQL) ###########
       #########################################################
       - DATABASE_URL=${DATABASE_URL}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-30}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-50}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-20}
 
       #########################################################
       # Configurações de Segurança e Autenticação (JWT) #######
@@ -244,6 +281,10 @@ volumes:
   area_de_membros_uploads:
     external: false
     name: area_de_membros_uploads
+  # Volume para persistência de dados do Redis
+  area_de_membros_redis_data:
+    external: false
+    name: area_de_membros_redis_data
 
 # ==============================================================================
 # Definição Global das Redes Swarm

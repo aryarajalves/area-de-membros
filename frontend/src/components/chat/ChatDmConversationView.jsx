@@ -12,6 +12,7 @@ export default function ChatDmConversationView({
   messages = [],
   loading = false,
   onSendMessage,
+  adminThread = null,
 }) {
   const messagesEndRef = useRef(null);
 
@@ -36,28 +37,52 @@ export default function ChatDmConversationView({
         data-testid="dm-messages-container"
       >
         {/* Banner Informativo de Criptografia de Ponta a Ponta */}
-        <div
-          data-testid="dm-encryption-banner"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            margin: '0 auto 4px',
-            backgroundColor: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.22)',
-            borderRadius: '20px',
-            fontSize: '0.72rem',
-            fontWeight: 500,
-            color: '#a7f3d0',
-            textAlign: 'center',
-            maxWidth: '92%',
-          }}
-        >
-          <Lock size={12} color="#10b981" />
-          <span>Mensagens e arquivos protegidos por criptografia de ponta a ponta</span>
-        </div>
+        {adminThread ? (
+          <div
+            data-testid="dm-supervisor-banner"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              margin: '0 auto 4px',
+              backgroundColor: 'rgba(234, 179, 8, 0.12)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              borderRadius: '20px',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              color: '#fde047',
+              textAlign: 'center',
+              maxWidth: '92%',
+            }}
+          >
+            <span>🛡️ Modo Supervisão (Super Admin) • Atendimento: {adminThread.student?.name} ↔ {adminThread.admin?.name}</span>
+          </div>
+        ) : (
+          <div
+            data-testid="dm-encryption-banner"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              margin: '0 auto 4px',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.22)',
+              borderRadius: '20px',
+              fontSize: '0.72rem',
+              fontWeight: 500,
+              color: '#a7f3d0',
+              textAlign: 'center',
+              maxWidth: '92%',
+            }}
+          >
+            <Lock size={12} color="#10b981" />
+            <span>Mensagens e arquivos protegidos por criptografia de ponta a ponta</span>
+          </div>
+        )}
         {loading ? (
           <div
             style={{
@@ -103,6 +128,35 @@ export default function ChatDmConversationView({
                       border: isMine ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.06)',
                     }}
                   >
+                    {/* Identificação de Super Admin ou Remetente na Thread */}
+                    {m.user?.role === 'superadmin' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#facc15' }}>{m.user.name}</span>
+                        <span
+                          data-testid="superadmin-badge-bubble"
+                          style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            color: '#facc15',
+                            backgroundColor: 'rgba(234, 179, 8, 0.25)',
+                            border: '1px solid rgba(234, 179, 8, 0.5)',
+                            borderRadius: '999px',
+                            padding: '1px 6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          🛡️ Super Admin
+                        </span>
+                      </div>
+                    ) : (
+                      adminThread && !isMine && (
+                        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: m.user?.role === 'admin' ? '#facc15' : '#38bdf8', marginBottom: '3px' }}>
+                          {m.user?.name} {m.user?.role === 'admin' ? '(Admin)' : '(Aluno)'}
+                        </div>
+                      )
+                    )}
                     {/* Renderização de Mídia Anexada (Áudio, Vídeo, Imagem, GIF, PDF) */}
                     {m.media_url && (
                       <div style={{ marginBottom: m.message ? '8px' : '0' }}>

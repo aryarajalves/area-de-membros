@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Video, PlayCircle, Plus, Edit2, Trash2, Clock, CheckCircle2,
-  AlertCircle, Sparkles, HelpCircle, Layers, ChevronRight
+  AlertCircle, Sparkles, HelpCircle, Layers, ChevronRight, FileText
 } from 'lucide-react';
 import { fetchTutorialsApi, deleteTutorialApi } from './tutorialsApi';
 import TutorialModal from './TutorialModal';
+import TutorialArticleViewer from './TutorialArticleViewer';
 import '../../styles/home-tutorials.css';
 
 function getEmbedUrl(videoUrl) {
@@ -38,7 +39,6 @@ export default function HomeTutorials({
       const data = await fetchTutorialsApi(token);
       setTutorials(data);
       if (data.length > 0) {
-        // Mantém tutorial selecionado ou pega o primeiro
         setActiveTutorial((prev) => {
           if (prev) {
             const found = data.find((t) => t.id === prev.id);
@@ -92,7 +92,8 @@ export default function HomeTutorials({
     }
   };
 
-  const embedUrl = activeTutorial ? getEmbedUrl(activeTutorial.video_url) : null;
+  const embedUrl = activeTutorial?.video_url ? getEmbedUrl(activeTutorial.video_url) : null;
+  const isTextTutorial = activeTutorial?.content_type === 'text';
 
   return (
     <div className="home-tutorials-container" data-testid="home-tutorials-view">
@@ -104,7 +105,7 @@ export default function HomeTutorials({
           </div>
           <div>
             <h1 className="home-tutorials-title">
-              Início & Tutoriais da Plataforma
+              Comece Aqui & Tutoriais da Plataforma
             </h1>
             <p className="home-tutorials-subtitle">
               Aprenda a navegar pela ferramenta e aproveitar todos os recursos da sua Área de Membros.
@@ -132,7 +133,6 @@ export default function HomeTutorials({
           <span>Carregando tutoriais...</span>
         </div>
       ) : tutorials.length === 0 ? (
-        /* Estado Vazio */
         <div
           data-testid="home-tutorials-empty"
           style={{
@@ -153,7 +153,7 @@ export default function HomeTutorials({
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
             {isManager
-              ? 'Você pode fazer upload de vídeos de tutorial ensinando os alunos como navegar e usar a ferramenta.'
+              ? 'Você pode cadastrar vídeos de tutorial ou artigos em texto ensinando os alunos como navegar e usar a ferramenta.'
               : 'As aulas de tutorial estão sendo preparadas. Acesse seus cursos liberados para começar a estudar!'}
           </p>
           {isManager ? (
@@ -179,62 +179,65 @@ export default function HomeTutorials({
           )}
         </div>
       ) : (
-        /* Layout: Player em Destaque + Playlist Lateral */
         <div className="home-tutorials-grid">
-          {/* Coluna Esquerda: Player e Informações */}
+          {/* Coluna Esquerda: Player OU Artigo em Texto */}
           <div className="home-tutorials-main-col">
-            {/* Player Container */}
-            <div
-              className="tutorial-player-wrapper"
-              data-testid="tutorial-player-container"
-            >
-              {embedUrl ? (
-                <iframe
-                  src={embedUrl}
-                  title={activeTutorial?.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  data-testid="tutorial-iframe"
-                />
-              ) : activeTutorial?.video_url ? (
-                <video
-                  src={activeTutorial.video_url}
-                  controls
-                  data-testid="tutorial-video-tag"
+            {isTextTutorial ? (
+              <TutorialArticleViewer tutorial={activeTutorial} />
+            ) : (
+              <>
+                <div
+                  className="tutorial-player-wrapper"
+                  data-testid="tutorial-player-container"
                 >
-                  Seu navegador não suporta a reprodução deste vídeo.
-                </video>
-              ) : (
-                <div className="tutorial-player-empty">
-                  <span>Nenhum vídeo disponível para esta aula</span>
-                </div>
-              )}
-            </div>
-
-            {/* Informações da Aula Ativa */}
-            {activeTutorial && (
-              <div
-                className="tutorial-active-info-card"
-                data-testid="active-tutorial-info"
-              >
-                <div className="tutorial-info-header">
-                  <h2 className="tutorial-info-title">
-                    {activeTutorial.title}
-                  </h2>
-                  {activeTutorial.duration && (
-                    <div className="tutorial-duration-badge">
-                      <Clock size={13} />
-                      <span>{activeTutorial.duration}</span>
+                  {embedUrl ? (
+                    <iframe
+                      src={embedUrl}
+                      title={activeTutorial?.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      data-testid="tutorial-iframe"
+                    />
+                  ) : activeTutorial?.video_url ? (
+                    <video
+                      src={activeTutorial.video_url}
+                      controls
+                      data-testid="tutorial-video-tag"
+                    >
+                      Seu navegador não suporta a reprodução deste vídeo.
+                    </video>
+                  ) : (
+                    <div className="tutorial-player-empty">
+                      <span>Nenhum vídeo disponível para esta aula</span>
                     </div>
                   )}
                 </div>
 
-                {activeTutorial.description && (
-                  <p className="tutorial-info-desc">
-                    {activeTutorial.description}
-                  </p>
+                {activeTutorial && (
+                  <div
+                    className="tutorial-active-info-card"
+                    data-testid="active-tutorial-info"
+                  >
+                    <div className="tutorial-info-header">
+                      <h2 className="tutorial-info-title">
+                        {activeTutorial.title}
+                      </h2>
+                      {activeTutorial.duration && (
+                        <div className="tutorial-duration-badge">
+                          <Clock size={13} />
+                          <span>{activeTutorial.duration}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {activeTutorial.description && (
+                      <p className="tutorial-info-desc">
+                        {activeTutorial.description}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
@@ -255,6 +258,8 @@ export default function HomeTutorials({
             <div className="tutorials-playlist-list">
               {tutorials.map((tut, index) => {
                 const isActive = activeTutorial?.id === tut.id;
+                const isItemText = tut.content_type === 'text';
+
                 return (
                   <div
                     key={tut.id}
@@ -277,7 +282,11 @@ export default function HomeTutorials({
                         fontSize: '12px',
                       }}
                     >
-                      {isActive ? <PlayCircle size={18} /> : index + 1}
+                      {isActive ? (
+                        isItemText ? <FileText size={16} /> : <PlayCircle size={18} />
+                      ) : (
+                        index + 1
+                      )}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -293,12 +302,16 @@ export default function HomeTutorials({
                       >
                         {tut.title}
                       </div>
-                      {tut.duration && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>
+                        {isItemText ? (
+                          <span style={{ color: '#60a5fa', fontWeight: 600, fontSize: '10.5px', textTransform: 'uppercase' }}>
+                            Artigo
+                          </span>
+                        ) : (
                           <Clock size={11} />
-                          <span>{tut.duration}</span>
-                        </div>
-                      )}
+                        )}
+                        <span>{tut.duration || (isItemText ? 'Leitura' : '')}</span>
+                      </div>
                     </div>
 
                     {isManager && (
@@ -348,28 +361,49 @@ export default function HomeTutorials({
       {/* Modal de Criar/Editar */}
       <TutorialModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTutorial(null);
+        }}
         tutorial={editingTutorial}
-        onSuccess={loadTutorials}
+        onSuccess={() => loadTutorials()}
         addToast={addToast}
       />
 
-      {/* Popup de Confirmação de Exclusão */}
+      {/* Modal de Confirmação de Exclusão */}
       {deletingTutorial && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" data-testid="delete-tutorial-modal">
-          <div className="modal-content" style={{ maxWidth: '440px', textAlign: 'center' }}>
-            <div style={{ width: '48px', height: '48px', margin: '0 auto 12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-              <Trash2 size={24} />
+        <div
+          className="modal-overlay custom-modal-overlay"
+          style={{ alignItems: 'center', justifyContent: 'center' }}
+          data-testid="delete-tutorial-modal"
+        >
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: '440px',
+              width: '100%',
+              padding: '24px',
+              background: '#0b1329',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                <Trash2 size={20} />
+              </div>
+              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.1rem' }}>
+                Excluir Aula de Tutorial?
+              </h3>
             </div>
-            <h3 style={{ margin: '0 0 8px', color: '#f8fafc' }}>Excluir Aula de Tutorial?</h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0 0 20px' }}>
-              Tem certeza que deseja excluir o tutorial <strong>"{deletingTutorial.title}"</strong>? Esta ação não pode ser desfeita.
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px' }}>
+              Tem certeza que deseja excluir permanentemente o tutorial <strong>"{deletingTutorial.title}"</strong>? Esta ação não pode ser desfeita.
             </p>
-            <div className="modal-actions" style={{ justifyContent: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 type="button"
+                className="secondary-btn"
                 onClick={() => setDeletingTutorial(null)}
-                className="cancel-btn"
                 disabled={deletingLoading}
                 data-testid="cancel-delete-tutorial-btn"
               >
@@ -377,11 +411,20 @@ export default function HomeTutorials({
               </button>
               <button
                 type="button"
+                className="danger-btn"
                 onClick={handleConfirmDelete}
-                className="primary-btn"
                 disabled={deletingLoading}
                 data-testid="confirm-delete-tutorial-btn"
-                style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  backgroundColor: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: deletingLoading ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px'
+                }}
               >
                 {deletingLoading ? 'Excluindo...' : 'Sim, Excluir'}
               </button>

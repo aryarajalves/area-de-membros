@@ -292,4 +292,50 @@ describe('PlatformProfileTab Component', () => {
     fireEvent.click(viewLadderBtn);
     expect(screen.getByTestId('rpg-ladder-modal')).toBeInTheDocument();
   });
+
+  it('permite preencher e salvar a data de nascimento do usuário no perfil', async () => {
+    const onUserUpdated = vi.fn();
+    let sentPayload = null;
+
+    global.fetch = vi.fn().mockImplementation((url, options = {}) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/auth/me') && options.method === 'PATCH') {
+        sentPayload = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...mockAdmin,
+              birth_date: sentPayload.birth_date,
+            }),
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAdmin),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderProfileTab({ ...mockAdmin, birth_date: '1998-05-20' }, onUserUpdated);
+
+    const birthDateInput = screen.getByTestId('profile-input-birth-date');
+    expect(birthDateInput).toBeInTheDocument();
+    expect(birthDateInput.value).toBe('1998-05-20');
+
+    // Altera a data de nascimento
+    fireEvent.change(birthDateInput, { target: { value: '1995-10-15' } });
+    expect(birthDateInput.value).toBe('1995-10-15');
+
+    // Salva o perfil
+    fireEvent.click(screen.getByTestId('btn-save-profile'));
+
+    await waitFor(() => {
+      expect(onUserUpdated).toHaveBeenCalled();
+      expect(sentPayload).not.toBeNull();
+      expect(sentPayload.birth_date).toBe('1995-10-15');
+    });
+  });
 });

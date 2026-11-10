@@ -239,8 +239,10 @@ def test_completed_periods_endpoint(setup_gamification_users):
     assert "completed_months" in data
     assert "completed_years" in data
 
-    # Não deve incluir o mês corrente (2026-10) nos meses finalizados
-    assert not any(m["key"] == "2026-10" for m in data["completed_months"])
+    from datetime import datetime, timezone
+    current_month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    # Não deve incluir o mês corrente nos meses finalizados
+    assert not any(m["key"] == current_month_key for m in data["completed_months"])
     # Deve conter meses anteriores (ex: 2026-09)
     assert any(m["key"] == "2026-09" for m in data["completed_months"])
 
@@ -256,7 +258,8 @@ def test_closed_ranking_validation_and_top_10(setup_gamification_users):
     headers_a = get_headers("aluno_rank_a@test.com", "Pass123!")
 
     # 1. Bloqueia consultar mês em andamento
-    res_curr_m = client.get("/api/v1/gamification/closed-ranking?period_type=month&period_key=2026-10", headers=headers_a)
+    curr_m = datetime.now(timezone.utc).strftime("%Y-%m")
+    res_curr_m = client.get(f"/api/v1/gamification/closed-ranking?period_type=month&period_key={curr_m}", headers=headers_a)
     assert res_curr_m.status_code == 400
     assert "em andamento" in res_curr_m.json()["detail"].lower()
 

@@ -966,6 +966,7 @@ from app.services.funnel_trigger_service import (
     dispatch_progress_milestone_funnels,
     dispatch_renewal_warning_funnels,
     dispatch_student_inactivity_funnels,
+    dispatch_first_login_funnels,
 )
 
 

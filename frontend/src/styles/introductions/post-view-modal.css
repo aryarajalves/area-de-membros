@@ -15,9 +15,9 @@
 }
 
 .intro-modal-card {
-  width: 100%;
-  max-width: 660px;
-  max-height: 88vh;
+  width: 92vw;
+  max-width: 960px;
+  max-height: 90vh;
   background: #121622;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;

@@ -333,5 +333,31 @@ describe('LessonPlayer Component', () => {
     const tutorTab = await screen.findByTestId('tab-lesson-tutor');
     expect(tutorTab).toBeInTheDocument();
   });
+
+  it('oculta completamente a aba do Tutor IA para alunos quando isTutorVisible for false (modo Oculto/Privado)', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/transcription')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'completed', full_transcript: 'Transcrição completa' })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <LessonPlayer
+        lesson={mockLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+        isTutorVisible={false}
+      />
+    );
+
+    // Mesmo com transcrição completed, se o tutor estiver oculto para aluno, a aba não deve existir
+    expect(screen.queryByTestId('tab-lesson-tutor')).not.toBeInTheDocument();
+  });
 });
 

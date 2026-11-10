@@ -2,7 +2,7 @@ name: area-de-membros
 
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: area_de_membros_db
     restart: unless-stopped
     environment:
@@ -18,6 +18,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: area_de_membros_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - area_de_membros_redis_data:/data
+    networks:
+      default:
+        aliases:
+          - area_de_membros_redis
+          - redis
 
   backend:
     build:
@@ -81,3 +94,4 @@ services:
 
 volumes:
   area_de_membros_pg_data:
+  area_de_membros_redis_data:

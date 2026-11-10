@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Download, FileText, FileSpreadsheet, FileArchive, File, ExternalLink, Paperclip, Upload, Trash2, Loader2, Plus, Brain, Sparkles } from 'lucide-react';
-import { formatFileSize, getFileIcon } from './LessonAttachmentsManager';
+import { Paperclip, Upload, Loader2, Brain } from 'lucide-react';
 import { UploadProgressModal, FileDeleteConfirmModal } from '../common/FeedbackModals';
+import RenameAttachmentModal from './RenameAttachmentModal';
+import AttachmentCardItem from './AttachmentCardItem';
 import { useToast } from '../../context/ToastContext';
 
 export default function LessonAttachmentsList({
@@ -12,7 +13,8 @@ export default function LessonAttachmentsList({
   lessonId,
   isManager = false,
   onAttachmentAdded,
-  onAttachmentDeleted
+  onAttachmentDeleted,
+  onAttachmentUpdated
 }) {
   const [uploading, setUploading] = useState(false);
   const [generatingMindmap, setGeneratingMindmap] = useState(false);
@@ -20,6 +22,8 @@ export default function LessonAttachmentsList({
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, item: null });
+  const [renameModal, setRenameModal] = useState({ isOpen: false, item: null });
+  const [renaming, setRenaming] = useState(false);
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
 
@@ -43,12 +47,7 @@ export default function LessonAttachmentsList({
     }
   };
 
-  const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
-  const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
-  const iconBg = isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)';
   const titleColor = isLightBg ? '#1e293b' : '#f8fafc';
-  const descColor = isLightBg ? '#475569' : '#cbd5e1';
-  const tagBg = isLightBg ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)';
   const tagColor = isLightBg ? '#64748b' : '#94a3b8';
 
   const handleFileUpload = async (e) => {
@@ -145,6 +144,39 @@ export default function LessonAttachmentsList({
     setUploadFileName('');
     setUploadProgress({ current: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleConfirmRename = async (newTitle) => {
+    const item = renameModal.item;
+    if (!item || !newTitle) return;
+    setRenaming(true);
+    const token = localStorage.getItem('auth_token');
+    try {
+      if (courseId && moduleId && lessonId && item.id) {
+        const res = await fetch(
+          `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/attachments/${item.id}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ title: newTitle })
+          }
+        );
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Erro ao renomear anexo.');
+        }
+        const updated = await res.json();
+        if (onAttachmentUpdated) onAttachmentUpdated(updated);
+      } else if (onAttachmentUpdated) {
+        onAttachmentUpdated({ ...item, title: newTitle });
+      }
+      addToast('Nome do material complementar atualizado!', 'success');
+      setRenameModal({ isOpen: false, item: null });
+    } catch (err) {
+      addToast(err.message || 'Falha ao renomear documento.', 'error');
+    } finally {
+      setRenaming(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -329,132 +361,28 @@ export default function LessonAttachmentsList({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {attachments.map((att, idx) => {
-            const isHtml = att.file_type?.toLowerCase() === 'html' || (att.file_url || '').toLowerCase().includes('.html');
-            const isMindmap = isHtml || (att.title || '').toLowerCase().includes('mapa mental');
-
-            return (
-              <div
-                key={att.id || idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '14px 16px',
-                  backgroundColor: isMindmap ? (isLightBg ? '#faf5ff' : 'rgba(168, 85, 247, 0.05)') : cardBg,
-                  border: isMindmap ? '1px solid rgba(168, 85, 247, 0.35)' : cardBorder,
-                  borderRadius: '8px',
-                  backdropFilter: isLightBg ? 'none' : 'blur(8px)',
-                  transition: 'all 0.15s ease'
-                }}
-                data-testid={`attachment-item-${att.id || idx}`}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                  <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '8px',
-                    backgroundColor: isMindmap ? 'rgba(168, 85, 247, 0.15)' : iconBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {isMindmap ? <Brain size={20} color="#a855f7" /> : getFileIcon(att.file_type)}
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <h4 style={{
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      color: titleColor,
-                      margin: 0,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
-                      {att.title || 'Documento Anexo'}
-                    </h4>
-                    {att.description && (
-                      <p style={{
-                        fontSize: '12px',
-                        color: descColor,
-                        margin: '3px 0 0 0',
-                        lineHeight: 1.4,
-                        whiteSpace: 'pre-wrap'
-                      }} data-testid={`attachment-description-${att.id || idx}`}>
-                        {att.description}
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        color: isMindmap ? '#a855f7' : tagColor,
-                        backgroundColor: isMindmap ? 'rgba(168, 85, 247, 0.12)' : tagBg,
-                        padding: '1px 6px',
-                        borderRadius: '4px'
-                      }}>
-                        {isMindmap ? 'MAPA MENTAL IA' : (att.file_type || 'Arquivo')}
-                      </span>
-                      {att.file_size_bytes > 0 && (
-                        <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                          {formatFileSize(att.file_size_bytes)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                  <a
-                    href={att.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download={isHtml ? undefined : (att.title || 'documento')}
-                    className="primary-btn"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '12px',
-                      padding: '7px 14px',
-                      textDecoration: 'none',
-                      background: isMindmap ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : undefined,
-                      border: isMindmap ? '1px solid rgba(168, 85, 247, 0.5)' : undefined,
-                      boxShadow: isMindmap ? '0 2px 8px rgba(147, 51, 234, 0.3)' : undefined
-                    }}
-                    data-testid={`access-attachment-btn-${att.id || idx}`}
-                  >
-                    <ExternalLink size={14} />
-                    <span>{isMindmap ? 'Visualizar Mapa Mental ↗' : (isHtml ? 'Abrir em Nova Aba ↗' : 'Acessar')}</span>
-                  </a>
-
-                  {isManager && att.id && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete({ isOpen: true, item: att })}
-                      className="secondary-btn"
-                      style={{
-                        padding: '7px 10px',
-                        fontSize: '12px',
-                        color: '#ef4444',
-                        borderColor: 'rgba(239, 68, 68, 0.3)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.08)'
-                      }}
-                      title="Excluir documento anexo"
-                      data-testid={`delete-attachment-btn-${att.id}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {attachments.map((att, idx) => (
+            <AttachmentCardItem
+              key={att.id || idx}
+              attachment={att}
+              index={idx}
+              isLightBg={isLightBg}
+              isManager={isManager}
+              onRename={(item) => setRenameModal({ isOpen: true, item })}
+              onDelete={(item) => setConfirmDelete({ isOpen: true, item })}
+            />
+          ))}
         </div>
       )}
+
+      {/* Modal de Renomear Material Complementar */}
+      <RenameAttachmentModal
+        isOpen={renameModal.isOpen}
+        attachment={renameModal.item}
+        loading={renaming}
+        onConfirm={handleConfirmRename}
+        onCancel={() => !renaming && setRenameModal({ isOpen: false, item: null })}
+      />
 
       {/* Modal de Progresso durante Upload */}
       <UploadProgressModal

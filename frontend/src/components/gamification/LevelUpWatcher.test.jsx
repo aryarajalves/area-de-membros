@@ -50,8 +50,8 @@ describe('LevelUpWatcher', () => {
     expect(localStorage.getItem('last_celebrated_level_10')).toBe('5');
   });
 
-  it('dispara automaticamente o popup quando o aluno atinge Nível 2 (ex: 29 pts) mesmo sem histórico prévio no localStorage', () => {
-    const user = { id: 15, name: 'Aluno Novo', role: 'aluno', points: 29 };
+  it('dispara automaticamente o popup quando o aluno atinge Nível 2 (ex: 120 pts) mesmo sem histórico prévio no localStorage', () => {
+    const user = { id: 15, name: 'Aluno Novo', role: 'aluno', points: 120 };
     render(<LevelUpWatcher currentUser={user} />);
 
     expect(screen.getByTestId('levelup-celebration-card')).toBeInTheDocument();

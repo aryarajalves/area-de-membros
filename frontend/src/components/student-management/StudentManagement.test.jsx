@@ -98,6 +98,9 @@ describe('StudentManagement Component', () => {
     expect(screen.getAllByText(/Aluno desde:/i).length).toBe(2);
     expect(screen.getByText('60%')).toBeInTheDocument();
 
+    // Expande cursos do aluno Fernandes
+    fireEvent.click(screen.getByTestId('toggle-courses-btn-1'));
+
     // Cursos vinculados ao Fernandes
     expect(screen.getByText('Bússola Astrológica')).toBeInTheDocument();
     expect(screen.getByText('Aula 8 - Trânsitos Planetários')).toBeInTheDocument();
@@ -118,6 +121,7 @@ describe('StudentManagement Component', () => {
     // Dados da aluna Beatriz
     expect(screen.getByText('Beatriz Silva')).toBeInTheDocument();
     expect(screen.getByText('Inativo')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('toggle-courses-btn-2'));
     expect(screen.getByText('Nenhum curso liberado para este aluno ainda.')).toBeInTheDocument();
   });
 
@@ -157,17 +161,18 @@ describe('StudentManagement Component', () => {
     );
 
     expect(await screen.findByText('Fernandes Aluno')).toBeInTheDocument();
-    expect(screen.getByText('Bússola Astrológica')).toBeInTheDocument();
+    // Por padrão inicia colapsado para não poluir a interface
+    expect(screen.queryByText('Bússola Astrológica')).not.toBeInTheDocument();
 
     const toggleBtn = screen.getByTestId('toggle-courses-btn-1');
     fireEvent.click(toggleBtn);
 
-    // Esconde a lista de cursos
-    expect(screen.queryByText('Bússola Astrológica')).not.toBeInTheDocument();
-
-    // Clica novamente para expandir
-    fireEvent.click(toggleBtn);
+    // Expande a lista de cursos
     expect(screen.getByText('Bússola Astrológica')).toBeInTheDocument();
+
+    // Clica novamente para fechar
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByText('Bússola Astrológica')).not.toBeInTheDocument();
   });
 
   it('displays empty state when no students match the filter', async () => {
@@ -363,6 +368,9 @@ describe('StudentManagement Component', () => {
         <StudentManagement />
       </ToastProvider>
     );
+
+    const toggleBtn = await screen.findByTestId('toggle-courses-btn-1');
+    fireEvent.click(toggleBtn);
 
     const historyBtn = await screen.findByTestId('view-course-history-btn-101');
     fireEvent.click(historyBtn);

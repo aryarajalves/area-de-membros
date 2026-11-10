@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.core.limiter import limiter
 from sqlalchemy.orm import Session
@@ -31,7 +32,8 @@ def public_register(
             detail="Este e-mail já está cadastrado no sistema."
         )
 
-    # 2. Criação do usuário como aluno ativo
+    # 2. Criação do usuário como aluno ativo com 1º acesso registrado
+    now_utc = datetime.now(timezone.utc)
     hashed_password = get_password_hash(data.password)
     user = User(
         name=data.name.strip(),
@@ -39,7 +41,10 @@ def public_register(
         hashed_password=hashed_password,
         role="aluno",
         is_active=True,
-        phone=data.phone.strip() if data.phone else None
+        phone=data.phone.strip() if data.phone else None,
+        first_login_at=now_utc,
+        last_login_at=now_utc,
+        login_count=1,
     )
     db.add(user)
     db.commit()
@@ -47,12 +52,18 @@ def public_register(
 
     logger.info(f"[PublicRegister] Nova conta de aluno criada com sucesso: #{user.id} ({user.email})")
 
-    # 2.1 Aciona gatilhos de funis para novo aluno cadastrado
+    # 2.1 Aciona gatilhos de funis para novo aluno cadastrado e primeiro login
     try:
         from app.services.funnel_service import dispatch_student_created_funnels
         dispatch_student_created_funnels(db, user.id)
     except Exception as fn_err:
         logger.error(f"[PublicRegister] Falha ao acionar funis para aluno #{user.id}: {fn_err}")
+
+    try:
+        from app.services.funnel_trigger_service import dispatch_first_login_funnels
+        dispatch_first_login_funnels(db, user.id)
+    except Exception as fn_err:
+        logger.error(f"[PublicRegister] Falha ao acionar funis de 1º login para aluno #{user.id}: {fn_err}")
 
     # 3. Geração de token de acesso JWT
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role, "token_version": user.token_version or 1})

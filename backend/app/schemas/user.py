@@ -1,7 +1,7 @@
 import re
 from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
-from typing import Optional, Literal, List
-from datetime import datetime
+from typing import Optional, Literal, List, Union
+from datetime import datetime, date
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -26,12 +26,17 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     phone: Optional[str] = None
+    birth_date: Optional[date] = None
     avatar_url: Optional[str] = None
-    playback_rate: Optional[float] = None
+    playback_rate: Optional[float] = 1.0
     created_at: datetime
+    first_login_at: Optional[datetime] = None
+    last_login_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    is_online: Optional[bool] = False
+    login_count: Optional[int] = 0
     course_ids: Optional[List[int]] = []
     course_access: Optional[List[CourseAccessItem]] = []
-    playback_rate: Optional[float] = 1.0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +44,7 @@ class UserUpdate(BaseModel):
     role: Literal["admin", "user", "aluno"]
     name: Optional[str] = None
     phone: Optional[str] = None
+    birth_date: Optional[Union[date, str]] = None
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
 
@@ -60,6 +66,7 @@ class UserManualCreate(BaseModel):
     email: EmailStr
     password: str
     phone: Optional[str] = None
+    birth_date: Optional[Union[date, str]] = None
     role: Literal["admin", "aluno"] = "aluno"
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
@@ -147,9 +154,17 @@ class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    birth_date: Optional[date] = None
     avatar_url: Optional[str] = None
     playback_rate: Optional[float] = None
     password: Optional[str] = None
+
+    @field_validator("birth_date", mode="before")
+    @classmethod
+    def parse_opt_birth_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
     @field_validator("password")
     @classmethod

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock } from 'lucide-react';
+import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock, Users } from 'lucide-react';
 import ChatDmConversationView from './ChatDmConversationView';
-import ChatDmConversationItem from './ChatDmConversationItem';
 import ChatDmNewContactSelector from './ChatDmNewContactSelector';
-import ChatDmPagination from './ChatDmPagination';
+import ChatDmInboxList from './ChatDmInboxList';
+import ChatDmAdminSupportList from './ChatDmAdminSupportList';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -14,10 +14,11 @@ export default function ChatDmModal({
   currentUser,
   targetContact = null,
 }) {
-  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'unread'
+  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'unread' | 'team_support'
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedContact, setSelectedContact] = useState(targetContact);
+  const [selectedAdminThread, setSelectedAdminThread] = useState(null);
   const [isSelectingNewContact, setIsSelectingNewContact] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -74,15 +75,16 @@ export default function ChatDmModal({
     }
   }, [isOpen, activeTab, selectedContact, isSelectingNewContact]);
 
-  // Carregar mensagens do contato selecionado
-  const fetchMessages = async (contactId) => {
+  // Carregar mensagens do contato ou da thread selecionada
+  const fetchMessages = async (contactId, adminId = null) => {
     const token = getAuthToken();
     if (!token || !contactId) return;
     setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/v1/chat/dm/messages/${contactId}?limit=50`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const url = adminId
+        ? `/api/v1/chat/dm/admin-conversations/${contactId}/${adminId}/messages?limit=50`
+        : `/api/v1/chat/dm/messages/${contactId}?limit=50`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -96,9 +98,9 @@ export default function ChatDmModal({
 
   useEffect(() => {
     if (selectedContact?.id) {
-      fetchMessages(selectedContact.id);
+      fetchMessages(selectedContact.id, selectedAdminThread?.admin?.id);
     }
-  }, [selectedContact?.id]);
+  }, [selectedContact?.id, selectedAdminThread?.admin?.id]);
 
   // Sincronização em tempo real via WebSocket (recebe new_dm, dm_sent e dm_updated)
   useEffect(() => {
@@ -138,8 +140,15 @@ export default function ChatDmModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          channel_type: 'dm', recipient_id: selectedContact.id, message: cleanText || '',
-          media_url: mediaUrl, media_type: mediaType, button_text: buttonText, button_url: buttonUrl, button_action_type: buttonActionType
+          channel_type: 'dm',
+          recipient_id: selectedContact.id,
+          dm_thread_admin_id: selectedAdminThread?.admin?.id || null,
+          message: cleanText || '',
+          media_url: mediaUrl,
+          media_type: mediaType,
+          button_text: buttonText,
+          button_url: buttonUrl,
+          button_action_type: buttonActionType,
         }),
       });
       if (res.ok) {
@@ -222,7 +231,9 @@ export default function ChatDmModal({
                   margin: 0,
                 }}
               >
-                {selectedContact
+                {selectedAdminThread
+                  ? `Atendimento: ${selectedAdminThread.student.name} ↔ ${selectedAdminThread.admin.name}`
+                  : selectedContact
                   ? `Mensagens com ${selectedContact.name}`
                   : isSelectingNewContact
                   ? 'Iniciar Nova Conversa'
@@ -230,11 +241,13 @@ export default function ChatDmModal({
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                  {selectedContact
+                  {selectedAdminThread
+                    ? 'Modo Supervisão (Super Admin) • Atendimento da Equipe'
+                    : selectedContact
                     ? (selectedContact.role === 'admin' ? 'Professor / Administrador' : 'Aluno')
                     : isSelectingNewContact ? 'Selecione um membro para conversar' : 'Bate-papo privado 1-a-1'}
                 </span>
-                {selectedContact && (
+                {selectedContact && !selectedAdminThread && (
                   <span
                     data-testid="dm-encryption-badge"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 600, color: '#34d399', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '1px 7px' }}
@@ -254,6 +267,7 @@ export default function ChatDmModal({
                 type="button"
                 onClick={() => {
                   setSelectedContact(null);
+                  setSelectedAdminThread(null);
                   setIsSelectingNewContact(false);
                   fetchConversations();
                 }}
@@ -365,6 +379,30 @@ export default function ChatDmModal({
                   </span>
                 )}
               </button>
+
+              {currentUser?.role === 'superadmin' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('team_support')}
+                  data-testid="dm-tab-team-support"
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: 'none',
+                    backgroundColor: activeTab === 'team_support' ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
+                    color: activeTab === 'team_support' ? '#facc15' : '#94a3b8',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Users size={14} />
+                  <span>Atendimento da Equipe</span>
+                </button>
+              )}
             </div>
 
             {/* Opção 1: Botão + Nova Conversa no Cabeçalho */}
@@ -403,84 +441,34 @@ export default function ChatDmModal({
             }}
             onClose={() => setIsSelectingNewContact(false)}
           />
-        ) : !selectedContact ? (() => {
-          const totalPages = Math.max(1, Math.ceil(conversations.length / ITEMS_PER_PAGE));
-          const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-          const paginatedConversations = conversations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-          return (
-            <>
-              <div
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  padding: '12px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-                data-testid="dm-conversations-list"
-              >
-                {loading ? (
-                  <div style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#94a3b8' }}>
-                    <Loader2 size={28} className="animate-spin" color="#38bdf8" />
-                    <span style={{ fontSize: '0.85rem' }}>Carregando conversas...</span>
-                  </div>
-                ) : conversations.length === 0 ? (
-                  <div style={{ padding: '48px 16px', textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                    <Sparkles size={36} style={{ opacity: 0.5 }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', fontWeight: 600 }}>
-                        {activeTab === 'unread' ? 'Nenhuma mensagem não lida.' : 'Nenhuma conversa na Inbox ainda.'}
-                      </p>
-                      <p style={{ margin: '4px 0 0', fontSize: '0.78rem' }}>
-                        Inicie uma conversa privada chamando qualquer membro da plataforma.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsSelectingNewContact(true)}
-                      data-testid="dm-empty-state-new-conversation-btn"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px',
-                        backgroundColor: '#0284c7', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.82rem',
-                        cursor: 'pointer', marginTop: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
-                      }}
-                    >
-                      <UserPlus size={16} />
-                      <span>Iniciar Nova Conversa</span>
-                    </button>
-                  </div>
-                ) : (
-                  paginatedConversations.map((item) => (
-                    <ChatDmConversationItem
-                      key={item.contact.id}
-                      item={item}
-                      onSelect={setSelectedContact}
-                    />
-                  ))
-                )}
-              </div>
-
-              {!loading && conversations.length > 0 && (
-                <ChatDmPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={conversations.length}
-                  startIndex={startIndex}
-                  itemsPerPage={ITEMS_PER_PAGE}
-                  onPageChange={setCurrentPage}
-                />
-              )}
-            </>
-          );
-        })() : (
+        ) : !selectedContact ? (
+          activeTab === 'team_support' ? (
+            <ChatDmAdminSupportList
+              onSelectConversation={(thread) => {
+                setSelectedAdminThread(thread);
+                setSelectedContact(thread.student);
+                setIsSelectingNewContact(false);
+              }}
+            />
+          ) : (
+            <ChatDmInboxList
+              conversations={conversations}
+              loading={loading}
+              activeTab={activeTab}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              onSelectContact={setSelectedContact}
+              onStartNewConversation={() => setIsSelectingNewContact(true)}
+            />
+          )
+        ) : (
           <ChatDmConversationView
             selectedContact={selectedContact}
             currentUser={currentUser}
             messages={messages}
             loading={loadingMessages}
             onSendMessage={handleSendDmMessage}
+            adminThread={selectedAdminThread}
           />
         )}
       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, LogOut, GraduationCap, Settings, UserCheck, Webhook,
   HelpCircle, X, MessagesSquare, MessageSquareQuote, Trophy,
-  GitBranch, Home, Handshake, Server, Calendar, ChevronDown
+  GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass
 } from 'lucide-react';
 import { SidebarLinksGroup } from './navigation/UnifiedSectionSubTabs';
 
@@ -82,6 +82,9 @@ export default function Sidebar({
               localStorage.removeItem('platform_logo');
             }
           }
+          if (data?.is_astrology_platform !== undefined) {
+            localStorage.setItem('is_astrology_platform', String(Boolean(data.is_astrology_platform)));
+          }
         }
       } catch {
         // silencioso
@@ -104,6 +107,9 @@ export default function Sidebar({
           localStorage.removeItem('platform_logo');
         }
       }
+      if (e?.detail?.is_astrology_platform !== undefined) {
+        localStorage.setItem('is_astrology_platform', String(Boolean(e.detail.is_astrology_platform)));
+      }
     };
 
     window.addEventListener('platform_links_updated', handleLinksUpdated);
@@ -122,7 +128,7 @@ export default function Sidebar({
       title: isAluno ? 'Meu Aprendizado' : 'Área Pedagógica',
       items: [
         ...(isSuperAdmin || isAdmin || isAluno
-          ? [{ id: 'home', label: 'Início', icon: Home }]
+          ? [{ id: 'home', label: 'Comece Aqui', icon: Home }]
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'courses', label: 'Cursos', icon: GraduationCap }]
@@ -147,6 +153,9 @@ export default function Sidebar({
       id: 'comunidade',
       title: 'Comunidade & Social',
       items: [
+        ...(isSuperAdmin || isAdmin
+          ? [{ id: 'community-feed', label: 'Feed da Comunidade', icon: Compass }]
+          : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'chat', label: 'Chat da Comunidade', icon: MessagesSquare, badge: chatUnreadCount }]
           : []),

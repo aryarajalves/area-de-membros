@@ -763,3 +763,70 @@ def dispatch_tutor_ia_lifecycle_funnels(
     except Exception as exc:
         logger.error(f"[FUNNEL TUTOR IA] Erro ao disparar funis: {exc}")
     return dispatched
+
+
+def dispatch_first_login_funnels(db: Session, student_id: int, db_session_factory=None) -> int:
+    """
+    Dispara funis ativos que contenham nó do tipo 'trigger' com trigger_event='first_login'
+    quando o aluno realiza o primeiro login (1º acesso) na plataforma.
+    Garante execução única por aluno.
+    """
+    dispatched = 0
+    factory = db_session_factory or sessionmaker(bind=db.get_bind())
+    try:
+        active_funnels = db.query(Funnel).filter(Funnel.is_active == True).all()
+        for f in active_funnels:
+            try:
+                flow = json.loads(f.flow_data or "{}")
+            except Exception:
+                continue
+
+            nodes = flow.get("nodes", [])
+            trigger_node = None
+            for n in nodes:
+                if n.get("type") == "trigger":
+                    data = n.get("data", {})
+                    if data.get("trigger_event") == "first_login":
+                        trigger_node = n
+                        break
+
+            if not trigger_node:
+                continue
+
+            # Garante execução única por aluno neste funil
+            already_run = db.query(FunnelExecution).filter(
+                FunnelExecution.funnel_id == f.id,
+                FunnelExecution.user_id == student_id,
+            ).first()
+            if already_run:
+                continue
+
+            execution = FunnelExecution(
+                funnel_id=f.id,
+                user_id=student_id,
+                triggered_by="trigger_first_login",
+                status="running",
+                started_at=datetime.now(timezone.utc),
+                logs="Gatilho de primeiro login (1º acesso) iniciado",
+            )
+            db.add(execution)
+            db.commit()
+            db.refresh(execution)
+
+            sender_id = get_system_sender_id(db, f)
+            _launch_funnel_execution(
+                funnel_id=f.id,
+                student_id=student_id,
+                sender_id=sender_id,
+                trigger_tag="trigger_first_login",
+                execution_id=execution.id,
+                factory=factory,
+            )
+            dispatched += 1
+            logger.info(f"[FUNNEL GATILHO] Funil #{f.id} disparado no 1º login do aluno #{student_id}")
+
+    except Exception as exc:
+        logger.error(f"[FUNNEL GATILHO] Erro ao disparar funis de primeiro login: {exc}")
+
+    return dispatched
+

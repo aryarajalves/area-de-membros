@@ -3,6 +3,7 @@ import { Bookmark, Menu, MessageSquare, Bell } from 'lucide-react';
 import FavoritesDropdown from '../favorites/FavoritesDropdown';
 import ChatDmModal from '../chat/ChatDmModal';
 import NotificationsModal from '../notifications/NotificationsModal';
+import { OnlineStatusDot } from '../common/OnlineStatusBadge';
 import { useTopNavbarSocket } from './useTopNavbarSocket';
 
 export default function TopNavbar({
@@ -19,7 +20,27 @@ export default function TopNavbar({
   const [unreadDmCount, setUnreadDmCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [onlineStats, setOnlineStats] = useState({ total_online: 0, students_online: 0, superadmins_online: 0, admins_online: 0 });
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
+
+  const isManager = user?.role === 'superadmin' || user?.role === 'admin';
+
+  const fetchOnlineStats = useCallback(async () => {
+    if (!isManager) return;
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch('/api/v1/presence/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setOnlineStats(json);
+      }
+    } catch {
+      // Silencioso
+    }
+  }, [isManager]);
 
   useEffect(() => {
     const handleWhiteLabelUpdated = (e) => {
@@ -96,10 +117,12 @@ export default function TopNavbar({
     fetchTotalCount();
     fetchUnreadDms();
     fetchUnreadNotifications();
+    fetchOnlineStats();
     const handleUpdate = () => {
       fetchTotalCount();
       fetchUnreadDms();
       fetchUnreadNotifications();
+      fetchOnlineStats();
     };
     window.addEventListener('favorites_updated', handleUpdate);
     window.addEventListener('dm_updated', handleUpdate);
@@ -110,6 +133,7 @@ export default function TopNavbar({
       fetchUnreadNotifications();
       fetchUnreadDms();
       fetchTotalCount();
+      fetchOnlineStats();
     }, 30000);
 
     return () => {
@@ -118,7 +142,7 @@ export default function TopNavbar({
       window.removeEventListener('notifications_updated', handleUpdate);
       clearInterval(intervalId);
     };
-  }, [fetchTotalCount, fetchUnreadDms, fetchUnreadNotifications]);
+  }, [fetchTotalCount, fetchUnreadDms, fetchUnreadNotifications, fetchOnlineStats]);
 
 
   const handleNavigateFromFavorites = (type, item) => {
@@ -234,6 +258,39 @@ export default function TopNavbar({
 
       {/* Lado Direito: Botão Favoritos, Dropdown e Avatar */}
       <div className="topbar-right-group" style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
+        {isManager && (
+          <div
+            data-testid="navbar-online-pill"
+            title={`${onlineStats.students_online || 0} aluno(s) e ${(onlineStats.superadmins_online || 0) + (onlineStats.admins_online || 0)} equipe online agora`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 11px',
+              borderRadius: '20px',
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34d399',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'default',
+              userSelect: 'none',
+            }}
+          >
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: '#10b981',
+                boxShadow: '0 0 6px #10b981',
+                flexShrink: 0,
+              }}
+            />
+            <span>{onlineStats.total_online || 0} online</span>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => setIsFavoritesOpen((prev) => !prev)}
@@ -399,29 +456,32 @@ export default function TopNavbar({
         />
 
         {/* Avatar do Usuário */}
-        <div
-          data-testid="mobile-header-avatar"
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(56, 189, 248, 0.15)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            color: '#38bdf8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt={user.name || 'Avatar'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            (user?.name || 'U').charAt(0).toUpperCase()
-          )}
+        <div style={{ position: 'relative', width: '32px', height: '32px', flexShrink: 0 }}>
+          <div
+            data-testid="mobile-header-avatar"
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              overflow: 'hidden',
+              flexShrink: 0,
+            }}
+          >
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.name || 'Avatar'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              (user?.name || 'U').charAt(0).toUpperCase()
+            )}
+          </div>
+          <OnlineStatusDot isOnline={true} size={9} />
         </div>
       </div>
     </header>

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Image, Upload, RotateCcw, Check, Sparkles, HelpCircle, Eye } from 'lucide-react';
 import defaultLoginBanner from '../../assets/login-banner.jpg';
 import PlatformWhiteLabelLogoCard from './PlatformWhiteLabelLogoCard';
+import PlatformAstrologySettingsCard from './PlatformAstrologySettingsCard';
 
 export default function PlatformWhiteLabelTab({
+  currentUser,
   cardBg,
   cardBorder,
   textColor,
@@ -14,6 +16,7 @@ export default function PlatformWhiteLabelTab({
   const [platformName, setPlatformName] = useState('Área de Membros');
   const [loginBannerUrl, setLoginBannerUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [isAstrologyPlatform, setIsAstrologyPlatform] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ export default function PlatformWhiteLabelTab({
           setPlatformName(data.platform_name || 'Área de Membros');
           setLoginBannerUrl(data.login_banner_url || null);
           setLogoUrl(data.logo_url || null);
+          setIsAstrologyPlatform(Boolean(data.is_astrology_platform));
         }
       } catch (err) {
         console.error('Erro ao carregar configurações WhiteLabel:', err);
@@ -369,6 +373,18 @@ export default function PlatformWhiteLabelTab({
           </div>
         </div>
       </div>
+
+      {/* Módulo de Nicho / Astrologia (Exclusivo Super Admin) */}
+      <PlatformAstrologySettingsCard
+        isAstrologyPlatform={isAstrologyPlatform}
+        currentUser={currentUser}
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        addToast={addToast}
+        onSettingChange={(val) => setIsAstrologyPlatform(val)}
+      />
     </div>
   );
 }

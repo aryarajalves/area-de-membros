@@ -37,3 +37,9 @@ reportlab>=4.2.0
 
 # Geracao de QR Code de autenticidade para validacao publica de certificados emitidos
 qrcode>=7.4.2
+
+# Cliente Redis para Pub/Sub de WebSockets multi-worker e gestao distribuida de presenca/sessoes online
+redis>=5.0.0
+
+# Suporte nativo a vetores de embedding e busca semantica de alta velocidade no PostgreSQL para o Tutor IA
+pgvector>=0.2.0

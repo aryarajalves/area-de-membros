@@ -316,4 +316,57 @@ describe('LessonAttachmentsList Component', () => {
       expect(onAttachmentAdded).toHaveBeenCalledTimes(3);
     });
   });
+
+  it('permite abrir o modal de renomear e atualiza o anexo via PATCH com sucesso', async () => {
+    const onAttachmentUpdated = vi.fn();
+    global.fetch = vi.fn().mockImplementation((url, options) => {
+      if (url === '/api/v1/courses/1/modules/2/lessons/10/attachments/1' && options?.method === 'PATCH') {
+        const body = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...mockList[0],
+            title: body.title
+          })
+        });
+      }
+      return Promise.reject(new Error('Unknown url'));
+    });
+
+    render(
+      <ToastProvider>
+        <LessonAttachmentsList
+          attachments={mockList}
+          isManager={true}
+          courseId={1}
+          moduleId={2}
+          lessonId={10}
+          onAttachmentUpdated={onAttachmentUpdated}
+        />
+      </ToastProvider>
+    );
+
+    const renameBtn = screen.getByTestId('rename-attachment-btn-1');
+    fireEvent.click(renameBtn);
+
+    expect(screen.getByTestId('rename-attachment-modal')).toBeInTheDocument();
+    const input = screen.getByTestId('rename-attachment-input');
+    fireEvent.change(input, { target: { value: 'Guia Prático Renomeado.pdf' } });
+
+    const confirmBtn = screen.getByTestId('confirm-rename-modal-btn');
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/courses/1/modules/2/lessons/10/attachments/1',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ title: 'Guia Prático Renomeado.pdf' })
+        })
+      );
+      expect(onAttachmentUpdated).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Guia Prático Renomeado.pdf' })
+      );
+    });
+  });
 });

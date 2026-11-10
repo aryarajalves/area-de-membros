@@ -90,10 +90,29 @@ def create_tutorial(
             max_order = db.query(Tutorial).count()
             order_idx = max_order + 1
 
+        c_type = (data.content_type or "video").lower()
+        if c_type == "text":
+            if not data.text_content or not data.text_content.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="O conteúdo do tutorial em texto não pode ser vazio."
+                )
+            v_url = data.video_url.strip() if data.video_url else None
+        else:
+            c_type = "video"
+            if not data.video_url or not data.video_url.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A URL do vídeo é obrigatória para tutoriais em vídeo."
+                )
+            v_url = data.video_url.strip()
+
         tutorial = Tutorial(
             title=data.title.strip(),
             description=data.description.strip() if data.description else None,
-            video_url=data.video_url.strip(),
+            content_type=c_type,
+            text_content=data.text_content.strip() if data.text_content else None,
+            video_url=v_url,
             video_key=data.video_key,
             thumbnail_url=data.thumbnail_url,
             duration=data.duration,
@@ -105,6 +124,9 @@ def create_tutorial(
         db.refresh(tutorial)
         logger.info(f"[Tutorials] Tutorial '{tutorial.title}' criado por {admin.email}")
         return tutorial
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as exc:
         db.rollback()
         logger.error(f"[Tutorials] Erro ao criar tutorial: {exc}")
@@ -161,6 +183,10 @@ def update_tutorial(
             tutorial.title = data.title.strip()
         if data.description is not None:
             tutorial.description = data.description.strip() if data.description else None
+        if data.content_type is not None:
+            tutorial.content_type = data.content_type.strip().lower()
+        if data.text_content is not None:
+            tutorial.text_content = data.text_content.strip() if data.text_content else None
         if data.video_url is not None:
             tutorial.video_url = data.video_url.strip()
         if data.video_key is not None:

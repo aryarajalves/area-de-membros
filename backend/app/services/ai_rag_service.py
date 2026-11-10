@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
 from app.core.logger import logger
+from app.core.config import settings
 from app.models.course import Course, Module, Lesson, LessonTranscription, UserCourse
 from app.models.tutor_ia import AiKnowledgeChunk
 from app.services.ai_transcription_service import get_openai_api_key
@@ -370,20 +371,23 @@ async def index_lesson_rag(db: Session, lesson_id: int) -> Dict[str, Any]:
     saved_count = 0
     now = datetime.now(timezone.utc)
     for idx, (c, emb) in enumerate(zip(raw_chunks, embeddings)):
-        chunk_db = AiKnowledgeChunk(
-            course_id=course.id,
-            module_id=module.id,
-            lesson_id=lesson.id,
-            chunk_index=idx,
-            chunk_type="transcript",
-            content=c["content"],
-            start_time_seconds=c["start_time_seconds"],
-            end_time_seconds=c["end_time_seconds"],
-            embedding_json=json.dumps(emb),
-            token_count=c["token_count"],
-            created_at=now,
-            updated_at=now
-        )
+        chunk_data = {
+            "course_id": course.id,
+            "module_id": module.id,
+            "lesson_id": lesson.id,
+            "chunk_index": idx,
+            "chunk_type": "transcript",
+            "content": c["content"],
+            "start_time_seconds": c["start_time_seconds"],
+            "end_time_seconds": c["end_time_seconds"],
+            "embedding_json": json.dumps(emb),
+            "token_count": c["token_count"],
+            "created_at": now,
+            "updated_at": now
+        }
+        if hasattr(AiKnowledgeChunk, "embedding"):
+            chunk_data["embedding"] = emb
+        chunk_db = AiKnowledgeChunk(**chunk_data)
         db.add(chunk_db)
         saved_count += 1
 
@@ -403,22 +407,25 @@ async def index_lesson_rag(db: Session, lesson_id: int) -> Dict[str, Any]:
             qa_embeddings = await generate_embeddings_batch(qa_texts_to_embed)
             for idx, (qa, emb) in enumerate(zip(qa_pairs, qa_embeddings), start=saved_count):
                 qa_content = f"Pergunta: {qa['question']}\nResposta: {qa['answer']}"
-                chunk_qa = AiKnowledgeChunk(
-                    course_id=course.id,
-                    module_id=module.id,
-                    lesson_id=lesson.id,
-                    chunk_index=idx,
-                    chunk_type="qa_pair",
-                    question_text=qa["question"],
-                    answer_text=qa["answer"],
-                    content=qa_content,
-                    start_time_seconds=qa.get("start_time_seconds", 0),
-                    end_time_seconds=qa.get("end_time_seconds", 0),
-                    embedding_json=json.dumps(emb),
-                    token_count=len(qa_content.split()),
-                    created_at=now,
-                    updated_at=now
-                )
+                qa_data = {
+                    "course_id": course.id,
+                    "module_id": module.id,
+                    "lesson_id": lesson.id,
+                    "chunk_index": idx,
+                    "chunk_type": "qa_pair",
+                    "question_text": qa["question"],
+                    "answer_text": qa["answer"],
+                    "content": qa_content,
+                    "start_time_seconds": qa.get("start_time_seconds", 0),
+                    "end_time_seconds": qa.get("end_time_seconds", 0),
+                    "embedding_json": json.dumps(emb),
+                    "token_count": len(qa_content.split()),
+                    "created_at": now,
+                    "updated_at": now
+                }
+                if hasattr(AiKnowledgeChunk, "embedding"):
+                    qa_data["embedding"] = emb
+                chunk_qa = AiKnowledgeChunk(**qa_data)
                 db.add(chunk_qa)
                 saved_count += 1
                 qa_count += 1
@@ -600,51 +607,97 @@ async def search_rag_chunks(
     if not all_query_embeddings:
         return []
 
-    # Busca chunks de cursos que o aluno tem permissão
-    query = (
-        db.query(AiKnowledgeChunk, Lesson, Module, Course)
-        .join(Lesson, AiKnowledgeChunk.lesson_id == Lesson.id)
-        .join(Module, AiKnowledgeChunk.module_id == Module.id)
-        .join(Course, AiKnowledgeChunk.course_id == Course.id)
-        .filter(AiKnowledgeChunk.course_id.in_(permitted_course_ids))
-    )
-
-    candidates = query.all()
-    if not candidates:
-        return []
-
     # Guarda o melhor score por chunk_id (deduplicação entre sub-queries)
     best_chunks_by_id: Dict[int, Dict[str, Any]] = {}
+    use_pgvector = False
 
-    for q_emb in all_query_embeddings:
-        for chunk, lesson, module, course in candidates:
-            try:
-                c_emb = json.loads(chunk.embedding_json)
-                sim = dot_product(q_emb, c_emb)
-                if sim >= min_similarity:
-                    curr_best = best_chunks_by_id.get(chunk.id)
-                    if not curr_best or sim > curr_best["similarity"]:
-                        best_chunks_by_id[chunk.id] = {
-                            "chunk_id": chunk.id,
-                            "chunk_type": getattr(chunk, "chunk_type", "transcript") or "transcript",
-                            "question_text": getattr(chunk, "question_text", None),
-                            "answer_text": getattr(chunk, "answer_text", None),
-                            "lesson_id": lesson.id,
-                            "lesson_title": lesson.title,
-                            "module_id": module.id,
-                            "module_title": module.title,
-                            "course_id": course.id,
-                            "course_title": course.title,
-                            "content": chunk.content,
-                            "start_time_seconds": chunk.start_time_seconds,
-                            "end_time_seconds": chunk.end_time_seconds,
-                            "start_time_str": seconds_to_time(chunk.start_time_seconds),
-                            "end_time_str": seconds_to_time(chunk.end_time_seconds),
-                            "similarity": round(float(sim), 4),
-                            "is_current_lesson": bool(current_lesson_id and lesson.id == current_lesson_id)
-                        }
-            except Exception:
-                continue
+    # 1. Tenta busca vetorial nativa indexada no PostgreSQL via pgvector (HNSW)
+    if getattr(settings, "PGVECTOR_ENABLED", True) and hasattr(AiKnowledgeChunk, "embedding"):
+        try:
+            bind = db.get_bind() if hasattr(db, "get_bind") else getattr(db, "bind", None)
+            if bind and bind.dialect.name == "postgresql":
+                for q_emb in all_query_embeddings:
+                    sim_expr = 1 - AiKnowledgeChunk.embedding.cosine_distance(q_emb)
+                    results = (
+                        db.query(AiKnowledgeChunk, Lesson, Module, Course, sim_expr.label("similarity"))
+                        .join(Lesson, AiKnowledgeChunk.lesson_id == Lesson.id)
+                        .join(Module, AiKnowledgeChunk.module_id == Module.id)
+                        .join(Course, AiKnowledgeChunk.course_id == Course.id)
+                        .filter(
+                            AiKnowledgeChunk.course_id.in_(permitted_course_ids),
+                            AiKnowledgeChunk.embedding.isnot(None),
+                            sim_expr >= min_similarity
+                        )
+                        .order_by(AiKnowledgeChunk.embedding.cosine_distance(q_emb).asc())
+                        .limit(limit * 2)
+                        .all()
+                    )
+                    for chunk, lesson, module, course, sim in results:
+                        curr_best = best_chunks_by_id.get(chunk.id)
+                        if not curr_best or sim > curr_best["similarity"]:
+                            best_chunks_by_id[chunk.id] = {
+                                "chunk_id": chunk.id,
+                                "chunk_type": getattr(chunk, "chunk_type", "transcript") or "transcript",
+                                "question_text": getattr(chunk, "question_text", None),
+                                "answer_text": getattr(chunk, "answer_text", None),
+                                "lesson_id": lesson.id,
+                                "lesson_title": lesson.title,
+                                "module_id": module.id,
+                                "module_title": module.title,
+                                "course_id": course.id,
+                                "course_title": course.title,
+                                "content": chunk.content,
+                                "start_time_seconds": chunk.start_time_seconds,
+                                "end_time_seconds": chunk.end_time_seconds,
+                                "start_time_str": seconds_to_time(chunk.start_time_seconds),
+                                "end_time_str": seconds_to_time(chunk.end_time_seconds),
+                                "similarity": round(float(sim), 4),
+                                "is_current_lesson": bool(current_lesson_id and lesson.id == current_lesson_id)
+                            }
+                use_pgvector = True
+        except Exception as e_pgv:
+            logger.debug(f"[PGVECTOR] Fallback para busca in-memory: {e_pgv}")
+            use_pgvector = False
+
+    # 2. Fallback in-memory para SQLite ou quando pgvector não estiver ativo
+    if not use_pgvector:
+        query = (
+            db.query(AiKnowledgeChunk, Lesson, Module, Course)
+            .join(Lesson, AiKnowledgeChunk.lesson_id == Lesson.id)
+            .join(Module, AiKnowledgeChunk.module_id == Module.id)
+            .join(Course, AiKnowledgeChunk.course_id == Course.id)
+            .filter(AiKnowledgeChunk.course_id.in_(permitted_course_ids))
+        )
+        candidates = query.all()
+        for q_emb in all_query_embeddings:
+            for chunk, lesson, module, course in candidates:
+                try:
+                    c_emb = json.loads(chunk.embedding_json)
+                    sim = dot_product(q_emb, c_emb)
+                    if sim >= min_similarity:
+                        curr_best = best_chunks_by_id.get(chunk.id)
+                        if not curr_best or sim > curr_best["similarity"]:
+                            best_chunks_by_id[chunk.id] = {
+                                "chunk_id": chunk.id,
+                                "chunk_type": getattr(chunk, "chunk_type", "transcript") or "transcript",
+                                "question_text": getattr(chunk, "question_text", None),
+                                "answer_text": getattr(chunk, "answer_text", None),
+                                "lesson_id": lesson.id,
+                                "lesson_title": lesson.title,
+                                "module_id": module.id,
+                                "module_title": module.title,
+                                "course_id": course.id,
+                                "course_title": course.title,
+                                "content": chunk.content,
+                                "start_time_seconds": chunk.start_time_seconds,
+                                "end_time_seconds": chunk.end_time_seconds,
+                                "start_time_str": seconds_to_time(chunk.start_time_seconds),
+                                "end_time_str": seconds_to_time(chunk.end_time_seconds),
+                                "similarity": round(float(sim), 4),
+                                "is_current_lesson": bool(current_lesson_id and lesson.id == current_lesson_id)
+                            }
+                except Exception:
+                    continue
 
     scored_chunks = list(best_chunks_by_id.values())
     scored_chunks.sort(key=lambda x: x["similarity"], reverse=True)

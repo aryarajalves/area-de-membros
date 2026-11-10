@@ -4,35 +4,67 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 
 ---
 
-## 0. Tela de InÃ­cio e Tutoriais da Plataforma (Onboarding)
-- **BotÃ£o "InÃ­cio" na Barra Lateral (`Sidebar`):**
-  - Posicionado como o primeiro item da categoria pedagÃ³gica (*"Meu Aprendizado"* para alunos e *"Ãrea PedagÃ³gica"* para administradores), com Ã­cone `Home`.
-  - VisÃ­vel e acessÃ­vel para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
-- **Comportamento de Entrada e Redirecionamento AutomÃ¡tico:**
-  - **Com Tutoriais Publicados:** Se houver ao menos 1 vÃ­deo tutorial cadastrado no sistema, tanto alunos quanto administradores caem automaticamente na tela **InÃ­cio** ao acessar a Ãrea de Membros.
-  - **Sem Tutoriais Publicados:** Caso ainda nÃ£o exista nenhum vÃ­deo tutorial cadastrado no banco de dados, o usuÃ¡rio Ã© direcionado automaticamente e de forma transparente para a tela de **Cursos** (`courses`).
+## 0. Tela de Comece Aqui e Tutoriais da Plataforma (Onboarding)
+- **Botão "Comece Aqui" na Barra Lateral (`Sidebar`):**
+  - Posicionado como o primeiro item da categoria pedagógica (*"Meu Aprendizado"* para alunos e *"Área Pedagógica"* para administradores), com ícone `Home` e rótulo **"Comece Aqui"**.
+  - Visível e acessível para todos os perfis autenticados (`aluno`, `admin`, `superadmin`).
+- **Suporte a Tutoriais em Vídeo e Tutoriais 100% em Texto (Artigos com Markdown):**
+  - Ao criar ou editar um tutorial, o gestor escolhe entre:
+    - **Vídeo Tutorial:** Upload direto de arquivo (Backblaze B2 / MP4) ou link externo (YouTube/Vimeo), com duração em cronômetro (`MM:SS`) e botão de geração de descrição via IA.
+    - **Artigo em Texto:** Conteúdo 100% textual com suporte completo a formatação Markdown (títulos `#` e `##`, negrito `**`, itálico `*`, listas `-`, citações em destaque `>` e divisores `---`), com abas dinâmicas *"Escrever"* e *"Visualizar"*, além de cálculo automático do tempo estimado de leitura (ex: `X min de leitura`).
+  - **Exibição do Conteúdo Ativo:**
+    - Se o tutorial ativo for de vídeo, renderiza o Player 16:9 Widescreen.
+    - Se o tutorial ativo for de texto, renderiza o `TutorialArticleViewer` no padrão glassmorphism com badge temático de artigo, tipografia refinada e espaçamentos harmônicos.
+  - **Playlist Lateral:**
+    - Exibe badge indicativo para cada item: `Vídeo` ou `Artigo`, com seus respectivos ícones (`Play` ou `FileText`) e tempos de duração / leitura.
+- **Comportamento de Entrada e Redirecionamento Automático:**
+  - **Com Tutoriais Publicados:** Se houver ao menos 1 tutorial cadastrado no sistema, tanto alunos quanto administradores caem automaticamente na tela **Comece Aqui** ao acessar a Área de Membros.
+  - **Sem Tutoriais Publicados:** Caso ainda não exista nenhum tutorial cadastrado no banco de dados, o usuário é direcionado automaticamente e de forma transparente para a tela de **Cursos** (`courses`).
 - **Estrutura Visual da Tela:**
-  - **Player em Destaque:** Exibe o vÃ­deo ativo em proporÃ§Ã£o widescreen 16:9, suportando tanto arquivos hospedados em nuvem (Backblaze B2 / MP4) quanto links externos (YouTube e Vimeo via embed responsivo).
-  - **Card de InformaÃ§Ãµes:** TÃ­tulo da aula de tutorial em destaque, duraÃ§Ã£o estimada (`MM:SS`) e descriÃ§Ã£o detalhada com tÃ³picos abordados.
+  - **Player em Destaque:** Exibe o vídeo ativo em proporção widescreen 16:9, suportando tanto arquivos hospedados em nuvem (Backblaze B2 / MP4) quanto links externos (YouTube e Vimeo via embed responsivo).
+  - **Card de Informações:** Título da aula de tutorial em destaque, duração estimada (`MM:SS`) e descrição detalhada com tópicos abordados.
   - **Playlist Lateral Interativa:** Lista numerada de todas as aulas de tutorial cadastradas, permitindo alternar de aula instantaneamente com um clique.
-- **PermissÃµes de GestÃ£o e Upload de Tutoriais:**
-  - **Alunos:** TÃªm acesso estritamente de visualizaÃ§Ã£o e aprendizado (sem botÃµes de adicionar, editar ou excluir).
-  - **Administradores e Super Admins:** Possuem acesso completo de gestÃ£o atravÃ©s do botÃ£o **`+ Nova Aula de Tutorial`** no topo, alÃ©m de botÃµes para **Editar** e **Excluir** diretamente em cada item da playlist.
-  - **ExclusÃ£o Segura:** Toda exclusÃ£o de tutorial exige confirmaÃ§Ã£o obrigatÃ³ria em popup modal centralizado com fundo escuro (`DeleteTutorialConfirmModal`), removendo o registro e limpando a mÃ­dia do Backblaze B2 quando aplicÃ¡vel.
-- **RenderizaÃ§Ã£o e PrÃ©-visualizaÃ§Ã£o do VÃ­deo no Modal (`TutorialVideoPreview`):**
-  - Ao selecionar um arquivo de vÃ­deo do computador para upload, o modal exibe imediatamente um player nativo HTML5 renderizando o vÃ­deo com controles de reproduÃ§Ã£o, facilitando a conferÃªncia do arquivo antes de salvar.
-  - Para links externos (YouTube/Vimeo) ou ediÃ§Ã£o de tutoriais existentes, o componente renderiza o respectivo embed ou player nativo responsivo no padrÃ£o glassmorphism.
-- **TranscriÃ§Ã£o e GeraÃ§Ã£o de DescriÃ§Ã£o Detalhada com IA (`generateTutorialAiDescriptionApi`):**
-  - No modal de tutorial, junto ao campo *"DescriÃ§Ã£o / O que vocÃª vai aprender"*, hÃ¡ o botÃ£o em destaque **"Gerar com IA"** (`Sparkles`).
-  - Ao ser acionado com um vÃ­deo selecionado ou informado, o backend extrai o Ã¡udio via FFmpeg, realiza a transcriÃ§Ã£o completa utilizando a API OpenAI Whisper (`whisper-1`) e, em seguida, gera via GPT (`gpt-4o-mini`) uma descriÃ§Ã£o pedagÃ³gica detalhada citando todos os passos, telas, orientaÃ§Ãµes e tÃ³picos que o instrutor fala no vÃ­deo.
-  - O texto gerado e a duraÃ§Ã£o estimada em formato cronÃ´metro (`MM:SS`) sÃ£o automaticamente preenchidos nos respectivos campos do formulÃ¡rio para revisÃ£o do gestor.
-- **Layout Responsivo e AdaptaÃ§Ã£o Mobile (`home-tutorials.css`):**
-  - Em smartphones e tablets (`<= 1024px` e `<= 768px`), o layout de grade de duas colunas colapsa automaticamente para coluna Ãºnica vertical sem quebras.
-  - O Player 16:9 se ajusta Ã  largura total da tela, com as informaÃ§Ãµes da aula logo abaixo e a Playlist de tutoriais posicionada na sequÃªncia inferior com rolagem fluida, eliminando completamente sobreposiÃ§Ãµes visuais entre os cards.
-  - O cabeÃ§alho se organiza em fluxo vertical com botÃ£o de criaÃ§Ã£o expandido e toque acessÃ­vel.
+- **Permissões de Gestão e Upload de Tutoriais:**
+  - **Alunos:** Têm acesso estritamente de visualização e aprendizado (sem botões de adicionar, editar ou excluir).
+  - **Administradores e Super Admins:** Possuem acesso completo de gestão através do botão **`+ Nova Aula de Tutorial`** no topo, além de botões para **Editar** e **Excluir** diretamente em cada item da playlist.
+  - **Exclusão Segura:** Toda exclusão de tutorial exige confirmação obrigatória em popup modal centralizado com fundo escuro (`DeleteTutorialConfirmModal`), removendo o registro e limpando a mídia do Backblaze B2 quando aplicável.
+- **Renderização e Pré-visualização do Vídeo no Modal (`TutorialVideoPreview`):**
+  - Ao selecionar um arquivo de vídeo do computador para upload, o modal exibe imediatamente um player nativo HTML5 renderizando o vídeo com controles de reprodução, facilitando a conferência do arquivo antes de salvar.
+  - Para links externos (YouTube/Vimeo) ou edição de tutoriais existentes, o componente renderiza o respectivo embed ou player nativo responsivo no padrão glassmorphism.
+- **Transcrição e Geração de Descrição Detalhada com IA (`generateTutorialAiDescriptionApi`):**
+  - No modal de tutorial de vídeo, junto ao campo *"Descrição / O que você vai aprender"*, há o botão em destaque **"Gerar com IA"** (`Sparkles`).
+  - Ao ser acionado com um vídeo selecionado ou informado, o backend extrai o áudio via FFmpeg, realiza a transcrição completa utilizando a API OpenAI Whisper (`whisper-1`) e, em seguida, gera via GPT (`gpt-4o-mini`) uma descrição pedagógica detalhada citando todos os passos, telas, orientações e tópicos que o instrutor fala no vídeo.
+  - O texto gerado e a duração estimada em formato cronômetro (`MM:SS`) são automaticamente preenchidos nos respectivos campos do formulário para revisão do gestor.
+- **Layout Responsivo e Adaptação Mobile (`home-tutorials.css`):**
+  - Em smartphones e tablets (`<= 1024px` e `<= 768px`), o layout de grade de duas colunas colapsa automaticamente para coluna única vertical sem quebras.
+  - O Player 16:9 se ajusta à largura total da tela, com as informações da aula logo abaixo e a Playlist de tutoriais posicionada na sequência inferior com rolagem fluida, eliminando completamente sobreposições visuais entre os cards.
+  - O cabeçalho se organiza em fluxo vertical com botão de criação expandido e toque acessível.
 
 ---
 
+## 0.0. Gamificação e Curva Exponencial de Níveis (RPG)
+- **Equilíbrio e Progressão:**
+  - A curva de subida de nível utiliza progressão exponencial para valorizar o esforço contínuo do aluno e evitar que poucos vídeos concluídos alcancem patamares avançados precocemente:
+    - **Bronze I:** 0 pts
+    - **Bronze II:** 100 pts
+    - **Bronze III:** 250 pts
+    - **Bronze IV:** 500 pts
+    - **Prata I:** 850 pts
+    - **Prata II:** 1.300 pts
+    - **Prata III:** 1.850 pts
+    - **Prata IV:** 2.500 pts
+    - **Ouro I:** 3.300 pts
+    - **Ouro II:** 4.250 pts
+    - **Ouro III:** 5.350 pts
+    - **Ouro IV:** 6.600 pts
+    - **Diamante I a IV:** 8.000 pts a 14.500 pts
+    - **Mestre:** 18.000 pts
+    - **Grão-Mestre:** 23.000 pts
+    - **Challenger:** 30.000 pts
+    - **Lenda Suprema:** 40.000 pts
+  - Cada aula assistida rende 30 pontos. Desta forma, para alcançar Bronze IV (500 pts), o aluno precisa concluir cerca de 17 aulas e interações, garantindo uma jornada meritocrática e engajadora.
+
+---
 
 ## 0.1. Módulo de Eventos, Lives e Mentorias
 - **Posicionamento na Barra Lateral (`Sidebar`):**
@@ -64,6 +96,102 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - A exclusão exige confirmação obrigatória via popup modal centralizado com fundo escuro (`DeleteEventConfirmModal`), prevenindo deleções acidentais.
 - **Controle Individual de Marca d'Água Anti-Pirataria nas Aulas (`watermark_enabled`):**
   - No modal de criação e edição de curso (`CourseModalInfoTab` em `CourseFormModal`), o administrador pode ativar ou desativar a exibição da marca d'água dinâmica anti-pirataria (identificação do aluno sobre os vídeos das aulas). Por padrão, novos cursos iniciam com `watermark_enabled = True`.
+
+---
+
+## 0.2. Módulo de Astrologia e Signos Zodiacais (Exclusivo Super Admin)
+- **Ativação Restrita ao Super Admin:**
+  - Configurado na aba de **Configurações > Marca / White Label** através do switch/toggle *"Módulo de Astrologia & Signos Zodiacais"*.
+  - Apenas o Super Admin (`role == 'superadmin'`) visualiza esse card e tem permissão no backend (`PATCH /api/v1/whitelabel`) para alterar a chave `is_astrology_platform`. Qualquer outro perfil tentando alterar recebe `403 Forbidden`.
+- **Comportamento Padrão de Isolamento:**
+  - Por padrão, `is_astrology_platform = false`. Em qualquer instalação padrão (não-astrológica), todos os recursos e badges de signos permanecem 100% invisíveis.
+- **Cálculo Automático do Signo Solar:**
+  - Quando ativado, o sistema calcula o signo solar do aluno em tempo real com base no dia e mês da sua data de nascimento (`birth_date`):
+    - ♈ Áries (21/03 a 19/04) | ♉ Touro (20/04 a 20/05) | ♊ Gêmeos (21/05 a 20/06)
+    - ♋ Câncer (21/06 a 22/07) | ♌ Leão (23/07 a 22/08) | ♍ Virgem (23/08 a 22/09)
+    - ♎ Libra (23/09 a 22/10) | ♏ Escorpião (23/10 a 21/11) | ♐ Sagitário (22/11 a 21/12)
+    - ♑ Capricórnio (22/12 a 19/01) | ♒ Aquário (20/01 a 18/02) | ♓ Peixes (19/02 a 20/03)
+- **Locais de Exibição do Signo:**
+  - **No Perfil do Aluno (`Meu Perfil`):** Badge do signo posicionado junto ao campo de Data de Nascimento.
+  - **Na Gestão de Alunos (`/students`):** No card do aluno (visão da equipe/gestor), exibido ao lado do badge de "Aluno Ativo".
+  - **Na Aba Apresente-se / Comunidade (`/introductions`):** No card e no modal de detalhes da apresentação do membro, ao lado de sua localização e nicho.
+
+---
+
+## 0.3. Status de Presença em Tempo Real (Online / Offline e Visto por Último)
+- **Detecção de Conexão Online:**
+  - O sistema monitora a presença em tempo real por meio da conexão WebSocket ativa do chat/barra superior (`chat_manager.get_online_user_ids()`).
+  - Um usuário é considerado **Online** se mantiver uma conexão WebSocket aberta com a aplicação.
+- **Visto por Último (`last_seen_at`):**
+  - Armazena a data e hora UTC da última atividade, navegação ou envio de sinal (heartbeat) do usuário na tabela `users`.
+- **Exibição Visual:**
+  - **Bolinha de Status:** Verde esmeralda brilhante (`#10b981`) para usuários online e cinza neutro (`#64748b`) para offline, posicionada no canto do avatar.
+  - **Badge de Texto:** Badge estilizada `🟢 Online agora` (quando online) ou `⚪ Visto por último: há X min` / `Offline` (quando desconectado).
+- **Locais de Aplicação:**
+  - **Gestão de Alunos (`/students`):** Exibida no card de cada aluno, com filtro dedicado *"🟢 Apenas Online"* para listar exclusivamente alunos navegando no momento.
+  - **Gestão de Usuários (`/users`):** Exibida na listagem de Super Admins, Admins e equipe.
+  - **Barra Superior (`TopNavbar`):** Contador de membros online para administradores e superadmins (ex: `🟢 X Online`).
+  - **Aba Apresente-se (`/introductions`):** Indicador de status no avatar do autor da apresentação.
+  - **Mensagens Diretas (`ChatDmModal`):** No cabeçalho da conversa, permitindo saber se o interlocutor está disponível para responder.
+
+---
+
+## 0.4. Seleção Avançada de Contatos para Mensagens Diretas (DMs)
+- **Filtro por Perfil de Usuário:**
+  - Permite filtrar candidatos a uma nova conversa por perfil: `Todos os perfis`, `Administradores`, `Alunos` e `Super Admins`.
+- **Filtro por Curso Matriculado:**
+  - Permite filtrar contatos matriculados em um curso específico selecionado no dropdown de cursos da plataforma.
+- **Filtro de Ordenação:**
+  - `🔤 Ordem A-Z (Nome)`
+  - `🔤 Ordem Z-A (Nome)`
+  - `🏆 Maiores Níveis (RPG / Gamificação)` (ordena por pontuação decrescente de gamificação)
+  - `📅 Mais Recentes` e `📅 Mais Antigos`
+- **Paginação de Contatos:**
+  - Exibe no máximo **20 contatos** por página, com controles de paginação ("Anterior", "Próxima", "Página X de Y" e total de membros encontrados).
+- **Indicadores Visuais nos Cards de Contato:**
+  - Ponto indicador de presença online (`OnlineStatusDot`) no avatar.
+  - Badge de Perfil (`Super Admin`, `Admin`, `Aluno`).
+  - Badge de Nível RPG (`Nv. X [Tier]`) para alunos com gamificação ativa.
+  - Botão de ação direta `"Conversar"`.
+
+---
+
+
+## 0.4.1. Supervisão e Auditoria de DMs da Equipe (Exclusivo Super Admin)
+- **Aba "Atendimento da Equipe" no Modal de DMs (`ChatDmModal`):**
+  - Visível **exclusivamente para o Super Admin** (`role == 'superadmin'`) ao lado das abas *Inbox* e *Não lidas*.
+  - Lista todas as conversas privadas entre **Alunos e Administradores** (`admin`), permitindo auditoria centralizada da qualidade do atendimento e garantia de que nenhum estudante fique sem suporte.
+- **Filtros e Indicadores de Atendimento (`ChatDmAdminSupportList`):**
+  - **Filtro Rápido:** Permite alternar entre *"Todas as conversas"* e *"Pendentes"* (apenas conversas onde o aluno enviou mensagem e o administrador responsável ainda não visualizou/respondeu).
+  - **Badge de Mensagens Não Lidas pelo Admin:** Exibe contador âmbar/vermelho (`⚠️ X`) indicando quantas mensagens do aluno estão aguardando leitura do administrador.
+  - **Cards com Avatares Combinados (`ChatDmAdminConversationItem`):** Apresenta o avatar do aluno em destaque acompanhado do mini-badge com o nome/avatar do administrador responsável.
+- **Visualização Observacional e Preservação de Status de Leitura:**
+  - Quando o Super Admin abre e lê o histórico da conversa entre um aluno e um administrador, **as mensagens NÃO são marcadas como lidas para o administrador destinatário** (`is_read` permanece `False`).
+  - Isso garante que o administrador continue vendo a notificação pendente ao entrar na plataforma e não deixe de atender o aluno.
+- **Intervenção e Respostas do Super Admin na Thread (`dm_thread_admin_id`):**
+  - O Super Admin pode enviar mensagens diretamente dentro da conversa do Aluno com o Admin.
+  - A mensagem enviada pelo Super Admin é identificada na linha do tempo com o selo destacado **`🛡️ Super Admin`** (em dourado/neon).
+  - A mensagem fica visível para o **Aluno** (no chat dele com o administrador) e para o **Administrador** (no chat dele com o aluno), mantendo o contexto íntegro da conversa.
+  - As atualizações são propagadas em tempo real via WebSocket para todos os envolvidos.
+
+---
+
+## 0.5. Gestão de Materiais Complementares da Aula (Anexos)
+- **Visualização para Alunos:**
+  - Na aba *"Materiais Complementares"*, os alunos visualizam a lista de arquivos de apoio da aula (apostilas, PDFs, planilhas, mapas mentais, etc.).
+  - Cada item apresenta o ícone correspondente à extensão, título, descrição, tamanho formatado e botão de ação direta (*"Acessar"*, *"Abrir em Nova Aba"* ou *"Visualizar Mapa Mental"*).
+- **Gestão para Administradores e Super Admins (`isManager = true`):**
+  - **Upload de Arquivos:** Botão `+ Anexar Arquivos` permite upload individual ou em lote (até 100 MB por arquivo).
+  - **Renomeação de Anexos:** Cada card de material complementar disponibiliza o botão de **Renomear** (`Edit2` em tom azul ciano).
+  - **Modal de Renomeação (`RenameAttachmentModal`):**
+    - Popup modal centralizado com fundo escuro e efeito glassmorphism (`backdrop-filter: blur(8px)`).
+    - Campo de input pré-preenchido com o nome atual do arquivo para edição rápida.
+    - Validação impedindo salvamento com nome em branco ou composto apenas por espaços.
+    - Botões "Cancelar" e "Salvar Alterações" com estado de carregamento (`loading spinner`).
+    - Não fecha ao clicar fora do painel central (fechamento forçado apenas via botão Cancelar ou 'X').
+  - **Exclusão Segura:** Botão da lixeira aciona popup de confirmação centralizado (`FileDeleteConfirmModal`) antes de deletar o arquivo do banco e do storage (Backblaze B2).
+- **Endpoint da API:**
+  - `PATCH /api/v1/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}` (exclusivo para `admin` e `superadmin`).
 
 ---
 
@@ -1596,3 +1724,75 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - **Regra para Alunos com Mais de 1 Curso:**
     - Os canais exclusivos do curso fechado (`course_chat` e `support` daquele curso) ficam bloqueados para todos os alunos daquele curso.
     - Já os canais globais (`general_chat` e `dm`) continuam liberados se o aluno possuir ao menos outro curso ativo e aberto que não restrinja esses canais globais.
+
+---
+
+## 19. Feed Social da Comunidade (Rede Social & Networking)
+- **Posicionamento e Acesso na Barra Lateral (`Sidebar`):**
+  - Item **"Feed da Comunidade"** posicionado na categoria **Comunidade & Social** com o ícone `Compass` (Bússola).
+  - **Fase de Testes (Acesso Restrito):** Atualmente liberado exclusivamente para gestores (`admin` e `superadmin`) para validação e testes internos. Usuários com perfil `aluno` têm o item oculto da barra lateral, a rota bloqueada no frontend e qualquer requisição à API `/feed` bloqueada com `403 Forbidden` ("O Feed da Comunidade está em fase de testes e acessível apenas para administradores.").
+- **Criação de Conteúdo e Publicações (Limitações Padrão Instagram):**
+  - Textos e legendas com limite exato de **até 2.200 caracteres** (padrão Instagram) com contador em tempo real no rodapé (`X / 2.200`). Upload de imagens/fotos (JPG, PNG, WEBP, GIF de até 10MB) e vídeos curtos (MP4, WebM, MOV de até 50MB).
+  - **Carrossel de Imagens (Estilo Instagram):** Suporte para envio de até 10 fotos em um único post, com preview numerado de cada foto, navegação por setas laterais, barra de bolinhas indicadoras (`dots`) e badge contador (`X / Y`).
+  - **Vídeos Curtos (Reels/Clipes) e Capa Personalizada (Thumbnail):**
+    - Player responsivo nativo HTML5 com controles completos e botão de ampliação.
+    - Suporte a envio de imagem de capa/thumbnail personalizada (`media_thumbnail_url`) de até 10MB para o vídeo.
+    - Na criação de post, ao anexar um vídeo, exibe o seletor interativo `[+ Capa / Thumbnail]` e botão na barra inferior (`[🖼️ Capa do Vídeo]`), permitindo definir, trocar ou remover a imagem de capa antes de publicar.
+    - No feed e no Lightbox em tela cheia, a imagem é aplicada diretamente no atributo `poster` do player, exibindo a thumbnail com visual profissional antes do play.
+  - **Lightbox / Zoom em Tela Cheia:** Clique em qualquer imagem ou vídeo abre visualizador em tela cheia em alta definição com backdrop escuro (`rgba(0,0,0,0.94)`), suporte a teclas de atalho (ESC, setas do teclado) e navegação contínua entre as fotos do carrossel.
+  - Marcação opcional de curso: o autor pode direcionar a postagem para a comunidade geral ou vincular a um curso específico.
+- **Filtros e Visualizações do Feed:**
+  1. **Para Você / Geral (`all`):** Exibe todas as postagens em ordem cronológica reversa, mantendo publicações fixadas no topo.
+  2. **Mais Curtidos (`popular`):** Ordena as postagens pelo maior número de curtidas/engajamento.
+  3. **Meu Curso (`my_course`):** Filtra postagens gerais e postagens vinculadas aos cursos nos quais o aluno está matriculado.
+  4. **Minhas Publicações (`my_posts`):** Exibe apenas as publicações do próprio usuário logado.
+  5. **⭐ Salvos / Favoritos (`saved`):** Exibe exclusivamente as publicações marcadas e salvas pelo aluno logado para leitura e referência posterior.
+  - **Barra de Pesquisa:** Busca em tempo real com debounce por palavras-chave ou temas no texto das postagens.
+- **Interações Sociais e Reações:**
+  - ❤️ **Curtidas:** Ação otimista de curtir e descurtir com atualização instantânea do contador e preenchimento visual em vermelho do ícone de coração.
+  - 👥 **Modal "Quem Curtiu" (`FeedLikesModal`):** Clicar no número de curtidas de qualquer publicação abre um modal translúcido centralizado listando os alunos e instrutores que curtiram o post, com foto/avatar, nome, badge de cargo e horário oficial.
+  - 🔖 **Salvar Publicação (Favoritos):** Botão de marcador (`Bookmark`) permitindo ao aluno favoritar ou desfavoritar publicações com feedback imediato via toast e acesso rápido pela aba "Salvos".
+  - @ **Menções Inteligentes (`@aluno`):** Na caixa de texto de criação de posts, ao digitar o caractere `@`, abre um menu flutuante de autocompletar buscando membros ativos da comunidade em tempo real para menção direta.
+  - 💬 **Comentários e Respostas:** Seção expansível em cada publicação permitindo comentários em tempo real com autor, papel (Super Admin / Admin / Aluno) e botão de exclusão para o autor do comentário e administradores.
+  - ↗️ **Compartilhamento:** Copia o link direto do post para a área de transferência do usuário com toast de confirmação.
+  - 📌 **Fixação no Topo (Pin):** Exclusivo para administradores e super administradores, destacando comunicados, avisos e posts oficiais com o selo visual de *"Publicação Fixada"*.
+- **Gamificação RPG e Limite Anti-Spam:**
+  - **Publicação no Feed (`community_feed_post`):** Concede **+5 pontos de XP** por postagem, com limite diário de até **2 posts pontuados por dia (máximo de 10 pontos/dia)** para estimular postagens de alto valor e prevenir flood/spam.
+  - **Curtida Recebida no Feed (`community_feed_like`):** Concede **+2 pontos de XP** ao autor da postagem quando outro aluno curte seu conteúdo.
+- **Moderação e Exclusão Segura:**
+  - Alunos podem editar ou excluir apenas suas próprias publicações e comentários. Administradores e Super Admins podem moderar e excluir qualquer publicação da comunidade.
+  - A exclusão exige confirmação obrigatória via popup modal centralizado com fundo escuro (`DeleteFeedItemModal`), obedecendo às diretrizes de experiência do usuário (backdrop não fecha ao clicar fora e possui 1 botão cancelar + 1 botão excluir).
+- **Notificações Sociais do Feed (`community_notifications`):**
+  - **Gatilhos de Notificação:**
+    1. **Curtida (`feed_like`):** Disparada para o autor da publicação quando outro membro curte seu post (ações próprias não geram notificação).
+    2. **Comentário (`feed_comment`):** Disparada para o autor da publicação quando outro membro comenta, e para o autor do comentário pai em caso de resposta direta.
+    3. **Menção Direta (`feed_mention`):** Disparada quando um membro é citado com `@nome` no texto de uma publicação ou comentário.
+  - **Experiência na Interface (`FeedNotificationsModal`):**
+    - Botão de sino no cabeçalho do Feed com badge contador em vermelho de notificações não lidas.
+    - Modal/painel centralizado estilo *Dark Glassmorphism* com abas "Todas" e "Não Lidas".
+    - Ações de leitura: botão "Marcar todas como lidas", marcador individual pontual e exclusão por item.
+    - Ao clicar em uma notificação com `post_id`, a publicação é marcada como lida e o modal fecha com foco na experiência de leitura.
+- **Perfil do Membro no Feed Social (Estilo Instagram):**
+  - **Acesso ao Perfil:** Clicar no avatar ou nome do autor em qualquer post ou na caixa de criação abre o modal completo de perfil (`FeedProfileModal`).
+  - **Identificação Visual:** Foto de perfil em destaque com borda em degradê neon Instagram, Nome de exibição (máx 30 caracteres) e badge de perfil (*Super Admin*, *Admin*, *Aluno*).
+  - **Contadores de Rede:** Contagem em tempo real de `Publicações`, `Seguidores` e `Seguindo`.
+  - **Bio / Biografia:** Até 150 caracteres (padrão exato do Instagram) com formatação preservada e contador regressivo na edição.
+  - **Link na Bio:** Campo para URL externa (site, portfólio, Instagram), formatado como link clicável com ícone `Link2` e abertura segura em nova aba (`target="_blank"`).
+  - **Grade de Publicações:** Grid estilo Instagram (3 colunas) exibindo miniaturas dos posts do usuário com overlay de contagem de curtidas (❤️) e comentários (💬) ao passar o mouse.
+  - **Modal de Edição (`FeedEditProfileModal`):** Permite alterar foto de perfil via upload direto, nome (máx 30 chars), bio (máx 150 chars com contador regressivo `X/150`) e link (máx 255 chars).
+- **Sistema de Seguir / Deixar de Seguir (Follow/Unfollow - Tabela `community_follows`):**
+  - **Ação de Seguir:** Botão "Seguir" / "Seguindo" no perfil do membro. Ao clicar, alterna o relacionamento idempotente entre o usuário autenticado e o membro-alvo (`POST /api/v1/community/feed/users/{user_id}/follow`).
+  - **Auto-Seguir Bloqueado:** O sistema impede que um usuário siga a si mesmo (retorna erro 400).
+  - **Notificação de Novo Seguidor:** Ao seguir um membro, o destinatário recebe automaticamente uma notificação social `feed_follow` avisando quem começou a segui-lo.
+  - **Listagem de Membros (`FeedFollowListModal`):** Clicar nos números de "Seguidores" ou "Seguindo" abre um modal dedicado com abas alternáveis, foto, nome, bio e botão rápido para seguir de volta ou deixar de seguir.
+  - **Filtro Exclusivo no Feed ("👥 Seguindo"):** Nova aba no menu de filtros do feed (`filter=following`) que lista exclusivamente publicações de usuários que você segue, além de suas próprias postagens.
+- **Insights e Visualizações dos Posts (`community_post_views`):**
+  - **Rastreamento de Visualizações:** Toda vez que um post é renderizado na tela do usuário, o sistema registra uma visualização única idempotente (`POST /api/v1/community/feed/{post_id}/view`).
+  - **Permissão de Acesso:** Apenas o autor da publicação e os administradores (`superadmin`, `admin`) têm permissão para acessar o painel de insights da publicação (`GET /api/v1/community/feed/{post_id}/insights`). Outros usuários recebem HTTP 403 Forbidden.
+  - **Métricas e KPIs Calculados:**
+    - **Alcance / Visualizações Únicas:** Contagem de contas distintas que visualizaram a postagem.
+    - **Total de Interações:** Soma de curtidas, comentários e salvamentos nos favoritos.
+    - **Taxa de Engajamento:** Percentual de interação sobre o alcance (`(interações / visualizações) * 100`).
+    - **Detalhamento Visual:** Distribuição proporcional em barra segmentada entre Curtidas (rosa), Comentários (azul) e Salvamentos (dourado).
+    - **Lista de Visualizadores Recentes:** Exibição dos últimos membros identificados que visualizaram a publicação com avatar, nome, cargo e horário.
+

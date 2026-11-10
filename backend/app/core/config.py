@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     B2_APPLICATION_KEY: str = os.getenv("BACKBLAZE_APPLICATION_KEY") or os.getenv("B2_APPLICATION_KEY", "")
     B2_BUCKET_NAME: str = os.getenv("BACKBLAZE_BUCKET_NAME") or os.getenv("B2_BUCKET_NAME", "")
     BACKBLAZE_CDN_URL: str = os.getenv("BACKBLAZE_CDN_URL", "")
+    # CDN dedicada para streaming rápido de vídeos e mídias de aulas
+    VIDEO_CDN_URL: str = os.getenv("VIDEO_CDN_URL", "") or os.getenv("BACKBLAZE_CDN_URL", "")
+    STREAMING_CACHE_ENABLED: bool = os.getenv("STREAMING_CACHE_ENABLED", "true").lower() in ("true", "1", "yes")
+    # Flag para otimização vetorial pgvector no PostgreSQL
+    PGVECTOR_ENABLED: bool = os.getenv("PGVECTOR_ENABLED", "true").lower() in ("true", "1", "yes")
     B2_FOLDER: str = os.getenv("B2_FOLDER", "projetobase/backups/")
     B2_RETENTION_MAX: int = int(os.getenv("B2_RETENTION_MAX", "30"))
 
@@ -51,11 +56,14 @@ class Settings(BaseSettings):
     # Origens permitidas para CORS (separadas por vírgula ou '*' para desenvolvimento)
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
-    # Configurações do Pool de Conexões do Banco de Dados (PostgreSQL)
-    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "10"))
-    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "20"))
-    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "15"))
+    # Configurações do Pool de Conexões do Banco de Dados (PostgreSQL) otimizadas para escala
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "30"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "50"))
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "20"))
     DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
+    # Configuração do Redis para concorrência, WebSockets distribuídos e presença
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
 
     model_config = SettingsConfigDict(case_sensitive=True)
 

@@ -71,6 +71,7 @@ describe('TutorialModal Component', () => {
 
   it('generates description and duration with AI when clicking "Gerar com IA"', async () => {
     const handleToast = vi.fn();
+    vi.spyOn(api, 'uploadTutorialVideoApi').mockRejectedValueOnce(new Error('skip upload for direct ai'));
     vi.spyOn(api, 'generateTutorialAiDescriptionApi').mockResolvedValueOnce({
       description: 'Neste vídeo você aprenderá a navegar pelas trilhas de aprendizagem e explorar os tutoriais.',
       full_transcript: 'Olá pessoal, neste vídeo vou ensinar a navegar...',

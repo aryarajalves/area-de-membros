@@ -7,6 +7,7 @@ import {
   Search,
   X,
   Zap,
+  LogIn,
   Target,
   Tag,
   Award,
@@ -30,6 +31,7 @@ const NODE_CATALOG = [
     category: 'GATILHOS',
     items: [
       { type: 'trigger', label: 'Aluno Criado', icon: Zap, color: '#eab308', defaultData: { trigger_event: 'student_created' } },
+      { type: 'trigger_first_login', label: 'Primeiro Login (1º Acesso)', icon: LogIn, color: '#06b6d4', defaultData: { trigger_event: 'first_login' } },
       { type: 'trigger_course_interest', label: 'Interesse em Curso', icon: Target, color: '#f59e0b', defaultData: { trigger_event: 'course_interest' } },
       { type: 'trigger_progress_milestone', label: 'Marco de Progresso', icon: Award, color: '#a855f7', defaultData: { trigger_event: 'progress_milestone', milestone: '100', milestones: ['100'] } },
       { type: 'trigger_lesson_module_activity', label: 'Aula ou Módulo Concluído', icon: GraduationCap, color: '#38bdf8', defaultData: { trigger_event: 'lesson_module_activity', course_id: null, lesson_id: null, active_options: ['lesson', 'module'] } },

@@ -195,7 +195,7 @@ export default function CourseCard({
             }}
           >
             <Package size={11} />
-            <span>{inBundleGroup ? 'Item do Combo' : `Combo (+${bundledCount})`}</span>
+            <span>{inBundleGroup ? (isManager ? `Item do Combo • Ordem #${course.order_index ?? 0}` : 'Item do Combo') : `Combo (+${bundledCount})`}</span>
           </div>
         )}
       </div>

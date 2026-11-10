@@ -25,6 +25,7 @@ import { SupportReportsSubTabs, ServerSystemSubTabs, RestrictedWelcomeScreen } f
 import FunnelManagement from './components/funnels/FunnelManagement';
 import { HomeTutorials } from './components/home-tutorials';
 import { IntroductionManagement } from './components/introductions';
+import { CommunityFeedManagement } from './components/community-feed';
 import { EventsManagement } from './components/events';
 import CertificatePublicValidationPage from './components/certificates/CertificatePublicValidationPage';
 import LevelUpWatcher from './components/gamification/LevelUpWatcher';
@@ -237,19 +238,18 @@ function App() {
     fetchReportsSummary();
     fetchChatUnreadSummary();
 
+    let debounceTimer = null;
     const handleChatUnreadUpdate = () => {
-      fetchChatUnreadSummary();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchChatUnreadSummary();
+      }, 500);
     };
     window.addEventListener('chat_unread_updated', handleChatUnreadUpdate);
 
-    // Polling contínuo de background (a cada 5s) para refletir notificações em tempo real
-    const intervalId = setInterval(() => {
-      fetchChatUnreadSummary();
-    }, 5000);
-
     return () => {
       window.removeEventListener('chat_unread_updated', handleChatUnreadUpdate);
-      clearInterval(intervalId);
+      if (debounceTimer) clearTimeout(debounceTimer);
     };
   }, [fetchPlatformTheme, fetchReportsSummary, fetchChatUnreadSummary]);
 
@@ -420,6 +420,9 @@ function App() {
         {activeTab === 'introductions' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <IntroductionManagement user={user} bgColor={memberAreaBgColor} />
         )}
+        {activeTab === 'community-feed' && ['superadmin', 'admin'].includes(user?.role) && (
+          <CommunityFeedManagement user={user} />
+        )}
         {activeTab === 'ranking' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <GamificationRanking user={user} bgColor={memberAreaBgColor} />
         )}
@@ -470,7 +473,7 @@ function App() {
         )}
         {!isSuperAdmin && !(
           (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports'].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
-          (['students', 'users', 'funnels', 'integrations'].includes(activeTab) && user?.role === 'admin') ||
+          (['students', 'users', 'funnels', 'integrations', 'community-feed'].includes(activeTab) && user?.role === 'admin') ||
           (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
         ) && <RestrictedWelcomeScreen user={user} />}
       </main>

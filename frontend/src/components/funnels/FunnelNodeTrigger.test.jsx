@@ -198,4 +198,28 @@ describe('FunnelNodeTrigger Component', () => {
 
     expect(screen.getByText(/Disparará 1 única vez quando o aluno clicar no curso "Bússola Astrológica APP"/i)).toBeInTheDocument();
   });
+
+  it('renderiza o nó de gatilho para Primeiro Login (1º Acesso) corretamente', () => {
+    const firstLoginNode = {
+      id: 'trigger_first_login_1',
+      type: 'trigger',
+      position: { x: 100, y: 150 },
+      data: {
+        trigger_event: 'first_login',
+        is_start: true,
+      },
+    };
+
+    render(
+      <FunnelNodeTrigger
+        node={firstLoginNode}
+        isSelected={false}
+        onUpdateData={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('PRIMEIRO LOGIN (1º ACESSO)')).toBeInTheDocument();
+    expect(screen.getByTestId('first-login-trigger-summary-trigger_first_login_1')).toBeInTheDocument();
+    expect(screen.getByText('Boas-Vindas no 1º Acesso (Onboarding)')).toBeInTheDocument();
+  });
 });

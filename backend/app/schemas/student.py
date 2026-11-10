@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 
 class StudentCourseProgressItem(BaseModel):
     course_id: int
@@ -44,6 +44,10 @@ class StudentListItem(BaseModel):
     level_progress_percent: int = 0
     is_max_level: bool = False
     confirmed_events_count: int = 0
+    is_online: bool = False
+    last_seen_at: Optional[datetime] = None
+    avatar_url: Optional[str] = None
+    birth_date: Optional[date] = None
 
 class StudentGamificationHistoryResponse(BaseModel):
     student_id: int

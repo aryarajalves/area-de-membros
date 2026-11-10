@@ -300,7 +300,7 @@ async def test_funnel_with_trigger_node_execution(seed_funnel_data):
     exec_record = db_check.query(FunnelExecution).filter_by(funnel_id=funnel_id).first()
     assert exec_record is not None
     assert exec_record.status == "completed"
-    assert "Gatilho 'student_created' iniciado (0 dias)" in (exec_record.logs or "")
+    assert "Gatilho 'student_created' iniciado" in (exec_record.logs or "")
     db_check.close()
 
 

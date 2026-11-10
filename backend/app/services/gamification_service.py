@@ -17,6 +17,8 @@ POINTS_MAP = {
     "lesson_completed": (15, "Conclusão de aula do curso"),
     "lesson_comment": (5, "Comentário construtivo em aula"),
     "chat_message": (2, "Participação no Chat da Comunidade"),
+    "community_feed_post": (5, "Publicação no Feed da Comunidade"),
+    "community_feed_like": (2, "Curtida recebida no Feed da Comunidade"),
 }
 
 
@@ -52,6 +54,21 @@ def award_points(
             .count()
         )
         if daily_count >= 10:
+            return None
+
+    # Limite diário para publicações no feed da comunidade: máximo 2 posts pontuados por dia (10 pontos/dia)
+    if action == "community_feed_post":
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_count = (
+            db.query(GamificationPoint)
+            .filter(
+                GamificationPoint.user_id == user.id,
+                GamificationPoint.action == "community_feed_post",
+                GamificationPoint.created_at >= today_start
+            )
+            .count()
+        )
+        if daily_count >= 2:
             return None
 
     # Prevenção de duplicação para ações únicas (ex: conclusão da mesma aula, módulo, curso ou solução)

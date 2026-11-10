@@ -1,0 +1,151 @@
+/* ==============================================================================
+   FEED SOCIAL - LISTA DE SEGUIDORES E SEGUINDO (ESTILO INSTAGRAM DARK GLASS)
+   ============================================================================== */
+
+.feed-follow-list-container {
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  background: #0d121f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: feedModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feed-follow-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feed-follow-tabs {
+  display: flex;
+  gap: 16px;
+}
+
+.feed-follow-tab-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.feed-follow-tab-btn:hover {
+  color: #f8fafc;
+}
+
+.feed-follow-tab-btn.active {
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+}
+
+.feed-follow-list-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  min-height: 200px;
+}
+
+.feed-follow-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feed-follow-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.feed-follow-user-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.feed-follow-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.feed-follow-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-follow-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feed-follow-user-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-follow-user-bio {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-follow-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.feed-follow-action-btn.follow {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+}
+
+.feed-follow-action-btn.follow:hover {
+  filter: brightness(1.1);
+}
+
+.feed-follow-action-btn.following {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+}
+
+.feed-follow-action-btn.following:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}

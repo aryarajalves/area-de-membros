@@ -119,10 +119,7 @@ describe('IntroductionManagement Component', () => {
         '/api/v1/introductions',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({
-            title: 'Novo Membro na Área',
-            content: 'Muito animado para aprender com todo mundo aqui!',
-          }),
+          body: expect.stringContaining('"title":"Novo Membro na Área"'),
         })
       );
       expect(screen.getByText('Novo Membro na Área')).toBeInTheDocument();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
 import FunnelTriggerStudentCreatedConfig from './FunnelTriggerStudentCreatedConfig';
+import FunnelTriggerFirstLoginConfig from './FunnelTriggerFirstLoginConfig';
 import FunnelTriggerCourseInterestConfig from './FunnelTriggerCourseInterestConfig';
 import FunnelTriggerProgressConfig from './FunnelTriggerProgressConfig';
 import FunnelTriggerRenewalConfig from './FunnelTriggerRenewalConfig';
@@ -227,6 +228,13 @@ export default function FunnelNodeTrigger({
           nodeId={node.id}
           data={data}
           onUpdateData={onUpdateData}
+        />
+      )}
+
+      {triggerEvent === 'first_login' && (
+        <FunnelTriggerFirstLoginConfig
+          nodeId={node.id}
+          data={data}
         />
       )}
 

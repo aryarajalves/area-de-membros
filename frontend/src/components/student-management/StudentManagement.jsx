@@ -20,6 +20,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [onlyOnline, setOnlyOnline] = useState(false);
   const [courses, setCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -97,6 +98,9 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       if (selectedDate) {
         params.append('registration_date', selectedDate);
       }
+      if (onlyOnline) {
+        params.append('only_online', 'true');
+      }
 
       const res = await fetch(`/api/v1/students?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -117,7 +121,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, addToast]);
+  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, onlyOnline, addToast]);
 
   useEffect(() => {
     fetchStudents();
@@ -142,6 +146,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     setSelectedCourseId('');
     setSelectedMonth('');
     setSelectedDate('');
+    setOnlyOnline(false);
     setPage(1);
   };
 
@@ -151,7 +156,8 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     orderBy !== 'recent' ||
     selectedCourseId ||
     selectedMonth ||
-    selectedDate
+    selectedDate ||
+    onlyOnline
   );
 
   const handleExport = async (format) => {
@@ -280,6 +286,11 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
         selectedDate={selectedDate}
         setSelectedDate={(newDate) => {
           setSelectedDate(newDate);
+          setPage(1);
+        }}
+        onlyOnline={onlyOnline}
+        setOnlyOnline={(val) => {
+          setOnlyOnline(val);
           setPage(1);
         }}
         onResetFilters={handleResetFilters}

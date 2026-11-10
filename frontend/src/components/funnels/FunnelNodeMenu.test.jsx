@@ -14,6 +14,7 @@ describe('FunnelNodeMenu Component', () => {
     expect(screen.getByText('GATILHOS')).toBeInTheDocument();
     expect(screen.getByText('CONTEÚDO')).toBeInTheDocument();
     expect(screen.getByText('Aluno Criado')).toBeInTheDocument();
+    expect(screen.getByText('Primeiro Login (1º Acesso)')).toBeInTheDocument();
     expect(screen.getByText('Texto')).toBeInTheDocument();
   });
 
@@ -46,5 +47,15 @@ describe('FunnelNodeMenu Component', () => {
     fireEvent.click(button);
 
     expect(onSelect).toHaveBeenCalledWith('message', undefined);
+  });
+
+  it('permite selecionar o nó de Primeiro Login (1º Acesso) no menu', () => {
+    const onSelect = vi.fn();
+    render(<FunnelNodeMenu onSelectNode={onSelect} onClose={vi.fn()} />);
+
+    const button = screen.getByTestId('add-node-trigger_first_login');
+    fireEvent.click(button);
+
+    expect(onSelect).toHaveBeenCalledWith('trigger_first_login', { trigger_event: 'first_login' });
   });
 });

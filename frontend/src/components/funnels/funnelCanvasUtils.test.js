@@ -93,6 +93,10 @@ describe('funnelCanvasUtils Unit Tests', () => {
       days_after: 0,
       is_start: true,
     });
+    expect(getInitialNodeData('trigger_first_login')).toEqual({
+      trigger_event: 'first_login',
+      is_start: true,
+    });
     expect(getInitialNodeData('trigger_course_interest')).toEqual({
       trigger_event: 'course_interest',
       course_id: null,

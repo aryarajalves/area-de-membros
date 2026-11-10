@@ -73,6 +73,10 @@ class LessonAttachmentBase(BaseModel):
 class LessonAttachmentCreate(LessonAttachmentBase):
     pass
 
+class LessonAttachmentUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
 class LessonAttachmentResponse(LessonAttachmentBase):
     id: int
     lesson_id: int

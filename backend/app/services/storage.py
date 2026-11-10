@@ -217,6 +217,10 @@ def upload_media_file(
                 endpoint = (settings.EFFECTIVE_B2_ENDPOINT_URL or "").rstrip("/")
                 media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
 
+            # Se houver CDN de vídeo/mídia configurada, transforma na URL de CDN
+            from app.services.cdn_service import resolve_video_cdn_url
+            media_url = resolve_video_cdn_url(media_url)
+
             logger.info(f"Mídia {filename} enviada para Backblaze B2 com sucesso: {media_url}")
             return media_url
         except Exception as e:

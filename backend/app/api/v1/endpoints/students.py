@@ -28,6 +28,7 @@ from app.schemas.student import (
 from app.schemas.student_tag import StudentTagAssignmentItem
 from app.schemas.gamification import GamificationHistoryItem
 from app.services.gamification_level_service import calculate_student_level
+from app.services.presence_service import get_online_user_ids
 from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
 from app.api.v1.endpoints.users import require_admin_or_superadmin, get_current_user, calculate_course_expiration
 from app.services.course_bundle_service import grant_bundle_access_for_user
@@ -42,6 +43,7 @@ router = APIRouter(prefix="/students", tags=["Alunos e Matrículas"])
 
 def _build_students_details(students: List[User], db: Session) -> List[StudentListItem]:
     now = datetime.now(timezone.utc)
+    online_ids = get_online_user_ids()
     items: List[StudentListItem] = []
     student_ids = [s.id for s in students]
 
@@ -213,7 +215,11 @@ def _build_students_details(students: List[User], db: Session) -> List[StudentLi
                 points_to_next_level=level_info["points_to_next_level"],
                 level_progress_percent=level_info["level_progress_percent"],
                 is_max_level=level_info["is_max_level"],
-                confirmed_events_count=confirmed_events_map.get(student.id, 0)
+                confirmed_events_count=confirmed_events_map.get(student.id, 0),
+                is_online=(student.id in online_ids),
+                last_seen_at=student.last_seen_at,
+                avatar_url=student.avatar_url,
+                birth_date=student.birth_date
             )
         )
 
@@ -232,6 +238,7 @@ def list_students(
     registration_date: Optional[str] = None,
     registration_month: Optional[str] = None,
     order_by: Optional[str] = Query("recent"),
+    only_online: Optional[bool] = Query(False, description="Filtra apenas alunos atualmente online"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -242,6 +249,10 @@ def list_students(
     """
     try:
         query = db.query(User).filter(User.role == "aluno")
+
+        if only_online:
+            online_ids = list(get_online_user_ids())
+            query = query.filter(User.id.in_(online_ids if online_ids else [-1]))
 
         if search:
             search_clean = f"%{search.strip()}%"

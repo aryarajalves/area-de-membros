@@ -286,6 +286,7 @@ export default function TutorChatTab({
   const textColor = isLightBg ? '#0f172a' : '#f8fafc';
   const subTextColor = isLightBg ? '#475569' : '#94a3b8';
   const borderColor = isLightBg ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)';
+  if (!isManager && quota.is_visible === false) return null;
 
   return (
     <div

@@ -38,7 +38,8 @@ def get_stored_whitelabel_data() -> dict:
         "platform_name": "Área de Membros",
         "login_banner_url": None,
         "logo_url": None,
-        "bg_color": "#090d16"
+        "bg_color": "#090d16",
+        "is_astrology_platform": False,
     }
     if os.path.exists(PLATFORM_THEME_FILE):
         try:
@@ -49,6 +50,7 @@ def get_stored_whitelabel_data() -> dict:
                     "login_banner_url": data.get("login_banner_url") or None,
                     "logo_url": data.get("logo_url") or None,
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
+                    "is_astrology_platform": bool(data.get("is_astrology_platform", False)),
                 }
         except Exception as e:
             logger.error(f"[WhiteLabel] Erro ao ler {PLATFORM_THEME_FILE}: {e}")
@@ -110,6 +112,14 @@ def update_whitelabel_settings(
         except Exception as exc:
             db.rollback()
             logger.error(f"[WhiteLabel] Erro ao sincronizar cor de fundo nos cursos: {exc}")
+
+    if settings_in.is_astrology_platform is not None:
+        if admin.role != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas o Super Admin pode alterar a configuração de Astrologia / nicho da plataforma."
+            )
+        current["is_astrology_platform"] = bool(settings_in.is_astrology_platform)
 
     save_stored_whitelabel_data(current)
     logger.info(f"[WhiteLabel] Configurações atualizadas por {admin.email}: {current}")

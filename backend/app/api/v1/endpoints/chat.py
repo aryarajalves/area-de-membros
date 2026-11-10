@@ -378,6 +378,7 @@ def send_chat_message(
             parent_id=parent_id,
             user_id=current_user.id,
             recipient_id=payload.recipient_id if payload.channel_type == "dm" else None,
+            dm_thread_admin_id=payload.dm_thread_admin_id if (payload.channel_type == "dm" and current_user.role == "superadmin") else None,
             message=saved_message_text,
             media_url=media_url,
             media_type=media_type,
@@ -445,6 +446,7 @@ def send_chat_message(
             course_id=new_msg.course_id,
             parent_id=new_msg.parent_id,
             recipient_id=new_msg.recipient_id,
+            dm_thread_admin_id=new_msg.dm_thread_admin_id,
             message=decrypt_dm_message(new_msg.message) or "",
             media_url=new_msg.media_url,
             media_type=new_msg.media_type,
@@ -480,6 +482,8 @@ def send_chat_message(
             }
             chat_manager.send_to_user_sync(payload.recipient_id, "new_dm", dm_payload)
             chat_manager.send_to_user_sync(current_user.id, "dm_sent", dm_payload)
+            if new_msg.dm_thread_admin_id:
+                chat_manager.send_to_user_sync(new_msg.dm_thread_admin_id, "new_dm", dm_payload)
 
 
         return resp
@@ -965,6 +969,8 @@ async def chat_websocket_endpoint(
         return
 
     await chat_manager.connect(websocket, u_id, user_role, user_name)
+    from app.services.presence_service import mark_user_activity
+    mark_user_activity(db, u_id)
 
     try:
         while True:
@@ -972,12 +978,13 @@ async def chat_websocket_endpoint(
             try:
                 msg_data = json.loads(raw_text)
                 if msg_data.get("type") == "ping":
+                    mark_user_activity(db, u_id)
                     await websocket.send_text(json.dumps({"type": "pong"}))
             except Exception:
                 pass
-    except WebSocketDisconnect:
-        await chat_manager.disconnect(websocket)
-    except Exception as exc:
+    except (WebSocketDisconnect, Exception) as exc:
         logger.debug(f"Desconexão no WebSocket do Chat: {exc}")
+    finally:
         await chat_manager.disconnect(websocket)
+        mark_user_activity(db, u_id)
 

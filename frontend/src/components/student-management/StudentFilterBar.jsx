@@ -15,6 +15,8 @@ export default function StudentFilterBar({
   setSelectedMonth,
   selectedDate,
   setSelectedDate,
+  onlyOnline = false,
+  setOnlyOnline,
   onResetFilters,
   hasActiveFilters,
   isLightBg,
@@ -303,7 +305,42 @@ export default function StudentFilterBar({
           />
         </div>
 
-        {/* 5. Botão Limpar Filtros */}
+        {/* 5. Filtro Apenas Online */}
+        {setOnlyOnline && (
+          <button
+            type="button"
+            onClick={() => setOnlyOnline(!onlyOnline)}
+            data-testid="filter-only-online-btn"
+            title="Exibir apenas alunos com sessão ativa no momento"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '7px',
+              backgroundColor: onlyOnline ? 'rgba(16, 185, 129, 0.2)' : inputBg,
+              border: onlyOnline ? '1px solid #10b981' : inputBorder,
+              color: onlyOnline ? '#34d399' : textColor,
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: onlyOnline ? '#10b981' : '#64748b',
+                boxShadow: onlyOnline ? '0 0 6px #10b981' : 'none',
+              }}
+            />
+            <span>Apenas Online</span>
+          </button>
+        )}
+
+        {/* 6. Botão Limpar Filtros */}
         {hasActiveFilters && (
           <button
             type="button"

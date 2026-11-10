@@ -63,6 +63,10 @@ def update_my_profile(
     if profile_data.phone is not None:
         current_user.phone = profile_data.phone.strip() if profile_data.phone else None
 
+    # Atualizar data de nascimento
+    if "birth_date" in profile_data.model_fields_set:
+        current_user.birth_date = profile_data.birth_date
+
     # 4. Atualizar avatar
     if profile_data.avatar_url is not None:
         clean_avatar = profile_data.avatar_url.strip() if profile_data.avatar_url else None

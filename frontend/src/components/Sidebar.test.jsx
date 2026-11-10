@@ -17,9 +17,10 @@ describe('Sidebar Component & Unified SubTabs', () => {
   it('renders "Cursos" button for superadmin and aluno, and superadmin-only buttons', () => {
     const superAdminUser = { name: 'Super Admin', email: 'admin@test.com', role: 'superadmin' };
     const { unmount } = render(<Sidebar user={superAdminUser} />);
-    expect(screen.getByText('Início')).toBeInTheDocument();
+    expect(screen.getByText('Comece Aqui')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
     expect(screen.getByText('Eventos')).toBeInTheDocument();
+    expect(screen.getByText('Feed da Comunidade')).toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();
@@ -29,9 +30,10 @@ describe('Sidebar Component & Unified SubTabs', () => {
 
     const alunoUser = { name: 'João Aluno', email: 'aluno@test.com', role: 'aluno' };
     const { unmount: unmountAluno } = render(<Sidebar user={alunoUser} />);
-    expect(screen.getByText('Início')).toBeInTheDocument();
+    expect(screen.getByText('Comece Aqui')).toBeInTheDocument();
     expect(screen.getByText('Cursos')).toBeInTheDocument();
     expect(screen.getByText('Eventos')).toBeInTheDocument();
+    expect(screen.queryByText('Feed da Comunidade')).not.toBeInTheDocument();
     expect(screen.getByText('Depoimentos')).toBeInTheDocument();
     expect(screen.getByText('Apresente-se')).toBeInTheDocument();
     expect(screen.getByText('Ranking & Conquistas')).toBeInTheDocument();

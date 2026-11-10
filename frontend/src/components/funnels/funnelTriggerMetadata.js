@@ -1,5 +1,6 @@
 import {
   Zap,
+  LogIn,
   Target,
   Award,
   Hourglass,
@@ -19,6 +20,13 @@ export const TRIGGER_METADATA = {
     themeColor: '#eab308',
     glowColor: 'rgba(234, 179, 8, 0.45)',
     textColor: '#facc15',
+  },
+  first_login: {
+    label: 'PRIMEIRO LOGIN (1º ACESSO)',
+    icon: LogIn,
+    themeColor: '#06b6d4',
+    glowColor: 'rgba(6, 182, 212, 0.45)',
+    textColor: '#67e8f9',
   },
   course_interest: {
     label: 'INTERESSE EM CURSO',

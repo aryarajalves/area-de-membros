@@ -41,7 +41,6 @@ export default function IntroductionManagement({ user, bgColor }) {
   }, [fetchPosts]);
 
   const handleSelectPost = async (post) => {
-    // Abre com os dados básicos e faz fetch dos detalhes com comentários
     setSelectedPost(post);
     try {
       const token = getAuthToken();
@@ -53,11 +52,11 @@ export default function IntroductionManagement({ user, bgColor }) {
         setSelectedPost(detailedPost);
       }
     } catch {
-      // Usa dados existentes se houver falha de rede
+      // Mantém os dados locais se falhar a rede
     }
   };
 
-  const handleCreatePost = async ({ title, content }) => {
+  const handleCreatePost = async (postPayload) => {
     const token = getAuthToken();
     try {
       const res = await fetch('/api/v1/introductions', {
@@ -66,7 +65,7 @@ export default function IntroductionManagement({ user, bgColor }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify(postPayload),
       });
 
       if (res.ok) {
@@ -104,22 +103,77 @@ export default function IntroductionManagement({ user, bgColor }) {
     }
   };
 
-  const handleToggleLike = async (postId) => {
+  const handleTogglePin = async (postId) => {
     const token = getAuthToken();
     try {
-      const res = await fetch(`/api/v1/introductions/${postId}/like`, {
+      const res = await fetch(`/api/v1/introductions/${postId}/pin`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
+        const updatedIsPinned = data.is_pinned;
+
+        setPosts((prev) => {
+          const updated = prev.map((p) => (p.id === postId ? { ...p, is_pinned: updatedIsPinned } : p));
+          // Reordena: fixados primeiro, depois por data decrescente
+          return [...updated].sort((a, b) => {
+            if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+        });
+
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost((prev) => (prev ? { ...prev, is_pinned: updatedIsPinned } : null));
+        }
+
+        addToast(
+          updatedIsPinned ? 'Apresentação fixada no topo da comunidade!' : 'Apresentação desafixada do topo.',
+          'success'
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao alterar status de fixação.');
+      }
+    } catch (err) {
+      addToast(err.message || 'Falha ao fixar apresentação.', 'error');
+    }
+  };
+
+  const handleToggleLike = async (postId, reactionType = 'like') => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/introductions/${postId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reaction_type: reactionType }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
         const updateState = (item) => {
           if (item.id === postId) {
+            let nextSummary = Array.isArray(item.reactions_summary) ? [...item.reactions_summary] : [];
+            if (data.liked && data.reaction_type) {
+              if (!nextSummary.includes(data.reaction_type)) {
+                nextSummary.push(data.reaction_type);
+              }
+            } else if (!data.liked && nextSummary.length > 0) {
+              // Se removeu o like
+              if (item.likes_count <= 1) {
+                nextSummary = [];
+              }
+            }
             return {
               ...item,
               is_liked_by_me: data.liked,
+              my_reaction: data.liked ? data.reaction_type : null,
               likes_count: data.likes_count,
+              reactions_summary: nextSummary,
             };
           }
           return item;
@@ -218,6 +272,15 @@ export default function IntroductionManagement({ user, bgColor }) {
     }
   };
 
+  const handleOpenDm = (authorId, authorName) => {
+    window.dispatchEvent(
+      new CustomEvent('open-user-dm', {
+        detail: { userId: authorId, userName: authorName },
+      })
+    );
+    addToast(`Iniciando conversa direta com ${authorName}...`, 'info');
+  };
+
   return (
     <div
       className="introductions-container"
@@ -232,9 +295,11 @@ export default function IntroductionManagement({ user, bgColor }) {
         <IntroductionPostList
           posts={posts}
           loading={loading}
+          currentUser={user}
           onSelectPost={handleSelectPost}
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           onToggleLike={handleToggleLike}
+          onOpenDm={handleOpenDm}
         />
       </div>
 
@@ -245,9 +310,11 @@ export default function IntroductionManagement({ user, bgColor }) {
           currentUser={user}
           onClose={() => setSelectedPost(null)}
           onToggleLike={handleToggleLike}
+          onTogglePin={handleTogglePin}
           onAddComment={handleAddComment}
           onDeleteComment={handleDeleteComment}
           onDeletePost={handleDeletePost}
+          onOpenDm={handleOpenDm}
         />
       )}
 

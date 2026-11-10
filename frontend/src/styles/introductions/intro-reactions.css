@@ -1,0 +1,167 @@
+/* ==========================================================================
+   REAÇÕES ESTILO LINKEDIN (DOCK FLUTUANTE, EMOJIS ANIMADOS E RESUMO)
+   ========================================================================== */
+
+.intro-reaction-control-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Dock Flutuante de Reações */
+.linkedin-reactions-dock {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  background: #181d2c;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 40px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 16px rgba(96, 165, 250, 0.15);
+  z-index: 1000;
+  animation: popInDock 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: auto;
+}
+
+@keyframes popInDock {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dock-reaction-item {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  outline: none;
+}
+
+.dock-reaction-emoji {
+  font-size: 26px;
+  line-height: 1;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.18s ease;
+}
+
+.dock-reaction-item:hover {
+  transform: scale(1.35) translateY(-4px);
+}
+
+.dock-reaction-item.is-selected-reaction {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Tooltip do Nome da Reação */
+.dock-reaction-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(15, 23, 42, 0.95);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dock-reaction-item:hover .dock-reaction-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Botão Principal de Reação */
+.intro-reaction-main-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.intro-reaction-main-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.active-reaction-display,
+.default-reaction-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.active-reaction-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.active-reaction-label {
+  font-weight: 700;
+}
+
+/* Resumo de Reações (Pilha de Emojis) */
+.reaction-pill-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.reaction-emojis-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.stacked-reaction-emoji {
+  font-size: 13px;
+  line-height: 1;
+  margin-left: -4px;
+  border-radius: 50%;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+.stacked-reaction-emoji:first-child {
+  margin-left: 0;
+}
+
+.reaction-count-text {
+  font-weight: 700;
+  color: #e2e8f0;
+}

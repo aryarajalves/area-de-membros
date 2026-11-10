@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Date
 from datetime import datetime, timezone
 from app.core.database import Base
 
@@ -15,7 +15,10 @@ class User(Base):
     role = Column(String, nullable=False, default="user") # 'superadmin', 'admin', 'user'
     is_active = Column(Boolean, default=True)
     phone = Column(String, nullable=True) # WhatsApp / Telefone do usuário
+    birth_date = Column(Date, nullable=True) # Data de nascimento do usuário (YYYY-MM-DD)
     avatar_url = Column(String, nullable=True) # Foto/logo de perfil do usuário
+    bio = Column(String(150), nullable=True) # Biografia do perfil no Feed Social (estilo Instagram, máx 150 caracteres)
+    bio_link = Column(String(255), nullable=True) # Link/website externo na bio do perfil
     token_version = Column(Integer, default=1, nullable=False) # Invalidação imediata de JWT ao alterar senha/deslogar
     failed_login_attempts = Column(Integer, default=0, nullable=False) # Contador de tentativas falhas de login
     locked_until = Column(DateTime, nullable=True) # Timestamp de bloqueio temporário por força bruta
@@ -23,6 +26,10 @@ class User(Base):
     ai_tutor_active = Column(Boolean, default=False, nullable=False) # Se o usuário possui assinatura ativa do Tutor IA
     ai_tutor_expires_at = Column(DateTime, nullable=True) # Data de expiração/renovação da assinatura do Tutor IA
     ai_tutor_custom_monthly_limit = Column(Integer, nullable=True) # Limite mensal customizado (None = global, -1 = VIP ilimitado)
+    first_login_at = Column(DateTime, nullable=True) # Timestamp do primeiríssimo login realizado na plataforma
+    last_login_at = Column(DateTime, nullable=True) # Timestamp do último login realizado
+    last_seen_at = Column(DateTime, nullable=True) # Timestamp da última atividade ou presença online (UTC)
+    login_count = Column(Integer, default=0, nullable=False) # Quantidade total de logins realizados
     created_at = Column(DateTime, default=utc_now)
 
 

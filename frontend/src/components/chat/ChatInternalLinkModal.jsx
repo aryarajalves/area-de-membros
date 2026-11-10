@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 const SYSTEM_TABS = [
-  { id: 'home', label: 'Início', desc: 'Tela inicial com tutoriais e boas-vindas' },
+  { id: 'home', label: 'Comece Aqui', desc: 'Tela inicial com tutoriais e boas-vindas' },
   { id: 'courses', label: 'Cursos', desc: 'Vitrine geral de cursos e módulos' },
   { id: 'support', label: 'Suporte', desc: 'Central de dúvidas e chamados da comunidade' },
   { id: 'ranking', label: 'Ranking & Conquistas', desc: 'Gamificação, níveis e pontuação de alunos' },

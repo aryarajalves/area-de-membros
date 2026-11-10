@@ -13,12 +13,9 @@ from app.models.user import User
 from app.models.course import Course, UserCourse, Module, Lesson, LessonVideo, LessonComment, LessonCommentLike, LessonAttachment
 from app.schemas.course import (
     CourseCreate, CourseUpdate, CourseResponse, CourseDetailResponse,
-    ModuleCreate, ModuleUpdate, ModuleResponse, ModuleDetailResponse,
-    LessonCreate, LessonUpdate, LessonResponse,
-    LessonVideoCreate, LessonVideoResponse,
-    LessonAttachmentCreate, LessonAttachmentResponse,
-    CommentCreate, CommentResponse, CommentLikeToggleResponse,
-    PlatformThemeUpdate, PlatformThemeResponse
+    ModuleCreate, ModuleUpdate, ModuleResponse, ModuleDetailResponse, LessonCreate, LessonUpdate, LessonResponse,
+    LessonVideoCreate, LessonVideoResponse, LessonAttachmentCreate, LessonAttachmentUpdate, LessonAttachmentResponse,
+    CommentCreate, CommentResponse, CommentLikeToggleResponse, PlatformThemeUpdate, PlatformThemeResponse
 )
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.services.storage import upload_media_file, delete_media_file
@@ -34,10 +31,7 @@ from app.services.course_access import (
     apply_course_update_fields as _apply_course_update_fields
 )
 
-BASE_UPLOAD_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-    "uploads"
-)
+BASE_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "uploads")
 THUMBNAILS_DIR = os.path.join(BASE_UPLOAD_DIR, "thumbnails")
 VIDEOS_DIR = os.path.join(BASE_UPLOAD_DIR, "videos")
 ATTACHMENTS_DIR = os.path.join(BASE_UPLOAD_DIR, "attachments")
@@ -715,13 +709,7 @@ def delete_lesson(
     db.commit()
     return {"message": "Aula excluída com sucesso."}
 
-@router.post(
-    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments",
-    response_model=LessonAttachmentResponse,
-    status_code=status.HTTP_201_CREATED,
-    tags=["Cursos e Módulos"],
-    summary="Adicionar Anexo na Aula"
-)
+@router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments", response_model=LessonAttachmentResponse, status_code=status.HTTP_201_CREATED, tags=["Cursos e Módulos"], summary="Adicionar Anexo na Aula")
 def add_lesson_attachment(
     course_id: int,
     module_id: int,
@@ -747,11 +735,7 @@ def add_lesson_attachment(
     db.refresh(new_att)
     return new_att
 
-@router.delete(
-    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}",
-    tags=["Cursos e Módulos"],
-    summary="Excluir Anexo da Aula"
-)
+@router.delete("/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}", tags=["Cursos e Módulos"], summary="Excluir Anexo da Aula")
 def delete_lesson_attachment(
     course_id: int,
     module_id: int,
@@ -774,6 +758,34 @@ def delete_lesson_attachment(
     db.delete(att)
     db.commit()
     return {"message": "Anexo excluído com sucesso."}
+
+@router.patch("/{course_id}/modules/{module_id}/lessons/{lesson_id}/attachments/{attachment_id}", response_model=LessonAttachmentResponse, tags=["Cursos e Módulos"], summary="Renomear Anexo da Aula")
+def update_lesson_attachment(
+    course_id: int,
+    module_id: int,
+    lesson_id: int,
+    attachment_id: int,
+    att_in: LessonAttachmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin)
+):
+    """Atualiza o nome (título) ou descrição de um anexo da aula."""
+    att = db.query(LessonAttachment).filter(
+        LessonAttachment.id == attachment_id,
+        LessonAttachment.lesson_id == lesson_id
+    ).first()
+    if not att:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado nesta aula.")
+    if att_in.title is not None:
+        clean_title = att_in.title.strip()
+        if not clean_title:
+            raise HTTPException(status_code=400, detail="O nome do material não pode ser vazio.")
+        att.title = clean_title
+    if att_in.description is not None:
+        att.description = att_in.description.strip() if att_in.description else None
+    db.commit()
+    db.refresh(att)
+    return att
 
 # ============================================================================
 # COMENTÁRIOS DE AULAS (LESSON COMMENTS)

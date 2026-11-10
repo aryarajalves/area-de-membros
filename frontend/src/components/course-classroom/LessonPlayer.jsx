@@ -11,6 +11,7 @@ import LessonAiTranscriptionTab from './LessonAiTranscriptionTab';
 import TutorChatTab from '../tutor-ia/TutorChatTab';
 import LessonOverviewTab from './LessonOverviewTab';
 import LessonTabsNavBar from './LessonTabsNavBar';
+import { useTutorVisibility } from '../../hooks/useTutorVisibility';
 import LessonNavigationBar from './LessonNavigationBar';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import LessonComingSoonScreen from './LessonComingSoonScreen';
@@ -54,8 +55,11 @@ export default function LessonPlayer({
   onLessonUpdated,
   rightSidebar,
   initialTab = 'overview',
-  targetCommentId = null
+  targetCommentId = null,
+  isTutorVisible: propIsTutorVisible
 }) {
+  const { isTutorVisible: hookIsTutorVisible } = useTutorVisibility(currentUser);
+  const isTutorVisible = propIsTutorVisible !== undefined ? propIsTutorVisible : hookIsTutorVisible;
   const initialActive = initialTab || (targetCommentId ? 'comments' : 'overview');
   const [activeTab, setActiveTab] = useState(initialActive);
   const [visitedTabs, setVisitedTabs] = useState(['overview', ...(initialActive === 'comments' ? ['comments'] : [])]);
@@ -63,6 +67,9 @@ export default function LessonPlayer({
   const [commentsCount, setCommentsCount] = useState(0);
   const [autoPlayActive, setAutoPlayActive] = useState(false);
   const [isTranscriptionCompleted, setIsTranscriptionCompleted] = useState(false);
+  useEffect(() => {
+    if (!isTutorVisible && activeTab === 'tutor') setActiveTab('overview');
+  }, [isTutorVisible, activeTab]);
 
   useEffect(() => {
     setIsTranscriptionCompleted(false);
@@ -160,19 +167,16 @@ export default function LessonPlayer({
   };
 
   const handleAttachmentAdded = (newAtt) => {
-    const currentList = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
-    const updated = [...currentList, newAtt];
-    if (onLessonUpdated) {
-      onLessonUpdated({ ...lesson, attachments: updated });
-    }
+    const list = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
+    if (onLessonUpdated) onLessonUpdated({ ...lesson, attachments: [...list, newAtt] });
   };
-
-  const handleAttachmentDeleted = (deletedId) => {
-    const currentList = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
-    const updated = currentList.filter((a) => a.id !== deletedId);
-    if (onLessonUpdated) {
-      onLessonUpdated({ ...lesson, attachments: updated });
-    }
+  const handleAttachmentDeleted = (delId) => {
+    const list = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
+    if (onLessonUpdated) onLessonUpdated({ ...lesson, attachments: list.filter((a) => a.id !== delId) });
+  };
+  const handleAttachmentUpdated = (upAtt) => {
+    const list = Array.isArray(lesson?.attachments) ? lesson.attachments : [];
+    if (onLessonUpdated) onLessonUpdated({ ...lesson, attachments: list.map((a) => (a.id === upAtt.id ? upAtt : a)) });
   };
 
   useEffect(() => {
@@ -387,7 +391,7 @@ export default function LessonPlayer({
             commentsCount={commentsCount}
             borderColor={borderColor}
             subTextColor={subTextColor}
-            tutorVisible={isTranscriptionCompleted}
+            tutorVisible={isTranscriptionCompleted && isTutorVisible}
           />
 
           {/* Conteúdo das Abas: Altura mínima estável e preservação de componentes montados para eliminar layout shift / tela piscando */}
@@ -413,8 +417,8 @@ export default function LessonPlayer({
                 <LessonAiTranscriptionTab courseId={courseId} moduleId={moduleId || lesson.module_id} lesson={lesson} currentUser={currentUser} isLightBg={isLightBg} />
               )}
             </div>
-            <div style={{ display: activeTab === 'tutor' && isTranscriptionCompleted ? 'block' : 'none' }}>
-              {visitedTabs.includes('tutor') && isTranscriptionCompleted && (
+            <div style={{ display: activeTab === 'tutor' && isTranscriptionCompleted && isTutorVisible ? 'block' : 'none' }}>
+              {visitedTabs.includes('tutor') && isTranscriptionCompleted && isTutorVisible && (
                 <TutorChatTab courseId={courseId} lessonId={lesson.id} currentUser={currentUser} isLightBg={isLightBg} onSelectLesson={onSelectLesson} />
               )}
             </div>
@@ -430,6 +434,7 @@ export default function LessonPlayer({
                     isManager={isManager}
                     onAttachmentAdded={handleAttachmentAdded}
                     onAttachmentDeleted={handleAttachmentDeleted}
+                    onAttachmentUpdated={handleAttachmentUpdated}
                   />
                 </div>
               )}

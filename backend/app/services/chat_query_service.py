@@ -1,11 +1,13 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+from math import ceil
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 from fastapi import HTTPException, status
 from app.models.chat import ChatMessage, ChatMessageMention
 from app.models.user import User
 from app.models.course import Course, UserCourse
+from app.models.gamification import GamificationPoint
 from app.schemas.chat import (
     ChatMentionContactItem,
     ChatMentionNotificationItem,
@@ -14,6 +16,8 @@ from app.schemas.chat import (
     ChatUser,
     ChatMemberItem,
     ChatChannelMembersResponse,
+    ChatDmCandidateItem,
+    ChatDmCandidatesResponse,
 )
 
 
@@ -360,6 +364,136 @@ def get_channel_members(
         superadmins=superadmins_dto,
         admins=admins_dto,
         students=students_dto,
+    )
+
+
+def get_dm_candidates(
+    db: Session,
+    current_user_id: int,
+    search: Optional[str] = None,
+    role: Optional[str] = "all",
+    course_id: Optional[int] = None,
+    order_by: str = "name_asc",
+    page: int = 1,
+    limit: int = 20,
+) -> ChatDmCandidatesResponse:
+    """
+    Lista usuários para iniciar uma nova conversa no DM com filtros avançados:
+    - Busca por nome/e-mail
+    - Filtro por perfil (all, superadmin, admin, aluno)
+    - Filtro por curso matriculado
+    - Ordenação (name_asc, name_desc, level_desc, recent, oldest)
+    - Paginação de 20 por página
+    """
+    from app.services.chat_ws_manager import chat_manager
+    from app.services.gamification_level_service import calculate_student_level
+
+    query = db.query(User).filter(User.is_active == True, User.id != current_user_id)
+
+    # 1. Filtro por Perfil
+    if role and role != "all":
+        if role == "admin":
+            query = query.filter(User.role.in_(["admin", "superadmin"]))
+        elif role == "aluno":
+            query = query.filter(User.role.in_(["aluno", "user"]))
+        elif role == "superadmin":
+            query = query.filter(User.role == "superadmin")
+
+    # 2. Filtro por Busca (Nome ou E-mail)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(or_(User.name.ilike(term), User.email.ilike(term)))
+
+    # 3. Filtro por Curso
+    if course_id:
+        query = query.join(UserCourse, UserCourse.user_id == User.id).filter(
+            UserCourse.course_id == course_id
+        )
+
+    # 4. Ordenação
+    if order_by == "level_desc":
+        pts_subq = (
+            db.query(
+                GamificationPoint.user_id,
+                func.coalesce(func.sum(GamificationPoint.points), 0).label("pts"),
+            )
+            .group_by(GamificationPoint.user_id)
+            .subquery()
+        )
+        query = query.outerjoin(pts_subq, User.id == pts_subq.c.user_id).order_by(
+            desc(func.coalesce(pts_subq.c.pts, 0)), User.name.asc()
+        )
+    elif order_by == "name_desc":
+        query = query.order_by(User.name.desc())
+    elif order_by == "recent":
+        query = query.order_by(User.created_at.desc())
+    elif order_by == "oldest":
+        query = query.order_by(User.created_at.asc())
+    else:  # name_asc padrão
+        query = query.order_by(User.name.asc())
+
+    total = query.count()
+    pages = max(1, ceil(total / limit)) if limit > 0 else 1
+    offset = max(0, (page - 1) * limit)
+
+    users = query.offset(offset).limit(limit).all()
+    user_ids = [u.id for u in users]
+
+    # Carregar Cursos Vinculados
+    course_map: Dict[int, List[int]] = {}
+    if user_ids:
+        uc_rows = (
+            db.query(UserCourse.user_id, UserCourse.course_id)
+            .filter(UserCourse.user_id.in_(user_ids))
+            .all()
+        )
+        for uid, cid in uc_rows:
+            course_map.setdefault(uid, []).append(cid)
+
+    # Carregar Pontos de Gamificação para Nível RPG
+    points_map: Dict[int, int] = {}
+    if user_ids:
+        pts_rows = (
+            db.query(
+                GamificationPoint.user_id,
+                func.coalesce(func.sum(GamificationPoint.points), 0).label("pts"),
+            )
+            .filter(GamificationPoint.user_id.in_(user_ids))
+            .group_by(GamificationPoint.user_id)
+            .all()
+        )
+        for uid, pts in pts_rows:
+            points_map[uid] = int(pts)
+
+    online_ids = chat_manager.get_online_user_ids()
+
+    items = []
+    for u in users:
+        pts = points_map.get(u.id, 0)
+        level_info = calculate_student_level(pts)
+        items.append(
+            ChatDmCandidateItem(
+                id=u.id,
+                name=u.name,
+                email=u.email,
+                role=u.role,
+                avatar_url=u.avatar_url,
+                is_online=u.id in online_ids,
+                last_seen_at=u.last_seen_at,
+                level=level_info["level"],
+                level_title=level_info["level_title"],
+                level_tier=level_info["level_tier"],
+                total_points=pts,
+                course_ids=course_map.get(u.id, []),
+            )
+        )
+
+    return ChatDmCandidatesResponse(
+        items=items,
+        total=total,
+        page=page,
+        limit=limit,
+        pages=pages,
     )
 
 

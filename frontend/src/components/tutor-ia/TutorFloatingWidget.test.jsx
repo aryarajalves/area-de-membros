@@ -128,4 +128,22 @@ describe('TutorFloatingWidget Component', () => {
 
     expect(screen.getByTestId('btn-open-tutor-floating-widget')).toBeInTheDocument();
   });
+
+  it('não exibe o botão flutuante quando isTutorVisible for false (modo Oculto/Privado)', async () => {
+    render(
+      <ToastProvider>
+        <TutorFloatingWidget
+          courseId={1}
+          moduleId={4}
+          lessonId={70}
+          hasTranscription={true}
+          isTutorVisible={false}
+          currentUser={{ id: 1, role: 'aluno' }}
+        />
+      </ToastProvider>
+    );
+
+    // Mesmo com transcrição, se o modo for oculto, botão não deve ser renderizado
+    expect(screen.queryByTestId('btn-open-tutor-floating-widget')).not.toBeInTheDocument();
+  });
 });

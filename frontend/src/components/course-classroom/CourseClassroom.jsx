@@ -16,6 +16,7 @@ import CourseCertificateManager from './CourseCertificateManager';
 import TutorFloatingWidget from '../tutor-ia/TutorFloatingWidget';
 import { scrollToClassroomSection } from './lessonUtils';
 import { useToast } from '../../context/ToastContext';
+import { useTutorVisibility } from '../../hooks/useTutorVisibility';
 
 export default function CourseClassroom({
   course: initialCourse,
@@ -28,6 +29,7 @@ export default function CourseClassroom({
 }) {
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
   const { addToast } = useToast();
+  const { isTutorVisible } = useTutorVisibility(currentUser);
   const {
     course, modules, activeLesson, setActiveLesson, loading, actionLoading,
     completedLessonIds, handleToggleLessonComplete, fetchCourseData,
@@ -431,6 +433,7 @@ export default function CourseClassroom({
                     fetchCourseData();
                   }}
                   rightSidebar={renderTimelineSidebar()}
+                  isTutorVisible={isTutorVisible}
                 />
               )}
             </div>
@@ -482,6 +485,7 @@ export default function CourseClassroom({
         moduleId={selectedModule?.id || selectedModuleId || activeLesson?.module_id} lessonId={activeLesson?.id}
         currentUser={currentUser}
         isLightBg={isLightBg}
+        isTutorVisible={isTutorVisible}
         onSelectLesson={(l) => { setActiveLesson(l); if (l.module_id) setSelectedModuleId(l.module_id); scrollToClassroomSection(); }}
       />
     </div>

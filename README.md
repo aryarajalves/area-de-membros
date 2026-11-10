@@ -7,6 +7,19 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
+### 🚀 Novidades da Versão v1.2.7 (Feed Social da Comunidade estilo Instagram: Carrossel, Vídeos Curtos, Thumbnails, Seguir, Insights e Perfis)
+- **📸 Feed Social da Comunidade estilo Instagram:**
+  - Publicações com textos de até 2.200 caracteres, menções (@) com autocompletar e filtros dinâmicos (`Para Você / Geral`, `Seguindo`, `Mais Curtidos`, `Meu Curso`, `Minhas Publicações` e `Salvos`).
+  - **Carrossel de Imagens:** Envio de até 10 fotos por publicação com preview numerado, setas de navegação, barra de bolinhas (`dots`) e Lightbox em tela cheia de alta definição.
+  - **Vídeos Curtos & Thumbnails:** Player responsivo com controles completos e suporte a capa personalizada (`media_thumbnail_url`) antes da reprodução.
+- **👥 Perfis Sociais da Comunidade, Seguir/Seguidores & Notificações:**
+  - Perfis inspirados no Instagram com foto, bio de até 150 caracteres, link externo clicável na bio e contadores de seguidores/seguindo.
+  - Sistema de seguir/deixar de seguir com aba de feed dedicada (`Seguindo`) e central de notificações sociais em tempo real (curtidas, comentários e novos seguidores).
+- **📊 Aba de Insights e Métricas de Engajamento por Publicação:**
+  - Métricas completas para o autor e administradores: contagem de visualizações únicas com registro idempotente, taxa de engajamento, total de interações e lista de visualizadores recentes.
+- **🛡️ Controle de Acesso para Testes:**
+  - Acesso ao Feed da Comunidade restrito para gestores (`admin` e `superadmin`) durante a fase de validação e testes internos.
+
 ### 🚀 Novidades da Versão v1.2.6 (Bloqueio Independente de Canais, Chats e Suporte por Curso)
 - **💬 Bloqueio Independente e Programado de Canais, Chats & Suporte por Curso (`CourseChannelLockSelector`):**
   - Controle independente das aulas permitindo deixar os canais `Canais Liberados`, `Bloquear Canais Agora` ou `Liberar Canais em Data/Hora`, com seletor multi-escolha para escolher quais áreas bloquear (`Chat Exclusivo deste Curso`, `Suporte & Relatos`, `Chat Geral da Comunidade` e `Mensagens Diretas / DMs`).

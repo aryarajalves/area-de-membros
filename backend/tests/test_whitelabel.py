@@ -121,3 +121,51 @@ def test_upload_platform_logo_and_reset(superadmin_token):
     pub_res_after = client.get("/api/v1/whitelabel")
     assert pub_res_after.json()["logo_url"] is None
 
+
+@pytest.fixture
+def admin_token():
+    db = SessionLocal()
+    user = db.query(User).filter(User.role == "admin").first()
+    if not user:
+        user = User(
+            name="Admin Regular WhiteLabel",
+            email="adminregular@teste.com",
+            hashed_password="hashed_pwd",
+            role="admin",
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    db.close()
+    return token
+
+
+def test_admin_cannot_toggle_astrology_platform(admin_token):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    payload = {"is_astrology_platform": True}
+    res = client.patch("/api/v1/whitelabel", json=payload, headers=headers)
+    assert res.status_code == 403
+    assert "Apenas o Super Admin" in res.json()["detail"]
+
+
+def test_superadmin_can_toggle_astrology_platform(superadmin_token):
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+
+    # 1. Ativa nicho de Astrologia
+    res = client.patch("/api/v1/whitelabel", json={"is_astrology_platform": True}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["is_astrology_platform"] is True
+
+    # 2. Confirma no endpoint público
+    pub_res = client.get("/api/v1/whitelabel")
+    assert pub_res.status_code == 200
+    assert pub_res.json()["is_astrology_platform"] is True
+
+    # 3. Desativa
+    restore_res = client.patch("/api/v1/whitelabel", json={"is_astrology_platform": False}, headers=headers)
+    assert restore_res.status_code == 200
+    assert restore_res.json()["is_astrology_platform"] is False
+
+

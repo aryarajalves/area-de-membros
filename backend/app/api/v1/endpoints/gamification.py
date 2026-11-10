@@ -34,14 +34,15 @@ MONTH_NAMES_PT = [
 @router.get("/ranking", response_model=GamificationRankingResponse)
 def get_ranking(
     period: str = Query("monthly", description="'monthly' para o mês corrente ou 'all_time' para histórico geral"),
+    limit: int = Query(50, ge=1, le=100, description="Limite de alunos retornados no ranking principal (padrão 50)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Retorna a tabela de classificação do Ranking dos Alunos.
+    Retorna a tabela de classificação do Ranking dos Alunos de forma otimizada para escala.
     Apenas usuários com perfil 'aluno' disputam e constam no ranking.
     """
-    # Sincroniza retroativamente pontos de aulas concluídas para garantir integridade
+    # Sincroniza retroativamente pontos de aulas concluídas para garantir integridade apenas do aluno atual
     if current_user.role == "aluno":
         sync_student_historical_points(db, user_id=current_user.id)
 
@@ -51,12 +52,9 @@ def get_ranking(
     # Define filtro temporal
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # Buscar apenas alunos ativos
-    alunos = db.query(User).filter(User.role == "aluno", User.is_active == True).all()
-    aluno_ids = [a.id for a in alunos]
-    aluno_map = {a.id: a for a in alunos}
-
-    if not aluno_ids:
+    # 1. Total de alunos ativos disputando
+    total_participants = db.query(func.count(User.id)).filter(User.role == "aluno", User.is_active == True).scalar() or 0
+    if total_participants == 0:
         return GamificationRankingResponse(
             period=period,
             month_name=month_name,
@@ -65,64 +63,61 @@ def get_ranking(
             total_participants=0,
         )
 
-    # Consulta agregada de pontos por aluno
-    query_points = db.query(
-        GamificationPoint.user_id,
-        func.sum(GamificationPoint.points).label("total_pts")
-    ).filter(GamificationPoint.user_id.in_(aluno_ids))
-
-    if period == "monthly":
-        query_points = query_points.filter(GamificationPoint.created_at >= start_of_month)
-
-    user_points_agg = query_points.group_by(GamificationPoint.user_id).all()
-    points_dict = {user_id: total for user_id, total in user_points_agg}
-
-    # Contagem de Melhores Soluções
-    query_solutions = db.query(
-        GamificationPoint.user_id,
-        func.count(GamificationPoint.id).label("count")
-    ).filter(
-        GamificationPoint.user_id.in_(aluno_ids),
-        GamificationPoint.action == "support_solution"
+    # 2. Subquery agregada de pontos por aluno ativo
+    points_subq = (
+        db.query(
+            GamificationPoint.user_id.label("uid"),
+            func.coalesce(func.sum(GamificationPoint.points), 0).label("total_pts")
+        )
     )
     if period == "monthly":
-        query_solutions = query_solutions.filter(GamificationPoint.created_at >= start_of_month)
-    solutions_dict = {u_id: count for u_id, count in query_solutions.group_by(GamificationPoint.user_id).all()}
+        points_subq = points_subq.filter(GamificationPoint.created_at >= start_of_month)
+    points_subq = points_subq.group_by(GamificationPoint.user_id).subquery()
 
-    # Contagem de Aulas Concluídas
-    query_lessons = db.query(
-        GamificationPoint.user_id,
-        func.count(GamificationPoint.id).label("count")
-    ).filter(
-        GamificationPoint.user_id.in_(aluno_ids),
-        GamificationPoint.action == "lesson_completed"
+    # 3. Busca apenas os TOP N alunos diretamente no banco de dados com ordenação SQL
+    top_query = (
+        db.query(
+            User,
+            func.coalesce(points_subq.c.total_pts, 0).label("pts")
+        )
+        .outerjoin(points_subq, User.id == points_subq.c.uid)
+        .filter(User.role == "aluno", User.is_active == True)
+        .order_by(desc("pts"), User.id.asc())
+        .limit(limit)
     )
-    if period == "monthly":
-        query_lessons = query_lessons.filter(GamificationPoint.created_at >= start_of_month)
-    lessons_dict = {u_id: count for u_id, count in query_lessons.group_by(GamificationPoint.user_id).all()}
+    top_results = top_query.all()
+    top_user_ids = [u.id for u, _ in top_results]
 
-    # Monta a lista completa de alunos ordenados por pontuação
-    student_entries = []
-    for a_id, user in aluno_map.items():
-        pts = points_dict.get(a_id, 0)
-        student_entries.append({
-            "user_id": a_id,
-            "name": user.name,
-            "email": user.email,
-            "avatar_url": getattr(user, "avatar_url", None),
-            "points": pts,
-            "solutions_count": solutions_dict.get(a_id, 0),
-            "lessons_completed_count": lessons_dict.get(a_id, 0),
-        })
+    # 4. Soluções e Aulas concluídas apenas para os TOP N alunos selecionados
+    solutions_dict = {}
+    lessons_dict = {}
+    if top_user_ids:
+        query_solutions = db.query(
+            GamificationPoint.user_id,
+            func.count(GamificationPoint.id).label("count")
+        ).filter(
+            GamificationPoint.user_id.in_(top_user_ids),
+            GamificationPoint.action == "support_solution"
+        )
+        if period == "monthly":
+            query_solutions = query_solutions.filter(GamificationPoint.created_at >= start_of_month)
+        solutions_dict = {u_id: count for u_id, count in query_solutions.group_by(GamificationPoint.user_id).all()}
 
-    # Ordenar por pontos DESC, soluções DESC, id ASC
-    student_entries.sort(key=lambda x: (x["points"], x["solutions_count"], -x["user_id"]), reverse=True)
+        query_lessons = db.query(
+            GamificationPoint.user_id,
+            func.count(GamificationPoint.id).label("count")
+        ).filter(
+            GamificationPoint.user_id.in_(top_user_ids),
+            GamificationPoint.action == "lesson_completed"
+        )
+        if period == "monthly":
+            query_lessons = query_lessons.filter(GamificationPoint.created_at >= start_of_month)
+        lessons_dict = {u_id: count for u_id, count in query_lessons.group_by(GamificationPoint.user_id).all()}
 
     ranking_list = []
     my_position_item = None
 
-    for idx, entry in enumerate(student_entries, start=1):
-        # Definição de insígnias e títulos
+    for idx, (user, pts) in enumerate(top_results, start=1):
         if idx == 1:
             badge = "🥇 Mestre da Comunidade"
         elif idx == 2:
@@ -134,17 +129,17 @@ def get_ranking(
         else:
             badge = "✨ Aluno Ativo"
 
-        is_me = (entry["user_id"] == current_user.id)
-        lvl = calculate_student_level(entry["points"])
+        is_me = (user.id == current_user.id)
+        lvl = calculate_student_level(int(pts))
         item = GamificationStudentItem(
             rank=idx,
-            user_id=entry["user_id"],
-            name=entry["name"],
-            email=entry["email"],
-            avatar_url=entry["avatar_url"],
-            points=entry["points"],
-            solutions_count=entry["solutions_count"],
-            lessons_completed_count=entry["lessons_completed_count"],
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            avatar_url=getattr(user, "avatar_url", None),
+            points=int(pts),
+            solutions_count=solutions_dict.get(user.id, 0),
+            lessons_completed_count=lessons_dict.get(user.id, 0),
             badge=badge,
             level=lvl["level"],
             level_title=lvl["level_title"],
@@ -160,12 +155,77 @@ def get_ranking(
         if is_me:
             my_position_item = item
 
+    # Se o usuário atual for aluno e não estiver entre os TOP N exibidos, calcula sua posição individual
+    if current_user.role == "aluno" and not my_position_item:
+        my_pts_query = db.query(func.coalesce(func.sum(GamificationPoint.points), 0)).filter(
+            GamificationPoint.user_id == current_user.id
+        )
+        if period == "monthly":
+            my_pts_query = my_pts_query.filter(GamificationPoint.created_at >= start_of_month)
+        my_pts = int(my_pts_query.scalar() or 0)
+
+        higher_students_count = (
+            db.query(func.count(points_subq.c.uid))
+            .join(User, User.id == points_subq.c.uid)
+            .filter(User.role == "aluno", User.is_active == True, points_subq.c.total_pts > my_pts)
+            .scalar() or 0
+        )
+        my_rank = higher_students_count + 1
+
+        my_sol = (
+            db.query(func.count(GamificationPoint.id))
+            .filter(GamificationPoint.user_id == current_user.id, GamificationPoint.action == "support_solution")
+        )
+        if period == "monthly":
+            my_sol = my_sol.filter(GamificationPoint.created_at >= start_of_month)
+        my_solutions_count = my_sol.scalar() or 0
+
+        my_les = (
+            db.query(func.count(GamificationPoint.id))
+            .filter(GamificationPoint.user_id == current_user.id, GamificationPoint.action == "lesson_completed")
+        )
+        if period == "monthly":
+            my_les = my_les.filter(GamificationPoint.created_at >= start_of_month)
+        my_lessons_count = my_les.scalar() or 0
+
+        lvl = calculate_student_level(my_pts)
+        badge = "✨ Aluno Ativo"
+        if my_rank == 1:
+            badge = "🥇 Mestre da Comunidade"
+        elif my_rank == 2:
+            badge = "🥈 Mentor Destaque"
+        elif my_rank == 3:
+            badge = "🥉 Aluno Notável"
+        elif my_rank <= 10:
+            badge = "⭐ Top Estudante"
+
+        my_position_item = GamificationStudentItem(
+            rank=my_rank,
+            user_id=current_user.id,
+            name=current_user.name,
+            email=current_user.email,
+            avatar_url=getattr(current_user, "avatar_url", None),
+            points=my_pts,
+            solutions_count=my_solutions_count,
+            lessons_completed_count=my_lessons_count,
+            badge=badge,
+            level=lvl["level"],
+            level_title=lvl["level_title"],
+            level_badge=lvl["level_badge"],
+            level_tier=lvl["level_tier"],
+            level_color=lvl["level_color"],
+            level_progress_percent=lvl["level_progress_percent"],
+            points_to_next_level=lvl["points_to_next_level"],
+            is_max_level=lvl["is_max_level"],
+            is_current_user=True,
+        )
+
     return GamificationRankingResponse(
         period=period,
         month_name=month_name,
         ranking=ranking_list,
         my_position=my_position_item,
-        total_participants=len(student_entries),
+        total_participants=total_participants,
     )
 
 

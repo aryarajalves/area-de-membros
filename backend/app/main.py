@@ -255,9 +255,61 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;
+                        ALTER TABLE invites ADD COLUMN IF NOT EXISTS allowed_course_ids VARCHAR;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_active BOOLEAN DEFAULT FALSE NOT NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_expires_at TIMESTAMP NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_tutor_custom_monthly_limit INTEGER NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS first_login_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0 NOT NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(150);
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_link VARCHAR(255);
+
+                        CREATE TABLE IF NOT EXISTS registration_verifications (
+                            id SERIAL PRIMARY KEY,
+                            email VARCHAR NOT NULL,
+                            name VARCHAR NOT NULL,
+                            hashed_password VARCHAR NOT NULL,
+                            role VARCHAR NOT NULL,
+                            invite_token VARCHAR NOT NULL,
+                            code VARCHAR NOT NULL,
+                            phone VARCHAR,
+                            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                            is_used BOOLEAN DEFAULT FALSE,
+                            attempts INTEGER DEFAULT 0 NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_registration_verifications_email ON registration_verifications(email);
+                        ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;
+                        ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS phone VARCHAR;
+
+                        -- Mídias, Redes Sociais, Matchmaking e Pin em introduction_posts
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS media_type VARCHAR(50) DEFAULT 'none';
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS media_url TEXT;
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS video_embed_url TEXT;
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS linkedin VARCHAR(255);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS website VARCHAR(255);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS niche VARCHAR(100);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS location VARCHAR(100);
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS seeking TEXT;
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS offering TEXT;
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+                        ALTER TABLE introduction_likes ADD COLUMN IF NOT EXISTS reaction_type VARCHAR(20) DEFAULT 'like';
+
+                        -- Tutoriais em Texto vs Vídeo
+                        ALTER TABLE tutorials ADD COLUMN IF NOT EXISTS content_type VARCHAR(50) DEFAULT 'video';
+                        ALTER TABLE tutorials ADD COLUMN IF NOT EXISTS text_content TEXT NULL;
+
+                        -- DMs da Equipe monitoradas pelo Super Admin
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS dm_thread_admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+                        CREATE INDEX IF NOT EXISTS ix_chat_messages_dm_thread_admin_id ON chat_messages (dm_thread_admin_id);
+                        ALTER TABLE tutorials ALTER COLUMN video_url DROP NOT NULL;
 
                         CREATE TABLE IF NOT EXISTS ai_tutor_settings (
                             id SERIAL PRIMARY KEY,
@@ -335,6 +387,23 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS chunk_type VARCHAR(30) DEFAULT 'transcript' NOT NULL;
                         ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS question_text TEXT NULL;
                         ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS answer_text TEXT NULL;
+                        DO $$
+                        BEGIN
+                            BEGIN
+                                CREATE EXTENSION IF NOT EXISTS vector;
+                            EXCEPTION WHEN OTHERS THEN
+                                NULL;
+                            END;
+                            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vector') THEN
+                                ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS embedding vector(1536);
+                                BEGIN
+                                    CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_embedding_hnsw 
+                                    ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
+                                EXCEPTION WHEN OTHERS THEN
+                                    NULL;
+                                END;
+                            END IF;
+                        END $$;
                         CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_course_id ON ai_knowledge_chunks(course_id);
                         CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_module_id ON ai_knowledge_chunks(module_id);
                         CREATE INDEX IF NOT EXISTS ix_ai_knowledge_chunks_lesson_id ON ai_knowledge_chunks(lesson_id);
@@ -352,6 +421,96 @@ async def lifespan(app: FastAPI):
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                         );
 
+                        CREATE TABLE IF NOT EXISTS community_posts (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            course_id INTEGER NULL REFERENCES courses(id) ON DELETE SET NULL,
+                            content TEXT NOT NULL,
+                            media_urls JSONB NULL,
+                            media_type VARCHAR(50) DEFAULT 'none' NOT NULL,
+                            media_thumbnail_url TEXT NULL,
+                            likes_count INTEGER DEFAULT 0 NOT NULL,
+                            comments_count INTEGER DEFAULT 0 NOT NULL,
+                            is_pinned BOOLEAN DEFAULT FALSE NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS media_thumbnail_url TEXT;
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_user_id ON community_posts(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_course_id ON community_posts(course_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_created_at ON community_posts(created_at);
+
+                        CREATE TABLE IF NOT EXISTS community_post_likes (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_post_like UNIQUE (post_id, user_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_likes_post_id ON community_post_likes(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_likes_user_id ON community_post_likes(user_id);
+
+                        CREATE TABLE IF NOT EXISTS community_post_comments (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            parent_id INTEGER NULL REFERENCES community_post_comments(id) ON DELETE CASCADE,
+                            content TEXT NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_comments_post_id ON community_post_comments(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_comments_user_id ON community_post_comments(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_comments_parent_id ON community_post_comments(parent_id);
+
+                        CREATE TABLE IF NOT EXISTS community_post_bookmarks (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_post_bookmark UNIQUE (post_id, user_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_bookmarks_post_id ON community_post_bookmarks(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_bookmarks_user_id ON community_post_bookmarks(user_id);
+
+                        CREATE TABLE IF NOT EXISTS community_notifications (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            actor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            notification_type VARCHAR(50) NOT NULL,
+                            post_id INTEGER REFERENCES community_posts(id) ON DELETE CASCADE,
+                            comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE CASCADE,
+                            title VARCHAR(255) NOT NULL,
+                            message TEXT,
+                            is_read BOOLEAN DEFAULT FALSE NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_user_id ON community_notifications(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_actor_id ON community_notifications(actor_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_post_id ON community_notifications(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_is_read ON community_notifications(is_read);
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_type ON community_notifications(notification_type);
+
+                        CREATE TABLE IF NOT EXISTS community_follows (
+                            id SERIAL PRIMARY KEY,
+                            follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_follow UNIQUE (follower_id, following_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_follows_follower_id ON community_follows(follower_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_follows_following_id ON community_follows(following_id);
+
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0 NOT NULL;
+                        CREATE TABLE IF NOT EXISTS community_post_views (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_post_view UNIQUE (post_id, user_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id);
+
                     """))
                 else:
                     for col_sql in [
@@ -363,13 +522,41 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE users ADD COLUMN ai_tutor_active BOOLEAN DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN ai_tutor_expires_at TIMESTAMP NULL",
                         "ALTER TABLE users ADD COLUMN ai_tutor_custom_monthly_limit INTEGER NULL",
+                        "ALTER TABLE users ADD COLUMN first_login_at TIMESTAMP NULL",
+                        "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP NULL",
+                        "ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP NULL",
+                        "ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0",
                         "ALTER TABLE courses ADD COLUMN watermark_enabled BOOLEAN DEFAULT 1",
                         "ALTER TABLE courses ADD COLUMN release_type VARCHAR(50) DEFAULT 'immediate'",
                         "ALTER TABLE courses ADD COLUMN release_date TIMESTAMP NULL",
                         "ALTER TABLE courses ADD COLUMN channel_release_type VARCHAR(50) DEFAULT 'immediate'",
                         "ALTER TABLE courses ADD COLUMN channel_release_date TIMESTAMP NULL",
                         "ALTER TABLE courses ADD COLUMN locked_channels_json TEXT NULL",
+                        "ALTER TABLE users ADD COLUMN phone VARCHAR",
+                        "ALTER TABLE users ADD COLUMN birth_date DATE",
+                        "ALTER TABLE users ADD COLUMN avatar_url VARCHAR",
+                        "ALTER TABLE users ADD COLUMN bio VARCHAR(150)",
+                        "ALTER TABLE users ADD COLUMN bio_link VARCHAR(255)",
+                        "ALTER TABLE invites ADD COLUMN allowed_course_ids VARCHAR",
+                        "ALTER TABLE registration_verifications ADD COLUMN attempts INTEGER DEFAULT 0",
+                        "ALTER TABLE registration_verifications ADD COLUMN phone VARCHAR",
                         "ALTER TABLE events ADD COLUMN course_ids_json TEXT NULL",
+                        "ALTER TABLE introduction_posts ADD COLUMN media_type VARCHAR(50) DEFAULT 'none'",
+                        "ALTER TABLE introduction_posts ADD COLUMN media_url TEXT",
+                        "ALTER TABLE introduction_posts ADD COLUMN video_embed_url TEXT",
+                        "ALTER TABLE introduction_posts ADD COLUMN instagram VARCHAR(100)",
+                        "ALTER TABLE introduction_posts ADD COLUMN linkedin VARCHAR(255)",
+                        "ALTER TABLE introduction_posts ADD COLUMN whatsapp VARCHAR(50)",
+                        "ALTER TABLE introduction_posts ADD COLUMN website VARCHAR(255)",
+                        "ALTER TABLE introduction_posts ADD COLUMN niche VARCHAR(100)",
+                        "ALTER TABLE introduction_posts ADD COLUMN location VARCHAR(100)",
+                        "ALTER TABLE introduction_posts ADD COLUMN seeking TEXT",
+                        "ALTER TABLE introduction_posts ADD COLUMN offering TEXT",
+                        "ALTER TABLE introduction_posts ADD COLUMN is_pinned BOOLEAN DEFAULT 0",
+                        "ALTER TABLE introduction_likes ADD COLUMN reaction_type VARCHAR(20) DEFAULT 'like'",
+                        "ALTER TABLE tutorials ADD COLUMN content_type VARCHAR(50) DEFAULT 'video'",
+                        "ALTER TABLE tutorials ADD COLUMN text_content TEXT",
+                        "ALTER TABLE chat_messages ADD COLUMN dm_thread_admin_id INTEGER",
                     ]:
                         try:
                             conn.execute(text(col_sql))
@@ -394,6 +581,29 @@ async def lifespan(app: FastAPI):
                     try:
                         conn.execute(text("CREATE TABLE IF NOT EXISTS funnel_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, color VARCHAR(30) DEFAULT '#6366f1', order_index INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"))
                         conn.execute(text("ALTER TABLE funnels ADD COLUMN folder_id INTEGER REFERENCES funnel_folders(id) ON DELETE SET NULL"))
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_posts (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, course_id INTEGER NULL REFERENCES courses(id) ON DELETE SET NULL, content TEXT NOT NULL, media_urls JSON NULL, media_type VARCHAR(50) DEFAULT 'none' NOT NULL, likes_count INTEGER DEFAULT 0 NOT NULL, comments_count INTEGER DEFAULT 0 NOT NULL, is_pinned BOOLEAN DEFAULT 0 NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_posts_user_id ON community_posts(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_posts_course_id ON community_posts(course_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_likes (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_like UNIQUE (post_id, user_id))"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_likes_post_id ON community_post_likes(post_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, parent_id INTEGER NULL REFERENCES community_post_comments(id) ON DELETE CASCADE, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_comments_post_id ON community_post_comments(post_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_bookmarks (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_bookmark UNIQUE (post_id, user_id))"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_bookmarks_post_id ON community_post_bookmarks(post_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, actor_id INTEGER REFERENCES users(id) ON DELETE CASCADE, notification_type VARCHAR(50) NOT NULL, post_id INTEGER REFERENCES community_posts(id) ON DELETE CASCADE, comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE CASCADE, title VARCHAR(255) NOT NULL, message TEXT, is_read BOOLEAN DEFAULT 0 NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_notifications_user_id ON community_notifications(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_notifications_is_read ON community_notifications(is_read)"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN media_thumbnail_url TEXT"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_follows (id INTEGER PRIMARY KEY AUTOINCREMENT, follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_follow UNIQUE (follower_id, following_id))"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_follows_follower_id ON community_follows(follower_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_follows_following_id ON community_follows(following_id)"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN views_count INTEGER DEFAULT 0 NOT NULL"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_views (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_view UNIQUE (post_id, user_id))"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id)"))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
@@ -429,8 +639,22 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("[MAIN] Scheduler interno desativado no processo web. As rotinas periódicas são executadas pelo serviço Worker dedicado.")
 
+    # 6. Sincronização multi-worker e réplicas via Redis Pub/Sub (se configurado)
+    try:
+        from app.services.chat_ws_manager import chat_manager
+        await chat_manager.start_redis_listener()
+    except Exception as redis_e:
+        logger.warning(f"[MAIN] Aviso ao iniciar Redis listener: {redis_e}")
+
     logger.info("[MAIN] <<< Inicialização concluída com sucesso! Servidor pronto para responder requisições.")
     yield
+
+    # Encerra listener Redis Pub/Sub
+    try:
+        from app.services.chat_ws_manager import chat_manager
+        await chat_manager.stop_redis_listener()
+    except Exception:
+        pass
 
     # Finaliza scheduler se estiver rodando
     if scheduler.running:

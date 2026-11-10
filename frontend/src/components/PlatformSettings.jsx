@@ -353,6 +353,7 @@ export default function PlatformSettings({
 
       {activeTab === 'whitelabel' && currentUser?.role !== 'aluno' && (
         <PlatformWhiteLabelTab
+          currentUser={currentUser}
           cardBg={cardBg}
           cardBorder={cardBorder}
           textColor={textColor}

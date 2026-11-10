@@ -182,7 +182,7 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       if (url.includes('/conversations')) {
         return Promise.resolve({ ok: true, json: async () => [] });
       }
-      if (url.includes('/mention-contacts')) {
+      if (url.includes('/mention-contacts') || url.includes('/dm/candidates')) {
         return Promise.resolve({ ok: true, json: async () => [mockContact] });
       }
       return Promise.resolve({ ok: true, json: async () => [] });
@@ -476,6 +476,44 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Recebida em tempo real via WebSocket!')).toBeInTheDocument();
+    });
+  });
+
+  it('renders "Atendimento da Equipe" tab for superadmin and displays support list', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/v1/chat/dm/admin-conversations')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              student: { id: 10, name: 'Aluno VIP', role: 'aluno', avatar_url: null },
+              admin: { id: 2, name: 'Admin Jordão', role: 'admin', avatar_url: null },
+              last_message: 'Dúvida importante',
+              last_message_at: new Date().toISOString(),
+              unread_by_admin: 1,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={{ id: 1, name: 'Super Admin', role: 'superadmin' }}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('dm-tab-team-support')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('dm-tab-team-support'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Aluno VIP')).toBeInTheDocument();
+      expect(screen.getByText('Admin Jordão')).toBeInTheDocument();
     });
   });
 });

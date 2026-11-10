@@ -202,6 +202,13 @@ export const getInitialNodeData = (type, extraData = {}) => {
       ...extraData,
     };
   }
+  if (type === 'trigger_first_login' || (type === 'trigger' && extraData.trigger_event === 'first_login')) {
+    return {
+      trigger_event: 'first_login',
+      is_start: true,
+      ...extraData,
+    };
+  }
   if (type === 'trigger') {
     return {
       trigger_event: 'student_created',

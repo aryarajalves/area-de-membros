@@ -29,6 +29,7 @@ class ChatMessage(Base):
     button_text = Column(String(100), nullable=True)
     button_url = Column(String(500), nullable=True)
     button_action_type = Column(String(30), nullable=True)  # 'url' | 'course' | 'lesson'
+    dm_thread_admin_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -36,6 +37,7 @@ class ChatMessage(Base):
     user = relationship("User", foreign_keys=[user_id])
     recipient = relationship("User", foreign_keys=[recipient_id])
     pinned_by_user = relationship("User", foreign_keys=[pinned_by_user_id])
+    dm_thread_admin = relationship("User", foreign_keys=[dm_thread_admin_id])
     course = relationship("Course", foreign_keys=[course_id])
     parent = relationship("ChatMessage", remote_side=[id], backref="replies")
     likes = relationship("ChatMessageLike", back_populates="message", cascade="all, delete-orphan")

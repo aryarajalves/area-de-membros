@@ -4,35 +4,35 @@
  */
 
 export const RPG_LEVELS = [
-  // ELO BRONZE (Níveis 1 ao 4)
+  // ELO BRONZE (Níveis 1 ao 4) - Primeiros passos e ambientação
   { level: 1, tier: 'Bronze', sub: 'I', title: 'Bronze I', badge: '🛡️ Bronze I', min_points: 0, color: '#cd7f32', tier_color: '#cd7f32', description: 'Início da jornada na plataforma' },
-  { level: 2, tier: 'Bronze', sub: 'II', title: 'Bronze II', badge: '🛡️ Bronze II', min_points: 25, color: '#cd7f32', tier_color: '#cd7f32', description: 'Primeiros passos e primeiras aulas' },
-  { level: 3, tier: 'Bronze', sub: 'III', title: 'Bronze III', badge: '🛡️ Bronze III', min_points: 60, color: '#cd7f32', tier_color: '#cd7f32', description: 'Estudante dedicado' },
-  { level: 4, tier: 'Bronze', sub: 'IV', title: 'Bronze IV', badge: '🛡️ Bronze IV', min_points: 110, color: '#cd7f32', tier_color: '#cd7f32', description: 'Dominando o básico' },
+  { level: 2, tier: 'Bronze', sub: 'II', title: 'Bronze II', badge: '🛡️ Bronze II', min_points: 100, color: '#cd7f32', tier_color: '#cd7f32', description: 'Primeiros passos e primeiras aulas' },
+  { level: 3, tier: 'Bronze', sub: 'III', title: 'Bronze III', badge: '🛡️ Bronze III', min_points: 250, color: '#cd7f32', tier_color: '#cd7f32', description: 'Estudante dedicado' },
+  { level: 4, tier: 'Bronze', sub: 'IV', title: 'Bronze IV', badge: '🛡️ Bronze IV', min_points: 500, color: '#cd7f32', tier_color: '#cd7f32', description: 'Dominando o básico' },
 
-  // ELO PRATA (Níveis 5 ao 8)
-  { level: 5, tier: 'Prata', sub: 'I', title: 'Prata I', badge: '⚔️ Prata I', min_points: 180, color: '#94a3b8', tier_color: '#94a3b8', description: 'Ingresso na divisão Prata' },
-  { level: 6, tier: 'Prata', sub: 'II', title: 'Prata II', badge: '⚔️ Prata II', min_points: 270, color: '#94a3b8', tier_color: '#94a3b8', description: 'Praticante constante' },
-  { level: 7, tier: 'Prata', sub: 'III', title: 'Prata III', badge: '⚔️ Prata III', min_points: 380, color: '#94a3b8', tier_color: '#94a3b8', description: 'Aluno de destaque' },
-  { level: 8, tier: 'Prata', sub: 'IV', title: 'Prata IV', badge: '⚔️ Prata IV', min_points: 510, color: '#94a3b8', tier_color: '#94a3b8', description: 'Veterano de Prata' },
+  // ELO PRATA (Níveis 5 ao 8) - Aluno comprometido
+  { level: 5, tier: 'Prata', sub: 'I', title: 'Prata I', badge: '⚔️ Prata I', min_points: 850, color: '#94a3b8', tier_color: '#94a3b8', description: 'Ingresso na divisão Prata' },
+  { level: 6, tier: 'Prata', sub: 'II', title: 'Prata II', badge: '⚔️ Prata II', min_points: 1300, color: '#94a3b8', tier_color: '#94a3b8', description: 'Praticante constante' },
+  { level: 7, tier: 'Prata', sub: 'III', title: 'Prata III', badge: '⚔️ Prata III', min_points: 1900, color: '#94a3b8', tier_color: '#94a3b8', description: 'Aluno de destaque' },
+  { level: 8, tier: 'Prata', sub: 'IV', title: 'Prata IV', badge: '⚔️ Prata IV', min_points: 2600, color: '#94a3b8', tier_color: '#94a3b8', description: 'Veterano de Prata' },
 
-  // ELO OURO (Níveis 9 ao 12)
-  { level: 9, tier: 'Ouro', sub: 'I', title: 'Ouro I', badge: '👑 Ouro I', min_points: 660, color: '#f59e0b', tier_color: '#f59e0b', description: 'Consagração no Elo Ouro' },
-  { level: 10, tier: 'Ouro', sub: 'II', title: 'Ouro II', badge: '👑 Ouro II', min_points: 840, color: '#f59e0b', tier_color: '#f59e0b', description: 'Especialista em conteúdo' },
-  { level: 11, tier: 'Ouro', sub: 'III', title: 'Ouro III', badge: '👑 Ouro III', min_points: 1050, color: '#f59e0b', tier_color: '#f59e0b', description: 'Líder em aprendizado' },
-  { level: 12, tier: 'Ouro', sub: 'IV', title: 'Ouro IV', badge: '👑 Ouro IV', min_points: 1300, color: '#f59e0b', tier_color: '#f59e0b', description: 'Mestre da divisão Ouro' },
+  // ELO OURO (Níveis 9 ao 12) - Veterano consistente
+  { level: 9, tier: 'Ouro', sub: 'I', title: 'Ouro I', badge: '👑 Ouro I', min_points: 3500, color: '#f59e0b', tier_color: '#f59e0b', description: 'Consagração no Elo Ouro' },
+  { level: 10, tier: 'Ouro', sub: 'II', title: 'Ouro II', badge: '👑 Ouro II', min_points: 4600, color: '#f59e0b', tier_color: '#f59e0b', description: 'Especialista em conteúdo' },
+  { level: 11, tier: 'Ouro', sub: 'III', title: 'Ouro III', badge: '👑 Ouro III', min_points: 5900, color: '#f59e0b', tier_color: '#f59e0b', description: 'Líder em aprendizado' },
+  { level: 12, tier: 'Ouro', sub: 'IV', title: 'Ouro IV', badge: '👑 Ouro IV', min_points: 7400, color: '#f59e0b', tier_color: '#f59e0b', description: 'Mestre da divisão Ouro' },
 
-  // ELO DIAMANTE (Níveis 13 ao 16)
-  { level: 13, tier: 'Diamante', sub: 'I', title: 'Diamante I', badge: '💎 Diamante I', min_points: 1600, color: '#38bdf8', tier_color: '#38bdf8', description: 'Elite Diamante da comunidade' },
-  { level: 14, tier: 'Diamante', sub: 'II', title: 'Diamante II', badge: '💎 Diamante II', min_points: 1950, color: '#38bdf8', tier_color: '#38bdf8', description: 'Brilho e excelência contínua' },
-  { level: 15, tier: 'Diamante', sub: 'III', title: 'Diamante III', badge: '💎 Diamante III', min_points: 2350, color: '#38bdf8', tier_color: '#38bdf8', description: 'Referência entre os alunos' },
-  { level: 16, tier: 'Diamante', sub: 'IV', title: 'Diamante IV', badge: '💎 Diamante IV', min_points: 2800, color: '#38bdf8', tier_color: '#38bdf8', description: 'Pilar fundamental da comunidade' },
+  // ELO DIAMANTE (Níveis 13 ao 16) - Elite da comunidade
+  { level: 13, tier: 'Diamante', sub: 'I', title: 'Diamante I', badge: '💎 Diamante I', min_points: 9200, color: '#38bdf8', tier_color: '#38bdf8', description: 'Elite Diamante da comunidade' },
+  { level: 14, tier: 'Diamante', sub: 'II', title: 'Diamante II', badge: '💎 Diamante II', min_points: 11300, color: '#38bdf8', tier_color: '#38bdf8', description: 'Brilho e excelência contínua' },
+  { level: 15, tier: 'Diamante', sub: 'III', title: 'Diamante III', badge: '💎 Diamante III', min_points: 13700, color: '#38bdf8', tier_color: '#38bdf8', description: 'Referência entre os alunos' },
+  { level: 16, tier: 'Diamante', sub: 'IV', title: 'Diamante IV', badge: '💎 Diamante IV', min_points: 16500, color: '#38bdf8', tier_color: '#38bdf8', description: 'Pilar fundamental da comunidade' },
 
-  // ELO LENDA (Níveis 17 ao 20)
-  { level: 17, tier: 'Lenda', sub: 'I', title: 'Lenda I', badge: '🔥 Lenda I', min_points: 3300, color: '#a855f7', tier_color: '#a855f7', description: 'Ascensão lendária' },
-  { level: 18, tier: 'Lenda', sub: 'II', title: 'Lenda II', badge: '🔥 Lenda II', min_points: 3850, color: '#a855f7', tier_color: '#a855f7', description: 'Chama inextinguível de dedicação' },
-  { level: 19, tier: 'Lenda', sub: 'III', title: 'Lenda III', badge: '🔥 Lenda III', min_points: 4450, color: '#ec4899', tier_color: '#ec4899', description: 'Próximo do ápice supremo' },
-  { level: 20, tier: 'Lenda', sub: 'Suprema', title: 'Lenda Suprema', badge: '🌟 Lenda Suprema', min_points: 5000, color: '#fbbf24', tier_color: '#fbbf24', description: 'Nível Máximo: O patamar mais alto da Área de Membros' },
+  // ELO LENDA (Níveis 17 ao 20) - Mestres Supremos
+  { level: 17, tier: 'Lenda', sub: 'I', title: 'Lenda I', badge: '🔥 Lenda I', min_points: 20000, color: '#a855f7', tier_color: '#a855f7', description: 'Ascensão lendária' },
+  { level: 18, tier: 'Lenda', sub: 'II', title: 'Lenda II', badge: '🔥 Lenda II', min_points: 25000, color: '#a855f7', tier_color: '#a855f7', description: 'Chama inextinguível de dedicação' },
+  { level: 19, tier: 'Lenda', sub: 'III', title: 'Lenda III', badge: '🔥 Lenda III', min_points: 32000, color: '#ec4899', tier_color: '#ec4899', description: 'Próximo do ápice supremo' },
+  { level: 20, tier: 'Lenda', sub: 'Suprema', title: 'Lenda Suprema', badge: '🌟 Lenda Suprema', min_points: 40000, color: '#fbbf24', tier_color: '#fbbf24', description: 'Nível Máximo: O patamar mais alto da Área de Membros' },
 ];
 
 /**

@@ -8,9 +8,13 @@ import StudentAssignTagsModal from './StudentAssignTagsModal';
 import StudentRpgLevelBadge from './StudentRpgLevelBadge';
 import StudentAiTutorModal from './StudentAiTutorModal';
 import { formatBrasiliaDateTime } from './studentDateUtils';
+import ZodiacBadge from '../common/ZodiacBadge';
+import OnlineStatusBadge, { OnlineStatusDot } from '../common/OnlineStatusBadge';
+import useIsAstrologyPlatform from '../../hooks/useIsAstrologyPlatform';
 
 export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
-  const [expanded, setExpanded] = useState(true);
+  const isAstrology = useIsAstrologyPlatform();
+  const [expanded, setExpanded] = useState(false);
   const [selectedCourseForHistory, setSelectedCourseForHistory] = useState(null);
   const [selectedCourseForWebhook, setSelectedCourseForWebhook] = useState(null);
   const [showGamificationModal, setShowGamificationModal] = useState(false);
@@ -61,27 +65,42 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: '1 1 280px', minWidth: 0 }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              minWidth: '48px',
-              minHeight: '48px',
-              maxWidth: '48px',
-              maxHeight: '48px',
-              flexShrink: 0,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-            }}
-          >
-            {initial}
+          <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+            {student.avatar_url ? (
+              <img
+                src={student.avatar_url}
+                alt={student.name}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  minWidth: '48px',
+                  minHeight: '48px',
+                  flexShrink: 0,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                }}
+              >
+                {initial}
+              </div>
+            )}
+            <OnlineStatusDot isOnline={student.is_online} size={12} />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -107,6 +126,12 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
                 <UserCheck size={11} />
                 {student.is_active ? 'Aluno Ativo' : 'Inativo'}
               </span>
+
+              <OnlineStatusBadge isOnline={student.is_online} lastSeenAt={student.last_seen_at} size="sm" />
+
+              {isAstrology && student.birth_date && (
+                <ZodiacBadge birthDate={student.birth_date} size="sm" />
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '4px', fontSize: '0.82rem', color: textMuted }}>

@@ -3,6 +3,13 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.core.database import Base
 
+try:
+    from pgvector.sqlalchemy import Vector
+    HAS_PGVECTOR = True
+except ImportError:
+    Vector = None
+    HAS_PGVECTOR = False
+
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -80,7 +87,9 @@ class AiKnowledgeChunk(Base):
     content = Column(Text, nullable=False)
     start_time_seconds = Column(Integer, nullable=True) # segundo inicial no vídeo
     end_time_seconds = Column(Integer, nullable=True)   # segundo final no vídeo
-    embedding_json = Column(Text, nullable=False)       # JSON com lista de 1536 floats normalizados
+    embedding_json = Column(Text, nullable=False)       # JSON com lista de 1536 floats normalizados (retrocompatibilidade)
+    if Vector is not None:
+        embedding = Column(Vector(1536), nullable=True) # Vetor nativo para busca vetorial indexada no PostgreSQL (pgvector)
     token_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

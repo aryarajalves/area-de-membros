@@ -110,4 +110,54 @@ describe('groupCoursesByBundles', () => {
     expect(result[0].type).toBe('bundle');
     expect(result[0].title).toBe('Combo AstroWake Master');
   });
+
+  it('ordena os produtos do combo pelo order_index (esquerda/direita)', () => {
+    // Caso 1: AstroWake - Comece por aqui (order_index: 1) deve vir na esquerda antes de Trânsitos (order_index: 2)
+    const courses = [
+      {
+        id: 10,
+        title: 'AstroWake - Trânsitos',
+        order_index: 2,
+        item_type: 'course',
+        bundled_course_ids: [20],
+      },
+      {
+        id: 20,
+        title: 'AstroWake - Comece por aqui',
+        order_index: 1,
+        item_type: 'course',
+        bundled_course_ids: [10],
+      },
+    ];
+
+    const result = groupCoursesByBundles(courses);
+    expect(result).toHaveLength(1);
+    expect(result[0].courses[0].title).toBe('AstroWake - Comece por aqui');
+    expect(result[0].courses[1].title).toBe('AstroWake - Trânsitos');
+  });
+
+  it('inverte a posição dos produtos no combo quando o order_index for alterado', () => {
+    // Caso 2: Trânsitos com order_index: 0 aparece na esquerda, Comece por aqui com order_index: 5 na direita
+    const courses = [
+      {
+        id: 20,
+        title: 'AstroWake - Comece por aqui',
+        order_index: 5,
+        item_type: 'course',
+        bundled_course_ids: [10],
+      },
+      {
+        id: 10,
+        title: 'AstroWake - Trânsitos',
+        order_index: 0,
+        item_type: 'course',
+        bundled_course_ids: [20],
+      },
+    ];
+
+    const result = groupCoursesByBundles(courses);
+    expect(result).toHaveLength(1);
+    expect(result[0].courses[0].title).toBe('AstroWake - Trânsitos');
+    expect(result[0].courses[1].title).toBe('AstroWake - Comece por aqui');
+  });
 });

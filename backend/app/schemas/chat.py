@@ -48,6 +48,7 @@ class ChatMessageResponse(BaseModel):
     course_id: Optional[int] = None
     parent_id: Optional[int] = None
     recipient_id: Optional[int] = None
+    dm_thread_admin_id: Optional[int] = None
     message: str
     media_url: Optional[str] = None
     media_type: Optional[str] = None
@@ -75,6 +76,7 @@ class ChatMessageCreate(BaseModel):
     course_id: Optional[int] = Field(default=None, description="ID do curso se channel_type for 'course'")
     parent_id: Optional[int] = Field(default=None, description="ID da mensagem pai caso seja resposta em thread")
     recipient_id: Optional[int] = Field(default=None, description="ID do usuário destinatário para mensagens diretas (DM)")
+    dm_thread_admin_id: Optional[int] = Field(default=None, description="ID do administrador quando o superadmin responde em thread de atendimento")
     message: Optional[str] = Field(default="", max_length=3000, description="Conteúdo da mensagem")
     media_url: Optional[str] = Field(default=None, description="URL da mídia anexada (imagem, áudio, doc)")
     media_type: Optional[str] = Field(default=None, description="Tipo da mídia: image, document, audio, video")
@@ -88,6 +90,15 @@ class ChatDmConversationItem(BaseModel):
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
     unread_count: int = 0
+
+
+class ChatAdminDmConversationItem(BaseModel):
+    student: ChatUser
+    admin: ChatUser
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    unread_by_admin: int = 0
+    total_messages: int = 0
 
 
 class ChatMentionNotificationItem(BaseModel):
@@ -163,5 +174,30 @@ class ChatChannelMembersResponse(BaseModel):
     superadmins: List[ChatMemberItem] = []
     admins: List[ChatMemberItem] = []
     students: List[ChatMemberItem] = []
+
+
+class ChatDmCandidateItem(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    avatar_url: Optional[str] = None
+    is_online: bool = False
+    last_seen_at: Optional[datetime] = None
+    level: int = 1
+    level_title: str = "Bronze I"
+    level_tier: str = "Bronze"
+    total_points: int = 0
+    course_ids: List[int] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatDmCandidatesResponse(BaseModel):
+    items: List[ChatDmCandidateItem]
+    total: int
+    page: int
+    limit: int
+    pages: int
 
 

@@ -76,13 +76,22 @@ export function groupCoursesByBundles(courses = []) {
         componentCourses.find((c) => c.item_type !== 'tool') ||
         componentCourses[0];
 
-      // Ordenar os cursos dentro do pacote: curso principal primeiro, depois cursos, depois ferramentas
+      // Ordenar os cursos dentro do pacote:
+      // 1º critério: Ordem numérica definida pelo usuário (order_index ascendente: 1 aparece antes de 2, 3...)
+      // 2º critério: Cursos antes de ferramentas (se os order_index forem iguais)
+      // 3º critério: Curso principal como desempate
+      // 4º critério: ID crescente para ordenação estável
       const sortedBundleCourses = [...componentCourses].sort((a, b) => {
-        if (a.id === primaryCourse.id) return -1;
-        if (b.id === primaryCourse.id) return 1;
+        const orderA = a.order_index !== undefined && a.order_index !== null ? Number(a.order_index) : 0;
+        const orderB = b.order_index !== undefined && b.order_index !== null ? Number(b.order_index) : 0;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
         if (a.item_type === 'course' && b.item_type !== 'course') return -1;
         if (a.item_type !== 'course' && b.item_type === 'course') return 1;
-        return (a.order_index ?? 0) - (b.order_index ?? 0);
+        if (a.id === primaryCourse.id) return -1;
+        if (b.id === primaryCourse.id) return 1;
+        return (a.id ?? 0) - (b.id ?? 0);
       });
 
       const hasBundleAccess = sortedBundleCourses.some((c) => c.has_access !== false);

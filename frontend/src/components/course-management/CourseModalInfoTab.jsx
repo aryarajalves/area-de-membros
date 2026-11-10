@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Loader2, Shield } from 'lucide-react';
+import { Sparkles, Loader2, Shield, ListOrdered } from 'lucide-react';
 import CourseTypeSelector from './CourseTypeSelector';
 import CourseReleaseScheduleCard from './CourseReleaseScheduleCard';
 import ExpandableTextarea from '../common/ExpandableTextarea';
@@ -13,6 +13,8 @@ export default function CourseModalInfoTab({
   setTitle,
   description,
   setDescription,
+  orderIndex = 0,
+  setOrderIndex,
   watermarkEnabled = true,
   setWatermarkEnabled,
   releaseType = 'immediate',
@@ -57,6 +59,27 @@ export default function CourseModalInfoTab({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           data-testid="course-title-input"
+        />
+      </div>
+
+      {/* Ordem de Exibição / Posição (Combo e Vitrine) */}
+      <div className="form-group">
+        <label htmlFor="course-info-order-index" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <ListOrdered size={15} style={{ color: '#eab308' }} />
+          <span>Ordem de Posição / Exibição (Combo e Vitrine)</span>
+        </label>
+        <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 6px 0' }}>
+          Define a posição do produto no combo ou vitrine (menor número aparece primeiro, à esquerda; maior número à direita).
+        </p>
+        <input
+          id="course-info-order-index"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+          value={orderIndex}
+          onChange={(e) => setOrderIndex && setOrderIndex(e.target.value)}
+          data-testid="course-info-order-index-input"
         />
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, X, Sparkles, MessageCircle } from 'lucide-react';
 import TutorChatTab from './TutorChatTab';
+import { useTutorVisibility } from '../../hooks/useTutorVisibility';
 
 export default function TutorFloatingWidget({
   courseId,
@@ -11,8 +12,11 @@ export default function TutorFloatingWidget({
   isLightBg = false,
   onSeekTime,
   onSelectLesson,
-  hasTranscription
+  hasTranscription,
+  isTutorVisible: propIsTutorVisible
 }) {
+  const { isTutorVisible: hookIsTutorVisible } = useTutorVisibility(currentUser);
+  const isTutorVisible = propIsTutorVisible !== undefined ? propIsTutorVisible : hookIsTutorVisible;
   const [isOpen, setIsOpen] = useState(false);
   const [scope, setScope] = useState('lesson'); // 'lesson' | 'all'
   const [isTranscriptionCompleted, setIsTranscriptionCompleted] = useState(
@@ -82,8 +86,8 @@ export default function TutorFloatingWidget({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Se a aula não tiver transcrição concluída, não exibe o botão flutuante nem o drawer
-  if (!lessonId || !isTranscriptionCompleted) {
+  // Se a aula não tiver transcrição concluída ou o tutor estiver oculto/desabilitado, não exibe o botão flutuante nem o drawer
+  if (!lessonId || !isTranscriptionCompleted || !isTutorVisible) {
     return null;
   }
 

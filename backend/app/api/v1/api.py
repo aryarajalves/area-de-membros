@@ -6,7 +6,8 @@ from app.api.v1.endpoints import (
     favorites, student_tags, chat_broadcast, funnels, agentflow, tutorials,
     whitelabel, introductions, public_register, chat_members, course_sales,
     infrastructure, course_upsell, events, course_lessons, certificates,
-    lesson_mindmaps, tutor_ia
+    lesson_mindmaps, tutor_ia, presence, chat_superadmin_dms,
+    community_feed
 )
 
 api_router = APIRouter()
@@ -29,6 +30,7 @@ api_router.include_router(support.router, prefix="/support", tags=["support"])
 api_router.include_router(quiz.router)
 api_router.include_router(api_tokens.router, prefix="/api-tokens", tags=["api-tokens"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
+api_router.include_router(chat_superadmin_dms.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_members.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_broadcast.router)
 api_router.include_router(funnels.router)
@@ -46,3 +48,5 @@ api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(certificates.router)
 api_router.include_router(lesson_mindmaps.router)
 api_router.include_router(tutor_ia.router)
+api_router.include_router(presence.router, prefix="/presence", tags=["presence"])
+api_router.include_router(community_feed.router, prefix="/community", tags=["community-feed"])

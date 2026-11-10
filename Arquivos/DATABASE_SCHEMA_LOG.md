@@ -2,6 +2,239 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [10/11/2026] - Feed Social Etapa 3: Insights e Visualizações dos Posts (Tabela community_post_views e coluna views_count)
+- **Objetivo:** Rastrear visualizações/alcance de cada publicação e exibir métricas detalhadas de insights (visualizações, curtidas, comentários, salvamentos e taxa de engajamento).
+- **Tabela e Colunas Afetadas:**
+  - `community_posts`:
+    - `views_count`: INTEGER DEFAULT 0 NOT NULL (contador de visualizações)
+  - `community_post_views`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Constraint de unicidade: `uq_community_post_view (post_id, user_id)`
+    - Índices: `ix_community_post_views_post_id`, `ix_community_post_views_user_id`
+- **Script de Migração:** backend/scripts/migrate_community_post_views.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Feed Social Etapa 2: Sistema de Seguir / Deixar de Seguir (Tabela community_follows)
+- **Objetivo:** Permitir que alunos e administradores sigam e sejam seguidos por outros membros da comunidade, exibindo contagem de seguidores/seguindo, listas de membros e filtro exclusivo de feed "👥 Seguindo".
+- **Tabela Criada:**
+  - `community_follows`:
+    - `id`: SERIAL PRIMARY KEY
+    - `follower_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE (quem segue)
+    - `following_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE (quem é seguido)
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Constraint de unicidade: `uq_community_follow (follower_id, following_id)`
+    - Índices: `ix_community_follows_follower_id`, `ix_community_follows_following_id`
+- **Script de Migração:** backend/scripts/migrate_community_follows.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Feed Social: Perfil de Membro com Bio e Link (bio e bio_link na tabela users)
+- **Objetivo:** Adicionar suporte a biografia personalizada estilo Instagram (máx 150 caracteres) e link externo clicável na bio do usuário para networking no Feed da Comunidade.
+- **Tabela Afetada:**
+  - `users`:
+    - `bio`: VARCHAR(150) NULL (Biografia do usuário, até 150 caracteres)
+    - `bio_link`: VARCHAR(255) NULL (Link/URL externo na bio)
+- **Script de Migração:** backend/scripts/add_user_bio_and_link.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Feed Social: Imagem de Capa / Thumbnail para Vídeos (media_thumbnail_url na tabela community_posts)
+- **Objetivo:** Permitir ao autor de uma publicação com vídeo curto definir uma imagem de capa personalizada (thumbnail/pôster) exibida antes do play.
+- **Tabela Afetada:**
+  - `community_posts`:
+    - `media_thumbnail_url`: TEXT NULL (URL da imagem de capa/thumbnail do vídeo)
+- **Script de Migração:** backend/scripts/add_post_media_thumbnail.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Feed Social Etapa 4: Notificações Sociais do Feed (Tabela community_notifications)
+- **Objetivo:** Notificar alunos e administradores em tempo real quando suas publicações receberem curtidas, comentários ou menções diretas com `@aluno` no Feed Social.
+- **Tabela Criada:**
+  - `community_notifications`:
+    - `id`: SERIAL PRIMARY KEY
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE (destinatário)
+    - `actor_id`: INTEGER NULL REFERENCES users(id) ON DELETE CASCADE (autor da ação)
+    - `notification_type`: VARCHAR(50) NOT NULL ('feed_like', 'feed_comment', 'feed_mention')
+    - `post_id`: INTEGER NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `comment_id`: INTEGER NULL REFERENCES community_post_comments(id) ON DELETE CASCADE
+    - `title`: VARCHAR(255) NOT NULL
+    - `message`: TEXT NULL
+    - `is_read`: BOOLEAN DEFAULT FALSE NOT NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Índices: `ix_community_notifications_user_id`, `ix_community_notifications_actor_id`, `ix_community_notifications_post_id`, `ix_community_notifications_is_read`, `ix_community_notifications_type`
+- **Script de Migração:** backend/scripts/migrate_community_notifications.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Feed Social Etapa 3: Salvar Posts nos Favoritos (Tabela community_post_bookmarks)
+- **Objetivo:** Permitir que alunos e administradores salvem publicações nos seus posts favoritos (bookmarks) para consulta posterior com filtro dedicado.
+- **Tabela Criada:**
+  - `community_post_bookmarks`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Constraint: `uq_community_post_bookmark` UNIQUE (post_id, user_id)
+    - Índices: `ix_community_post_bookmarks_post_id`, `ix_community_post_bookmarks_user_id`
+- **Script de Migração:** backend/scripts/migrate_community_bookmarks.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Escalabilidade Fase 3: Ativação de pgvector e Busca Vetorial Indexada no Tutor IA
+- **Objetivo:** Ativação nativa da extensão `vector` no PostgreSQL e adição da coluna `embedding vector(1536)` na tabela `ai_knowledge_chunks` com índice HNSW (`vector_cosine_ops`), substituindo o cálculo de similaridade de cosseno in-memory no Python por queries SQL com ordenação vetorial nativa e instantânea no banco.
+- **Tabela Afetada:**
+  - `ai_knowledge_chunks`:
+    - `embedding`: vector(1536) NULL com índice HNSW `ix_ai_knowledge_chunks_embedding_hnsw`
+- **Script de Migração:** backend/scripts/migrate_phase3_pgvector_cdn.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e fallback gracioso SQLite).
+
+---
+
+### [10/11/2026] - Feed Social da Comunidade (Tabelas community_posts, community_post_likes e community_post_comments)
+- **Objetivo:** Implementar o Feed Social estilo Instagram/LinkedIn na plataforma, permitindo que alunos e instrutores publiquem fotos/textos, curtam com animação, comentem com respostas em thread, filtrem por curso e fixem posts no topo.
+- **Tabelas Criadas:**
+  - `community_posts`:
+    - `id`: SERIAL PRIMARY KEY
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `course_id`: INTEGER NULL REFERENCES courses(id) ON DELETE SET NULL
+    - `content`: TEXT NOT NULL
+    - `media_urls`: JSONB / JSON NULL
+    - `media_type`: VARCHAR(50) DEFAULT 'none' NOT NULL
+    - `likes_count`: INTEGER DEFAULT 0 NOT NULL
+    - `comments_count`: INTEGER DEFAULT 0 NOT NULL
+    - `is_pinned`: BOOLEAN DEFAULT FALSE NOT NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - `updated_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+  - `community_post_likes`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Constraint: `uq_community_post_like` UNIQUE (post_id, user_id)
+  - `community_post_comments`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `parent_id`: INTEGER NULL REFERENCES community_post_comments(id) ON DELETE CASCADE
+    - `content`: TEXT NOT NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+- **Script de Migração:** backend/scripts/migrate_community_feed.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Supervisão e Respostas do Super Admin em DMs de Administradores (dm_thread_admin_id na tabela chat_messages)
+- **Objetivo:** Permitir que o Super Admin visualize e envie respostas na mesma conversa entre Alunos e Administradores (mantendo o contexto de atendimento e o badge de Super Admin), além de rastrear a qual thread de administrador a mensagem pertence.
+- **Tabela Afetada:**
+  - `chat_messages`:
+    - `dm_thread_admin_id`: INTEGER NULL REFERENCES users(id) ON DELETE SET NULL (ID do Administrador responsável pela thread em que o Super Admin interveio)
+    - Índice: `ix_chat_messages_dm_thread_admin_id`
+- **Script de Migração:** backend/scripts/add_dm_thread_admin_id.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Suporte a Tutoriais em Texto e Artigos (content_type e text_content na tabela tutorials)
+- **Objetivo:** Adicionar suporte a tutoriais de onboarding da plataforma no formato 100% texto/artigo com formatação Markdown, permitindo que a aula de tutorial não exija arquivo de vídeo e tenha conteúdo textual rico.
+- **Tabela Afetada:**
+  - `tutorials`:
+    - `content_type`: VARCHAR(50) DEFAULT 'video' NOT NULL (Valores: 'video' ou 'text')
+    - `text_content`: TEXT NULL (Conteúdo em Markdown do tutorial em texto)
+    - `video_url`: Alterado para NULLABLE (opcional quando content_type == 'text')
+- **Script de Migração:** backend/scripts/add_content_type_to_tutorials.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [10/11/2026] - Presença e Rastreamento Online do Usuário (last_seen_at na tabela users)
+- **Objetivo:** Adicionar a coluna `last_seen_at` na tabela `users` para persistir o último momento de atividade/presença online do usuário (aluno, admin ou superadmin), possibilitando exibir status "Online agora" e "Visto por último".
+- **Tabela Afetada:**
+  - `users`:
+    - `last_seen_at`: TIMESTAMP WITH TIME ZONE NULL
+- **Script de Migração:** backend/scripts/add_user_last_seen_at.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [09/11/2026] - Múltiplas Reações Estilo LinkedIn na Aba Apresente-se (reaction_type em introduction_likes)
+- **Objetivo:** Adicionar suporte a múltiplos tipos de reação com emojis ricos estilo LinkedIn (like, love, celebrate, insightful, fire, rocket) na tabela de curtidas/reações de apresentações comunitárias.
+- **Tabela Afetada:**
+  - `introduction_likes`:
+    - `reaction_type`: VARCHAR(20) DEFAULT 'like' NOT NULL (Valores: 'like', 'love', 'celebrate', 'insightful', 'fire', 'rocket')
+- **Script de Migração:** backend/scripts/add_reaction_type_to_intro_likes.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [09/11/2026] - Expansão da Aba Apresente-se (Mídias, Vídeos, Redes, Matchmaking e Pin em introduction_posts)
+- **Objetivo:** Adicionar suporte completo a upload e incorporação de mídias (foto, vídeo MP4/WebM, embeds do YouTube/Vimeo/Loom), canais de redes sociais e contato de 1 clique (Instagram, LinkedIn, WhatsApp, Website), matchmaking de parcerias ("O que busco" e "O que domino / Posso ajudar"), nicho, localização geográfica e fixação de apresentações no topo (pin) pelo administrador.
+- **Tabela Afetada:**
+  - `introduction_posts`:
+    - `media_type`: VARCHAR(50) DEFAULT 'none' (Tipos: 'none', 'image', 'video', 'youtube', 'vimeo', 'loom')
+    - `media_url`: TEXT NULL (URL da mídia enviada para o storage B2 ou local)
+    - `video_embed_url`: TEXT NULL (URL de embed do YouTube/Vimeo/Loom)
+    - `instagram`: VARCHAR(100) NULL (Perfil/URL do Instagram)
+    - `linkedin`: VARCHAR(255) NULL (URL do perfil LinkedIn)
+    - `whatsapp`: VARCHAR(50) NULL (Número WhatsApp com DDI/DDD)
+    - `website`: VARCHAR(255) NULL (Portfólio / Site / GitHub)
+    - `niche`: VARCHAR(100) NULL (Área de atuação / profissão)
+    - `location`: VARCHAR(100) NULL (Cidade e/ou Estado)
+    - `seeking`: TEXT NULL (O que busca na comunidade / parcerias desejadas)
+    - `offering`: TEXT NULL (Como posso ajudar / Habilidades que domina)
+    - `is_pinned`: BOOLEAN DEFAULT FALSE NOT NULL (Fixado no topo da comunidade por Admin)
+- **Script de Migração:** backend/scripts/update_introduction_posts_features.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [09/11/2026] - Coleta de Data de Nascimento do Usuário (birth_date na tabela users)
+- **Objetivo:** Adicionar campo opcional de data de nascimento (`birth_date`) do usuário na tabela `users` e na interface de perfil das configurações, permitindo a personalização e campanhas com base no aniversário.
+- **Tabela Afetada:**
+  - `users`:
+    - `birth_date`: DATE NULL (Data de nascimento no formato YYYY-MM-DD)
+- **Script de Migração:** backend/scripts/add_birth_date_to_users.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
+### [09/11/2026] - Correção e Auto-Migração da Tabela registration_verifications e Coluna attempts
+- **Objetivo:** Garantir a criação automática da tabela `registration_verifications` e a presença das colunas `attempts` (INTEGER DEFAULT 0) e `phone` (VARCHAR) no startup do servidor, corrigindo erro `500 UndefinedColumn: column "attempts" of relation "registration_verifications" does not exist` ocorrido no cadastro de novos alunos via convite (`/register`).
+- **Tabelas e Colunas Afetadas:**
+  - `registration_verifications`:
+    - `attempts`: INTEGER DEFAULT 0 NOT NULL (Contador de tentativas incorretas de código OTP)
+    - `phone`: VARCHAR NULL (Número de telefone/WhatsApp informado no cadastro)
+  - `users`:
+    - `phone`: VARCHAR NULL
+    - `avatar_url`: VARCHAR NULL
+  - `invites`:
+    - `allowed_course_ids`: VARCHAR NULL
+- **Script de Migração:** backend/scripts/add_attempts_to_registration_verifications.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite) e registrada em backend/app/models/__init__.py.
+
+---
+
+### [09/11/2026] - Rastreamento de 1º Login e Acessos para Gatilho de Boas-Vindas nos Funis (first_login_at, last_login_at e login_count na tabela users)
+- **Objetivo:** Adicionar rastreamento do momento do primeiro login, último acesso e contador total de logins do usuário, viabilizando o acionamento automático do gatilho `first_login` (Primeiro Login / 1º Acesso) nos Funis de Mensagens.
+- **Tabela Afetada:**
+  - users:
+    - first_login_at: TIMESTAMP WITH TIME ZONE NULL (Timestamp do primeiríssimo login do aluno)
+    - last_login_at: TIMESTAMP WITH TIME ZONE NULL (Timestamp do acesso mais recente)
+    - login_count: INTEGER DEFAULT 0 NOT NULL (Contador progressivo de acessos)
+- **Script de Migração:** backend/scripts/add_first_login_to_users.py
+- **Auto-migração no Startup:** Incluída na rotina lifespan de backend/app/main.py (PostgreSQL e SQLite).
+
+---
+
 ### [08/11/2026] - Bloqueio Independente e Programado de Canais, Chats e Suporte por Curso (channel_release_type, channel_release_date e locked_channels_json na tabela courses)
 - **Objetivo:** Permitir que o administrador bloqueie ou agende a abertura de canais específicos (`course_chat`, `support`, `general_chat`, `dm`) de forma independente do bloqueio das aulas gravadas do curso.
 - **Tabela Afetada:**

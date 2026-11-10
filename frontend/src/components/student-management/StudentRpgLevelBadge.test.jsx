@@ -10,9 +10,9 @@ describe('StudentRpgLevelBadge Component', () => {
     expect(screen.getByText(/Bronze I/i)).toBeInTheDocument();
   });
 
-  it('renders level 2 (Bronze II) for 25 points (case Mariana)', () => {
+  it('renders level 2 (Bronze II) for 120 points (case 4 aulas concluidas)', () => {
     const handleClick = vi.fn();
-    render(<StudentRpgLevelBadge totalPoints={25} studentId={102} onClick={handleClick} />);
+    render(<StudentRpgLevelBadge totalPoints={120} studentId={102} onClick={handleClick} />);
 
     expect(screen.getByText(/Nv. 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Bronze II/i)).toBeInTheDocument();
@@ -22,15 +22,15 @@ describe('StudentRpgLevelBadge Component', () => {
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
-  it('renders level 20 (Lenda Suprema) MAX for 5000+ points', () => {
-    render(<StudentRpgLevelBadge totalPoints={5500} studentId={103} />);
+  it('renders level 20 (Lenda Suprema) MAX for 40000+ points', () => {
+    render(<StudentRpgLevelBadge totalPoints={42000} studentId={103} />);
     expect(screen.getByText(/Nv. 20/i)).toBeInTheDocument();
     expect(screen.getByText(/Lenda Suprema/i)).toBeInTheDocument();
     expect(screen.getByText(/MAX/i)).toBeInTheDocument();
   });
 
   it('renders compact mode with badge text', () => {
-    render(<StudentRpgLevelBadge totalPoints={180} studentId={104} compact />);
+    render(<StudentRpgLevelBadge totalPoints={850} studentId={104} compact />);
     expect(screen.getByTestId('student-rpg-badge-compact-104')).toBeInTheDocument();
     expect(screen.getByText(/Prata I/i)).toBeInTheDocument();
   });

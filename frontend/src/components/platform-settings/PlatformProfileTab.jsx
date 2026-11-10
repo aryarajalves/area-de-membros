@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert, Calendar } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ProfileAvatarSection from './ProfileAvatarSection';
 import ProfileGamificationCard from './ProfileGamificationCard';
 import PhoneWithDdiInput from './PhoneWithDdiInput';
+import ZodiacBadge from '../common/ZodiacBadge';
+import useIsAstrologyPlatform from '../../hooks/useIsAstrologyPlatform';
 
 export default function PlatformProfileTab({
   currentUser,
@@ -16,12 +18,14 @@ export default function PlatformProfileTab({
   onNavigateTab
 }) {
   const { addToast } = useToast();
+  const isAstrology = useIsAstrologyPlatform();
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [birthDate, setBirthDate] = useState(currentUser?.birth_date ? String(currentUser.birth_date).slice(0, 10) : '');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar_url || '');
 
   const [newPassword, setNewPassword] = useState('');
@@ -35,6 +39,7 @@ export default function PlatformProfileTab({
       setName(currentUser.name || '');
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || '');
+      setBirthDate(currentUser.birth_date ? String(currentUser.birth_date).slice(0, 10) : '');
       setAvatarUrl(currentUser.avatar_url || '');
     }
   }, [currentUser]);
@@ -70,6 +75,7 @@ export default function PlatformProfileTab({
       const payload = {
         avatar_url: avatarUrl,
         phone: (phone || '').trim(),
+        birth_date: birthDate ? birthDate : null,
       };
 
       if (!isSuperAdmin) {
@@ -238,19 +244,44 @@ export default function PlatformProfileTab({
           </div>
         </div>
 
-        {/* WhatsApp / Telefone com Seletor de DDI */}
-        <div style={{ marginBottom: '22px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: textColor }}>
-            WhatsApp / Telefone de Contato
-          </label>
-          <PhoneWithDdiInput
-            value={phone}
-            onChange={(val) => setPhone(val)}
-            isLightBg={isLightBg}
-            textColor={textColor}
-            subTextColor={subTextColor}
-            cardBorder={cardBorder}
-          />
+        {/* WhatsApp / Telefone com Seletor de DDI & Data de Nascimento */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '22px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: textColor }}>
+              WhatsApp / Telefone de Contato
+            </label>
+            <PhoneWithDdiInput
+              value={phone}
+              onChange={(val) => setPhone(val)}
+              isLightBg={isLightBg}
+              textColor={textColor}
+              subTextColor={subTextColor}
+              cardBorder={cardBorder}
+            />
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', minHeight: '22px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: textColor, margin: 0 }}>
+                <Calendar size={14} color="#38bdf8" />
+                <span>Data de Nascimento</span>
+              </label>
+              {isAstrology && birthDate && (
+                <ZodiacBadge birthDate={birthDate} size="sm" />
+              )}
+            </div>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              style={{
+                ...inputStyle,
+                colorScheme: isLightBg ? 'light' : 'dark',
+                cursor: 'pointer'
+              }}
+              data-testid="profile-input-birth-date"
+            />
+          </div>
         </div>
 
         {/* Bloco de Troca de Senha */}

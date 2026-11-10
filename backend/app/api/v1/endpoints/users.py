@@ -34,7 +34,7 @@ from app.services.course_access_utils import (
 from app.services.auth_security_service import (
     check_account_lockout, record_failed_login, reset_failed_login,
     invalidate_user_sessions, enforce_single_session_on_login,
-    validate_token_version, MAX_FAILED_ATTEMPTS
+    validate_token_version, track_user_login_and_dispatch, MAX_FAILED_ATTEMPTS
 )
 
 def get_current_user(
@@ -168,6 +168,8 @@ def login(request: Request, login_data: UserLogin, db: Session = Depends(get_db)
         )
     reset_failed_login(user, db)
     current_token_version = enforce_single_session_on_login(user, db)
+    track_user_login_and_dispatch(user, db)
+
     access_token = create_access_token(data={
         "sub": str(user.id),
         "role": user.role,
@@ -224,9 +226,13 @@ def list_users(
             )
         )
 
+    from app.services.presence_service import get_online_user_ids
+    online_ids = get_online_user_ids()
     results = []
     for u in users:
         res = UserResponse.model_validate(u)
+        res.is_online = (u.id in online_ids)
+        res.last_seen_at = u.last_seen_at
         res.course_ids = courses_map.get(u.id, [])
         res.course_access = access_map.get(u.id, [])
         results.append(res)
@@ -276,6 +282,7 @@ def create_user_manual(
         email=user_in.email.strip().lower(),
         name=user_in.name.strip(),
         phone=user_in.phone.strip() if user_in.phone else None,
+        birth_date=user_in.birth_date,
         hashed_password=hashed_pwd,
         role=user_in.role,
         is_active=True
@@ -365,6 +372,8 @@ def update_user(
         target_user.name = user_update.name
     if user_update.phone is not None:
         target_user.phone = user_update.phone.strip() if user_update.phone else None
+    if "birth_date" in user_update.model_fields_set:
+        target_user.birth_date = user_update.birth_date
 
     # Atualiza cursos liberados e tempos de acesso se informado
     if user_update.course_access is not None or user_update.course_ids is not None:
@@ -773,17 +782,8 @@ invites_router.add_api_route("/{invite_id}", delete_invite, methods=["DELETE"])
 invites_router.add_api_route("/bulk-delete", bulk_delete_invites, methods=["POST"])
 invites_router.add_api_route("/validate", validate_invite, methods=["GET"], response_model=InviteValidateResponse)
 
-@router.post(
-    "/register",
-    response_model=RegisterInitiateResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Iniciar Cadastro com Convite",
-    description="Inicia o processo de cadastro do aluno com o token de convite e envia código de verificação de 6 dígitos por e-mail."
-)
-async def register_user(
-    data: RegisterWithInvite,
-    db: Session = Depends(get_db)
-):
+@router.post("/register", response_model=RegisterInitiateResponse, status_code=status.HTTP_200_OK, summary="Iniciar Cadastro com Convite")
+async def register_user(data: RegisterWithInvite, db: Session = Depends(get_db)):
     invite = db.query(Invite).filter(Invite.token == data.token).first()
     if not invite:
         raise HTTPException(status_code=400, detail="Convite não encontrado.")
@@ -851,17 +851,8 @@ async def register_user(
         requires_verification=True
     )
 
-@router.post(
-    "/register/verify",
-    response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Confirmar Código OTP e Criar Conta",
-    description="Valida o código de 6 dígitos enviado por e-mail, cria a conta do aluno e vincula os cursos concedidos pelo convite."
-)
-def verify_registration(
-    data: VerifyCodeRequest,
-    db: Session = Depends(get_db)
-):
+@router.post("/register/verify", response_model=UserResponse, status_code=status.HTTP_201_CREATED, summary="Confirmar Código OTP e Criar Conta")
+def verify_registration(data: VerifyCodeRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     verification = (
         db.query(RegistrationVerification)
@@ -882,7 +873,12 @@ def verify_registration(
     if now > exp:
         raise HTTPException(status_code=400, detail="O código de verificação expirou. Solicite um novo.")
 
+    if (verification.attempts or 0) >= 5:
+        raise HTTPException(status_code=400, detail="Número de tentativas excedido. Solicite um novo código.")
+
     if verification.code != data.code.strip():
+        verification.attempts = (verification.attempts or 0) + 1
+        db.commit()
         raise HTTPException(status_code=400, detail="Código de verificação inválido.")
 
     # Valida convite novamente
@@ -951,15 +947,8 @@ def verify_registration(
     ]
     return res
 
-@router.post(
-    "/register/resend-code",
-    summary="Reenviar Código OTP de Cadastro",
-    description="Gera um novo código de verificação de 6 dígitos e reenvia por e-mail para confirmação da conta."
-)
-async def resend_registration_code(
-    data: ResendCodeRequest,
-    db: Session = Depends(get_db)
-):
+@router.post("/register/resend-code", summary="Reenviar Código OTP de Cadastro")
+async def resend_registration_code(data: ResendCodeRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     last_verif = (
         db.query(RegistrationVerification)
