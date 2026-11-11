@@ -153,6 +153,8 @@ def main():
     parser.add_argument("--version", type=str, help="Forçar uma versão específica (ex: 1.2.8)")
     parser.add_argument("--dry-run", action="store_true", help="Executa testes e validações sem gerar imagens Docker")
     parser.add_argument("--skip-tests", action="store_true", help="Pula execução da suíte de testes unitários")
+    parser.add_argument("--push", action="store_true", default=True, help="Faz push das imagens para o Docker Hub (padrão: True)")
+    parser.add_argument("--no-push", dest="push", action="store_false", help="Não faz push das imagens para o Docker Hub")
     args = parser.parse_args()
 
     curr_version = get_current_version()
@@ -263,6 +265,16 @@ def main():
         ["docker", "build", "-t", frontend_tag_hub, "-t", frontend_tag_direct, "."],
         cwd=FRONTEND_DIR
     )
+
+    # Push para Docker Hub
+    if args.push:
+        print("\n" + "=" * 70)
+        print("🚀 [DOCKER PUSH] Enviando imagens para o Docker Hub...")
+        print("=" * 70)
+        run_step(f"Push Backend: {backend_tag_hub}", ["docker", "push", backend_tag_hub])
+        run_step(f"Push Backend: {backend_tag_direct}", ["docker", "push", backend_tag_direct])
+        run_step(f"Push Frontend: {frontend_tag_hub}", ["docker", "push", frontend_tag_hub])
+        run_step(f"Push Frontend: {frontend_tag_direct}", ["docker", "push", frontend_tag_direct])
 
     print("\n" + "#" * 70)
     print("🎉 [SUCESSO TOTAL] Esteira concluída e imagens Docker geradas!")
