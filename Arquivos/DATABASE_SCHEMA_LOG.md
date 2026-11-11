@@ -2,6 +2,22 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [11/11/2026] - Otimização de Banco de Dados: Indexação de 100% das Chaves Estrangeiras (Foreign Keys)
+- **Objetivo:** Auditar todas as 111 ForeignKeys de todos os modelos SQLAlchemy e garantir que 100% delas possuam índices explícitos criados no banco, eliminando risco de Full Table Scans durante JOINs e exclusões em cascata.
+- **Novos Índices Criados (PostgreSQL e SQLite):**
+  - `idx_api_tokens_user_id`: coluna `user_id` na tabela `api_tokens`
+  - `idx_events_course_id`: coluna `course_id` na tabela `events`
+  - `idx_chat_messages_pinned_by`: coluna `pinned_by_user_id` na tabela `chat_messages`
+  - `idx_chat_broadcasts_filter_course`: coluna `filter_course_id` na tabela `chat_broadcasts`
+  - `idx_chat_broadcasts_filter_tag`: coluna `filter_tag_id` na tabela `chat_broadcasts`
+  - `idx_community_feed_comments_comment_id`: coluna `comment_id` na tabela `community_feed_comments`
+  - `idx_courses_generated_by_user_id`: coluna `generated_by_user_id` na tabela `courses`
+  - `idx_funnels_created_by_user_id`: coluna `created_by_user_id` na tabela `funnels`
+- **Validador Automático Integrado:** `scripts/check_db_optimization.py` (Pool de Conexões, 100% FKs indexadas, detecção de vazamento de sessões e carregamento antecipado N+1 com joinedload/selectinload).
+- **Auto-migração no Startup:** Comandos `CREATE INDEX IF NOT EXISTS` adicionados no `lifespan` de `backend/app/main.py`.
+
+---
+
 ### [11/11/2026] - Esteira Automatizada: Validação de 100% das Tabelas e Sincronização de Colunas Incrementais
 - **Objetivo:** Criar validador automático (`scripts/check_db_schema.py`) que inspeciona todos os modelos SQLAlchemy e garante que 100% das tabelas e colunas incrementais estejam presentes no bloco de auto-migração de `backend/app/main.py`.
 - **Tabelas e Colunas Sincronizadas no Startup:**

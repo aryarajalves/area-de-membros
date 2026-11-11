@@ -23,7 +23,7 @@ class ChatMessage(Base):
     parent_id = Column(Integer, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=True, index=True)
     is_pinned = Column(Boolean, default=False, nullable=False, index=True)
     pinned_at = Column(DateTime(timezone=True), nullable=True)
-    pinned_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    pinned_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_read = Column(Boolean, default=False, nullable=False, index=True)
     read_at = Column(DateTime(timezone=True), nullable=True, index=True)
     button_text = Column(String(100), nullable=True)

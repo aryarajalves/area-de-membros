@@ -15,7 +15,7 @@ class Event(Base):
     recording_url = Column(String(1024), nullable=True)
     thumbnail_url = Column(String(1024), nullable=True)
     target_type = Column(String(20), default="all", nullable=False)  # 'all' ou 'course'
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True)
     course_ids_json = Column(Text, nullable=True)  # JSON array de IDs de cursos permitidos (ex: "[1, 3]")
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

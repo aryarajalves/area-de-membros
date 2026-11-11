@@ -16,8 +16,8 @@ class ChatBroadcastCampaign(Base):
     title = Column(String(150), nullable=False)
     message = Column(Text, nullable=False)
     filter_type = Column(String(50), nullable=False, default="all")  # 'all' | 'course' | 'tag' | 'manual' | 'no_course' | 'recent_days'
-    filter_course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
-    filter_tag_id = Column(Integer, ForeignKey("student_tags.id", ondelete="SET NULL"), nullable=True)
+    filter_course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True)
+    filter_tag_id = Column(Integer, ForeignKey("student_tags.id", ondelete="SET NULL"), nullable=True, index=True)
     filter_days = Column(Integer, nullable=True)  # 7 | 14 | 30 dias de recência de cadastro
     filter_role = Column(String(30), nullable=True, default="aluno")  # 'aluno' | 'all'
     button_text = Column(String(100), nullable=True)

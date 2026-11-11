@@ -83,3 +83,25 @@ def test_recent_endpoints_have_openapi_summary_and_limiter():
                 assert "request" in sig.parameters, f"Rota {route.path} precisa receber parâmetro 'request: Request' para SlowAPI"
 
     assert total_routes == 43
+
+
+def test_database_optimization_and_fk_indexes():
+    """Valida se 100% das chaves estrangeiras (ForeignKeys) possuem índice no metadata do SQLAlchemy."""
+    total_fks = 0
+    indexed_fks = 0
+    missing_fks = []
+
+    for table_name, table in Base.metadata.tables.items():
+        table_indexes = {col.name for idx in table.indexes for col in idx.columns}
+        for col in table.columns:
+            if col.foreign_keys:
+                total_fks += 1
+                if col.index or col.primary_key or col.name in table_indexes:
+                    indexed_fks += 1
+                else:
+                    missing_fks.append(f"{table_name}.{col.name}")
+
+    assert total_fks > 100, f"Deveria haver mais de 100 FKs no sistema, encontrado: {total_fks}"
+    assert len(missing_fks) == 0, f"Chaves estrangeiras sem índice detectadas: {missing_fks}"
+    assert indexed_fks == total_fks, f"Esperado 100% indexado ({total_fks}/{total_fks}), encontrado {indexed_fks}"
+

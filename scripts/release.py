@@ -204,28 +204,34 @@ def main():
 
     # 6. Auditoria de Endpoints (Documentação, Autorização e Rate Limiting)
     run_step(
-        "6/10 - Auditoria de Endpoints (Documentação, Autorização e Rate Limiting)",
+        "6/11 - Auditoria de Endpoints (Documentação, Autorização e Rate Limiting)",
         [sys.executable, os.path.join(BASE_DIR, "scripts", "audit_endpoints.py")]
     )
 
-    # 7. Testes Unitários do Backend e Frontend
+    # 7. Auditoria de Otimização de Conexões e Banco de Dados (Pooling, 100% FK Indexes, Leaks, N+1)
+    run_step(
+        "7/11 - Auditoria de Otimização e Índices do Banco de Dados",
+        [sys.executable, os.path.join(BASE_DIR, "scripts", "check_db_optimization.py")]
+    )
+
+    # 8. Testes Unitários do Backend e Frontend
     if not args.skip_tests:
         run_step(
-            "7/10 - Testes Unitários do Backend (Pytest)",
+            "8/11 - Testes Unitários do Backend (Pytest)",
             ["docker", "exec", "area_de_membros_backend", "pytest", "-q", "--tb=short", "tests/"]
         )
 
         run_step(
-            "8/10 - Testes Unitários do Frontend (Vitest)",
+            "9/11 - Testes Unitários do Frontend (Vitest)",
             ["npm", "test", "--", "--run", "--no-file-parallelism"],
             cwd=FRONTEND_DIR
         )
     else:
         print("\n⏩ Testes unitários ignorados (--skip-tests ativado).")
 
-    # 9. Build do Frontend (Vite)
+    # 10. Build do Frontend (Vite)
     run_step(
-        "9/10 - Build de Produção do Frontend (Vite)",
+        "10/11 - Build de Produção do Frontend (Vite)",
         ["npm", "run", "build"],
         cwd=FRONTEND_DIR
     )

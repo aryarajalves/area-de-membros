@@ -570,6 +570,15 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_story_reactions_story_id ON community_story_reactions(story_id);
                         CREATE INDEX IF NOT EXISTS ix_community_story_reactions_user_id ON community_story_reactions(user_id);
 
+                        CREATE INDEX IF NOT EXISTS ix_api_tokens_user_id ON api_tokens(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id);
+                        CREATE INDEX IF NOT EXISTS ix_chat_messages_pinned_by_user_id ON chat_messages(pinned_by_user_id);
+                        CREATE INDEX IF NOT EXISTS ix_chat_broadcast_campaigns_filter_course_id ON chat_broadcast_campaigns(filter_course_id);
+                        CREATE INDEX IF NOT EXISTS ix_chat_broadcast_campaigns_filter_tag_id ON chat_broadcast_campaigns(filter_tag_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_notifications_comment_id ON community_notifications(comment_id);
+                        CREATE INDEX IF NOT EXISTS ix_lesson_transcriptions_generated_by_user_id ON lesson_transcriptions(generated_by_user_id);
+                        CREATE INDEX IF NOT EXISTS ix_funnels_created_by_user_id ON funnels(created_by_user_id);
+
                     """))
                 else:
                     for col_sql in [
@@ -695,6 +704,14 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_story_reactions (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, reaction_type VARCHAR(30) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_reactions_story_id ON community_story_reactions(story_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_reactions_user_id ON community_story_reactions(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_api_tokens_user_id ON api_tokens(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_messages_pinned_by_user_id ON chat_messages(pinned_by_user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_broadcast_campaigns_filter_course_id ON chat_broadcast_campaigns(filter_course_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_broadcast_campaigns_filter_tag_id ON chat_broadcast_campaigns(filter_tag_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_notifications_comment_id ON community_notifications(comment_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_lesson_transcriptions_generated_by_user_id ON lesson_transcriptions(generated_by_user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnels_created_by_user_id ON funnels(created_by_user_id)"))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")

@@ -93,7 +93,7 @@ class CommunityNotification(Base):
     actor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     notification_type = Column(String(50), nullable=False, index=True)  # 'feed_like', 'feed_comment', 'feed_mention'
     post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=True, index=True)
-    comment_id = Column(Integer, ForeignKey("community_post_comments.id", ondelete="CASCADE"), nullable=True)
+    comment_id = Column(Integer, ForeignKey("community_post_comments.id", ondelete="CASCADE"), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=True)
     is_read = Column(Boolean, default=False, nullable=False, index=True)

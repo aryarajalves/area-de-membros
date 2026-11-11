@@ -6,7 +6,7 @@ Serviço dedicado para gerenciamento de Mensagens Diretas (DMs) entre usuários:
 """
 from typing import List, Optional
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, desc, func, asc
 from fastapi import HTTPException, status
 
@@ -422,6 +422,7 @@ def get_superadmin_thread_messages(
 
     query = (
         db.query(ChatMessage)
+        .options(joinedload(ChatMessage.user), joinedload(ChatMessage.recipient))
         .filter(ChatMessage.channel_type == "dm", thread_filter)
         .order_by(desc(ChatMessage.id))
     )

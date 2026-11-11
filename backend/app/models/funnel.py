@@ -37,7 +37,7 @@ class Funnel(Base):
     flow_data = Column(Text, nullable=False, default="{}")
     is_active = Column(Boolean, default=True, nullable=False)
     folder_id = Column(Integer, ForeignKey("funnel_folders.id", ondelete="SET NULL"), nullable=True, index=True)
-    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
 

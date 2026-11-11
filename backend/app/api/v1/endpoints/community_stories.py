@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Request
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, desc
 
 from app.core.database import get_db
@@ -93,6 +93,7 @@ def get_stories_tray(
     now = datetime.utcnow()
     active_stories = (
         db.query(CommunityStory)
+        .options(joinedload(CommunityStory.user))
         .filter(CommunityStory.expires_at > now)
         .order_by(desc(CommunityStory.created_at))
         .all()

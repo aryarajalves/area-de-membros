@@ -372,7 +372,7 @@ class LessonTranscription(Base):
     chapters = Column(Text, nullable=True)  # JSON dos capítulos e minutagens gerados por IA
     status = Column(String, default="ready")  # 'processing', 'ready', 'error'
     error_message = Column(Text, nullable=True)
-    generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     audio_duration_seconds = Column(Float, nullable=True)
     prompt_tokens = Column(Integer, nullable=True)
     completion_tokens = Column(Integer, nullable=True)
