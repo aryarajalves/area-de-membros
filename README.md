@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.8`** | **Docker Hub: `backend-1.2.8` / `frontend-1.2.8`**
+> **Versão Oficial: `v1.2.9`** | **Docker Hub: `backend-1.2.9` / `frontend-1.2.9`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -7,12 +7,19 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.2.8 (Esteira Automatizada de Deploy, Verificador de Schema do Banco, Secret Scanner, Auditoria de APIs e Versionamento Decimal)
+### 🚀 Novidades da Versão v1.2.9 (Auditoria de Banco de Dados, Indexação 100% de Foreign Keys e Repositório Docker Unificado)
 - **⚡ Auditoria e Otimização de Conexões e Banco de Dados (`scripts/check_db_optimization.py`):**
   - **Connection Pooling:** Auditoria de parâmetros do pool SQLAlchemy (`DB_POOL_SIZE=30`, `DB_MAX_OVERFLOW=50`, `DB_POOL_RECYCLE=1800s`, `pool_pre_ping=True` contra conexões zumbis e `connect_timeout=10s`).
   - **100% das Chaves Estrangeiras Indexadas:** Varredura em 100% dos modelos (111 ForeignKeys declaradas) com garantia de índices (`index=True` ou índices compostos) em todas as FKs, eliminando Full Table Scans em JOINs e deleções em cascata.
   - **Auditoria de Sessões (Session Leaks):** Validação estática de todas as instâncias manuais `SessionLocal()` garantindo fechamento seguro (`try/finally: db.close()` ou `with SessionLocal()`).
   - **Prevenção de N+1 Queries (Eager Loading):** Verificação de uso explícito de `joinedload` e `selectinload` em endpoints críticos de listagem (`community_feed`, `community_stories`, `chat_dm_service`).
+- **🐳 Padronização Estrita do Docker Hub em Repositório Único:**
+  - Imagens publicadas exclusivamente no repositório oficial do projeto:
+    - Backend: `aryalvesfernandes/area-de-membros:backend-<versao>`
+    - Frontend: `aryalvesfernandes/area-de-membros:frontend-<versao>`
+  - Proibição absoluta da criação de repositórios paralelos/secundários e proibição da tag `latest`.
+
+### 🚀 Novidades da Versão v1.2.8 (Esteira Automatizada de Deploy, Verificador de Schema do Banco, Secret Scanner, Auditoria de APIs e Versionamento Decimal)
 - **🔍 Verificador Automático de Esquema do Banco de Dados (`scripts/check_db_schema.py`):**
   - Compara 100% dos modelos SQLAlchemy (`backend/app/models/`) com o bloco de auto-migração (`main.py`).
   - Bloqueia deploys caso alguma tabela (`CREATE TABLE IF NOT EXISTS`) ou coluna incremental (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) não esteja registrada no código de inicialização do PostgreSQL e SQLite.

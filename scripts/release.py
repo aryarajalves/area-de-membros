@@ -100,13 +100,13 @@ def update_version_files(new_version: str):
         with open(ENV_PROD_EXAMPLE_PATH, "r", encoding="utf-8") as f:
             env_content = f.read()
         env_content = re.sub(
-            r'BACKEND_IMAGE=aryalvesfernandes/[^:\n]+:backend-[0-9.]+',
-            f'BACKEND_IMAGE=aryalvesfernandes/area-de-membrosbackend-{new_version}',
+            r'BACKEND_IMAGE=[^\n]+',
+            f'BACKEND_IMAGE=aryalvesfernandes/area-de-membros:backend-{new_version}',
             env_content
         )
         env_content = re.sub(
-            r'FRONTEND_IMAGE=aryalvesfernandes/[^:\n]+:frontend-[0-9.]+',
-            f'FRONTEND_IMAGE=aryalvesfernandes/area-de-membrosfrontend-{new_version}',
+            r'FRONTEND_IMAGE=[^\n]+',
+            f'FRONTEND_IMAGE=aryalvesfernandes/area-de-membros:frontend-{new_version}',
             env_content
         )
         with open(ENV_PROD_EXAMPLE_PATH, "w", encoding="utf-8") as f:
@@ -118,13 +118,13 @@ def update_version_files(new_version: str):
         with open(COMPOSE_PROD_PATH, "r", encoding="utf-8") as f:
             compose_content = f.read()
         compose_content = re.sub(
-            r'BACKEND_IMAGE:-aryalvesfernandes/[^:\n}]+:[^}\n]+',
-            f'BACKEND_IMAGE:-aryalvesfernandes/area-de-membrosbackend-{new_version}',
+            r'BACKEND_IMAGE:-[^\n}]+',
+            f'BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-{new_version}',
             compose_content
         )
         compose_content = re.sub(
-            r'FRONTEND_IMAGE:-aryalvesfernandes/[^:\n}]+:[^}\n]+',
-            f'FRONTEND_IMAGE:-aryalvesfernandes/area-de-membrosfrontend-{new_version}',
+            r'FRONTEND_IMAGE:-[^\n}]+',
+            f'FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-{new_version}',
             compose_content
         )
         with open(COMPOSE_PROD_PATH, "w", encoding="utf-8") as f:
@@ -167,9 +167,9 @@ def main():
     print("🎯 [ESTEIRA DE PRODUÇÃO - ÁREA DE MEMBROS]")
     print(f"📌 Versão Atual:   {curr_version}")
     print(f"✨ Próxima Versão:  {target_version}")
-    print(f"🏷️  Imagem Backend:  aryalvesfernandes/area-de-membrosbackend-{target_version}")
-    print(f"🏷️  Imagem Frontend: aryalvesfernandes/area-de-membrosfrontend-{target_version}")
-    print("🚫 Regra de Tag:    NADA DE LATEST")
+    print(f"🏷️  Imagem Backend:  aryalvesfernandes/area-de-membros:backend-{target_version}")
+    print(f"🏷️  Imagem Frontend: aryalvesfernandes/area-de-membros:frontend-{target_version}")
+    print("🚫 Regra de Tag:    NADA DE LATEST | Repositório único: aryalvesfernandes/area-de-membros")
     print("#" * 70 + "\n")
 
     # 1. Verificação de Esquema de Banco (main.py vs SQLAlchemy Models)
@@ -243,32 +243,30 @@ def main():
     if args.dry_run:
         print("\n" + "=" * 70)
         print("🔍 [DRY RUN] Simulação concluída com sucesso!")
-        print(f"   As imagens que seriam geradas:")
-        print(f"   - aryalvesfernandes/area-de-membrosbackend-{target_version}")
-        print(f"   - aryalvesfernandes/area-de-membrosfrontend-{target_version}")
+        print(f"   As imagens que seriam geradas no repositório aryalvesfernandes/area-de-membros:")
+        print(f"   - aryalvesfernandes/area-de-membros:backend-{target_version}")
+        print(f"   - aryalvesfernandes/area-de-membros:frontend-{target_version}")
         print("=" * 70 + "\n")
         return
 
     backend_tag_hub = f"aryalvesfernandes/area-de-membros:backend-{target_version}"
-    backend_tag_direct = f"aryalvesfernandes/area-de-membrosbackend:{target_version}"
     frontend_tag_hub = f"aryalvesfernandes/area-de-membros:frontend-{target_version}"
-    frontend_tag_direct = f"aryalvesfernandes/area-de-membrosfrontend:{target_version}"
 
     print("\n" + "=" * 70)
     print("🐳 [DOCKER BUILD] Gerando imagens de produção (SEM TAG LATEST)...")
     print("=" * 70)
 
-    # Build Backend com as duas tags sem latest
+    # Build Backend com tag única no repositório area-de-membros
     run_step(
         f"Docker Build Backend: {backend_tag_hub}",
-        ["docker", "build", "-t", backend_tag_hub, "-t", backend_tag_direct, "."],
+        ["docker", "build", "-t", backend_tag_hub, "."],
         cwd=BACKEND_DIR
     )
 
-    # Build Frontend com as duas tags sem latest
+    # Build Frontend com tag única no repositório area-de-membros
     run_step(
         f"Docker Build Frontend: {frontend_tag_hub}",
-        ["docker", "build", "-t", frontend_tag_hub, "-t", frontend_tag_direct, "."],
+        ["docker", "build", "-t", frontend_tag_hub, "."],
         cwd=FRONTEND_DIR
     )
 
@@ -278,16 +276,14 @@ def main():
         print("🚀 [DOCKER PUSH] Enviando imagens para o Docker Hub...")
         print("=" * 70)
         run_step(f"Push Backend: {backend_tag_hub}", ["docker", "push", backend_tag_hub])
-        run_step(f"Push Backend: {backend_tag_direct}", ["docker", "push", backend_tag_direct])
         run_step(f"Push Frontend: {frontend_tag_hub}", ["docker", "push", frontend_tag_hub])
-        run_step(f"Push Frontend: {frontend_tag_direct}", ["docker", "push", frontend_tag_direct])
 
     print("\n" + "#" * 70)
     print("🎉 [SUCESSO TOTAL] Esteira concluída e imagens Docker geradas!")
     print(f"📦 Versão Oficial: {target_version}")
-    print(f"🐳 Backend Tags:  {backend_tag_hub} e {backend_tag_direct}")
-    print(f"🐳 Frontend Tags: {frontend_tag_hub} e {frontend_tag_direct}")
-    print("🚫 Nenhuma tag 'latest' foi criada, respeitando a regra estrita.")
+    print(f"🐳 Backend Tag:   {backend_tag_hub}")
+    print(f"🐳 Frontend Tag:  {frontend_tag_hub}")
+    print("🚫 Nenhuma tag 'latest' e nenhum repositório secundário criado.")
     print("#" * 70 + "\n")
 
 if __name__ == "__main__":
