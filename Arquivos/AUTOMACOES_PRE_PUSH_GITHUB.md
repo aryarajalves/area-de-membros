@@ -48,9 +48,9 @@ flowchart TD
 - **O que faz:**
   - Varre todos os arquivos rastreados pelo repositório.
   - Busca padrões regex de chaves reais:
-    - OpenAI API Keys (`sk-proj-...`, `sk-...`)
-    - GitHub Personal Access Tokens (`ghp_...`, `github_pat_...`)
-    - Chaves privadas (`-----BEGIN PRIVATE KEY-----`)
+    - OpenAI API Keys (`sk-proj-...`)
+    - GitHub Personal Access Tokens (`ghp_...`)
+    - Chaves privadas RSA/OpenSSL
     - Brevo API Keys reais (`xkeysib-...`)
     - AWS Access Keys (`AKIA...`)
     - Slack Webhooks
