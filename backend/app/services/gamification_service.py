@@ -19,6 +19,7 @@ POINTS_MAP = {
     "chat_message": (2, "Participação no Chat da Comunidade"),
     "community_feed_post": (5, "Publicação no Feed da Comunidade"),
     "community_feed_like": (2, "Curtida recebida no Feed da Comunidade"),
+    "community_story_post": (5, "Publicação de Story na Comunidade"),
 }
 
 
@@ -69,6 +70,21 @@ def award_points(
             .count()
         )
         if daily_count >= 2:
+            return None
+
+    # Limite diário para stories da comunidade: máximo 5 stories pontuados por dia (25 pontos/dia)
+    if action == "community_story_post":
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_count = (
+            db.query(GamificationPoint)
+            .filter(
+                GamificationPoint.user_id == user.id,
+                GamificationPoint.action == "community_story_post",
+                GamificationPoint.created_at >= today_start
+            )
+            .count()
+        )
+        if daily_count >= 5:
             return None
 
     # Prevenção de duplicação para ações únicas (ex: conclusão da mesma aula, módulo, curso ou solução)

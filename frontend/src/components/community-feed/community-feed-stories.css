@@ -1,0 +1,204 @@
+/* ==============================================================================
+   BARRA DE STORIES DA COMUNIDADE (ESTILO INSTAGRAM DARK GLASS)
+   ============================================================================== */
+
+.stories-bar-container {
+  width: 100%;
+  background: rgba(13, 18, 31, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.stories-bar-scroll {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  padding: 4px 2px;
+}
+
+.stories-bar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.story-circle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+
+.story-circle-item:hover {
+  transform: translateY(-2px);
+}
+
+.story-avatar-wrapper {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5px;
+}
+
+/* Anel não visto: degradê neon vibrante */
+.story-avatar-wrapper.unviewed {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  box-shadow: 0 0 12px rgba(220, 39, 67, 0.35);
+  animation: storyRingPulse 3s infinite ease-in-out;
+}
+
+/* Anel visto: cinza sutil */
+.story-avatar-wrapper.viewed {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Próprio story sem stories: borda sutil com ícone + */
+.story-avatar-wrapper.my-empty {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  padding: 0;
+}
+
+@keyframes storyRingPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(220, 39, 67, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(240, 148, 51, 0.55);
+  }
+}
+
+.story-avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #0d121f;
+  background: #1e293b;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-avatar-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-avatar-initial {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.story-plus-badge {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0284c7;
+  border: 2px solid #0d121f;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.story-circle-item:hover .story-plus-badge {
+  background: #0ea5e9;
+  transform: scale(1.1);
+}
+
+.story-author-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  max-width: 72px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==============================================================================
+   MODAL DE CRIAÇÃO DE STORY (StoryCreateModal)
+   ============================================================================== */
+
+.story-create-modal {
+  width: 100%;
+  max-width: 500px;
+  background: #0d121f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  animation: feedModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-create-dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.story-create-dropzone:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.story-create-preview {
+  width: 100%;
+  height: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #05070d;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.story-create-preview img,
+.story-create-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

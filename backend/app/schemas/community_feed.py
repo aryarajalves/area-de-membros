@@ -133,6 +133,15 @@ class CommunityUserProfileOut(BaseModel):
     is_me: bool = False
     created_at: datetime
     posts: List[CommunityPostOut] = []
+    gamification_points: int = 0
+    gamification_level: int = 1
+    gamification_tier: str = "Bronze"
+    gamification_level_title: str = "Bronze I"
+    gamification_badge: str = "🛡️ Bronze I"
+    gamification_tier_color: str = "#cd7f32"
+    gamification_level_color: str = "#cd7f32"
+    gamification_progress_percent: int = 0
+    gamification_points_to_next: int = 100
 
     model_config = ConfigDict(from_attributes=True)
 

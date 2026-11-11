@@ -19,6 +19,7 @@ import FeedCreatePostCard from './FeedCreatePostCard';
 import FeedPostCard from './FeedPostCard';
 import FeedNotificationsModal from './FeedNotificationsModal';
 import FeedProfileModal from './FeedProfileModal';
+import CommunityStoriesBar from './CommunityStoriesBar';
 import './community-feed.css';
 import './community-feed-post.css';
 import './community-feed-media.css';
@@ -210,6 +211,9 @@ export default function CommunityFeedManagement({ user }) {
         onClose={() => setIsNotifsOpen(false)}
         onUnreadCountChange={setUnreadNotifsCount}
       />
+
+      {/* Barra de Stories da Comunidade */}
+      <CommunityStoriesBar currentUser={user} />
 
       {/* Caixa de Criação de Post */}
       <FeedCreatePostCard

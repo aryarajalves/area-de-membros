@@ -39,7 +39,7 @@ const mockRankingResponseAluno = {
       rank: 1,
       user_id: 3,
       name: 'Mariana Aluna',
-      points: 275,
+      points: 1350,
       solutions_count: 3,
       lessons_completed_count: 12,
       badge: '🥇 Mestre da Comunidade',
@@ -58,7 +58,7 @@ const mockRankingResponseAluno = {
     rank: 1,
     user_id: 3,
     name: 'Mariana Aluna',
-    points: 275,
+    points: 1350,
     solutions_count: 3,
     lessons_completed_count: 12,
     badge: '🥇 Mestre da Comunidade',
@@ -276,7 +276,7 @@ describe('PlatformProfileTab Component', () => {
 
     // Posição no ranking e pontuação exibidas
     expect(screen.getByTestId('stat-my-rank')).toHaveTextContent('#1');
-    expect(screen.getByTestId('stat-my-points')).toHaveTextContent('275 pts');
+    expect(screen.getByTestId('stat-my-points')).toHaveTextContent('1.350 pts');
     expect(screen.getByTestId('stat-my-activities')).toHaveTextContent(/12 aulas • 3 soluções/i);
 
     // Barra de progresso visível

@@ -389,8 +389,15 @@ def test_user_profile_bio_and_link(student_user_1):
     # 2. Consulta perfil público por ID
     get_res = client.get(f"/api/v1/community/feed/profile/{student_user_1['id']}", headers=headers)
     assert get_res.status_code == 200
-    assert get_res.json()["bio"] == data["bio"]
-    assert get_res.json()["bio_link"] == "https://github.com/aluno-ai"
+    res_data = get_res.json()
+    assert res_data["bio"] == data["bio"]
+    assert res_data["bio_link"] == "https://github.com/aluno-ai"
+    assert "gamification_points" in res_data
+    assert "gamification_level" in res_data
+    assert "gamification_tier" in res_data
+    assert "gamification_badge" in res_data
+    assert res_data["gamification_tier"] == "Bronze"
+    assert "Bronze" in res_data["gamification_badge"]
 
 
 def test_follow_unfollow_system(student_user_1, student_user_2):

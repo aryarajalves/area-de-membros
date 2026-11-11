@@ -57,7 +57,7 @@ describe('ProfileGamificationCard Component', () => {
             rank: 1,
             user_id: 10,
             name: 'Fernanda Estudante',
-            points: 5200,
+            points: 40000,
             solutions_count: 10,
             lessons_completed_count: 80,
             badge: '🥇 Mestre da Comunidade',
@@ -81,7 +81,7 @@ describe('ProfileGamificationCard Component', () => {
       expect(screen.getByText(/Nível Máximo Atingido/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('stat-my-points')).toHaveTextContent('5.200 pts');
+    expect(screen.getByTestId('stat-my-points')).toHaveTextContent('40.000 pts');
   });
 
   it('renders admin card with community supervision metrics', async () => {

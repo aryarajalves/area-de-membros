@@ -1,0 +1,332 @@
+/* ==============================================================================
+   VISUALIZADOR FULLSCREEN DE STORY (StoryViewerModal)
+   ============================================================================== */
+
+.story-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-viewer-stage {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 90vh;
+  max-height: 840px;
+  background: #000000;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(2, 132, 199, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Barras segmentadas de progresso no topo */
+.story-progress-bars {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  z-index: 20;
+}
+
+.story-progress-segment {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+.story-progress-fill {
+  height: 100%;
+  background: #ffffff;
+  border-radius: 999px;
+}
+
+/* Cabeçalho do story (autor, data, fechar, pausar) */
+.story-header-overlay {
+  position: absolute;
+  top: 24px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.story-header-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.story-header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #ffffff;
+}
+
+.story-header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-header-author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.story-header-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.story-header-time {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.story-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.story-icon-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.story-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.05);
+}
+
+/* Mídia principal (Imagem ou Vídeo) */
+.story-media-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070d;
+}
+
+.story-media-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.story-media-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Áreas de toque / navegação invisíveis */
+.story-tap-area {
+  position: absolute;
+  top: 60px;
+  bottom: 80px;
+  width: 35%;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.story-tap-area.left {
+  left: 0;
+}
+
+.story-tap-area.right {
+  right: 0;
+}
+
+/* Legenda do Story */
+.story-caption-overlay {
+  position: absolute;
+  bottom: 80px;
+  left: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: #f8fafc;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  z-index: 15;
+  text-align: center;
+}
+
+/* Rodapé de interações (Reações e Responder DM) */
+.story-footer-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+}
+
+.story-reactions-bar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.story-react-btn {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+}
+
+.story-react-btn:hover {
+  transform: scale(1.25);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.story-react-btn.active {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+}
+
+.story-reply-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 4px 6px 4px 14px;
+}
+
+.story-reply-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 0.84rem;
+}
+
+.story-reply-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.story-reply-send-btn {
+  background: #0284c7;
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.story-reply-send-btn:hover {
+  background: #0ea5e9;
+  transform: scale(1.05);
+}
+
+/* Painel de Visualizadores (Viewers Sheet) */
+.story-viewers-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 60%;
+  background: #0d121f;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px 20px 0 0;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+  animation: feedModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-viewers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.story-viewers-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.story-viewers-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.story-viewer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.story-viewer-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1e293b;
+}
+
+.story-viewer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-viewer-name {
+  font-size: 0.85rem;
+  color: #f1f5f9;
+  font-weight: 600;
+}

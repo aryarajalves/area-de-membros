@@ -2,6 +2,21 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [11/11/2026] - Esteira Automatizada: Validação de 100% das Tabelas e Sincronização de Colunas Incrementais
+- **Objetivo:** Criar validador automático (`scripts/check_db_schema.py`) que inspeciona todos os modelos SQLAlchemy e garante que 100% das tabelas e colunas incrementais estejam presentes no bloco de auto-migração de `backend/app/main.py`.
+- **Tabelas e Colunas Sincronizadas no Startup:**
+  - `courses`: `cover_image_url`, `bg_color`, `is_published`, `sales_page_url`, `agentflow_kb_id`, `agentflow_kb_name`
+  - `modules`: `image_url`, `agentflow_synced_at`
+  - `lessons`: `video_type`, `availability_status`, `passing_score_pct`, `import_identifier`
+  - `chat_messages`: `channel_type`, `recipient_id`, `pinned_at`, `pinned_by_user_id`, `read_at`, `button_action_type`
+  - `funnels`: `trigger_type`, `trigger_keywords`, `flow_data`, `created_by_user_id`
+  - `tutorials`: `video_key`
+  - `community_stories`, `community_story_views`, `community_story_reactions`
+- **Script de Validação:** `scripts/check_db_schema.py`
+- **Auto-migração no Startup:** 100% das colunas e tabelas sincronizadas na rotina `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [10/11/2026] - Feed Social Etapa 3: Insights e Visualizações dos Posts (Tabela community_post_views e coluna views_count)
 - **Objetivo:** Rastrear visualizações/alcance de cada publicação e exibir métricas detalhadas de insights (visualizações, curtidas, comentários, salvamentos e taxa de engajamento).
 - **Tabela e Colunas Afetadas:**
@@ -1145,3 +1160,35 @@ ecording_url: VARCHAR(1024).
   - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   - `updated_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 - **Script de Migração:** `backend/scripts/add_tutor_guidelines_and_suggestions.py`
+
+---
+
+### [11/11/2026] - Sistema de Stories da Comunidade (Efêmeros 24h & Destaques)
+- **Novas Tabelas Criadas:**
+  - `community_stories`:
+    - `id`: SERIAL PRIMARY KEY
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `media_url`: VARCHAR(500) NOT NULL
+    - `media_type`: VARCHAR(20) DEFAULT 'image' NOT NULL
+    - `media_thumbnail_url`: VARCHAR(500) NULL
+    - `caption`: VARCHAR(500) NULL
+    - `duration_seconds`: INTEGER DEFAULT 5 NOT NULL
+    - `is_highlight`: BOOLEAN DEFAULT FALSE NOT NULL
+    - `highlight_title`: VARCHAR(100) NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - `expires_at`: TIMESTAMP WITH TIME ZONE NOT NULL
+  - `community_story_views`:
+    - `id`: SERIAL PRIMARY KEY
+    - `story_id`: INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `viewed_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - UNIQUE (`story_id`, `user_id`)
+  - `community_story_reactions`:
+    - `id`: SERIAL PRIMARY KEY
+    - `story_id`: INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `reaction_type`: VARCHAR(30) NOT NULL ('fire', 'heart', 'clap', 'laugh', 'rocket')
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+- **Auto-migração no Startup:** Incluído no `lifespan` do `backend/app/main.py` (PostgreSQL e SQLite).
+- **Script de Migração:** `backend/scripts/migrate_community_stories.py`
+

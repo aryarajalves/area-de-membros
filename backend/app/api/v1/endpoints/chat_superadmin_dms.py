@@ -3,10 +3,11 @@ Rotas exclusivas do Super Admin para auditoria, visualização e intervenção
 em Mensagens Privadas (DMs) trocadas entre Alunos e Administradores da plataforma.
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.models.user import User
 from app.api.v1.endpoints.users import get_current_user
 from app.schemas.chat import ChatAdminDmConversationItem, ChatMessageResponse
@@ -34,7 +35,9 @@ def require_superadmin_user(current_user: User = Depends(get_current_user)) -> U
     summary="Lista todas as conversas entre Alunos e Administradores para supervisão do Super Admin",
     description="Retorna conversas privadas onde pelo menos um dos participantes é um administrador.",
 )
+@limiter.limit("60/minute")
 def list_admin_conversations(
+    request: Request,
     unread_only: bool = Query(default=False, description="Filtrar apenas atendimentos com mensagens pendentes"),
     limit: int = Query(default=50, le=100, description="Quantidade máxima de conversas"),
     db: Session = Depends(get_db),
@@ -49,7 +52,9 @@ def list_admin_conversations(
     summary="Histórico de mensagens da thread Aluno ↔ Administrador para supervisão do Super Admin",
     description="Carrega as mensagens sem alterar o status de leitura para o administrador original.",
 )
+@limiter.limit("60/minute")
 def list_admin_thread_messages(
+    request: Request,
     student_id: int,
     admin_id: int,
     limit: int = Query(default=50, le=100, description="Limite de mensagens a retornar"),

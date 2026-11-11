@@ -42,15 +42,16 @@ def test_run_backup_check_job_exception_handling():
 
 
 def test_setup_worker_jobs_registration():
-    """Testa se os jobs de renovação e backup são registrados corretamente no scheduler."""
+    """Testa se os jobs de renovação, backup e otimização de mídias são registrados corretamente no scheduler."""
     mock_scheduler = MagicMock()
     setup_worker_jobs(scheduler_instance=mock_scheduler)
 
-    assert mock_scheduler.add_job.call_count == 2
+    assert mock_scheduler.add_job.call_count == 3
     # Verifica os IDs dos jobs registrados
     registered_ids = [call.kwargs.get("id") for call in mock_scheduler.add_job.call_args_list]
     assert "worker_renewal_check_job" in registered_ids
     assert "worker_backup_job" in registered_ids
+    assert "worker_media_optimization_job" in registered_ids
 
 
 def test_graceful_shutdown():

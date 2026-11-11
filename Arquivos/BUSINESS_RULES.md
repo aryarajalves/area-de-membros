@@ -1796,3 +1796,22 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - **Detalhamento Visual:** Distribuição proporcional em barra segmentada entre Curtidas (rosa), Comentários (azul) e Salvamentos (dourado).
     - **Lista de Visualizadores Recentes:** Exibição dos últimos membros identificados que visualizaram a publicação com avatar, nome, cargo e horário.
 
+- **Exibição do Nível de Elo RPG no Perfil do Membro (`FeedProfileModal`):**
+  - [x] O Elo no Perfil do Membro deve ser exibido tanto para Alunos quanto para Administradores/Super Admins, ou Administradores devem ter um selo especial/personalizado?
+    - **Resposta:** Exibido para todos os perfis (Alunos, Administradores e Super Admins) com cálculo consistente da pontuação acumulada e badge temático do Elo.
+  - [x] No perfil, além do badge com o título e ícone do Elo (ex: `🛡️ Bronze I`), devemos exibir os pontos totais e uma barra de progresso para o próximo nível?
+    - **Resposta:** Sim. O badge de Elo com ícone e cor temática é exibido na linha do nome (ao lado do cargo), e um card de status de gamificação com total de XP e barra de avanço para o próximo nível é renderizado entre as estatísticas e a bio.
+
+- **Sistema de Stories no Feed da Comunidade (`community_stories`):**
+  - [x] Quem terá permissão para postar Stories: todos os membros da comunidade (alunos e administradores) ou apenas Administradores/Professores para recados oficiais?
+    - **Resposta:** Aberto para todos os membros ativos da comunidade (Alunos, Administradores e Super Admins).
+  - [x] O tempo de expiração dos Stories será o padrão de 24 horas, ou haverá opção para Stories fixados/destaques no perfil?
+    - **Resposta:** O tempo de vida padrão de um story é de 24 horas (expira automaticamente após 24h). O sistema contará também com suporte a Destaques (Highlights), permitindo ao autor fixar stories permanentemente em seu perfil do membro.
+  - [x] Quais formatos de mídia serão aceitos nos Stories: Imagens (JPG/PNG), Vídeos curtos (até quantos segundos? ex: 15s ou 30s) e Stories de Texto com fundo gradiente?
+    - **Resposta:** Imagens nos formatos JPG e PNG, e vídeos com duração de até 60 segundos.
+  - [x] Como funcionará a resposta aos Stories: abrirá conversa direta na DM do Chat com o autor do Story contendo a miniatura do Story respondido?
+    - **Resposta:** Sim. Ao responder a um story, o sistema abrirá automaticamente uma conversa direta (DM) no chat com o autor do story, enviando o texto da resposta acompanhado da foto/miniatura do story correspondente.
+  - [x] Postar Story concederá pontos de gamificação RPG (ex: +5 XP com limite diário)?
+    - **Resposta:** Sim. Postar story concede **+5 pontos de XP** no RPG, com limite diário anti-spam de até **5 publicações pontuadas por dia (máximo de 25 XP/dia)**.
+
+

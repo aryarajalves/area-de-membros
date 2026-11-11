@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, Link2, Edit3, Loader2, Heart, MessageCircle, ExternalLink, UserCheck, UserPlus } from 'lucide-react';
+import { X, Link2, Edit3, Loader2, Heart, MessageCircle, ExternalLink, UserCheck, UserPlus, Trophy } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { fetchUserProfile, toggleFollowUser } from './communityFeedApi';
+import { calculateStudentLevel, getTierBadgeStyle } from '../../utils/gamificationLevelUtils';
 import FeedEditProfileModal from './FeedEditProfileModal';
 import FeedFollowListModal from './FeedFollowListModal';
 import './community-feed-profile.css';
@@ -68,6 +69,22 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
 
   const initial = profile?.name ? profile.name.charAt(0).toUpperCase() : 'M';
 
+  const eloInfo = profile ? (
+    profile.gamification_badge
+      ? {
+          badge: profile.gamification_badge,
+          title: profile.gamification_level_title || profile.gamification_badge,
+          tier: profile.gamification_tier || 'Bronze',
+          points: profile.gamification_points || 0,
+          progress: profile.gamification_progress_percent ?? 0,
+          pointsToNext: profile.gamification_points_to_next ?? 0,
+          level: profile.gamification_level || 1,
+        }
+      : calculateStudentLevel(profile.gamification_points || 0)
+  ) : null;
+
+  const tierStyle = eloInfo ? getTierBadgeStyle(eloInfo.tier || eloInfo.level_tier) : null;
+
   return (
     <>
       <div
@@ -129,6 +146,31 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
                       )}
                       {profile.role === 'admin' && (
                         <span className="feed-role-badge admin">Admin</span>
+                      )}
+
+                      {/* Badge de Elo RPG */}
+                      {eloInfo && (
+                        <div
+                          className="feed-profile-elo-badge"
+                          data-testid="feed-profile-elo-badge"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 9px',
+                            borderRadius: '999px',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            backgroundColor: tierStyle?.bg || 'rgba(205, 127, 50, 0.16)',
+                            border: tierStyle?.border || '1px solid rgba(205, 127, 50, 0.4)',
+                            color: tierStyle?.color || '#fb923c',
+                            boxShadow: tierStyle?.glow || 'none',
+                            userSelect: 'none',
+                          }}
+                          title={`Elo de Gamificação: ${eloInfo.title || eloInfo.level_title || 'Bronze I'} (${eloInfo.points || 0} XP)`}
+                        >
+                          <span>{eloInfo.badge || eloInfo.level_badge || '🛡️ Bronze I'}</span>
+                        </div>
                       )}
 
                       {profile.is_me ? (
@@ -196,6 +238,51 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
                         <span>seguindo</span>
                       </div>
                     </div>
+
+                    {/* Card de Progresso do Elo RPG */}
+                    {eloInfo && (
+                      <div
+                        className="feed-profile-elo-card"
+                        data-testid="feed-profile-elo-card"
+                        style={{
+                          marginBottom: '14px',
+                          padding: '8px 12px',
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.07)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                          <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Trophy size={13} color={tierStyle?.color || '#fb923c'} />
+                            <span>Elo RPG:</span>
+                            <strong style={{ color: tierStyle?.color || '#fb923c' }}>
+                              {eloInfo.title || eloInfo.level_title || 'Bronze I'}
+                            </strong>
+                          </span>
+                          <span style={{ color: '#cbd5e1', fontWeight: 600, fontSize: '0.75rem' }} data-testid="feed-profile-elo-points">
+                            {eloInfo.points || 0} XP
+                          </span>
+                        </div>
+                        {(!eloInfo.is_max_level) && (
+                          <div style={{ width: '100%', height: '5px', borderRadius: '999px', background: 'rgba(255, 255, 255, 0.08)', overflow: 'hidden' }}>
+                            <div
+                              data-testid="feed-profile-elo-progress-bar"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, eloInfo.progress ?? eloInfo.level_progress_percent ?? 0))}%`,
+                                height: '100%',
+                                borderRadius: '999px',
+                                background: `linear-gradient(90deg, ${tierStyle?.color || '#fb923c'}, #38bdf8)`,
+                                transition: 'width 0.3s ease',
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Bio */}
                     {profile.bio && (

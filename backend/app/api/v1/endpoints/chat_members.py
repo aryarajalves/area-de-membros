@@ -1,8 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.api.v1.endpoints.users import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatChannelMembersResponse, ChatDmCandidatesResponse
@@ -17,7 +18,9 @@ router = APIRouter(tags=["Chat da Comunidade"])
     summary="Listar Membros com Acesso ao Canal de Chat",
     description="Retorna os usuários que têm permissão de visualização no chat selecionado (Super Admins, Admins e Alunos)."
 )
+@limiter.limit("60/minute")
 def list_chat_channel_members(
+    request: Request,
     channel_type: str = Query(default="general", description="'general' ou 'course'"),
     course_id: Optional[int] = Query(default=None, description="ID do curso se canal for 'course'"),
     db: Session = Depends(get_db),
@@ -36,7 +39,9 @@ def list_chat_channel_members(
     summary="Listar Contatos para Nova Conversa DM",
     description="Retorna usuários paginados (máx 20) com filtros de perfil, busca, curso e ordenação."
 )
+@limiter.limit("60/minute")
 def list_dm_candidates(
+    request: Request,
     search: Optional[str] = Query(default=None),
     role: Optional[str] = Query(default="all", description="'all', 'superadmin', 'admin', 'aluno'"),
     course_id: Optional[int] = Query(default=None, description="Filtrar por curso matriculado"),

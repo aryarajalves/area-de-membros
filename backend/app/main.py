@@ -107,6 +107,12 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS bundle_title VARCHAR;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS watermark_enabled BOOLEAN NOT NULL DEFAULT TRUE;
                         ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_position INTEGER NOT NULL DEFAULT 50;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_url VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS bg_color VARCHAR DEFAULT '#090d16';
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS sales_page_url VARCHAR;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS agentflow_kb_id INTEGER;
+                        ALTER TABLE courses ADD COLUMN IF NOT EXISTS agentflow_kb_name VARCHAR;
                         CREATE TABLE IF NOT EXISTS course_bundles (
                             id SERIAL PRIMARY KEY,
                             parent_course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -251,9 +257,15 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE modules ADD COLUMN IF NOT EXISTS required_tier VARCHAR(50) NULL;
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS image_url VARCHAR;
+                        ALTER TABLE modules ADD COLUMN IF NOT EXISTS agentflow_synced_at TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_type VARCHAR(50) DEFAULT 'immediate';
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_days INTEGER DEFAULT 0;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS release_date TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS video_type VARCHAR DEFAULT 'url';
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS availability_status VARCHAR DEFAULT 'available';
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS passing_score_pct INTEGER DEFAULT 70;
+                        ALTER TABLE lessons ADD COLUMN IF NOT EXISTS import_identifier VARCHAR;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
@@ -309,7 +321,18 @@ async def lifespan(app: FastAPI):
                         -- DMs da Equipe monitoradas pelo Super Admin
                         ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS dm_thread_admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
                         CREATE INDEX IF NOT EXISTS ix_chat_messages_dm_thread_admin_id ON chat_messages (dm_thread_admin_id);
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS channel_type VARCHAR(30) DEFAULT 'general';
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS recipient_id INTEGER;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS pinned_by_user_id INTEGER;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS button_action_type VARCHAR(30) NULL;
+                        ALTER TABLE funnels ADD COLUMN IF NOT EXISTS trigger_type VARCHAR(50) DEFAULT 'chat_button';
+                        ALTER TABLE funnels ADD COLUMN IF NOT EXISTS trigger_keywords VARCHAR(500);
+                        ALTER TABLE funnels ADD COLUMN IF NOT EXISTS flow_data TEXT DEFAULT '{}';
+                        ALTER TABLE funnels ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER;
                         ALTER TABLE tutorials ALTER COLUMN video_url DROP NOT NULL;
+                        ALTER TABLE tutorials ADD COLUMN IF NOT EXISTS video_key VARCHAR(512);
 
                         CREATE TABLE IF NOT EXISTS ai_tutor_settings (
                             id SERIAL PRIMARY KEY,
@@ -511,6 +534,42 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id);
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id);
 
+                        CREATE TABLE IF NOT EXISTS community_stories (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            media_url VARCHAR(500) NOT NULL,
+                            media_type VARCHAR(20) DEFAULT 'image' NOT NULL,
+                            media_thumbnail_url VARCHAR(500) NULL,
+                            caption VARCHAR(500) NULL,
+                            duration_seconds INTEGER DEFAULT 5 NOT NULL,
+                            is_highlight BOOLEAN DEFAULT FALSE NOT NULL,
+                            highlight_title VARCHAR(100) NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_stories_user_id ON community_stories(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_stories_expires_at ON community_stories(expires_at);
+
+                        CREATE TABLE IF NOT EXISTS community_story_views (
+                            id SERIAL PRIMARY KEY,
+                            story_id INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_story_user_view UNIQUE (story_id, user_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_story_views_story_id ON community_story_views(story_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_story_views_user_id ON community_story_views(user_id);
+
+                        CREATE TABLE IF NOT EXISTS community_story_reactions (
+                            id SERIAL PRIMARY KEY,
+                            story_id INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            reaction_type VARCHAR(30) NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_story_reactions_story_id ON community_story_reactions(story_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_story_reactions_user_id ON community_story_reactions(user_id);
+
                     """))
                 else:
                     for col_sql in [
@@ -556,7 +615,30 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE introduction_likes ADD COLUMN reaction_type VARCHAR(20) DEFAULT 'like'",
                         "ALTER TABLE tutorials ADD COLUMN content_type VARCHAR(50) DEFAULT 'video'",
                         "ALTER TABLE tutorials ADD COLUMN text_content TEXT",
+                        "ALTER TABLE tutorials ADD COLUMN video_key VARCHAR(512)",
                         "ALTER TABLE chat_messages ADD COLUMN dm_thread_admin_id INTEGER",
+                        "ALTER TABLE chat_messages ADD COLUMN channel_type VARCHAR(30) DEFAULT 'general'",
+                        "ALTER TABLE chat_messages ADD COLUMN recipient_id INTEGER",
+                        "ALTER TABLE chat_messages ADD COLUMN pinned_at TIMESTAMP NULL",
+                        "ALTER TABLE chat_messages ADD COLUMN pinned_by_user_id INTEGER",
+                        "ALTER TABLE chat_messages ADD COLUMN read_at TIMESTAMP NULL",
+                        "ALTER TABLE chat_messages ADD COLUMN button_action_type VARCHAR(30)",
+                        "ALTER TABLE courses ADD COLUMN cover_image_url VARCHAR",
+                        "ALTER TABLE courses ADD COLUMN bg_color VARCHAR DEFAULT '#090d16'",
+                        "ALTER TABLE courses ADD COLUMN is_published BOOLEAN DEFAULT 1",
+                        "ALTER TABLE courses ADD COLUMN sales_page_url VARCHAR",
+                        "ALTER TABLE courses ADD COLUMN agentflow_kb_id INTEGER",
+                        "ALTER TABLE courses ADD COLUMN agentflow_kb_name VARCHAR",
+                        "ALTER TABLE modules ADD COLUMN image_url VARCHAR",
+                        "ALTER TABLE modules ADD COLUMN agentflow_synced_at TIMESTAMP NULL",
+                        "ALTER TABLE lessons ADD COLUMN video_type VARCHAR DEFAULT 'url'",
+                        "ALTER TABLE lessons ADD COLUMN availability_status VARCHAR DEFAULT 'available'",
+                        "ALTER TABLE lessons ADD COLUMN passing_score_pct INTEGER DEFAULT 70",
+                        "ALTER TABLE lessons ADD COLUMN import_identifier VARCHAR",
+                        "ALTER TABLE funnels ADD COLUMN trigger_type VARCHAR(50) DEFAULT 'chat_button'",
+                        "ALTER TABLE funnels ADD COLUMN trigger_keywords VARCHAR(500)",
+                        "ALTER TABLE funnels ADD COLUMN flow_data TEXT DEFAULT '{}'",
+                        "ALTER TABLE funnels ADD COLUMN created_by_user_id INTEGER",
                     ]:
                         try:
                             conn.execute(text(col_sql))
@@ -604,6 +686,15 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_views (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_view UNIQUE (post_id, user_id))"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_stories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_url TEXT NOT NULL, media_type VARCHAR(20) DEFAULT 'image' NOT NULL, media_thumbnail_url TEXT NULL, caption VARCHAR(500) NULL, duration_seconds INTEGER DEFAULT 5 NOT NULL, is_highlight BOOLEAN DEFAULT 0 NOT NULL, highlight_title VARCHAR(100) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, expires_at TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_user_id ON community_stories(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_expires_at ON community_stories(expires_at)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_story_views (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_story_user_view UNIQUE (story_id, user_id))"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_views_story_id ON community_story_views(story_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_views_user_id ON community_story_views(user_id)"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_story_reactions (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES community_stories(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, reaction_type VARCHAR(30) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_reactions_story_id ON community_story_reactions(story_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_story_reactions_user_id ON community_story_reactions(user_id)"))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")

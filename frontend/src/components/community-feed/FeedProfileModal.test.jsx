@@ -149,4 +149,42 @@ describe('FeedProfileModal Component', () => {
       expect(screen.getByTestId('feed-follow-list-modal')).toBeInTheDocument();
     });
   });
+
+  it('renders elo level badge and progress card with default points', async () => {
+    feedApi.fetchUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      gamification_points: 0,
+    });
+
+    render(<FeedProfileModal isOpen={true} userId={15} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feed-profile-elo-badge')).toBeInTheDocument();
+      expect(screen.getByTestId('feed-profile-elo-badge')).toHaveTextContent('Bronze I');
+      expect(screen.getByTestId('feed-profile-elo-card')).toBeInTheDocument();
+      expect(screen.getByTestId('feed-profile-elo-points')).toHaveTextContent('0 XP');
+    });
+  });
+
+  it('renders advanced elo level badge and progress bar when user has high XP', async () => {
+    feedApi.fetchUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      gamification_points: 3500,
+      gamification_level: 9,
+      gamification_tier: 'Ouro',
+      gamification_level_title: 'Ouro I',
+      gamification_badge: '👑 Ouro I',
+      gamification_progress_percent: 50,
+      gamification_points_to_next: 1100,
+    });
+
+    render(<FeedProfileModal isOpen={true} userId={15} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feed-profile-elo-badge')).toHaveTextContent('👑 Ouro I');
+      expect(screen.getByTestId('feed-profile-elo-card')).toHaveTextContent('Ouro I');
+      expect(screen.getByTestId('feed-profile-elo-points')).toHaveTextContent('3500 XP');
+      expect(screen.getByTestId('feed-profile-elo-progress-bar')).toBeInTheDocument();
+    });
+  });
 });

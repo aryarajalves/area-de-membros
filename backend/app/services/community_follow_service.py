@@ -186,3 +186,32 @@ def get_user_following(db: Session, target_user_id: int, current_user_id: int) -
             )
         )
     return result
+
+
+def get_user_gamification_profile_data(db: Session, user_id: int) -> Dict[str, Any]:
+    """
+    Retorna os dados consolidados do Elo e Gamificação de um usuário para exibição no perfil.
+    """
+    from sqlalchemy import func
+    from app.models.gamification import GamificationPoint
+    from app.services.gamification_level_service import calculate_student_level
+
+    total_pts = (
+        db.query(func.coalesce(func.sum(GamificationPoint.points), 0))
+        .filter(GamificationPoint.user_id == user_id)
+        .scalar()
+        or 0
+    )
+    lvl_info = calculate_student_level(total_pts)
+
+    return {
+        "gamification_points": int(total_pts),
+        "gamification_level": lvl_info.get("level", 1),
+        "gamification_tier": lvl_info.get("level_tier", "Bronze"),
+        "gamification_level_title": lvl_info.get("level_title", "Bronze I"),
+        "gamification_badge": lvl_info.get("level_badge", "🛡️ Bronze I"),
+        "gamification_tier_color": lvl_info.get("tier_color", "#cd7f32"),
+        "gamification_level_color": lvl_info.get("level_color", "#cd7f32"),
+        "gamification_progress_percent": lvl_info.get("level_progress_percent", 0),
+        "gamification_points_to_next": lvl_info.get("points_to_next_level", 100),
+    }

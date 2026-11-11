@@ -152,8 +152,7 @@ def execute_enrollment_node(
     """Concede matrícula automática / acesso a um curso bônus ou ferramenta ao aluno."""
     course_id_raw = node_data.get("course_id")
     if not course_id_raw:
-        notify_user_course_access_updated(student.id, [course_id])
-    return f"[MATRÍCULA] Ignorado: Curso não selecionado no Nó {node_id}"
+        return f"[MATRÍCULA] Ignorado: Curso não selecionado no Nó {node_id}"
 
     try:
         course_id = int(course_id_raw)

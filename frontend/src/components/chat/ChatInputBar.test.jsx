@@ -159,7 +159,7 @@ describe('ChatInputBar Component', () => {
 
     // Em vez de markdown bruto na textarea, exibe o card de preview limpo e estilizado
     expect(screen.getByTestId('chat-attached-link-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('attached-link-label')).toHaveTextContent('📍 Início');
+    expect(screen.getByTestId('attached-link-label')).toHaveTextContent('📍 Comece Aqui');
 
     // Botão de envio é habilitado mesmo sem digitar texto adicional
     const sendBtn = screen.getByTestId('chat-send-button');
@@ -169,7 +169,7 @@ describe('ChatInputBar Component', () => {
 
     await waitFor(() => {
       expect(handleSendMessage).toHaveBeenCalledWith(
-        '[📍 Início](internal://tab/home)',
+        '[📍 Comece Aqui](internal://tab/home)',
         null,
         null
       );

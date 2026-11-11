@@ -58,7 +58,7 @@ describe('ChatInternalLinkModal Component', () => {
 
     fireEvent.click(homeTabBtn);
     expect(mockOnSelectLink).toHaveBeenCalledWith({
-      label: '📍 Início',
+      label: '📍 Comece Aqui',
       url: 'internal://tab/home',
     });
   });

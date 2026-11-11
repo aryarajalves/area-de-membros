@@ -2,12 +2,13 @@ import os
 import uuid
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_, func
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.logger import logger
 from app.models.user import User
 from app.models.course import Course, UserCourse
@@ -38,11 +39,19 @@ from app.schemas.community_feed import (
 )
 from app.api.v1.endpoints.users import get_current_user
 from app.services.gamification_service import award_points
+from app.services.community_feed_service import (
+    format_comment,
+    format_notification,
+    notify_user,
+    process_mentions_in_text,
+    format_post,
+)
 from app.services.community_follow_service import (
     toggle_follow_user,
     get_user_followers,
     get_user_following,
     get_user_follow_stats,
+    get_user_gamification_profile_data,
     require_community_manager,
 )
 from app.services.community_insights_service import record_post_view, get_post_insights
@@ -57,137 +66,18 @@ COMMUNITY_UPLOAD_DIR = os.path.join(
 )
 os.makedirs(COMMUNITY_UPLOAD_DIR, exist_ok=True)
 
-
-def _format_comment(c: CommunityPostComment) -> CommunityCommentOut:
-    return CommunityCommentOut(
-        id=c.id,
-        post_id=c.post_id,
-        user_id=c.user_id,
-        user_name=c.user.name if c.user else "Membro",
-        user_avatar=c.user.avatar_url if c.user else None,
-        user_role=c.user.role if c.user else "aluno",
-        parent_id=c.parent_id,
-        content=c.content,
-        created_at=c.created_at,
-    )
+# Aliases de compatibilidade interna para as funções extraídas
+_format_comment = format_comment
+_format_notification = format_notification
+_notify_user = notify_user
+_process_mentions_in_text = process_mentions_in_text
+_format_post = format_post
 
 
-def _format_notification(n: CommunityNotification) -> CommunityNotificationOut:
-    return CommunityNotificationOut(
-        id=n.id,
-        user_id=n.user_id,
-        actor_id=n.actor_id,
-        actor_name=n.actor.name if n.actor else None,
-        actor_avatar=n.actor.avatar_url if n.actor else None,
-        notification_type=n.notification_type,
-        post_id=n.post_id,
-        comment_id=n.comment_id,
-        title=n.title,
-        message=n.message,
-        is_read=n.is_read,
-        created_at=n.created_at,
-    )
-
-
-def _notify_user(
-    db: Session,
-    user_id: int,
-    actor_id: Optional[int],
-    notification_type: str,
-    title: str,
-    message: Optional[str] = None,
-    post_id: Optional[int] = None,
-    comment_id: Optional[int] = None,
-):
-    if not user_id or user_id == actor_id:
-        return
-    try:
-        notif = CommunityNotification(
-            user_id=user_id,
-            actor_id=actor_id,
-            notification_type=notification_type,
-            title=title,
-            message=message,
-            post_id=post_id,
-            comment_id=comment_id,
-            is_read=False,
-        )
-        db.add(notif)
-    except Exception as e:
-        logger.warning(f"Erro ao criar notificação de comunidade: {e}")
-
-
-def _process_mentions_in_text(
-    db: Session,
-    text_content: str,
-    actor: User,
-    post_id: Optional[int] = None,
-    comment_id: Optional[int] = None,
-):
-    if not text_content or "@" not in text_content:
-        return
-    import re
-    tokens = re.findall(r"@([A-Za-zÀ-ÿ0-9_]{2,30})", text_content)
-    if not tokens:
-        return
-
-    unique_tokens = set(tokens)
-    for token in unique_tokens:
-        users = db.query(User).filter(
-            User.is_active == True,
-            User.name.ilike(f"%{token}%")
-        ).limit(5).all()
-        for u in users:
-            if u.id != actor.id:
-                _notify_user(
-                    db=db,
-                    user_id=u.id,
-                    actor_id=actor.id,
-                    notification_type="feed_mention",
-                    title="Você foi mencionado",
-                    message=f"{actor.name} mencionou você: \"{text_content[:80]}\"",
-                    post_id=post_id,
-                    comment_id=comment_id,
-                )
-
-
-
-def _format_post(post: CommunityPost, current_user_id: int) -> CommunityPostOut:
-    liked = False
-    if post.likes:
-        liked = any(like.user_id == current_user_id for like in post.likes)
-
-    bookmarked = False
-    if post.bookmarks:
-        bookmarked = any(b.user_id == current_user_id for b in post.bookmarks)
-
-    comments_out = [_format_comment(c) for c in (post.comments or [])]
-
-    return CommunityPostOut(
-        id=post.id,
-        user_id=post.user_id,
-        user_name=post.user.name if post.user else "Membro da Comunidade",
-        user_avatar=post.user.avatar_url if post.user else None,
-        user_role=post.user.role if post.user else "aluno",
-        course_id=post.course_id,
-        course_title=post.course.title if post.course else None,
-        content=post.content,
-        media_urls=post.media_urls or [],
-        media_type=post.media_type or "none",
-        media_thumbnail_url=post.media_thumbnail_url,
-        likes_count=post.likes_count,
-        comments_count=post.comments_count,
-        views_count=post.views_count or 0,
-        is_liked_by_me=liked,
-        is_bookmarked_by_me=bookmarked,
-        is_pinned=post.is_pinned,
-        created_at=post.created_at,
-        comments=comments_out,
-    )
-
-
-@router.get("/feed", response_model=CommunityFeedListResponse)
+@router.get("/feed", response_model=CommunityFeedListResponse, summary="Listar Publicações do Feed", description="Retorna o feed de publicações da comunidade com suporte a paginação e filtros.")
+@limiter.limit("60/minute")
 def get_feed(
+    request: Request,
     filter: str = Query("all", description="'all', 'my_course', 'popular', 'my_posts', 'saved', 'following'"),
     course_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
@@ -253,8 +143,10 @@ def get_feed(
     )
 
 
-@router.post("/feed", response_model=CommunityPostOut, status_code=status.HTTP_201_CREATED)
+@router.post("/feed", response_model=CommunityPostOut, status_code=status.HTTP_201_CREATED, summary="Criar Publicação no Feed", description="Cria uma nova publicação no feed da comunidade.")
+@limiter.limit("30/minute")
 def create_post(
+    request: Request,
     data: CommunityPostCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -305,8 +197,10 @@ def create_post(
     return _format_post(post, current_user.id)
 
 
-@router.put("/feed/{post_id}", response_model=CommunityPostOut)
+@router.put("/feed/{post_id}", response_model=CommunityPostOut, summary="Editar Publicação do Feed", description="Edita uma publicação existente (apenas o autor ou admin/superadmin).")
+@limiter.limit("30/minute")
 def update_post(
+    request: Request,
     post_id: int,
     data: CommunityPostUpdate,
     db: Session = Depends(get_db),
@@ -339,8 +233,10 @@ def update_post(
     return _format_post(post, current_user.id)
 
 
-@router.delete("/feed/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/feed/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Excluir Publicação do Feed", description="Exclui uma publicação (apenas o autor ou admin/superadmin).")
+@limiter.limit("30/minute")
 def delete_post(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -362,8 +258,10 @@ def delete_post(
     return None
 
 
-@router.post("/feed/{post_id}/pin")
+@router.post("/feed/{post_id}/pin", summary="Fixar/Desafixar Publicação no Topo", description="Fixa ou desafixa um post no topo do feed (apenas admin/superadmin).")
+@limiter.limit("30/minute")
 def toggle_pin_post(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -385,8 +283,10 @@ def toggle_pin_post(
     return {"is_pinned": post.is_pinned}
 
 
-@router.post("/feed/{post_id}/like")
+@router.post("/feed/{post_id}/like", summary="Curtir/Descurtir Publicação", description="Alterna o like de uma publicação (curtir / descurtir).")
+@limiter.limit("60/minute")
 def toggle_like_post(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -439,8 +339,10 @@ def toggle_like_post(
     return {"liked": liked, "likes_count": post.likes_count}
 
 
-@router.post("/feed/{post_id}/bookmark")
+@router.post("/feed/{post_id}/bookmark", summary="Salvar/Remover Publicação dos Favoritos", description="Salva ou remove uma publicação dos favoritos do usuário.")
+@limiter.limit("60/minute")
 def toggle_bookmark_post(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -470,8 +372,10 @@ def toggle_bookmark_post(
     return {"bookmarked": bookmarked}
 
 
-@router.get("/feed/{post_id}/likes", response_model=List[CommunityLikeUserOut])
+@router.get("/feed/{post_id}/likes", response_model=List[CommunityLikeUserOut], summary="Listar Curtidas da Publicação", description="Retorna a lista de usuários que curtiram uma publicação.")
+@limiter.limit("60/minute")
 def get_post_likes(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -502,8 +406,10 @@ def get_post_likes(
     return result
 
 
-@router.get("/feed/mention-candidates", response_model=List[CommunityMentionCandidate])
+@router.get("/feed/mention-candidates", response_model=List[CommunityMentionCandidate], summary="Sugerir Membros para Menção (@)", description="Retorna membros ativos para sugestão e autocompletar de menções (@nome).")
+@limiter.limit("60/minute")
 def get_mention_candidates(
+    request: Request,
     q: Optional[str] = Query("", description="Termo de busca para menção"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -528,8 +434,10 @@ def get_mention_candidates(
     ]
 
 
-@router.get("/feed/{post_id}/comments", response_model=List[CommunityCommentOut])
+@router.get("/feed/{post_id}/comments", response_model=List[CommunityCommentOut], summary="Listar Comentários da Publicação", description="Retorna todos os comentários de uma publicação específica.")
+@limiter.limit("60/minute")
 def get_post_comments(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -547,8 +455,10 @@ def get_post_comments(
     return [_format_comment(c) for c in comments]
 
 
-@router.post("/feed/{post_id}/comments", response_model=CommunityCommentOut, status_code=status.HTTP_201_CREATED)
+@router.post("/feed/{post_id}/comments", response_model=CommunityCommentOut, status_code=status.HTTP_201_CREATED, summary="Criar Comentário na Publicação", description="Adiciona um comentário a uma publicação.")
+@limiter.limit("30/minute")
 def create_comment(
+    request: Request,
     post_id: int,
     data: CommunityCommentCreate,
     db: Session = Depends(get_db),
@@ -611,8 +521,10 @@ def create_comment(
     return _format_comment(comment)
 
 
-@router.delete("/feed/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/feed/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Excluir Comentário da Publicação", description="Exclui um comentário (apenas autor do comentário ou admin/superadmin).")
+@limiter.limit("30/minute")
 def delete_comment(
+    request: Request,
     comment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -642,8 +554,10 @@ VIDEO_EXTS = {".mp4", ".webm", ".mov", ".m4v"}
 ALLOWED_EXTS = IMAGE_EXTS | VIDEO_EXTS
 
 
-@router.post("/feed/upload")
+@router.post("/feed/upload", summary="Upload de Mídia para Feed", description="Upload de fotos (JPG, PNG, WebP) ou vídeos curtos (MP4, WebM, MOV) para publicações.")
+@limiter.limit("15/minute")
 async def upload_feed_media(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(require_community_manager),
 ):
@@ -679,8 +593,9 @@ async def upload_feed_media(
     return {"url": url, "filename": filename, "media_type": media_type}
 
 
-@router.get("/feed/media/{filename}")
-def serve_feed_media(filename: str):
+@router.get("/feed/media/{filename}", summary="Servir Mídia do Feed", description="Serve publicamente o arquivo de imagem ou vídeo da publicação do feed.")
+@limiter.limit("120/minute")
+def serve_feed_media(request: Request, filename: str):
     """
     Serve a imagem da publicação.
     """
@@ -690,8 +605,10 @@ def serve_feed_media(filename: str):
     return FileResponse(file_path)
 
 
-@router.get("/feed/courses")
+@router.get("/feed/courses", summary="Listar Cursos para Marcação no Feed", description="Retorna os cursos disponíveis para marcação de posts no feed.")
+@limiter.limit("60/minute")
 def get_feed_courses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
 ):
@@ -706,8 +623,10 @@ def get_feed_courses(
 # NOTIFICAÇÕES SOCIAIS DO FEED
 # ==============================================================================
 
-@router.get("/feed/notifications", response_model=CommunityNotificationListResponse)
+@router.get("/feed/notifications", response_model=CommunityNotificationListResponse, summary="Listar Notificações do Feed", description="Lista as notificações sociais do usuário atual com suporte a filtro de não lidas.")
+@limiter.limit("60/minute")
 def get_community_notifications(
+    request: Request,
     unread_only: bool = Query(False, description="Filtrar apenas não lidas"),
     limit: int = Query(30, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -740,8 +659,10 @@ def get_community_notifications(
     )
 
 
-@router.get("/feed/notifications/unread-count")
+@router.get("/feed/notifications/unread-count", summary="Contador de Notificações Não Lidas", description="Retorna apenas a contagem de notificações não lidas para o badge no frontend.")
+@limiter.limit("60/minute")
 def get_unread_notifications_count(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
 ):
@@ -755,8 +676,10 @@ def get_unread_notifications_count(
     return {"unread_count": count}
 
 
-@router.post("/feed/notifications/{notification_id}/read")
+@router.post("/feed/notifications/{notification_id}/read", summary="Marcar Notificação como Lida", description="Marca uma notificação específica como lida.")
+@limiter.limit("60/minute")
 def mark_notification_as_read(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -776,8 +699,10 @@ def mark_notification_as_read(
     return {"success": True, "id": notification_id, "is_read": True}
 
 
-@router.post("/feed/notifications/read-all")
+@router.post("/feed/notifications/read-all", summary="Marcar Todas Notificações como Lidas", description="Marca todas as notificações do usuário atual como lidas.")
+@limiter.limit("30/minute")
 def mark_all_notifications_as_read(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
 ):
@@ -792,8 +717,10 @@ def mark_all_notifications_as_read(
     return {"success": True, "message": "Todas as notificações foram marcadas como lidas."}
 
 
-@router.delete("/feed/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/feed/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Excluir Notificação do Feed", description="Exclui uma notificação específica do usuário.")
+@limiter.limit("30/minute")
 def delete_notification(
+    request: Request,
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -817,8 +744,10 @@ def delete_notification(
 # PERFIL DO FEED SOCIAL (ESTILO INSTAGRAM)
 # ==============================================================================
 
-@router.get("/feed/profile/{user_id}", response_model=CommunityUserProfileOut)
+@router.get("/feed/profile/{user_id}", response_model=CommunityUserProfileOut, summary="Obter Perfil do Membro no Feed", description="Retorna os dados públicos do perfil do membro, bio, link, contadores e posts.")
+@limiter.limit("60/minute")
 def get_user_profile(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -846,6 +775,7 @@ def get_user_profile(
 
     formatted_posts = [_format_post(p, current_user.id) for p in posts]
     followers_count, following_count, is_following = get_user_follow_stats(db, target_user.id, current_user.id)
+    gam_data = get_user_gamification_profile_data(db, target_user.id)
 
     return CommunityUserProfileOut(
         id=target_user.id,
@@ -862,11 +792,14 @@ def get_user_profile(
         is_me=(current_user.id == target_user.id),
         created_at=target_user.created_at,
         posts=formatted_posts,
+        **gam_data,
     )
 
 
-@router.put("/feed/profile/me", response_model=CommunityUserProfileOut)
+@router.put("/feed/profile/me", response_model=CommunityUserProfileOut, summary="Atualizar Meu Perfil do Feed", description="Atualiza as informações do perfil do próprio usuário autenticado (nome, bio, link).")
+@limiter.limit("30/minute")
 def update_my_profile(
+    request: Request,
     data: CommunityProfileUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -892,11 +825,13 @@ def update_my_profile(
     db.commit()
     db.refresh(current_user)
 
-    return get_user_profile(user_id=current_user.id, db=db, current_user=current_user)
+    return get_user_profile(request=request, user_id=current_user.id, db=db, current_user=current_user)
 
 
-@router.post("/feed/profile/avatar")
+@router.post("/feed/profile/avatar", summary="Upload de Avatar do Perfil", description="Upload de foto de perfil (avatar) do usuário autenticado.")
+@limiter.limit("15/minute")
 async def upload_profile_avatar(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -925,8 +860,10 @@ async def upload_profile_avatar(
     return {"avatar_url": avatar_url, "message": "Foto de perfil atualizada com sucesso!"}
 
 
-@router.post("/feed/users/{user_id}/follow", response_model=FollowToggleOut)
+@router.post("/feed/users/{user_id}/follow", response_model=FollowToggleOut, summary="Seguir/Deixar de Seguir Membro", description="Seguir ou deixar de seguir um membro da comunidade.")
+@limiter.limit("60/minute")
 def toggle_follow(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -937,8 +874,10 @@ def toggle_follow(
     return toggle_follow_user(db, follower_id=current_user.id, target_user_id=user_id)
 
 
-@router.get("/feed/users/{user_id}/followers", response_model=List[FollowUserItem])
+@router.get("/feed/users/{user_id}/followers", response_model=List[FollowUserItem], summary="Listar Seguidores do Membro", description="Lista os seguidores de um membro da comunidade.")
+@limiter.limit("60/minute")
 def list_user_followers(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -949,8 +888,10 @@ def list_user_followers(
     return get_user_followers(db, target_user_id=user_id, current_user_id=current_user.id)
 
 
-@router.get("/feed/users/{user_id}/following", response_model=List[FollowUserItem])
+@router.get("/feed/users/{user_id}/following", response_model=List[FollowUserItem], summary="Listar Quem o Membro Está Seguindo", description="Lista quem o membro da comunidade está seguindo.")
+@limiter.limit("60/minute")
 def list_user_following(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -961,8 +902,10 @@ def list_user_following(
     return get_user_following(db, target_user_id=user_id, current_user_id=current_user.id)
 
 
-@router.post("/feed/{post_id}/view")
+@router.post("/feed/{post_id}/view", summary="Registrar Visualização de Publicação", description="Registra uma visualização única do post para métricas de alcance e insights.")
+@limiter.limit("120/minute")
 def track_post_view(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),
@@ -973,8 +916,10 @@ def track_post_view(
     return record_post_view(db, post_id=post_id, user_id=current_user.id)
 
 
-@router.get("/feed/{post_id}/insights", response_model=PostInsightsOut)
+@router.get("/feed/{post_id}/insights", response_model=PostInsightsOut, summary="Métricas e Insights da Publicação", description="Retorna métricas de alcance e engajamento da publicação (apenas autor ou admin).")
+@limiter.limit("60/minute")
 def get_insights(
+    request: Request,
     post_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_community_manager),

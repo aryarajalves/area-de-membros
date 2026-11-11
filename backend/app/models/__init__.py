@@ -45,6 +45,11 @@ from app.models.community_feed import (
     CommunityFollow,
     CommunityPostView,
 )
+from app.models.community_stories import (
+    CommunityStory,
+    CommunityStoryView,
+    CommunityStoryReaction,
+)
 from app.models.event import Event, EventAttendee
 from app.models.certificate import Certificate
 from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk, AiTutorSuggestion
@@ -100,6 +105,9 @@ __all__ = [
     "CommunityPostBookmark",
     "CommunityNotification",
     "CommunityFollow",
+    "CommunityStory",
+    "CommunityStoryView",
+    "CommunityStoryReaction",
     "CourseSalesClick",
     "CourseUpsellOffer",
     "CourseUpsellView",

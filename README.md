@@ -1,11 +1,31 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.6`** | **Docker Hub: `backend-1.2.6` / `frontend-1.2.6`**
+> **Versão Oficial: `v1.2.8`** | **Docker Hub: `backend-1.2.8` / `frontend-1.2.8`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.2.8 (Esteira Automatizada de Deploy, Verificador de Schema do Banco, Secret Scanner, Auditoria de APIs e Versionamento Decimal)
+- **🔍 Verificador Automático de Esquema do Banco de Dados (`scripts/check_db_schema.py`):**
+  - Compara 100% dos modelos SQLAlchemy (`backend/app/models/`) com o bloco de auto-migração (`main.py`).
+  - Bloqueia deploys caso alguma tabela (`CREATE TABLE IF NOT EXISTS`) ou coluna incremental (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) não esteja registrada no código de inicialização do PostgreSQL e SQLite.
+  - Sincronização e cobertura total de todas as 72 tabelas e 100+ colunas do sistema.
+- **🔐 Scanner Preventivo de Vazamento de Segredos & Credenciais (`scripts/check_secrets.py`):**
+  - Varre o repositório antes de commits e builds procurando tokens de API (OpenAI, GitHub, Brevo, AWS/S3), chaves privadas e arquivos `.env` sensíveis que possam vazar para o Git.
+  - Oculta e mascara credenciais em logs com proteção total.
+- **🛡️ Auditoria Rigorosa de APIs e Endpoints (`scripts/audit_endpoints.py`):**
+  - Verificação e bloqueio automático na esteira pré-deploy caso endpoints novos/recentes não possuam documentação OpenAPI (`summary` e `description`), autorização obrigatória (JWT/roles) ou controle de taxa de requisições (`@limiter.limit` via SlowAPI com injeção de `request: Request`).
+  - Cobertura de 43 rotas (Stories, Feed Social, DMs de Super Admin e Membros do Chat).
+- **📦 Modularização e Limites de Código (Clean Code):**
+  - Extração de utilitários e regras de feed para `community_feed_service.py`, mantendo o código 100% abaixo dos limites máximos de 1.000 linhas no Backend e 500 linhas no Frontend.
+- **🔢 Regra Estrita de Versionamento Decimal e Build de Imagens Docker (`scripts/release.py`):**
+  - Incremento automático semântico decimal base-10 (`1.2.7` ➔ `1.2.8` ➔ `1.2.9` ➔ `1.3.0` ➔ `2.0.0`) com suporte a override manual.
+  - Geração automatizada das imagens:
+    - `aryalvesfernandes/area-de-membrosbackend-<versao>`
+    - `aryalvesfernandes/area-de-membrosfrontend-<versao>`
+  - Proibição estrita da tag `latest` para garantir rastreabilidade imutável de versões em produção.
 
 ### 🚀 Novidades da Versão v1.2.7 (Feed Social da Comunidade estilo Instagram: Carrossel, Vídeos Curtos, Thumbnails, Seguir, Insights e Perfis)
 - **📸 Feed Social da Comunidade estilo Instagram:**
