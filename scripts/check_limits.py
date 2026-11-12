@@ -27,7 +27,7 @@ def check_files():
 
     # Checar backend (< 1000 linhas)
     for root, _, files in os.walk("backend"):
-        if "venv" in root or ".pytest_cache" in root or "__pycache__" in root:
+        if "venv" in root or ".pytest_cache" in root or "__pycache__" in root or "backups_refactor" in root:
             continue
         for f in files:
             if f.endswith(".py"):

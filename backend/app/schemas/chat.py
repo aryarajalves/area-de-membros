@@ -68,6 +68,9 @@ class ChatMessageResponse(BaseModel):
     user: ChatUser
     recipient: Optional[ChatUser] = None
     can_delete: bool = False
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by_user_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

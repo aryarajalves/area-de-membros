@@ -516,4 +516,63 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       expect(screen.getByText('Admin Jordão')).toBeInTheDocument();
     });
   });
+
+  it('reseta o estado para a tela inicial (Inbox) ao fechar no X', async () => {
+    const handleClose = vi.fn();
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/v1/chat/dm/messages/')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          {
+            contact: mockContact,
+            last_message: 'Mensagem de teste',
+            last_message_at: new Date().toISOString(),
+            unread_count: 0,
+          },
+        ],
+      });
+    });
+
+    const { rerender } = render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={handleClose}
+          currentUser={currentUser}
+          targetContact={mockContact}
+        />
+      </ToastProvider>
+    );
+
+    // Abre direto na conversa com targetContact
+    await waitFor(() => {
+      expect(screen.getByText(`Mensagens com ${mockContact.name}`)).toBeInTheDocument();
+    });
+
+    // Clica no X para fechar
+    const closeBtn = screen.getByTestId('close-dm-modal-btn');
+    fireEvent.click(closeBtn);
+    expect(handleClose).toHaveBeenCalled();
+
+    // Reabre sem targetContact
+    rerender(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={handleClose}
+          currentUser={currentUser}
+          targetContact={null}
+        />
+      </ToastProvider>
+    );
+
+    // Deve abrir na tela inicial (DMs / Inbox) e não dentro da conversa
+    await waitFor(() => {
+      expect(screen.getByText('DMs (Mensagens Diretas)')).toBeInTheDocument();
+      expect(screen.getByTestId('dm-tab-inbox')).toBeInTheDocument();
+    });
+  });
 });

@@ -223,4 +223,71 @@ describe('ChatDmConversationView Component', () => {
     // Mensagem recebida do outro usuário não possui indicador de envio do remetente
     expect(screen.queryByTestId('dm-read-status-303')).toBeNull();
   });
+
+  it('permite excluir mensagem enviada e exibe modal de confirmacao', async () => {
+    const onDeleteMessage = vi.fn().mockResolvedValue(true);
+    const mockMessages = [
+      {
+        id: 401,
+        message: 'Mensagem para apagar',
+        created_at: '2026-10-06T10:00:00Z',
+        is_read: false,
+        user: { id: 1 },
+      },
+    ];
+
+    render(
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={mockMessages}
+          loading={false}
+          onSendMessage={vi.fn()}
+          onDeleteMessage={onDeleteMessage}
+        />
+      </ToastProvider>
+    );
+
+    const deleteBtn = screen.getByTestId('dm-delete-btn-401');
+    expect(deleteBtn).toBeInTheDocument();
+    fireEvent.click(deleteBtn);
+
+    expect(screen.getByTestId('delete-chat-modal-content')).toBeInTheDocument();
+    const confirmBtn = screen.getByTestId('confirm-delete-chat-btn');
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(onDeleteMessage).toHaveBeenCalledWith(401);
+    });
+  });
+
+  it('renderiza mensagem apagada pelo aluno com badge informativo e estilo suave', () => {
+    const mockMessages = [
+      {
+        id: 501,
+        message: 'Mensagem que o aluno apagou',
+        created_at: '2026-10-06T10:00:00Z',
+        is_deleted: true,
+        user: { id: 5 },
+      },
+    ];
+
+    render(
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={mockMessages}
+          loading={false}
+          onSendMessage={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('dm-deleted-badge-501')).toBeInTheDocument();
+    expect(screen.getByText('🛡️ Mensagem apagada pelo aluno')).toBeInTheDocument();
+    // Botão de deletar não deve aparecer em mensagem já marcada como apagada
+    expect(screen.queryByTestId('dm-delete-btn-501')).not.toBeInTheDocument();
+  });
 });

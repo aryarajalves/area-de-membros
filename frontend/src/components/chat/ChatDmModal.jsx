@@ -5,6 +5,7 @@ import ChatDmConversationView from './ChatDmConversationView';
 import ChatDmNewContactSelector from './ChatDmNewContactSelector';
 import ChatDmInboxList from './ChatDmInboxList';
 import ChatDmAdminSupportList from './ChatDmAdminSupportList';
+import ChatDmModalTabs from './ChatDmModalTabs';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -28,12 +29,24 @@ export default function ChatDmModal({
     setCurrentPage(1);
   }, [activeTab]);
 
+  const handleClose = () => {
+    setSelectedContact(null);
+    setSelectedAdminThread(null);
+    setIsSelectingNewContact(false);
+    onClose?.();
+  };
+
   // Bloqueio do scroll do fundo e fechamento automático ao navegar para aula
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setSelectedContact(null);
+      setSelectedAdminThread(null);
+      setIsSelectingNewContact(false);
+      return;
+    }
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const handleCloseModal = () => onClose?.();
+    const handleCloseModal = () => handleClose();
     window.addEventListener('open_course_lesson', handleCloseModal);
     window.addEventListener('close_dm_modal', handleCloseModal);
     return () => {
@@ -41,7 +54,7 @@ export default function ChatDmModal({
       window.removeEventListener('open_course_lesson', handleCloseModal);
       window.removeEventListener('close_dm_modal', handleCloseModal);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 
@@ -180,6 +193,37 @@ export default function ChatDmModal({
     }
   };
 
+  const handleDeleteDmMessage = async (messageId) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/chat/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const isPrivileged = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
+        if (data.permanent || !isPrivileged) {
+          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId
+                ? { ...m, is_deleted: true, deleted_at: data.deleted_at || new Date().toISOString() }
+                : m
+            )
+          );
+        }
+        fetchConversations();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Erro ao excluir mensagem da DM:', err);
+      return false;
+    }
+  };
+
   if (!isOpen) return null;
 
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
@@ -298,7 +342,7 @@ export default function ChatDmModal({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               data-testid="close-dm-modal-btn"
               style={{
                 background: 'none',
@@ -319,125 +363,13 @@ export default function ChatDmModal({
 
         {/* Abas Inbox / Não lidas + Botão Nova Conversa */}
         {!selectedContact && !isSelectingNewContact && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 16px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              backgroundColor: '#0c1322',
-            }}
-          >
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setActiveTab('inbox')}
-                data-testid="dm-tab-inbox"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: 'none',
-                  backgroundColor: activeTab === 'inbox' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                  color: activeTab === 'inbox' ? '#38bdf8' : '#94a3b8',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <Inbox size={14} />
-                <span>Inbox</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('unread')}
-                data-testid="dm-tab-unread"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: 'none',
-                  backgroundColor: activeTab === 'unread' ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                  color: activeTab === 'unread' ? '#f87171' : '#94a3b8',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <BellOff size={14} />
-                <span>Não lidas</span>
-                {unreadTotal > 0 && (
-                  <span
-                    style={{
-                      backgroundColor: '#ef4444',
-                      color: '#ffffff',
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      padding: '1px 6px',
-                      borderRadius: '9999px',
-                    }}
-                  >
-                    {unreadTotal}
-                  </span>
-                )}
-              </button>
-
-              {currentUser?.role === 'superadmin' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('team_support')}
-                  data-testid="dm-tab-team-support"
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: 'none',
-                    backgroundColor: activeTab === 'team_support' ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
-                    color: activeTab === 'team_support' ? '#facc15' : '#94a3b8',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Users size={14} />
-                  <span>Atendimento da Equipe</span>
-                </button>
-              )}
-            </div>
-
-            {/* Opção 1: Botão + Nova Conversa no Cabeçalho */}
-            <button
-              type="button"
-              onClick={() => setIsSelectingNewContact(true)}
-              data-testid="dm-new-conversation-btn"
-              title="Iniciar conversa privada com um aluno ou membro"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <UserPlus size={14} />
-              <span>Nova Conversa</span>
-            </button>
-          </div>
+          <ChatDmModalTabs
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            unreadTotal={unreadTotal}
+            currentUser={currentUser}
+            onStartNewConversation={() => setIsSelectingNewContact(true)}
+          />
         )}
 
         {/* Conteúdo: Seletor de Novo Contato OU Listagem de Conversas OU Chat Privado */}
@@ -476,6 +408,7 @@ export default function ChatDmModal({
             messages={messages}
             loading={loadingMessages}
             onSendMessage={handleSendDmMessage}
+            onDeleteMessage={handleDeleteDmMessage}
             adminThread={selectedAdminThread}
           />
         )}

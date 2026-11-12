@@ -100,39 +100,30 @@ def check_channel_access(user: User, channel_type: str, course_id: Optional[int]
 @router.get(
     "/channels",
     response_model=List[ChatChannelItem],
-    summary="Listar Canais de Chat Disponíveis",
-    description="Retorna a Comunidade Geral e os canais dedicados dos cursos aos quais o usuário tem acesso."
+    summary="Listar Canais de Chat Disponíveis"
 )
 def list_chat_channels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retorna os canais de bate-papo disponíveis para o usuário:
-    - Comunidade Geral (sempre presente)
-    - Canais dos cursos (todos para admins, vinculados ativos para alunos)
-    """
     return get_channel_items_list(db, current_user)
 
 
 @router.get(
     "/unread-summary",
     response_model=ChatUnreadSummaryResponse,
-    summary="Resumo de Mensagens Não Lidas",
-    description="Retorna a contagem total de mensagens não lidas no Chat (canais públicos e DMs) para o badge de notificação.",
+    summary="Resumo de Mensagens Não Lidas"
 )
 def get_unread_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Retorna contagem consolidada de mensagens não lidas para o usuário."""
     return get_user_chat_unread_summary(db, current_user)
 
 
 @router.post(
     "/channels/{channel_id}/read",
-    summary="Marcar Canal como Lido",
-    description="Atualiza o ponteiro de última mensagem lida no canal pelo usuário.",
+    summary="Marcar Canal como Lido"
 )
 def mark_channel_read(
     channel_id: str,
@@ -140,7 +131,6 @@ def mark_channel_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Marca o canal como lido e zera a contagem de mensagens pendentes naquele canal."""
     saved_id = mark_channel_as_read(db, current_user.id, channel_id, last_message_id)
     return {"status": "ok", "channel_id": channel_id, "last_read_message_id": saved_id}
 
@@ -148,8 +138,7 @@ def mark_channel_read(
 @router.get(
     "/messages",
     response_model=List[ChatMessageResponse],
-    summary="Listar Mensagens de um Canal",
-    description="Retorna o histórico de mensagens ordenado cronologicamente, com suporte a polling incremental."
+    summary="Listar Mensagens de um Canal"
 )
 def get_channel_messages(
     channel_type: str = Query(default="general", description="'general' ou 'course'"),
@@ -162,18 +151,18 @@ def get_channel_messages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retorna as mensagens do canal especificado.
-    Se parent_id for informado, retorna as mensagens da thread.
-    Caso contrário, retorna apenas as mensagens principais (parent_id IS NULL) do canal.
-    """
     if not check_channel_access(current_user, channel_type, course_id, db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não tem permissão para acessar este canal de bate-papo.",
         )
 
+    is_privileged = current_user.role in ("superadmin", "admin")
+
     query = db.query(ChatMessage).filter(ChatMessage.channel_type == channel_type)
+    if not is_privileged:
+        query = query.filter(ChatMessage.is_deleted == False)
+
     if channel_type == "course":
         query = query.filter(ChatMessage.course_id == course_id)
 
@@ -267,6 +256,9 @@ def get_channel_messages(
                 created_at=msg.created_at,
                 user=user_info,
                 can_delete=can_del,
+                is_deleted=bool(msg.is_deleted),
+                deleted_at=msg.deleted_at,
+                deleted_by_user_id=msg.deleted_by_user_id,
             )
         )
 
@@ -329,8 +321,7 @@ def get_pinned_message(
     "/messages",
     response_model=ChatMessageResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Enviar Mensagem no Chat",
-    description="Publica uma nova mensagem com texto e/ou mídia no canal informado."
+    summary="Enviar Mensagem no Chat"
 )
 @limiter.limit("60/minute")
 def send_chat_message(
@@ -339,9 +330,6 @@ def send_chat_message(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Envia uma nova mensagem com texto e/ou mídia no canal especificado.
-    """
     clean_text = (payload.message or "").strip()
     media_url = (payload.media_url or "").strip() or None
     media_type = payload.media_type or ("image" if media_url else None)
@@ -677,17 +665,13 @@ def toggle_pin_chat_message(
 
 @router.delete(
     "/messages/{message_id}",
-    summary="Excluir Mensagem do Chat",
-    description="Permite que o autor da mensagem ou um administrador exclua uma mensagem do chat."
+    summary="Excluir Mensagem do Chat"
 )
 def delete_chat_message(
     message_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Exclui a mensagem se o usuário for o autor ou tiver perfil de administrador.
-    """
     msg = db.query(ChatMessage).filter(ChatMessage.id == message_id).first()
     if not msg:
         raise HTTPException(
@@ -705,16 +689,41 @@ def delete_chat_message(
     try:
         channel_type = msg.channel_type
         course_id = msg.course_id
-        db.delete(msg)
-        db.commit()
-        logger.info(f"Mensagem ID {message_id} excluída por {current_user.email}")
-        chat_manager.broadcast_sync(
-            "message_deleted",
-            {"message_id": message_id},
-            channel_type=channel_type,
-            course_id=course_id,
-        )
-        return {"ok": True, "message": "Mensagem excluída com sucesso."}
+
+        if is_privileged:
+            # Administrador / Super Admin: exclusão definitiva ("apagada definitivamente")
+            db.delete(msg)
+            db.commit()
+            logger.info(f"Mensagem ID {message_id} excluída definitivamente por gestor {current_user.email}")
+            chat_manager.broadcast_sync(
+                "message_deleted",
+                {"message_id": message_id, "permanent": True},
+                channel_type=channel_type,
+                course_id=course_id,
+            )
+            return {"ok": True, "message": "Mensagem excluída definitivamente com sucesso.", "permanent": True}
+        else:
+            # Aluno / usuário comum: exclusão com retenção (soft delete)
+            # Ocultada para alunos, visível de forma transparente para Admin/Super Admin
+            now_utc = datetime.now(timezone.utc)
+            msg.is_deleted = True
+            msg.deleted_at = now_utc
+            msg.deleted_by_user_id = current_user.id
+            db.commit()
+            logger.info(f"Mensagem ID {message_id} ocultada por soft delete pelo autor {current_user.email}")
+            chat_manager.broadcast_sync(
+                "message_deleted",
+                {
+                    "message_id": message_id,
+                    "permanent": False,
+                    "is_deleted": True,
+                    "deleted_at": now_utc.isoformat(),
+                    "deleted_by_user_id": current_user.id,
+                },
+                channel_type=channel_type,
+                course_id=course_id,
+            )
+            return {"ok": True, "message": "Mensagem excluída com sucesso.", "permanent": False}
     except Exception as exc:
         db.rollback()
         logger.error(f"Erro ao excluir mensagem {message_id}: {exc}")

@@ -66,4 +66,14 @@ describe('ToastContext & Toast Notifications', () => {
     expect(errorToasts).toHaveLength(1);
     expect(screen.getAllByTestId('toast-error')).toHaveLength(1);
   });
+
+  it('renders container with supreme z-index (9999999) to always stay in front of modals', () => {
+    render(
+      <ToastProvider>
+        <div>Content</div>
+      </ToastProvider>
+    );
+    const container = screen.getByTestId('toast-container');
+    expect(container).toHaveStyle({ zIndex: 9999999 });
+  });
 });

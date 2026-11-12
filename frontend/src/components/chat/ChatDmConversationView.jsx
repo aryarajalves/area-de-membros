@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Loader2, ExternalLink, Lock, Check, CheckCheck, Clock, X } from 'lucide-react';
+import { Loader2, ExternalLink, Lock, Check, CheckCheck, Clock, X, Trash2 } from 'lucide-react';
 import { formatMessageWithMentions, resolveButtonUrl, handleInternalNavigation } from './chatMentionUtils';
 import ChatDateSeparator from './ChatDateSeparator';
 import { isSameDay } from './chatDateUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
 import ChatInputBar from './ChatInputBar';
+import DeleteChatMessageModal from './DeleteChatMessageModal';
 
 export function formatDateTimeFull(isoString) {
   if (!isoString) return '--/--/---- às --:--';
@@ -25,21 +26,50 @@ export default function ChatDmConversationView({
   messages = [],
   loading = false,
   onSendMessage,
+  onDeleteMessage,
   adminThread = null,
 }) {
   const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
   const [expandedInfoMsgId, setExpandedInfoMsgId] = useState(null);
+  const [deleteModalMsgId, setDeleteModalMsgId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const scrollToBottom = (behavior = 'auto') => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+    }
+  };
 
   useEffect(() => {
-    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom('auto');
+    const t1 = setTimeout(() => scrollToBottom('auto'), 50);
+    const t2 = setTimeout(() => scrollToBottom('smooth'), 180);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [selectedContact?.id, loading, messages.length]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalMsgId || !onDeleteMessage) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteMessage(deleteModalMsgId);
+      setDeleteModalMsgId(null);
+    } finally {
+      setIsDeleting(false);
     }
-  }, [messages.length]);
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Container de Histórico de Mensagens */}
       <div
+        ref={containerRef}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -118,6 +148,8 @@ export default function ChatDmConversationView({
             const prevM = idx > 0 ? messages[idx - 1] : null;
             const showSep = !prevM || !isSameDay(prevM.created_at, m.created_at);
             const isMine = m.user?.id === currentUser?.id;
+            const isDeleted = Boolean(m.is_deleted);
+            const canDeleteThisMsg = (m.can_delete || isMine || currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && !isDeleted;
             return (
               <React.Fragment key={m.id}>
                 {showSep && <ChatDateSeparator date={m.created_at} />}
@@ -134,14 +166,40 @@ export default function ChatDmConversationView({
                       maxWidth: '85%',
                       padding: '10px 14px',
                       borderRadius: isMine ? '14px 14px 4px 14px' : '4px 14px 14px 14px',
-                      backgroundColor: isMine ? '#2563eb' : '#1e293b',
-                      color: '#ffffff',
+                      backgroundColor: isDeleted ? 'rgba(30, 41, 59, 0.7)' : (isMine ? '#2563eb' : '#1e293b'),
+                      color: isDeleted ? '#cbd5e1' : '#ffffff',
                       fontSize: '0.85rem',
                       lineHeight: 1.4,
                       boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                      border: isMine ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.06)',
+                      border: isDeleted
+                        ? '1px dashed rgba(239, 68, 68, 0.45)'
+                        : (isMine ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.06)'),
+                      opacity: isDeleted ? 0.45 : 1,
+                      transition: 'opacity 0.2s ease',
                     }}
                   >
+                    {/* Badge Indicativo de Mensagem Excluída para Admins */}
+                    {isDeleted && (
+                      <div
+                        data-testid={`dm-deleted-badge-${m.id}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.68rem',
+                          color: '#f87171',
+                          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          marginBottom: '6px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>🛡️ Mensagem apagada pelo aluno</span>
+                      </div>
+                    )}
+
                     {/* Identificação de Super Admin ou Remetente na Thread */}
                     {m.user?.role === 'superadmin' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
@@ -266,6 +324,30 @@ export default function ChatDmConversationView({
                     <span>
                       {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {canDeleteThisMsg && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalMsgId(m.id)}
+                        data-testid={`dm-delete-btn-${m.id}`}
+                        title="Excluir mensagem"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          padding: '1px 3px',
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                     {isMine && (
                       <button
                         type="button"
@@ -390,6 +472,14 @@ export default function ChatDmConversationView({
         sending={loading}
         channelName={selectedContact?.name || 'conversa'}
         placeholder={`Mensagem para ${selectedContact?.name || 'contato'}...`}
+      />
+
+      {/* Modal de Confirmação para Excluir Mensagem */}
+      <DeleteChatMessageModal
+        isOpen={Boolean(deleteModalMsgId)}
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteModalMsgId(null)}
       />
     </div>
   );

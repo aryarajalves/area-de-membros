@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function ChatImageCaptionModal({
   imageFile,
@@ -11,6 +11,7 @@ export default function ChatImageCaptionModal({
 }) {
   const [caption, setCaption] = useState(initialCaption);
   const [previewSrc, setPreviewSrc] = useState(imageUrl || '');
+  const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
     if (imageFile) {
@@ -40,7 +41,7 @@ export default function ChatImageCaptionModal({
         inset: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.85)',
         backdropFilter: 'blur(6px)',
-        zIndex: 99999,
+        zIndex: 1000010,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -56,11 +57,12 @@ export default function ChatImageCaptionModal({
           border: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: isMaximized ? '680px' : '520px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
+          transition: 'max-width 0.25s ease',
         }}
       >
         {/* Cabeçalho */}
@@ -80,39 +82,65 @@ export default function ChatImageCaptionModal({
               Pré-visualização da Imagem
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSending}
-            data-testid="close-image-caption-modal"
-            title="Cancelar e fechar"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: isSending ? 'not-allowed' : 'pointer',
-              padding: '4px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setIsMaximized((prev) => !prev)}
+              data-testid="toggle-maximize-caption-btn"
+              title={isMaximized ? "Recolher campo de legenda" : "Maximizar campo de legenda para ver melhor o que está digitando"}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: isMaximized ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                border: isMaximized ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: isMaximized ? '#38bdf8' : '#cbd5e1',
+                cursor: 'pointer',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              <span>{isMaximized ? 'Recolher' : 'Maximizar'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isSending}
+              data-testid="close-image-caption-modal"
+              title="Cancelar e fechar"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: isSending ? 'not-allowed' : 'pointer',
+                padding: '4px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Área de Visualização da Imagem */}
         <div
           style={{
-            padding: '16px',
+            padding: isMaximized ? '10px 16px' : '16px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            maxHeight: '360px',
+            maxHeight: isMaximized ? '240px' : '360px',
             overflow: 'hidden',
+            transition: 'max-height 0.25s ease',
           }}
         >
           {previewSrc ? (
@@ -122,10 +150,11 @@ export default function ChatImageCaptionModal({
               data-testid="image-caption-preview"
               style={{
                 maxWidth: '100%',
-                maxHeight: '320px',
+                maxHeight: isMaximized ? '220px' : '320px',
                 borderRadius: '8px',
                 objectFit: 'contain',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                transition: 'max-height 0.25s ease',
               }}
             />
           ) : (
@@ -135,72 +164,158 @@ export default function ChatImageCaptionModal({
 
         {/* Input de Legenda e Ações */}
         <div style={{ padding: '16px', backgroundColor: '#0f172a' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              backgroundColor: '#1e293b',
-              borderRadius: '10px',
-              padding: '8px 12px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            <input
-              type="text"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Escreva uma legenda para a imagem... (Enter para enviar)"
-              data-testid="image-caption-input"
-              autoFocus
-              disabled={isSending}
-              maxLength={1000}
+          {isMaximized ? (
+            <div
               style={{
-                flex: 1,
-                background: 'none',
-                border: 'none',
-                outline: 'none',
-                color: '#f8fafc',
-                fontSize: '0.875rem',
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => onConfirmSend(caption.trim())}
-              disabled={isSending}
-              data-testid="send-image-caption-btn"
-              title="Enviar imagem"
-              style={{
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px 14px',
-                cursor: isSending ? 'not-allowed' : 'pointer',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
-                transition: 'background-color 0.15s ease',
+                flexDirection: 'column',
+                gap: '10px',
+                backgroundColor: '#1e293b',
+                borderRadius: '10px',
+                padding: '12px',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                boxShadow: '0 0 12px rgba(56, 189, 248, 0.15)',
               }}
             >
-              {isSending ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Enviando...</span>
-                </>
-              ) : (
-                <>
-                  <Send size={15} />
-                  <span>Enviar</span>
-                </>
-              )}
-            </button>
-          </div>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escreva uma legenda detalhada para a imagem... (Pressione Enter para enviar ou Shift+Enter para quebrar linha)"
+                data-testid="image-caption-input"
+                autoFocus
+                disabled={isSending}
+                maxLength={1000}
+                rows={4}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#f8fafc',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  minHeight: '90px',
+                  maxHeight: '200px',
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                  paddingTop: '8px',
+                }}
+              >
+                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                  {caption.length}/1000 caracteres • Enter envia, Shift+Enter pula linha
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onConfirmSend(caption.trim())}
+                  disabled={isSending}
+                  data-testid="send-image-caption-btn"
+                  title="Enviar imagem"
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    cursor: isSending ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+                  }}
+                >
+                  {isSending ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Enviando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={15} />
+                      <span>Enviar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                backgroundColor: '#1e293b',
+                borderRadius: '10px',
+                padding: '8px 12px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <input
+                type="text"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escreva uma legenda para a imagem... (Enter para enviar)"
+                data-testid="image-caption-input"
+                autoFocus
+                disabled={isSending}
+                maxLength={1000}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#f8fafc',
+                  fontSize: '0.875rem',
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => onConfirmSend(caption.trim())}
+                disabled={isSending}
+                data-testid="send-image-caption-btn"
+                title="Enviar imagem"
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  cursor: isSending ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+                  transition: 'background-color 0.15s ease',
+                }}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={15} />
+                    <span>Enviar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
           <div style={{ marginTop: '8px', textAlign: 'right' }}>
             <button
               type="button"

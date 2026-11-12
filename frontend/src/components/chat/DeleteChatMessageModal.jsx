@@ -13,6 +13,17 @@ export default function DeleteChatMessageModal({
     <div
       className="modal-overlay"
       data-testid="delete-chat-modal-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(5px)',
+        zIndex: 1000020,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
       onClick={(e) => {
         // Regra UX: Não fecha ao clicar fora do painel
         e.stopPropagation();

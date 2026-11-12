@@ -1,11 +1,27 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.2`** | **Docker Hub: `backend-1.3.2` / `frontend-1.3.2`**
+> **Versão Oficial: `v1.3.3`** | **Docker Hub: `backend-1.3.3` / `frontend-1.3.3`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.3.3 (Soft Delete de Mensagens com Retenção para Moderação, Maximização de Legendas, Auto-Scroll e Toasts Supremos)
+- **🗑️ Exclusão de Mensagens com Retenção Transparente para Moderação (DMs e Canais em Grupo):**
+  - **Exclusão pelo Aluno (Soft Delete):** A mensagem é ocultada imediatamente da visualização do aluno e colegas (`is_deleted = true`).
+  - **Visualização para Administradores e Super Admins:** A mensagem permanece no histórico da conversa com estilo translúcido (`opacity: 0.45`), borda suave tracejada e o badge explicativo `🛡️ Mensagem apagada pelo aluno` (ou `🛡️ Apagada pelo autor`), preservando a auditoria pedagógica e a segurança do suporte.
+  - **Exclusão pelo Administrador (Hard Delete):** Exclusão definitiva permanente do banco de dados para todos os participantes.
+  - Confirmação obrigatória via popup centralizado `DeleteChatMessageModal`.
+- **🔍 Maximização do Campo de Legenda de Imagens (`ChatImageCaptionModal`):**
+  - Botão de alternância *"Maximizar / Recolher"* (`Maximize2`/`Minimize2`) no modal de envio de fotos e prints.
+  - No modo maximizado, transforma o campo em um `textarea` multilinhas amplo com contador de caracteres (`X/1000`), suporte a quebra de linha (`Shift+Enter`) e envio direto (`Enter`).
+- **🔄 Reset para a Página Inicial ao Fechar no "X" das DMs (`ChatDmModal`):**
+  - Ao fechar o modal de mensagens diretas, redefine a conversa ativa para que a próxima abertura ocorra sempre na Inbox de conversas, e não retida na conversa anterior.
+- **⬇️ Rolagem Automática Confiável para a Última Mensagem (`ChatDmConversationView`):**
+  - Descida instantânea e garantida (`scrollTop = scrollHeight`) até a mensagem mais recente ao abrir qualquer conversa ou retornar da Inbox, eliminando paradas no topo causadas por carregamento assíncrono.
+- **🔔 Toasts Supremos com Visibilidade Global (`ToastContext`):**
+  - Camada de toasts elevada para `z-index: 9999999`, garantindo que notificações de feedback visual nunca fiquem escondidas atrás de modais sobrepostos.
 
 ### 🚀 Novidades da Versão v1.3.2 (Recibos de Leitura em DMs com Data/Hora, Campo Amplo de WhatsApp e Imagens Docker de Produção)
 - **👁️ Recibo de Leitura Interativo em Mensagens Diretas (DMs):**

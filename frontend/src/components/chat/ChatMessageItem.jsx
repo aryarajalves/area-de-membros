@@ -8,41 +8,16 @@ function formatMessageTime(dateString) {
   if (!dateString) return '';
   try {
     const d = new Date(dateString);
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   } catch {
     return '';
   }
 }
 
 function getRoleBadge(role) {
-  switch (role) {
-    case 'superadmin':
-      return {
-        label: 'Super Admin',
-        color: '#c084fc',
-        bg: 'rgba(192, 132, 252, 0.15)',
-        border: 'rgba(192, 132, 252, 0.3)',
-        icon: Shield,
-      };
-    case 'admin':
-      return {
-        label: 'Instrutor',
-        color: '#60a5fa',
-        bg: 'rgba(96, 165, 250, 0.15)',
-        border: 'rgba(96, 165, 250, 0.3)',
-        icon: Award,
-      };
-    default:
-      return {
-        label: 'Aluno',
-        color: '#34d399',
-        bg: 'rgba(52, 211, 153, 0.12)',
-        border: 'rgba(52, 211, 153, 0.25)',
-        icon: User,
-      };
-  }
+  if (role === 'superadmin') return { label: 'Super Admin', color: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)', border: 'rgba(192, 132, 252, 0.3)', icon: Shield };
+  if (role === 'admin') return { label: 'Instrutor', color: '#60a5fa', bg: 'rgba(96, 165, 250, 0.15)', border: 'rgba(96, 165, 250, 0.3)', icon: Award };
+  return { label: 'Aluno', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)', border: 'rgba(52, 211, 153, 0.25)', icon: User };
 }
 
 export default function ChatMessageItem({
@@ -80,6 +55,7 @@ export default function ChatMessageItem({
         borderRadius: '12px',
         backgroundColor: isHighlighted ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
         boxShadow: isHighlighted ? '0 0 0 2px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.35)' : 'none',
+        opacity: message.is_deleted ? 0.45 : 1,
         transition: 'all 0.35s ease',
       }}
     >
@@ -192,6 +168,26 @@ export default function ChatMessageItem({
             >
               <Pin size={10} fill="#38bdf8" />
               Fixada
+            </span>
+          )}
+
+          {message.is_deleted && (
+            <span
+              style={{
+                fontSize: '0.68rem',
+                color: '#f87171',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              data-testid={`deleted-badge-${message.id}`}
+            >
+              🛡️ Apagada pelo autor
             </span>
           )}
         </div>

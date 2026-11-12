@@ -2,6 +2,19 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [12/11/2026] - Chat e Mensagens Diretas: Soft Delete com Retenção para Moderação (is_deleted, deleted_at, deleted_by_user_id em chat_messages)
+- **Objetivo:** Permitir que alunos excluam mensagens enviadas com ocultação imediata para alunos (soft delete), enquanto administradores e superadministradores mantêm acesso de auditoria visual com transparência suave; administradores contam com exclusão definitiva (hard delete).
+- **Tabela Afetada:**
+  - `chat_messages`:
+    - `is_deleted`: BOOLEAN DEFAULT FALSE NOT NULL (flag indicando se a mensagem foi apagada pelo aluno)
+    - `deleted_at`: TIMESTAMP WITH TIME ZONE NULL (data/hora da exclusão)
+    - `deleted_by_user_id`: INTEGER NULL REFERENCES users(id) ON DELETE SET NULL (usuário que realizou a exclusão)
+    - Índices: `ix_chat_messages_is_deleted`, `ix_chat_messages_deleted_by_user_id`
+- **Script de Migração:** `backend/scripts/migrate_chat_soft_delete.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS ...` e `CREATE INDEX IF NOT EXISTS` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [12/11/2026] - Perfil do Usuário: Opção de Desativar Reprodução Automática de Aulas (autoplay_enabled em users)
 - **Objetivo:** Permitir ao aluno ou usuário ativar ou desativar o avanço/reprodução automática para a próxima aula ao término do vídeo através de uma configuração clara no seu perfil.
 - **Tabela Afetada:**

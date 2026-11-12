@@ -328,6 +328,11 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS pinned_by_user_id INTEGER;
                         ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP WITH TIME ZONE NULL;
                         ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS button_action_type VARCHAR(30) NULL;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+                        CREATE INDEX IF NOT EXISTS ix_chat_messages_is_deleted ON chat_messages (is_deleted);
+                        CREATE INDEX IF NOT EXISTS ix_chat_messages_deleted_by_user_id ON chat_messages (deleted_by_user_id);
                         ALTER TABLE funnels ADD COLUMN IF NOT EXISTS trigger_type VARCHAR(50) DEFAULT 'chat_button';
                         ALTER TABLE funnels ADD COLUMN IF NOT EXISTS trigger_keywords VARCHAR(500);
                         ALTER TABLE funnels ADD COLUMN IF NOT EXISTS flow_data TEXT DEFAULT '{}';
@@ -700,6 +705,9 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE chat_messages ADD COLUMN pinned_by_user_id INTEGER",
                         "ALTER TABLE chat_messages ADD COLUMN read_at TIMESTAMP NULL",
                         "ALTER TABLE chat_messages ADD COLUMN button_action_type VARCHAR(30)",
+                        "ALTER TABLE chat_messages ADD COLUMN is_deleted BOOLEAN DEFAULT 0",
+                        "ALTER TABLE chat_messages ADD COLUMN deleted_at TIMESTAMP NULL",
+                        "ALTER TABLE chat_messages ADD COLUMN deleted_by_user_id INTEGER",
                         "ALTER TABLE courses ADD COLUMN cover_image_url VARCHAR",
                         "ALTER TABLE courses ADD COLUMN bg_color VARCHAR DEFAULT '#090d16'",
                         "ALTER TABLE courses ADD COLUMN is_published BOOLEAN DEFAULT 1",

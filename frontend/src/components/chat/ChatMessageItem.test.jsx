@@ -366,5 +366,27 @@ describe('ChatMessageItem Component', () => {
     expect(ctaBtn).toHaveAttribute('href', 'https://www.google.com.br');
     expect(ctaBtn).toHaveAttribute('target', '_blank');
   });
+
+  it('renders soft-deleted message with deleted badge and reduced opacity for admin view', () => {
+    const deletedMsg = {
+      ...mockMessageWithAvatar,
+      id: 88,
+      is_deleted: true,
+      message: 'Mensagem apagada pelo autor',
+    };
+
+    render(
+      <ChatMessageItem
+        message={deletedMsg}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        onDeleteMessage={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('deleted-badge-88')).toBeInTheDocument();
+    expect(screen.getByText('🛡️ Apagada pelo autor')).toBeInTheDocument();
+    const item = screen.getByTestId('chat-message-item-88');
+    expect(item).toHaveStyle({ opacity: '0.45' });
+  });
 });
 

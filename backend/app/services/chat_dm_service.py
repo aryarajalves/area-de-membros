@@ -63,7 +63,7 @@ def get_user_dm_conversations(
             continue
 
         # Mensagens entre current_user e contact_user (incluindo respostas de superadmin na thread)
-        last_msg = (
+        msg_query = (
             db.query(ChatMessage)
             .filter(
                 ChatMessage.channel_type == "dm",
@@ -74,9 +74,11 @@ def get_user_dm_conversations(
                     and_(ChatMessage.dm_thread_admin_id == current_user.id, ChatMessage.recipient_id == c_id),
                 ),
             )
-            .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
-            .first()
         )
+        if current_user.role not in ("superadmin", "admin"):
+            msg_query = msg_query.filter(ChatMessage.is_deleted == False)
+
+        last_msg = msg_query.order_by(desc(ChatMessage.created_at), desc(ChatMessage.id)).first()
 
         unread_count = (
             db.query(func.count(ChatMessage.id))
@@ -85,6 +87,7 @@ def get_user_dm_conversations(
                 ChatMessage.user_id == c_id,
                 ChatMessage.recipient_id == current_user.id,
                 ChatMessage.is_read == False,
+                ChatMessage.is_deleted == False,
             )
             .scalar()
             or 0
@@ -194,8 +197,12 @@ def get_dm_messages_history(
                 and_(ChatMessage.dm_thread_admin_id == current_user.id, ChatMessage.recipient_id == contact_id),
             ),
         )
-        .order_by(desc(ChatMessage.id))
     )
+
+    if current_user.role not in ("superadmin", "admin"):
+        query = query.filter(ChatMessage.is_deleted == False)
+
+    query = query.order_by(desc(ChatMessage.id))
 
     if before_id:
         query = query.filter(ChatMessage.id < before_id)
@@ -246,6 +253,9 @@ def get_dm_messages_history(
                     avatar_url=recipient_user.avatar_url if recipient_user else None,
                 ) if recipient_user else None,
                 can_delete=(msg.user_id == current_user.id or current_user.role in ("superadmin", "admin")),
+                is_deleted=bool(msg.is_deleted),
+                deleted_at=msg.deleted_at,
+                deleted_by_user_id=msg.deleted_by_user_id,
             )
         )
     return result
@@ -482,6 +492,9 @@ def get_superadmin_thread_messages(
                     avatar_url=recipient_user.avatar_url if recipient_user else None,
                 ) if recipient_user else None,
                 can_delete=True,
+                is_deleted=bool(msg.is_deleted),
+                deleted_at=msg.deleted_at,
+                deleted_by_user_id=msg.deleted_by_user_id,
             )
         )
     return result

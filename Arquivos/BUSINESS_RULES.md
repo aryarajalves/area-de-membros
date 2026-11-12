@@ -929,12 +929,23 @@ ew_dm e dm_updated).
         - Apresenta barra de paginação no rodapé informando a contagem de conversas exibidas (`Exibindo X–Y de Z DMs`), indicador da página atual e botões de navegação (*"Anterior"* e *"Próxima"*).
         - Os botões de navegação são desativados de forma reativa nos limites (primeira e última página).
         - Ao alternar entre as abas (*Inbox* e *Não lidas*), o estado de paginação é reiniciado automaticamente para a página 1.
+      - **Reset para Página Inicial ao Fechar no 'X' (`ChatDmModal`):**
+        - Ao clicar no botão de fechar (`X`) ou fechar o modal de DMs, o estado de contato selecionado (`selectedContact`, `selectedAdminThread`, `isSelectingNewContact`) é automaticamente reiniciado para `null`/`false`. Ao reabrir o modal, ele sempre inicia na visualização principal da Inbox de conversas, e não dentro de uma conversa anterior.
+      - **Rolagem Automática Confiável para a Última Mensagem (`ChatDmConversationView`):**
+        - Ao abrir qualquer conversa direta (DM) ou alternar de conversa, o histórico executa scroll automático e garantido até o final (`scrollTop = scrollHeight`), descendo até a última mensagem recebida/enviada sem parar no início, considerando layout assíncrono e carregamento de imagens.
+      - **Exclusão de Mensagens com Retenção Transparente para Moderação (Soft Delete vs Hard Delete em DMs e Chat em Grupo):**
+        - **Exclusão por Alunos:** Quando um aluno exclui uma mensagem própria enviada por ele, a mensagem é ocultada imediatamente da interface do aluno e de outros alunos (`is_deleted = true`). No entanto, para fins de segurança, auditoria pedagógica e histórico de atendimento, a mensagem **continua visível para Super Admins e Administradores**, renderizada com estilo translúcido (opacidade ~45%), borda suave e indicador claro de que foi apagada pelo aluno.
+        - **Exclusão por Administradores / Super Admins:** Quando um gestor exclui uma mensagem (seja própria ou de terceiros), ela é **apagada definitivamente do banco de dados (Hard Delete)** para todos os usuários.
+        - Toda exclusão exige confirmação prévia através de popup modal centralizado com fundo escuro (`DeleteChatMessageModal`).
     - Miniatura de prÃ©-visualizaÃ§Ã£o antes do envio com botÃ£o de remoÃ§Ã£o rÃ¡pida.
     - Permite envio de mensagem de texto com mÃ­dia vinculada, ou somente a mÃ­dia isolada.
     - Imagens sÃ£o renderizadas no chat com zoom ao clicar, e documentos em card seguro com link de abertura.
-  - **Colar (Ctrl+V) e Arrastar (Drag & Drop) Imagens com Legenda (`ChatImageCaptionModal`):**
+  - **Colar (Ctrl+V) e Arrastar (Drag & Drop) Imagens com Legenda e Maximização (`ChatImageCaptionModal`):**
     - O usuÃ¡rio pode colar imagens diretamente da Ã¡rea de transferÃªncia (`Ctrl + V`) ou arrastar arquivos de imagem para a Ã¡rea do chat.
     - Ao colar ou soltar, abre automaticamente o modal centralizado de prÃ©-visualizaÃ§Ã£o da imagem com campo de **Legenda** para digitaÃ§Ã£o confortÃ¡vel antes do envio ou cancelamento.
+    - **Opção de Maximizar o Campo de Legenda:** O modal oferece botão de alternância **"Maximizar / Recolher"** (`Maximize2`/`Minimize2`) que expande a área de digitação para um `textarea` multilinhas amplo, permitindo ler e escrever legendas longas com quebra de linha (`Shift+Enter`) e pré-visualização completa antes de enviar.
+  - **Notificações Globais via Toast (`ToastContext`):**
+    - O container de toasts (`.toast-container`) opera com `z-index: 9999999` acima de todos os elementos e backdrops de modais da plataforma, garantindo que avisos de sucesso, erro ou alerta nunca fiquem escondidos atrás de janelas sobrepostas.
   - **GravaÃ§Ã£o e Envio de VÃ­deo pela CÃ¢mera/Webcam (`ChatVideoRecorderModal`):**
     - BotÃ£o com Ã­cone de cÃ¢mera de vÃ­deo (`Video`) na barra de ferramentas do chat.
     - Permite gravar vÃ­deos diretamente pela cÃ¢mera/webcam do computador ou smartphone via `navigator.mediaDevices.getUserMedia`.

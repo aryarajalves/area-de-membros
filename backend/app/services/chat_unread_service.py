@@ -88,6 +88,7 @@ def get_channel_unread_count(
     query = db.query(func.count(ChatMessage.id)).filter(
         ChatMessage.channel_type == channel_type,
         ChatMessage.user_id != user_id,  # Mensagens do próprio usuário não contam como não lidas para si
+        ChatMessage.is_deleted == False,
     )
     if channel_type == "course":
         query = query.filter(ChatMessage.course_id == course_id)
@@ -145,6 +146,7 @@ def get_user_chat_unread_summary(db: Session, current_user: User) -> ChatUnreadS
             ChatMessage.channel_type == "dm",
             ChatMessage.recipient_id == current_user.id,
             ChatMessage.is_read == False,
+            ChatMessage.is_deleted == False,
         )
         .scalar()
         or 0
