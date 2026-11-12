@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.4`** | **Docker Hub: `backend-1.3.4` / `frontend-1.3.4`**
+> **Versão Oficial: `v1.3.5`** | **Docker Hub: `backend-1.3.5` / `frontend-1.3.5`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -7,15 +7,16 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.3.4 (Preservação de Contexto na Sala de Aula e Foco Imersivo no Chat da Comunidade)
+### 🚀 Novidades da Versão v1.3.5 (Build e Publicação das Imagens de Produção & Estabilização da Esteira Pré-Push)
+- **🐳 Novas Imagens Oficiais de Produção (Docker Hub):**
+  - Geração e publicação das imagens imutáveis: `aryalvesfernandes/area-de-membros:backend-1.3.5` e `aryalvesfernandes/area-de-membros:frontend-1.3.5`.
+  - Atualização dos manifestos `docker-compose-producao.yml` e `.env.producao.example`.
+- **🧪 Estabilização da Esteira de Testes Unitários Frontend:**
+  - Otimização da tolerância assíncrona nos testes de persistência da sala de aula (`ClassroomActiveLessonPersistence.test.jsx`), garantindo execução sólida e determinística da suíte completa de mais de 1.630 testes.
 - **🎯 Preservação Contínua da Aula e Módulo Ativos (`CourseClassroom` e `useCourseContent`):**
-  - Ao anexar novos arquivos complementares, editar dados da aula (título, descrição, metadados gerados por IA), renomear anexo ou atualizar o conteúdo da aula, o sistema preserva com precisão o módulo ativo (`selectedModuleId`) e a aula ativa (`activeLesson`).
-  - Elimina definitivamente a reversão indesejada para o primeiro módulo e primeira aula após ações de salvamento e upload.
-  - Sincronização em segundo plano suave sem desmontar componentes ou recarregar a visualização do player.
+  - Preservação exata do módulo e aula selecionados durante uploads de anexos e edições de aula, eliminando resets indesejados.
 - **💬 Foco Imersivo no Chat da Comunidade com Fechamento da Barra Lateral (`App.jsx`):**
-  - Ao acessar o **Chat da Comunidade** (`chat`), a barra lateral principal do sistema (`Sidebar`) fecha automaticamente, permitindo que a tela inteira fique dedicada exclusivamente aos canais de conversa, histórico de mensagens e lista de membros.
-  - O usuário pode reabrir ou alternar a exibição da barra lateral a qualquer momento pelo botão de Menu hamburguer no cabeçalho superior (`TopNavbar`), ou retornar aos cursos pelo botão *"← Voltar aos Cursos"*.
-  - Ao navegar para qualquer outra aba da plataforma (Cursos, Eventos, Alunos, Configurações), a barra lateral principal é reexibida automaticamente no seu layout normal.
+  - Recolhimento automático da barra lateral ao entrar no Chat da Comunidade, dedicando a tela inteira aos canais e histórico de conversas.
 
 ### 🚀 Novidades da Versão v1.3.3 (Soft Delete de Mensagens com Retenção para Moderação, Maximização de Legendas, Auto-Scroll e Toasts Supremos)
 - **🗑️ Exclusão de Mensagens com Retenção Transparente para Moderação (DMs e Canais em Grupo):**
