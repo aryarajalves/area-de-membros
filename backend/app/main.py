@@ -599,6 +599,7 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_strikes_user_id ON community_strikes(user_id);
                         CREATE INDEX IF NOT EXISTS ix_community_strikes_moderator_id ON community_strikes(moderator_id);
                         CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_status ON community_strikes(appeal_status);
+                        CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_reviewed_by ON community_strikes(appeal_reviewed_by);
 
                         CREATE TABLE IF NOT EXISTS community_stories (
                             id SERIAL PRIMARY KEY,
@@ -781,6 +782,7 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_strikes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, moderator_id INTEGER REFERENCES users(id) ON DELETE SET NULL, post_id INTEGER REFERENCES community_posts(id) ON DELETE SET NULL, comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE SET NULL, reason VARCHAR(255) NOT NULL, description TEXT NULL, strike_number INTEGER DEFAULT 1 NOT NULL, appeal_status VARCHAR(50) DEFAULT 'none' NOT NULL, appeal_reason TEXT NULL, appeal_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL, appeal_reviewed_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_user_id ON community_strikes(user_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_status ON community_strikes(appeal_status)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_reviewed_by ON community_strikes(appeal_reviewed_by)"))
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_stories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_url TEXT NOT NULL, media_type VARCHAR(20) DEFAULT 'image' NOT NULL, media_thumbnail_url TEXT NULL, caption VARCHAR(500) NULL, duration_seconds INTEGER DEFAULT 5 NOT NULL, is_highlight BOOLEAN DEFAULT 0 NOT NULL, highlight_title VARCHAR(100) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, expires_at TIMESTAMP NOT NULL)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_user_id ON community_stories(user_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_expires_at ON community_stories(expires_at)"))
