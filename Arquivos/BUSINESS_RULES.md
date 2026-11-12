@@ -918,6 +918,11 @@ ew_dm e dm_updated).
         - VÃ­deos com player nativo responsivo HTML5 e controles de reproduÃ§Ã£o.
         - Ãudios com player de Ã¡udio estilizado e Ã­cone de microfone verde.
         - Documentos e PDFs em card com Ã­cone de documento, nome e link direto para visualizaÃ§Ã£o/download.
+      - **Indicador Visual de Leitura e Status da DM (`ChatDmConversationView`):**
+        - Toda mensagem privada enviada pelo usuÃ¡rio logado (`isMine: true`) exibe no rodapÃ© do balÃ£o, ao lado do horÃ¡rio de envio, o status de entrega e visualizaÃ§Ã£o:
+          - **Enviado (`Check` cinza `#94a3b8`):** Indica que a mensagem foi entregue no servidor e estÃ¡ aguardando visualizaÃ§Ã£o pelo destinatÃ¡rio.
+          - **Visto (`CheckCheck` azul ciano neon `#38bdf8`):** Indica que o destinatÃ¡rio abriu a conversa privada e visualizou a mensagem. Passar o mouse exibe tooltip com o horÃ¡rio exato em que foi lida (`read_at`).
+        - **AtualizaÃ§Ã£o em Tempo Real via WebSocket (`dm_read`):** Quando o destinatÃ¡rio abre a conversa, o backend dispara o evento `dm_read` pelo WebSocket tanto para o leitor quanto para o remetente, atualizando os marcadores para "Visto" instantaneamente sem necessidade de recarregar a tela (F5).
       - **PrÃ©-visualizaÃ§Ã£o SemÃ¢ntica na Inbox de DMs:** Quando uma mensagem enviada na DM nÃ£o possui texto (apenas mÃ­dia anexada), a listagem de conversas exibe preview descritivo (`ð· [Foto/GIF]`, `ð¥ [VÃ­deo]`, `ð¤ [Ãudio]`, `ð [Documento]`, `ð [MÃ­dia]`).
       - **Paginação de DMs Ativas (`ChatDmPagination`):**
         - A lista de conversas ativas no modal de DMs (`Inbox` e `Não lidas`) exibe no máximo **20 conversas por página**.
@@ -987,7 +992,9 @@ ew_dm e dm_updated).
     - Quando cadastrada, a foto substitui a inicial do usuÃ¡rio no rodapÃ© da barra lateral (`Sidebar`) e em outros pontos da plataforma.
   - **Nome do Contato / UsuÃ¡rio (`name`).**
   - **E-mail de Acesso (`email`).**
-  - **WhatsApp / Telefone de Contato (`phone`).**
+  - **WhatsApp / Telefone de Contato (`phone`):**
+    - Seletor de DDI compacto (`width: 94px`) exibindo a bandeira e cÃ³digo do paÃ­s (`ðŸ‡§ðŸ‡· +55`), com menu suspenso contendo os paÃ­ses completos (`ðŸ‡§ðŸ‡· +55 â€” Brasil`, etc.).
+    - Campo de digitaÃ§Ã£o de DDD e nÃºmero com largura ampla e expansiva (`flex: 1`), garantindo que o DDD e o nÃºmero completo fiquem visÃ­veis sem cortes.
   - **PreferÃªncias de Aulas e ReproduÃ§Ã£o AutomÃ¡tica (`autoplay_enabled`):**
     - Permite ao usuÃ¡rio definir se o player de vÃ­deo deve avanÃ§ar automaticamente para a prÃ³xima aula ao tÃ©rmino do vÃ­deo.
     - Controlado atravÃ©s do switch toggle acessÃ­vel *"ReproduÃ§Ã£o AutomÃ¡tica de Aulas"* (`switch-autoplay-enabled`), acompanhado de badge explicativo.

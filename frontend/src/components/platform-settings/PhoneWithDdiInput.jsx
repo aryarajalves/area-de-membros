@@ -123,7 +123,7 @@ export default function PhoneWithDdiInput({
       }}
       data-testid="phone-with-ddi-container"
     >
-      {/* Dropdown de DDI */}
+      {/* Dropdown de DDI Compacto */}
       <div
         style={{
           position: 'relative',
@@ -131,9 +131,12 @@ export default function PhoneWithDdiInput({
           alignItems: 'center',
           backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(30, 41, 59, 0.7)',
           borderRight: `1px solid ${borderCol}`,
-          padding: '0 8px',
-          minWidth: '105px',
+          padding: '0 4px 0 8px',
+          width: '94px',
+          minWidth: '94px',
+          maxWidth: '94px',
           flexShrink: 0,
+          boxSizing: 'border-box',
         }}
       >
         <select
@@ -148,12 +151,15 @@ export default function PhoneWithDdiInput({
             background: 'transparent',
             border: 'none',
             color: textColor,
-            fontSize: '13.5px',
-            fontWeight: 600,
-            padding: '11px 20px 11px 4px',
+            fontSize: '13px',
+            fontWeight: 700,
+            padding: '11px 18px 11px 2px',
             width: '100%',
             cursor: disabled ? 'not-allowed' : 'pointer',
             outline: 'none',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {COUNTRY_DDI_LIST.map((c) => (
@@ -166,23 +172,23 @@ export default function PhoneWithDdiInput({
                 padding: '6px 10px',
               }}
             >
-              {c.flag} {c.code} ({c.name})
+              {c.flag} {c.code} — {c.name}
             </option>
           ))}
         </select>
 
         <ChevronDown
-          size={14}
+          size={13}
           color={subTextColor}
           style={{
             position: 'absolute',
-            right: '8px',
+            right: '6px',
             pointerEvents: 'none',
           }}
         />
       </div>
 
-      {/* Input de Telefone */}
+      {/* Input de Telefone com Espaço Amplo para DDD e Número */}
       <input
         type="text"
         value={phoneDigits}
@@ -191,12 +197,14 @@ export default function PhoneWithDdiInput({
         placeholder={selectedDdi === '+55' ? '(11) 99999-9999' : 'Número do telefone'}
         style={{
           flex: 1,
+          width: '100%',
           minWidth: 0,
           padding: '11px 14px',
           border: 'none',
           backgroundColor: 'transparent',
           color: textColor,
-          fontSize: '14px',
+          fontSize: '14.5px',
+          fontWeight: 500,
           outline: 'none',
           boxSizing: 'border-box',
         }}

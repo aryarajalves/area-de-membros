@@ -7,7 +7,13 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.3.0 (Preferências de Autoplay de Aulas, Gestão de Relatos com Notificação DM, Métricas do PostgreSQL, Strikes na Comunidade e Otimização de Banco)
+### 🚀 Novidades da Versão v1.3.0 (Recibos de Leitura em DMs, Campo Amplo de WhatsApp, Autoplay de Aulas, Relatos com DM e Otimização de Banco)
+- **👁️ Recibo de Leitura Interativo em Mensagens Diretas (DMs):**
+  - Indicadores visuais nos balões de mensagens privadas enviadas: `✓ Enviado` (cinza) e `✓✓ Visto` (azul ciano neon).
+  - Ao clicar no status *"Visto"*, abre popover exibindo a data e horário exato de visualização (`read_at`), horário de envio e fechamento interativo.
+  - Sincronização em tempo real via WebSocket (`dm_read`) sem necessidade de recarregar a tela.
+- **📱 Ajuste de Proporção no Campo de WhatsApp / Telefone (`PhoneWithDdiInput`):**
+  - Seletor de DDI compacto (`94px`) com bandeira e código do país, liberando mais de 75% da largura horizontal para digitação confortável do DDD e número de telefone sem cortes.
 - **🎬 Desativação de Reprodução Automática de Aulas (`autoplay_enabled`):**
   - Switch toggle no perfil do usuário (*"Meu Perfil"*) permitindo desligar o avanço automático entre aulas.
   - Quando desativado, elimina o modal de contagem regressiva (*"PRÓXIMA AULA EM 5S..."*) e mantém o aluno na aula atual pausada.

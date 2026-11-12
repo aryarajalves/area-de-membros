@@ -56,6 +56,7 @@ class ChatMessageResponse(BaseModel):
     pinned_at: Optional[datetime] = None
     pinned_by_user_id: Optional[int] = None
     is_read: bool = False
+    read_at: Optional[datetime] = None
     button_text: Optional[str] = None
     button_url: Optional[str] = None
     button_action_type: Optional[str] = None

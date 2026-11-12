@@ -176,6 +176,11 @@ def get_dm_messages_history(
             "dm_read",
             {"user_id": current_user.id, "contact_id": contact_id}
         )
+        chat_manager.send_to_user_sync(
+            contact_id,
+            "dm_read",
+            {"reader_id": current_user.id, "contact_id": current_user.id}
+        )
 
 
     query = (
@@ -217,6 +222,7 @@ def get_dm_messages_history(
                 pinned_at=None,
                 pinned_by_user_id=None,
                 is_read=msg.is_read,
+                read_at=msg.read_at,
                 button_text=msg.button_text,
                 button_url=msg.button_url,
                 button_action_type=msg.button_action_type,
@@ -452,6 +458,7 @@ def get_superadmin_thread_messages(
                 pinned_at=None,
                 pinned_by_user_id=None,
                 is_read=msg.is_read,
+                read_at=msg.read_at,
                 button_text=msg.button_text,
                 button_url=msg.button_url,
                 button_action_type=msg.button_action_type,

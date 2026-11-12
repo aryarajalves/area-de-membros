@@ -1,10 +1,23 @@
-import React, { useRef, useEffect } from 'react';
-import { Loader2, ExternalLink, Lock } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Loader2, ExternalLink, Lock, Check, CheckCheck, Clock, X } from 'lucide-react';
 import { formatMessageWithMentions, resolveButtonUrl, handleInternalNavigation } from './chatMentionUtils';
 import ChatDateSeparator from './ChatDateSeparator';
 import { isSameDay } from './chatDateUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
 import ChatInputBar from './ChatInputBar';
+
+export function formatDateTimeFull(isoString) {
+  if (!isoString) return '--/--/---- às --:--';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '--/--/---- às --:--';
+    const datePart = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timePart = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return `${datePart} às ${timePart}`;
+  } catch {
+    return '--/--/---- às --:--';
+  }
+}
 
 export default function ChatDmConversationView({
   selectedContact,
@@ -15,6 +28,7 @@ export default function ChatDmConversationView({
   adminThread = null,
 }) {
   const messagesEndRef = useRef(null);
+  const [expandedInfoMsgId, setExpandedInfoMsgId] = useState(null);
 
   useEffect(() => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -239,9 +253,129 @@ export default function ChatDmConversationView({
                     })()}
                   </div>
 
-                  <span style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '3px' }}>
-                    {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      marginTop: '3px',
+                      fontSize: '0.66rem',
+                      color: '#64748b',
+                    }}
+                  >
+                    <span>
+                      {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {isMine && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedInfoMsgId((prev) => (prev === m.id ? null : m.id))}
+                        data-testid={`dm-read-status-${m.id}`}
+                        aria-label="Ver data e horário de visualização da mensagem"
+                        title={m.is_read ? 'Visualizada • Clique para ver data e horário' : 'Enviado • Aguardando leitura'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: expandedInfoMsgId === m.id ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                          border: expandedInfoMsgId === m.id ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+                          borderRadius: '4px',
+                          padding: '1px 5px',
+                          cursor: 'pointer',
+                          color: m.is_read ? '#38bdf8' : '#94a3b8',
+                          fontWeight: m.is_read ? 600 : 400,
+                          fontSize: '0.66rem',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {m.is_read ? (
+                          <>
+                            <CheckCheck size={13} color="#38bdf8" />
+                            <span>Visto</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check size={12} color="#94a3b8" />
+                            <span>Enviado</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Popover Detalhado com Data e Horário ao Clicar em Visto */}
+                  {isMine && expandedInfoMsgId === m.id && (
+                    <div
+                      data-testid={`dm-read-info-popover-${m.id}`}
+                      style={{
+                        marginTop: '4px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#0f172a',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        fontSize: '0.7rem',
+                        color: '#cbd5e1',
+                        maxWidth: '280px',
+                        textAlign: 'left',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          borderBottom: '1px solid rgba(255,255,255,0.08)',
+                          paddingBottom: '4px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: m.is_read ? '#38bdf8' : '#94a3b8',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                          }}
+                        >
+                          {m.is_read ? <CheckCheck size={14} color="#38bdf8" /> : <Clock size={13} color="#94a3b8" />}
+                          <span>{m.is_read ? 'Mensagem Visualizada' : 'Mensagem Enviada'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedInfoMsgId(null)}
+                          style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0 }}
+                          aria-label="Fechar detalhes"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+
+                      {m.is_read ? (
+                        <div style={{ color: '#f8fafc', fontSize: '0.72rem' }}>
+                          <span style={{ color: '#94a3b8' }}>Visto em: </span>
+                          <strong data-testid={`dm-seen-time-${m.id}`} style={{ color: '#38bdf8' }}>
+                            {formatDateTimeFull(m.read_at || m.created_at)}
+                          </strong>
+                        </div>
+                      ) : (
+                        <div style={{ color: '#94a3b8', fontSize: '0.68rem', fontStyle: 'italic' }}>
+                          Aguardando o destinatário abrir a conversa.
+                        </div>
+                      )}
+
+                      <div style={{ color: '#94a3b8', fontSize: '0.68rem' }}>
+                        <span>Enviada em: </span>
+                        <span>{formatDateTimeFull(m.created_at)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </React.Fragment>
             );

@@ -118,7 +118,10 @@ export default function ChatDmModal({
         const senderId = Number(dmData?.sender_id || dmData?.message?.user?.id || dmData?.user?.id);
         const recipientId = Number(dmData?.recipient_id || dmData?.message?.recipient_id);
 
-        if (senderId === contactId || recipientId === contactId) {
+        const readerId = Number(dmData?.reader_id);
+        if (readerId === contactId) {
+          setMessages((prev) => prev.map((m) => (m.user?.id === currentUser?.id ? { ...m, is_read: true } : m)));
+        } else if (senderId === contactId || recipientId === contactId) {
           const msgObj = dmData?.message || (dmData?.channel_type === 'dm' ? dmData : null);
           if (msgObj && msgObj.id) {
             setMessages((prev) => (prev.some((m) => m.id === msgObj.id) ? prev : [...prev, msgObj]));

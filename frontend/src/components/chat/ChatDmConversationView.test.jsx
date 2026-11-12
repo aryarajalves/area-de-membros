@@ -155,4 +155,72 @@ describe('ChatDmConversationView Component', () => {
     dispatchSpy.mockRestore();
     vi.useRealTimers();
   });
+
+  it('displays read and unread visual status ("Visto" / "Enviado") for outgoing direct messages', () => {
+    const mockMessages = [
+      {
+        id: 301,
+        message: 'Mensagem pendente de visualização',
+        created_at: '2026-10-06T10:00:00Z',
+        is_read: false,
+        user: { id: 1 },
+      },
+      {
+        id: 302,
+        message: 'Mensagem já lida pelo contato',
+        created_at: '2026-10-06T10:05:00Z',
+        is_read: true,
+        read_at: '2026-10-06T10:06:00Z',
+        user: { id: 1 },
+      },
+      {
+        id: 303,
+        message: 'Mensagem recebida do contato',
+        created_at: '2026-10-06T10:07:00Z',
+        is_read: true,
+        user: { id: 5 },
+      },
+    ];
+
+    render(
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={mockMessages}
+          loading={false}
+          onSendMessage={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    // Mensagem enviada não lida
+    const unreadStatus = screen.getByTestId('dm-read-status-301');
+    expect(unreadStatus).toBeInTheDocument();
+    expect(unreadStatus).toHaveTextContent('Enviado');
+    expect(unreadStatus).toHaveAttribute('title', 'Enviado • Aguardando leitura');
+
+    // Mensagem enviada lida
+    const readStatus = screen.getByTestId('dm-read-status-302');
+    expect(readStatus).toBeInTheDocument();
+    expect(readStatus).toHaveTextContent('Visto');
+
+    // Inicialmente o popover de detalhes não está visível
+    expect(screen.queryByTestId('dm-read-info-popover-302')).toBeNull();
+
+    // Ao clicar em 'Visto', abre o popover com data e horário exatos
+    fireEvent.click(readStatus);
+    const popover = screen.getByTestId('dm-read-info-popover-302');
+    expect(popover).toBeInTheDocument();
+    expect(popover).toHaveTextContent('Mensagem Visualizada');
+    expect(popover).toHaveTextContent('Visto em:');
+    expect(screen.getByTestId('dm-seen-time-302')).toBeInTheDocument();
+
+    // Ao clicar novamente em 'Visto', o popover se fecha (toggle)
+    fireEvent.click(readStatus);
+    expect(screen.queryByTestId('dm-read-info-popover-302')).toBeNull();
+
+    // Mensagem recebida do outro usuário não possui indicador de envio do remetente
+    expect(screen.queryByTestId('dm-read-status-303')).toBeNull();
+  });
 });
