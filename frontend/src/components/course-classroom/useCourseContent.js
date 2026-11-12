@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '../../context/ToastContext';
 
 export function useCourseContent(courseId) {
@@ -9,6 +9,11 @@ export function useCourseContent(courseId) {
   const [actionLoading, setActionLoading] = useState(false);
   const [completedLessonIds, setCompletedLessonIds] = useState([]);
   const { addToast } = useToast();
+
+  const activeLessonRef = useRef(null);
+  useEffect(() => {
+    activeLessonRef.current = activeLesson;
+  }, [activeLesson]);
 
   const fetchCourseProgress = useCallback(async () => {
     if (!courseId) return;
@@ -26,9 +31,12 @@ export function useCourseContent(courseId) {
     }
   }, [courseId]);
 
-  const fetchCourseData = useCallback(async () => {
+  const fetchCourseData = useCallback(async (preferredLessonId = null, preferredModuleId = null) => {
     if (!courseId) return;
-    setLoading(true);
+    // Se o curso ainda não foi carregado pela 1ª vez, exibe o indicador de carregamento
+    if (!course) {
+      setLoading(true);
+    }
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch(`/api/v1/courses/${courseId}`, {
@@ -40,13 +48,40 @@ export function useCourseContent(courseId) {
         const mods = data.modules || [];
         setModules(mods);
 
-        // Se nenhuma aula estiver selecionada, seleciona a primeira aula do primeiro módulo
-        if (!activeLesson && mods.length > 0) {
-          const firstModWithLessons = mods.find(m => m.lessons && m.lessons.length > 0);
-          if (firstModWithLessons) {
-            setActiveLesson(firstModWithLessons.lessons[0]);
+        // Identifica qual aula e módulo devem permanecer ativos
+        const targetLessonId = preferredLessonId || activeLessonRef.current?.id;
+        const targetModuleId = preferredModuleId || activeLessonRef.current?.module_id;
+
+        let foundLesson = null;
+        if (targetLessonId) {
+          for (const mod of mods) {
+            const l = mod.lessons?.find((item) => item.id === Number(targetLessonId));
+            if (l) {
+              foundLesson = { ...l, module_id: l.module_id || mod.id };
+              break;
+            }
           }
         }
+
+        if (foundLesson) {
+          setActiveLesson(foundLesson);
+        } else if (targetModuleId) {
+          const targetMod = mods.find((m) => m.id === Number(targetModuleId));
+          if (targetMod && targetMod.lessons?.length > 0) {
+            setActiveLesson({ ...targetMod.lessons[0], module_id: targetMod.id });
+          } else {
+            const firstMod = mods.find((m) => m.lessons && m.lessons.length > 0);
+            if (firstMod && firstMod.lessons?.length > 0) {
+              setActiveLesson({ ...firstMod.lessons[0], module_id: firstMod.id });
+            }
+          }
+        } else if (!activeLessonRef.current && mods.length > 0) {
+          const firstModWithLessons = mods.find((m) => m.lessons && m.lessons.length > 0);
+          if (firstModWithLessons && firstModWithLessons.lessons?.length > 0) {
+            setActiveLesson({ ...firstModWithLessons.lessons[0], module_id: firstModWithLessons.id });
+          }
+        }
+        return { course: data, modules: mods };
       } else {
         const err = await res.json();
         throw new Error(err.detail || 'Erro ao carregar detalhes do curso.');
@@ -84,7 +119,7 @@ export function useCourseContent(courseId) {
 
       if (res.ok) {
         addToast(editingModuleId ? 'Módulo atualizado com sucesso!' : 'Módulo criado com sucesso!', 'success');
-        await fetchCourseData();
+        await fetchCourseData(null, editingModuleId);
         return true;
       } else {
         const err = await res.json();
@@ -165,9 +200,9 @@ export function useCourseContent(courseId) {
           });
         }
 
+        const targetLessonId = saved.id || editingLessonId;
         addToast(editingLessonId ? 'Aula atualizada com sucesso!' : 'Aula criada com sucesso!', 'success');
-        await fetchCourseData();
-        setActiveLesson(saved);
+        await fetchCourseData(targetLessonId, moduleId);
         return true;
       } else {
         const err = await res.json();
@@ -195,7 +230,7 @@ export function useCourseContent(courseId) {
         if (activeLesson?.id === lessonId) {
           setActiveLesson(null);
         }
-        await fetchCourseData();
+        await fetchCourseData(null, moduleId);
         return true;
       } else {
         const err = await res.json();

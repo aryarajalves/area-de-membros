@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Menu } from 'lucide-react';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
@@ -44,6 +43,7 @@ function App() {
   const [isInsideCourse, setIsInsideCourse] = useState(false);
   const [isInsideFunnel, setIsInsideFunnel] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(false);
   const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
     return localStorage.getItem('member_area_bg_color') || '#090d16';
   });
@@ -78,6 +78,12 @@ function App() {
     setIsInsideCourse(false);
     setIsInsideFunnel(false);
     setIsMobileMenuOpen(false);
+    // Ao acessar o Chat da Comunidade, fecha a barra lateral para dar foco total ao chat
+    if (tabId === 'chat') {
+      setIsChatSidebarOpen(false);
+    } else {
+      setIsChatSidebarOpen(true);
+    }
     setActiveTab(tabId);
     localStorage.setItem('active_tab', tabId);
     if (typeof window !== 'undefined' && window.location.search) {
@@ -273,19 +279,11 @@ function App() {
     }
   };
 
-  const handlePromptLogout = () => {
-    setIsMobileMenuOpen(false);
-    setShowLogoutModal(true);
-  };
-
+  const handlePromptLogout = () => { setIsMobileMenuOpen(false); setShowLogoutModal(true); };
   const handleConfirmLogout = () => {
     setShowLogoutModal(false);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('active_tab');
-    localStorage.removeItem('active_subtab_usermanagement');
-    setUser(null);
-    setToken(null);
+    ['auth_token', 'auth_user', 'active_tab', 'active_subtab_usermanagement'].forEach((k) => localStorage.removeItem(k));
+    setUser(null); setToken(null);
   };
 
   // Validação pública de autenticidade de certificado via QR Code ou link (/validar-certificado/:code)
@@ -305,18 +303,11 @@ function App() {
   // Se o caminho for de redefinição de senha (/reset-password)
   const isResetPasswordPage = pathname.includes('/reset-password');
   if (isResetPasswordPage) {
-    return (
-      <ResetPassword
-        onResetSuccess={() => {
-          window.location.href = '/';
-        }}
-      />
-    );
+    return <ResetPassword onResetSuccess={() => { window.location.href = '/'; }} />;
   }
 
   // Se o caminho for de cadastro via convite (/register ou ?token=...)
   const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage);
-
   if (isRegisterPage) {
     const handleRedirectFromInvite = () => {
       if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
@@ -341,7 +332,8 @@ function App() {
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
 
   const isFullView = isInsideCourse;
-  const isHideSidebar = isFullView || isInsideFunnel;
+  const isChatTab = activeTab === 'chat';
+  const isHideSidebar = isFullView || isInsideFunnel || (isChatTab && !isChatSidebarOpen);
 
   return (
     <div
@@ -358,7 +350,10 @@ function App() {
           chatUnreadCount={chatUnreadCount}
           bgColor={memberAreaBgColor}
           isMobileOpen={isMobileMenuOpen}
-          onCloseMobile={() => setIsMobileMenuOpen(false)}
+          onCloseMobile={() => {
+            setIsMobileMenuOpen(false);
+            if (isChatTab) setIsChatSidebarOpen(false);
+          }}
         />
       )}
       <main
@@ -377,7 +372,12 @@ function App() {
           <TopNavbar
             user={user}
             onNavigateTab={handleSelectTab}
-            onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+            onOpenMobileMenu={() => {
+              if (activeTab === 'chat') {
+                setIsChatSidebarOpen((prev) => !prev);
+              }
+              setIsMobileMenuOpen((prev) => !prev);
+            }}
             bgColor={memberAreaBgColor}
           />
         )}
@@ -439,30 +439,17 @@ function App() {
         {activeTab === 'users' && ['superadmin', 'admin'].includes(user?.role) && (
           <UserManagement currentUser={user} bgColor={memberAreaBgColor} />
         )}
-        {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && (
-          <FunnelManagement onFunnelViewChange={setIsInsideFunnel} />
-        )}
-        {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && (
-          <IntegrationManagement bgColor={memberAreaBgColor} />
-        )}
+        {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && <FunnelManagement onFunnelViewChange={setIsInsideFunnel} />}
+        {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && <IntegrationManagement bgColor={memberAreaBgColor} />}
         {activeTab === 'settings' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <PlatformSettings
-            currentUser={user}
-            bgColor={memberAreaBgColor}
-            onThemeColorChange={handleThemeColorChange}
-            onUserUpdated={(updatedUser) => {
-              setUser(updatedUser);
-              localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-            }}
+            currentUser={user} bgColor={memberAreaBgColor} onThemeColorChange={handleThemeColorChange}
+            onUserUpdated={(u) => { setUser(u); localStorage.setItem('auth_user', JSON.stringify(u)); }}
             onNavigateTab={handleSelectTab}
           />
         )}
         {isSuperAdmin && ['infrastructure', 'backup', 'logs'].includes(activeTab) && (
-          <ServerSystemSubTabs
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            isLightBg={isLightBg}
-          />
+          <ServerSystemSubTabs activeTab={activeTab} onSelectTab={handleSelectTab} isLightBg={isLightBg} />
         )}
         {isSuperAdmin && (
           <>

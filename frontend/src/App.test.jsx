@@ -293,6 +293,46 @@ describe('App Component', () => {
     expect(screen.getByTestId('logout-modal-content')).toBeInTheDocument();
     expect(screen.getByTestId('logout-modal-overlay')).toHaveStyle({ zIndex: '2000' });
   });
+
+  it('fecha a barra lateral automaticamente ao acessar o Chat da Comunidade e permite alternar via Menu hamburguer', () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 1,
+        name: 'Super Admin',
+        email: 'admin@test.com',
+        role: 'superadmin',
+      })
+    );
+    localStorage.setItem('active_tab', 'courses');
+
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    // Inicialmente na aba de cursos, a barra lateral está visível
+    expect(screen.getByRole('complementary', { name: /menu lateral/i })).toBeInTheDocument();
+
+    // Clica no item "Chat da Comunidade" na barra lateral
+    const chatBtn = screen.getByText('Chat da Comunidade');
+    fireEvent.click(chatBtn);
+
+    // A barra lateral principal fecha para deixar apenas o chat visível
+    expect(screen.queryByRole('complementary', { name: /menu lateral/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('chat-management-view')).toBeInTheDocument();
+
+    // Ao clicar no botão de Menu hamburguer no TopNavbar, a barra lateral reabre
+    const menuToggleBtn = screen.getByTestId('mobile-menu-toggle-btn');
+    fireEvent.click(menuToggleBtn);
+    expect(screen.getByRole('complementary', { name: /menu lateral/i })).toBeInTheDocument();
+
+    // Ao clicar novamente, fecha
+    fireEvent.click(menuToggleBtn);
+    expect(screen.queryByRole('complementary', { name: /menu lateral/i })).not.toBeInTheDocument();
+  });
 });
 
 

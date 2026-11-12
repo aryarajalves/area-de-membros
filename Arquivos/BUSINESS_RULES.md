@@ -96,6 +96,9 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - A exclusão exige confirmação obrigatória via popup modal centralizado com fundo escuro (`DeleteEventConfirmModal`), prevenindo deleções acidentais.
 - **Controle Individual de Marca d'Água Anti-Pirataria nas Aulas (`watermark_enabled`):**
   - No modal de criação e edição de curso (`CourseModalInfoTab` em `CourseFormModal`), o administrador pode ativar ou desativar a exibição da marca d'água dinâmica anti-pirataria (identificação do aluno sobre os vídeos das aulas). Por padrão, novos cursos iniciam com `watermark_enabled = True`.
+- **Preservação de Contexto e Navegação na Sala de Aula (`CourseClassroom` e `useCourseContent`):**
+  - Ao anexar novos arquivos complementares, editar dados da aula (título, descrição, metadados gerados por IA), renomear anexo ou atualizar o conteúdo da aula, o sistema preserva com precisão o módulo ativo (`selectedModuleId`) e a aula ativa (`activeLesson`), garantindo que o usuário ou instrutor continue exatamente na aula e módulo em que estava trabalhando, sem jamais reverter para a primeira aula do primeiro módulo.
+  - O recarregamento em segundo plano (`fetchCourseData(preferredLessonId, preferredModuleId)`) não desmonta o player ou a visualização do curso, mantendo abas ativas (como *Materiais Complementares*) e o estado da tela no mesmo ponto.
 
 ---
 
@@ -852,8 +855,9 @@ ew_dm e dm_updated).
     - Suporte a tecla `Enter` para envio imediato e `Shift + Enter` para pular linha.
     - ValidaÃ§Ã£o de mensagens vazias e limite de atÃ© 3.000 caracteres.
     - Estado de carregamento com spinner no botÃ£o de envio enquanto a mensagem Ã© persistida.
-  - **Integração Completa ao Layout da Plataforma (Sidebar e TopNavbar Contínuos):**
-    - Ao selecionar **Chat da Comunidade**, a barra lateral principal do sistema (`Sidebar`) e a barra superior global (`TopNavbar`) permanecem **100% visíveis e ativas**, permitindo que o usuário alterne livremente entre as abas da plataforma (Início, Cursos, Alunos, Suporte, Configurações, etc.) sem perda de navegação.
+  - **Foco Imersivo no Chat da Comunidade (Fechamento Automático da Barra Lateral):**
+    - Ao selecionar **Chat da Comunidade** (`chat`), a barra lateral principal do sistema (`Sidebar`) fecha automaticamente, garantindo que a tela inteira fique dedicada exclusivamente ao Chat da Comunidade (canais de conversa, mensagens e membros).
+    - O usuário pode alternar ou reabrir a barra lateral a qualquer momento clicando no botão de Menu hamburguer no cabeçalho superior (`TopNavbar`), ou retornar aos cursos pelo botão *"← Voltar aos Cursos"*. Ao navegar para qualquer outra aba da plataforma, a barra lateral principal é reexibida normalmente.
     - O painel do Chat é renderizado dentro da área de conteúdo principal com altura perfeitamente ajustada (`calc(100vh - 64px)`), eliminando o efeito de "tela azul" isolada e mantendo a identidade visual integrada e consistente da Área de Membros.
   - **SincronizaÃ§Ã£o InstantÃ¢nea em Tempo Real via WebSocket (`/api/v1/chat/ws`):**
     - ConexÃ£o nativa e persistente via WebSocket com autenticaÃ§Ã£o por token JWT.

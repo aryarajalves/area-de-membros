@@ -38,21 +38,22 @@ export default function CourseClassroom({
   } = useCourseContent(initialCourse.id);
 
   const [selectedModuleId, setSelectedModuleId] = useState(initialModuleId);
+  const [hasAppliedInitialSelection, setHasAppliedInitialSelection] = useState(false);
+
   useEffect(() => {
     if (activeLesson?.module_id) setSelectedModuleId(activeLesson.module_id);
   }, [activeLesson?.id, activeLesson?.module_id]);
 
   useEffect(() => {
-    if (!modules || modules.length === 0) return;
+    if (!modules || modules.length === 0 || hasAppliedInitialSelection) return;
     if (initialLessonId) {
       for (const mod of modules) {
         const found = mod.lessons?.find((l) => l.id === Number(initialLessonId));
         if (found) {
           setSelectedModuleId(mod.id);
           setActiveLesson(found);
-          setTimeout(() => {
-            scrollToClassroomSection();
-          }, 120);
+          setHasAppliedInitialSelection(true);
+          setTimeout(() => scrollToClassroomSection(), 120);
           return;
         }
       }
@@ -62,12 +63,11 @@ export default function CourseClassroom({
       if (targetMod) {
         setSelectedModuleId(targetMod.id);
         if (targetMod.lessons?.length > 0) setActiveLesson(targetMod.lessons[0]);
-        setTimeout(() => {
-          scrollToClassroomSection();
-        }, 120);
+        setHasAppliedInitialSelection(true);
+        setTimeout(() => scrollToClassroomSection(), 120);
       }
     }
-  }, [modules, initialModuleId, initialLessonId, setActiveLesson]);
+  }, [modules, initialModuleId, initialLessonId, setActiveLesson, hasAppliedInitialSelection]);
 
   // Atualização em tempo real quando a IA gera novo título/descrição para a aula
   useEffect(() => {
@@ -80,12 +80,12 @@ export default function CourseClassroom({
           ...(newDescription ? { description: newDescription } : {}),
           videos: (prev.videos || []).map((v) => ({ ...v, ...(newTitle ? { title: newTitle } : {}), ...(newDescription ? { description: newDescription } : {}) }))
         } : prev));
-        fetchCourseData();
+        fetchCourseData(lessonId, selectedModuleId);
       }
     };
     window.addEventListener('lesson-title-updated', onTitleUpdated);
     return () => window.removeEventListener('lesson-title-updated', onTitleUpdated);
-  }, [fetchCourseData, setActiveLesson]);
+  }, [fetchCourseData, setActiveLesson, selectedModuleId]);
 
   // Modais
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
@@ -137,14 +137,13 @@ export default function CourseClassroom({
   };
 
   // Handlers Módulos
+  // Handlers Módulos e Aulas
   const handleOpenCreateModule = () => { setEditingModule(null); setModuleModalOpen(true); };
   const handleOpenEditModule = (mod, e) => { if (e) e.stopPropagation(); setEditingModule(mod); setModuleModalOpen(true); };
   const handlePromptDeleteModule = (mod, e) => {
     if (e) e.stopPropagation();
     setDeleteModalState({ isOpen: true, type: 'module', id: mod.id, title: `Excluir Módulo: ${mod.title}?`, message: 'Ao excluir este módulo, todas as aulas cadastradas nele também serão apagadas permanentemente.' });
   };
-
-  // Handlers Aulas
   const handleOpenCreateLesson = (mod, e) => {
     if (e) e.stopPropagation();
     setEditingLesson(null); setTargetModuleId(mod.id); setTargetModuleTitle(mod.title); setLessonModalOpen(true);
@@ -429,8 +428,10 @@ export default function CourseClassroom({
                   onCloseModule={() => setSelectedModuleId(null)}
                   onEditLesson={(lessonToEdit) => handleOpenEditLesson(selectedModule, lessonToEdit)}
                   onLessonUpdated={(updated) => {
+                    const targetId = updated?.id || activeLesson?.id;
+                    const targetModId = updated?.module_id || activeLesson?.module_id || selectedModuleId;
                     setActiveLesson((prev) => (prev ? { ...prev, ...updated, ...(updated.title && prev.videos ? { videos: prev.videos.map((v) => ({ ...v, title: updated.title, ...(updated.description ? { description: updated.description } : {}) })) } : {}) } : updated));
-                    fetchCourseData();
+                    fetchCourseData(targetId, targetModId);
                   }}
                   rightSidebar={renderTimelineSidebar()}
                   isTutorVisible={isTutorVisible}
