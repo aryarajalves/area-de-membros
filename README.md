@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.2.9`** | **Docker Hub: `backend-1.2.9` / `frontend-1.2.9`**
+> **Versão Oficial: `v1.3.0`** | **Docker Hub: `backend-1.3.0` / `frontend-1.3.0`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -7,7 +7,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.2.9 (Preferências de Autoplay de Aulas, Gestão de Relatos com Notificação DM, Métricas do PostgreSQL, Strikes na Comunidade e Otimização de Banco)
+### 🚀 Novidades da Versão v1.3.0 (Preferências de Autoplay de Aulas, Gestão de Relatos com Notificação DM, Métricas do PostgreSQL, Strikes na Comunidade e Otimização de Banco)
 - **🎬 Desativação de Reprodução Automática de Aulas (`autoplay_enabled`):**
   - Switch toggle no perfil do usuário (*"Meu Perfil"*) permitindo desligar o avanço automático entre aulas.
   - Quando desativado, elimina o modal de contagem regressiva (*"PRÓXIMA AULA EM 5S..."*) e mantém o aluno na aula atual pausada.
