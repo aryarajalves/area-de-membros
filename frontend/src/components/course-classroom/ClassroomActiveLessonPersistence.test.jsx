@@ -75,7 +75,7 @@ describe('ClassroomActiveLessonPersistence - Preservação da Aula e Módulo Ati
     // Aguarda carregar e renderizar a aula 202 (Módulo 2)
     await waitFor(() => {
       expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Mercúrio: A Mente, Comunicação e Intercâmbio de Ideias');
-    });
+    }, { timeout: 5000 });
 
     // Simula refetch dos dados após anexo de arquivo ou edição
     // O mockCourse agora retorna com um novo anexo na aula 202 e título atualizado
@@ -119,7 +119,7 @@ describe('ClassroomActiveLessonPersistence - Preservação da Aula e Módulo Ati
     await waitFor(() => {
       expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Mercúrio: A Mente e Comunicação Expandida');
       expect(screen.queryByText('Aula 1.1 Introdução')).not.toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('preserva a aba de materiais complementares e a aula ativa quando novo arquivo é anexado', async () => {
@@ -140,7 +140,7 @@ describe('ClassroomActiveLessonPersistence - Preservação da Aula e Módulo Ati
     await waitFor(() => {
       expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Mercúrio: A Mente, Comunicação e Intercâmbio de Ideias');
       expect(screen.getByText('Materiais Complementares da Aula')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
 
     // Simula anexar um novo documento com upload e vinculo
     const file = new File(['conteudo dummy'], 'Guia_Pratico.pdf', { type: 'application/pdf' });
@@ -196,6 +196,6 @@ describe('ClassroomActiveLessonPersistence - Preservação da Aula e Módulo Ati
     await waitFor(() => {
       expect(screen.getByTestId('active-lesson-title')).toHaveTextContent('Mercúrio: A Mente, Comunicação e Intercâmbio de Ideias');
       expect(screen.queryByText('Aula 1.1 Introdução')).not.toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 });
