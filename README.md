@@ -1,5 +1,5 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.0`** | **Docker Hub: `backend-1.3.0` / `frontend-1.3.0`**
+> **Versão Oficial: `v1.3.2`** | **Docker Hub: `backend-1.3.2` / `frontend-1.3.2`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
@@ -7,7 +7,7 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.3.0 (Recibos de Leitura em DMs, Campo Amplo de WhatsApp, Autoplay de Aulas, Relatos com DM e Otimização de Banco)
+### 🚀 Novidades da Versão v1.3.2 (Recibos de Leitura em DMs com Data/Hora, Campo Amplo de WhatsApp e Imagens Docker de Produção)
 - **👁️ Recibo de Leitura Interativo em Mensagens Diretas (DMs):**
   - Indicadores visuais nos balões de mensagens privadas enviadas: `✓ Enviado` (cinza) e `✓✓ Visto` (azul ciano neon).
   - Ao clicar no status *"Visto"*, abre popover exibindo a data e horário exato de visualização (`read_at`), horário de envio e fechamento interativo.
@@ -32,11 +32,10 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
   - **100% das Chaves Estrangeiras Indexadas:** Varredura em 100% dos modelos (111 ForeignKeys declaradas) com garantia de índices (`index=True` ou índices compostos) em todas as FKs, eliminando Full Table Scans em JOINs e deleções em cascata.
   - **Auditoria de Sessões (Session Leaks):** Validação estática de todas as instâncias manuais `SessionLocal()` garantindo fechamento seguro (`try/finally: db.close()` ou `with SessionLocal()`).
   - **Prevenção de N+1 Queries (Eager Loading):** Verificação de uso explícito de `joinedload` e `selectinload` em endpoints críticos de listagem (`community_feed`, `community_stories`, `chat_dm_service`).
-- **🐳 Padronização Estrita do Docker Hub em Repositório Único:**
-  - Imagens publicadas exclusivamente no repositório oficial do projeto:
-    - Backend: `aryalvesfernandes/area-de-membros:backend-<versao>`
-    - Frontend: `aryalvesfernandes/area-de-membros:frontend-<versao>`
-  - Proibição absoluta da criação de repositórios paralelos/secundários e proibição da tag `latest`.
+- **🐳 Imagens Oficiais Publicadas no Docker Hub (Versão `v1.3.2`):**
+  - Backend: `aryalvesfernandes/area-de-membros:backend-1.3.2`
+  - Frontend: `aryalvesfernandes/area-de-membros:frontend-1.3.2`
+  - Repositório único, sem tag `latest`.
 
 ### 🚀 Novidades da Versão v1.2.8 (Esteira Automatizada de Deploy, Verificador de Schema do Banco, Secret Scanner, Auditoria de APIs e Versionamento Decimal)
 - **🔍 Verificador Automático de Esquema do Banco de Dados (`scripts/check_db_schema.py`):**
