@@ -308,6 +308,7 @@ class LessonReportResponse(BaseModel):
     lesson_title: Optional[str] = None
     course_id: Optional[int] = None
     course_title: Optional[str] = None
+    module_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

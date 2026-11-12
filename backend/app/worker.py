@@ -91,10 +91,22 @@ def run_media_optimization_job():
     try:
         from app.services.video_optimizer import run_pending_media_optimizations
         stats = run_pending_media_optimizations()
-        logger.info(
-            f"[WORKER] <<< Otimização de mídias concluída: "
-            f"{stats.get('images_optimized', 0)} imagem(ns), {stats.get('videos_optimized', 0)} vídeo(s)."
-        )
+        already_opt = stats.get("videos_already_optimized", 0)
+        new_opt = stats.get("videos_optimized", 0)
+        total_checked = stats.get("videos_total_checked", 0)
+        img_opt = stats.get("images_optimized", 0)
+
+        if total_checked > 0 and new_opt == 0:
+            logger.info(
+                f"[WORKER] <<< Otimização de mídias concluída: "
+                f"{img_opt} imagem(ns), {total_checked} vídeos verificados (todos já otimizados)."
+            )
+        else:
+            logger.info(
+                f"[WORKER] <<< Otimização de mídias concluída: "
+                f"{img_opt} imagem(ns), {new_opt} vídeo(s) otimizado(s) "
+                f"({already_opt} já otimizado(s) de {total_checked} verificados)."
+            )
         return stats
     except Exception as exc:
         logger.error(f"[WORKER] Erro na rotina de otimização de mídias: {exc}")

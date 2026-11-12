@@ -1,51 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  AlertTriangle, CheckCircle2, Search, Filter, RefreshCw, Trash2,
-  Video, Volume2, FileText, HelpCircle, Layers, Check, RotateCcw,
-  Calendar, User, Mail, BookOpen
+  AlertTriangle, CheckCircle2, Search, RefreshCw
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { FileDeleteConfirmModal, ActionConfirmModal } from './common/FeedbackModals';
+import {
+  LessonReportCard,
+  LessonReportsPagination,
+  formatToBrasilia,
+  getRoleBadge,
+  ISSUE_TYPE_CONFIG
+} from './lesson-reports';
 
-export function formatToBrasilia(dateString) {
-  if (!dateString) return '';
-  const isoString = dateString.endsWith('Z') || dateString.includes('+')
-    ? dateString
-    : `${dateString}Z`;
+export { formatToBrasilia, getRoleBadge, ISSUE_TYPE_CONFIG };
 
-  const date = new Date(isoString);
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-}
+const ITEMS_PER_PAGE = 20;
 
-export const getRoleBadge = (role) => {
-  if (role === 'superadmin') return { label: 'Super Admin', bg: '#fee2e2', text: '#ef4444', border: '#fca5a5' };
-  if (role === 'admin') return { label: 'Admin', bg: '#fef3c7', text: '#d97706', border: '#fcd34d' };
-  if (role === 'aluno') return { label: 'Aluno', bg: '#e0f2fe', text: '#0284c7', border: '#bae6fd' };
-  return { label: 'Usuário', bg: '#f1f5f9', text: '#64748b', border: '#e2e8f0' };
-};
-
-const ISSUE_TYPE_CONFIG = {
-  video: { label: 'Vídeo / Reprodução', icon: Video, color: '#ef4444', bg: '#fef2f2', border: '#fecaca' },
-  audio: { label: 'Áudio / Som', icon: Volume2, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  material: { label: 'Material / Anexo', icon: FileText, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
-  content: { label: 'Conteúdo da Aula', icon: HelpCircle, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' },
-  other: { label: 'Outro Problema', icon: AlertTriangle, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
-};
-
-export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#090d16', currentUser }) {
+export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#090d16', currentUser, onNavigateTab }) {
   const isManager = currentUser ? ['superadmin', 'admin'].includes(currentUser.role) : true;
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, id: null, title: '' });
   const [resolveModalState, setResolveModalState] = useState({ isOpen: false, report: null });
@@ -92,6 +70,11 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
     return { total, pending, resolved };
   }, [reports]);
 
+  // Resetar página ao alterar filtros ou busca
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, filterStatus]);
+
   // Alternar status (open <-> resolved)
   const handleToggleStatus = async (report) => {
     const newStatus = report.status === 'open' ? 'resolved' : 'open';
@@ -108,7 +91,12 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
       });
       if (res.ok) {
         setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: newStatus } : r));
-        addToast(newStatus === 'resolved' ? 'Relato marcado como resolvido!' : 'Relato reaberto.', 'success');
+        addToast(
+          newStatus === 'resolved'
+            ? 'Relato marcado como resolvido! Notificação enviada ao aluno na DM.'
+            : 'Relato reaberto.',
+          'success'
+        );
         if (onUpdateSummary) onUpdateSummary();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -149,6 +137,40 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
     }
   };
 
+  // Link para acessar a aula que gerou o relato
+  const handleOpenLesson = (report) => {
+    if (!report.lesson_id) return;
+    if (onNavigateTab) {
+      onNavigateTab('courses');
+    } else {
+      window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('open_course_lesson', {
+        detail: {
+          courseId: report.course_id,
+          moduleId: report.module_id,
+          lessonId: report.lesson_id
+        }
+      }));
+    }, 150);
+  };
+
+  // Entrar em contato na DM com o autor do relato
+  const handleOpenDm = (report) => {
+    if (!report.user_id) return;
+    window.dispatchEvent(new CustomEvent('open_direct_message', {
+      detail: {
+        contact: {
+          id: report.user_id,
+          name: report.user_name,
+          email: report.user_email,
+          role: report.user_role
+        }
+      }
+    }));
+  };
+
   // Relatos filtrados
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -166,6 +188,12 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [reports, searchTerm, filterType, filterStatus]);
+
+  // Relatos paginados (20 por página)
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredReports.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredReports, currentPage]);
 
   return (
     <div
@@ -310,137 +338,46 @@ export default function LessonReportsManagement({ onUpdateSummary, bgColor = '#0
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }} data-testid="reports-list">
-          {filteredReports.map((report) => {
-            const config = ISSUE_TYPE_CONFIG[report.issue_type] || ISSUE_TYPE_CONFIG.other;
-            const Icon = config.icon;
-            const isOpen = report.status === 'open';
-
-            return (
-              <div
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }} data-testid="reports-list">
+            {paginatedReports.map((report) => (
+              <LessonReportCard
                 key={report.id}
-                className="table-card"
-                style={{ padding: '20px', borderRadius: '10px', backgroundColor: cardBg, border: isOpen ? (isLightBg ? '1px solid #fecaca' : '1px solid rgba(239, 68, 68, 0.3)') : cardBorder, borderLeft: isOpen ? '4px solid #ef4444' : '4px solid #10b981', transition: 'all 0.15s ease' }}
-                data-testid={`report-card-${report.id}`}
-              >
-                {/* Linha Superior: Tipo de Problema, Status e Data */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: config.bg, color: config.color, border: `1px solid ${config.border}`, padding: '3px 9px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600 }}>
-                      <Icon size={13} />
-                      <span>{config.label}</span>
-                    </span>
+                report={report}
+                isManager={isManager}
+                isLightBg={isLightBg}
+                textColor={textColor}
+                subTextColor={subTextColor}
+                cardBg={cardBg}
+                cardBorder={cardBorder}
+                innerBg={innerBg}
+                innerBorder={innerBorder}
+                actionLoadingId={actionLoadingId}
+                onOpenLesson={handleOpenLesson}
+                onOpenDm={handleOpenDm}
+                onRequestResolve={(rep) => setResolveModalState({ isOpen: true, report: rep })}
+                onToggleStatus={handleToggleStatus}
+                onRequestDelete={(rep) => setDeleteModalState({ isOpen: true, id: rep.id, title: `Relato #${rep.id}` })}
+              />
+            ))}
+          </div>
 
-                    <span
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: isOpen ? '#fef2f2' : '#ecfdf5', color: isOpen ? '#b91c1c' : '#047857', border: isOpen ? '1px solid #fca5a5' : '1px solid #a7f3d0', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600 }}
-                      data-testid={`report-status-${report.id}`}
-                    >
-                      {isOpen ? 'Em Aberto' : 'Resolvido'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: subTextColor, fontSize: '12px' }}>
-                    <Calendar size={13} />
-                    <span>{formatToBrasilia(report.created_at)}</span>
-                  </div>
-                </div>
-
-                {/* Curso e Aula */}
-                <div style={{ marginBottom: '10px' }}>
-                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: subTextColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {report.course_title ? `${report.course_title} > ` : ''}
-                  </span>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: textColor }}>
-                    {report.lesson_title || `Aula #${report.lesson_id}`}
-                  </span>
-                </div>
-
-                {/* Descrição do Relato */}
-                <div
-                  style={{ padding: '12px 14px', backgroundColor: innerBg, border: innerBorder, borderRadius: '6px', fontSize: '13px', color: textColor, lineHeight: 1.5, marginBottom: '14px', whiteSpace: 'pre-wrap' }}
-                  data-testid={`report-description-${report.id}`}
-                >
-                  {report.description}
-                </div>
-
-                {/* Linha Inferior: Aluno e Ações */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderTop: innerBorder, paddingTop: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: isLightBg ? '#eff6ff' : 'rgba(37, 99, 235, 0.2)', color: isLightBg ? '#2563eb' : '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
-                      {(report.user_name || 'A').charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: textColor }}>
-                          {report.user_name || 'Usuário'}
-                        </span>
-                        {(() => {
-                          const badge = getRoleBadge(report.user_role);
-                          return (
-                            <span
-                              style={{ fontSize: '11px', fontWeight: 600, padding: '1px 8px', borderRadius: '12px', backgroundColor: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
-                              data-testid={`user-role-badge-${report.id}`}
-                            >
-                              {badge.label}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                      {report.user_email && (
-                        <div style={{ fontSize: '11px', color: subTextColor }}>
-                          {report.user_email}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {isManager && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => (isOpen ? setResolveModalState({ isOpen: true, report }) : handleToggleStatus(report))}
-                        disabled={actionLoadingId === report.id}
-                        className={isOpen ? 'primary-btn' : 'secondary-btn'}
-                        style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: isOpen ? '#16a34a' : 'transparent', borderColor: isOpen ? '#16a34a' : '#cbd5e1' }}
-                        data-testid={`toggle-status-btn-${report.id}`}
-                      >
-                        {isOpen ? (
-                          <>
-                            <Check size={14} />
-                            <span>Marcar como Resolvido</span>
-                          </>
-                        ) : (
-                          <>
-                            <RotateCcw size={14} />
-                            <span>Reabrir Chamado</span>
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDeleteModalState({ isOpen: true, id: report.id, title: `Relato #${report.id}` })}
-                        className="table-action-btn btn-danger"
-                        title="Excluir relato"
-                        style={{ padding: '6px' }}
-                        data-testid={`delete-report-btn-${report.id}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          {/* Paginação (20 por página) */}
+          <LessonReportsPagination
+            currentPage={currentPage}
+            totalItems={filteredReports.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+            isLightBg={isLightBg}
+          />
+        </>
       )}
 
       {/* Modal de Confirmação de Resolução */}
       <ActionConfirmModal
         isOpen={resolveModalState.isOpen}
         title="Marcar como Resolvido?"
-        message={`Deseja realmente marcar como resolvido o relato da aula "${resolveModalState.report?.lesson_title || 'Aula'}" enviado por ${resolveModalState.report?.user_name || 'Usuário'}?`}
+        message={`Deseja realmente marcar como resolvido o relato da aula "${resolveModalState.report?.lesson_title || 'Aula'}" enviado por ${resolveModalState.report?.user_name || 'Usuário'}? Uma notificação será enviada automaticamente para o aluno informando a resolução.`}
         confirmLabel="Confirmar Resolução"
         confirmColor="#16a34a"
         onConfirm={async () => {

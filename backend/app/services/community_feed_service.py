@@ -22,6 +22,15 @@ from app.schemas.community_feed import (
 
 
 def format_comment(c: CommunityPostComment) -> CommunityCommentOut:
+    level_title = None
+    level_badge = None
+    if c.user:
+        pts = getattr(c.user, "gamification_points", 0) or 0
+        from app.services.gamification_level_service import calculate_student_level
+        info = calculate_student_level(pts)
+        level_title = info.get("level_title", "Bronze I")
+        level_badge = info.get("level_badge", "🛡️ Bronze I")
+
     return CommunityCommentOut(
         id=c.id,
         post_id=c.post_id,
@@ -31,6 +40,10 @@ def format_comment(c: CommunityPostComment) -> CommunityCommentOut:
         user_role=c.user.role if c.user else "aluno",
         parent_id=c.parent_id,
         content=c.content,
+        media_type=getattr(c, "media_type", "text") or "text",
+        media_url=getattr(c, "media_url", None),
+        user_level_title=level_title,
+        user_level_badge=level_badge,
         created_at=c.created_at,
     )
 
@@ -124,20 +137,73 @@ def format_post(post: CommunityPost, current_user_id: int) -> CommunityPostOut:
 
     comments_out = [format_comment(c) for c in (post.comments or [])]
 
+    # Nível RPG / Elo do autor do post
+    level_title = None
+    level_badge = None
+    if post.user:
+        pts = getattr(post.user, "gamification_points", 0) or 0
+        from app.services.gamification_level_service import calculate_student_level
+        info = calculate_student_level(pts)
+        level_title = info.get("level_title", "Bronze I")
+        level_badge = info.get("level_badge", "🛡️ Bronze I")
+
+    # Enquete e Votos
+    poll_options_out = None
+    my_vote = None
+    total_votes = 0
+    if post.poll_question and post.poll_options:
+        opts = post.poll_options
+        if isinstance(opts, list):
+            # Contabilizar votos
+            votes = post.poll_votes or []
+            total_votes = len(votes)
+            votes_by_opt = {}
+            for v in votes:
+                votes_by_opt[v.option_id] = votes_by_opt.get(v.option_id, 0) + 1
+                if v.user_id == current_user_id:
+                    my_vote = v.option_id
+
+            poll_options_out = []
+            for item in opts:
+                opt_id = item.get("id") if isinstance(item, dict) else 1
+                opt_text = item.get("text", "") if isinstance(item, dict) else str(item)
+                opt_votes = votes_by_opt.get(opt_id, 0)
+                pct = round((opt_votes / total_votes * 100), 1) if total_votes > 0 else 0.0
+                poll_options_out.append({
+                    "id": opt_id,
+                    "text": opt_text,
+                    "votes": opt_votes,
+                    "percent": pct,
+                })
+
     return CommunityPostOut(
         id=post.id,
         user_id=post.user_id,
         user_name=post.user.name if post.user else "Membro da Comunidade",
         user_avatar=post.user.avatar_url if post.user else None,
         user_role=post.user.role if post.user else "aluno",
+        user_level_title=level_title,
+        user_level_badge=level_badge,
         course_id=post.course_id,
         course_title=post.course.title if post.course else None,
         content=post.content,
         media_urls=post.media_urls or [],
         media_type=post.media_type or "none",
         media_thumbnail_url=post.media_thumbnail_url,
+        category=getattr(post, "category", "geral") or "geral",
+        location=getattr(post, "location", None),
+        scheduled_at=getattr(post, "scheduled_at", None),
+        is_scheduled=getattr(post, "is_scheduled", False) or False,
+        poll_question=getattr(post, "poll_question", None),
+        poll_options=poll_options_out,
+        my_poll_vote=my_vote,
+        total_poll_votes=total_votes,
+        achievement_type=getattr(post, "achievement_type", None),
+        achievement_data=getattr(post, "achievement_data", None),
         likes_count=post.likes_count,
         comments_count=post.comments_count,
+        bookmarks_count=getattr(post, "bookmarks_count", 0) or 0,
+        shares_count=getattr(post, "shares_count", 0) or 0,
         views_count=post.views_count or 0,
         is_liked_by_me=liked,
         is_bookmarked_by_me=bookmarked,

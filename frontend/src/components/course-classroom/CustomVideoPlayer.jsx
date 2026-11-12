@@ -22,7 +22,8 @@ export default function CustomVideoPlayer({
   watermarkEnabled = true,
   nextLesson = null,
   onPlayNextLesson = null,
-  autoPlay = false
+  autoPlay = false,
+  autoplayEnabled = true
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -370,55 +371,26 @@ export default function CustomVideoPlayer({
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
         onLoadedMetadata={handleLoadedMetadata}
-        onLoadedData={() => {
-          setIsLoading(false);
-          updateBuffered();
-        }}
+        onLoadedData={() => { setIsLoading(false); updateBuffered(); }}
         onTimeUpdate={handleTimeUpdate}
-        onLoadStart={() => {
-          setIsBuffering(false);
-        }}
+        onLoadStart={() => setIsBuffering(false)}
         onWaiting={() => setIsBuffering(true)}
         onSeeking={() => setIsBuffering(true)}
-        onSeeked={() => {
-          setIsBuffering(false);
-          updateBuffered();
-        }}
-        onStalled={() => {
-          if (isPlaying) setIsBuffering(true);
-        }}
+        onSeeked={() => { setIsBuffering(false); updateBuffered(); }}
+        onStalled={() => { if (isPlaying) setIsBuffering(true); }}
         onProgress={updateBuffered}
-        onCanPlay={() => {
-          setIsLoading(false);
-          setIsBuffering(false);
-          updateBuffered();
-        }}
-        onCanPlayThrough={() => {
-          setIsLoading(false);
-          setIsBuffering(false);
-          updateBuffered();
-        }}
-        onPlaying={() => {
-          setIsLoading(false);
-          setIsBuffering(false);
-          setIsPlaying(true);
-        }}
-        onPause={() => {
-          setIsPlaying(false);
-          setIsBuffering(false);
-        }}
+        onCanPlay={() => { setIsLoading(false); setIsBuffering(false); updateBuffered(); }}
+        onCanPlayThrough={() => { setIsLoading(false); setIsBuffering(false); updateBuffered(); }}
+        onPlaying={() => { setIsLoading(false); setIsBuffering(false); setIsPlaying(true); }}
+        onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
         onEnded={() => {
           setIsPlaying(false);
           setIsBuffering(false);
-          if (nextLesson && onPlayNextLesson) {
-            setShowAutoPlayOverlay(true);
-          }
+          const saved = typeof window !== 'undefined' ? localStorage.getItem('area_de_membros_autoplay_enabled') : null;
+          const isAutoplay = saved !== null ? saved !== 'false' : autoplayEnabled !== false;
+          if (isAutoplay && nextLesson && onPlayNextLesson) setShowAutoPlayOverlay(true);
         }}
-        onError={() => {
-          setIsLoading(false);
-          setIsBuffering(false);
-          setHasError(true);
-        }}
+        onError={() => { setIsLoading(false); setIsBuffering(false); setHasError(true); }}
         onClick={togglePlay}
         style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
         data-testid="lesson-html5-video"

@@ -187,4 +187,36 @@ describe('FeedProfileModal Component', () => {
       expect(screen.getByTestId('feed-profile-elo-progress-bar')).toBeInTheDocument();
     });
   });
+
+  it('filtra e ordena publicações do perfil por Mais Curtidas, Mais Comentadas, Mais Salvas e Compartilhadas', async () => {
+    feedApi.fetchUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      posts: [
+        { id: 1, content: 'Post 1', likes_count: 2, comments_count: 10, saves_count: 1, shares_count: 0, media_urls: [] },
+        { id: 2, content: 'Post 2', likes_count: 25, comments_count: 1, saves_count: 5, shares_count: 8, media_urls: [] },
+      ],
+    });
+
+    render(<FeedProfileModal isOpen={true} userId={15} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feed-profile-filter-tabs')).toBeInTheDocument();
+    });
+
+    const likesFilterBtn = screen.getByTestId('feed-profile-filter-likes');
+    fireEvent.click(likesFilterBtn);
+    expect(likesFilterBtn).toHaveClass('active');
+
+    const commentsFilterBtn = screen.getByTestId('feed-profile-filter-comments');
+    fireEvent.click(commentsFilterBtn);
+    expect(commentsFilterBtn).toHaveClass('active');
+
+    const savesFilterBtn = screen.getByTestId('feed-profile-filter-saves');
+    fireEvent.click(savesFilterBtn);
+    expect(savesFilterBtn).toHaveClass('active');
+
+    const sharesFilterBtn = screen.getByTestId('feed-profile-filter-shares');
+    fireEvent.click(sharesFilterBtn);
+    expect(sharesFilterBtn).toHaveClass('active');
+  });
 });

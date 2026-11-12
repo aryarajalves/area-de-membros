@@ -24,21 +24,34 @@ describe('InfrastructureManagement Component', () => {
     },
     database: {
       active_connections: 1,
+      project_active_connections: 1,
+      project_idle_connections: 17,
+      project_total_open: 18,
       pool_capacity: 50,
-      pool_base: 20,
-      overflow_reserve: 30,
-      occupancy_pct: 2.0,
-      idle_connections: 2,
+      project_max_connections: 200,
+      workers_count: 4,
+      pool_base_per_worker: 30,
+      overflow_per_worker: 20,
+      pool_base: 30,
+      overflow_reserve: 20,
+      occupancy_pct: 0.5,
+      idle_connections: 17,
       status: 'Saudável',
       peak_connections_today: 3,
-      peak_pct_today: 6.0,
+      peak_pct_today: 1.5,
       peak_time_today: '22/10/2026 10:04:10 (Horário de Brasília)',
+      global_connections_total: 23,
+      global_active_connections: 2,
+      global_idle_connections: 21,
+      postgres_max_connections: 500,
+      database_size_pretty: '20 MB',
+      cluster_size_pretty: '28 MB',
       history_24h: [
         {
           period: '22/10/2026 10:00',
           peak_connections: 3,
-          pool_capacity: 50,
-          occupancy_pct: 6.0,
+          pool_capacity: 200,
+          occupancy_pct: 1.5,
           status: 'Normal',
         },
       ],
@@ -94,6 +107,10 @@ describe('InfrastructureManagement Component', () => {
     });
     expect(screen.getByText('Maior Pico Registrado Hoje')).toBeInTheDocument();
     expect(screen.getByText(/conexões simultâneas máx/i)).toBeInTheDocument();
+    expect(screen.getByText('Conexões Globais do PostgreSQL')).toBeInTheDocument();
+    expect(screen.getByText('Tamanho do Banco no Disco')).toBeInTheDocument();
+    expect(screen.getAllByText(/20 MB/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/28 MB/i).length).toBeGreaterThan(0);
 
     // Clica na aba Configurações de Alertas
     fireEvent.click(screen.getByTestId('subtab-alerts'));

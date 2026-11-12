@@ -65,6 +65,11 @@ describe('FeedCreatePostCard Component', () => {
         mediaUrls: [],
         mediaType: 'none',
         mediaThumbnailUrl: null,
+        category: 'geral',
+        pollQuestion: null,
+        pollOptions: null,
+        location: null,
+        scheduledAt: null,
       });
       expect(onPostCreated).toHaveBeenCalled();
     });

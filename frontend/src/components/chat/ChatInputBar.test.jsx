@@ -42,12 +42,15 @@ describe('ChatInputBar Component', () => {
     const textarea = screen.getByTestId('chat-message-textarea');
 
     expect(textarea).toHaveAttribute('rows', '1');
+    expect(maxBtn).toHaveTextContent('Maximizar');
 
     fireEvent.click(maxBtn);
     expect(textarea).toHaveAttribute('rows', '6');
+    expect(maxBtn).toHaveTextContent('Recolher');
 
     fireEvent.click(maxBtn);
     expect(textarea).toHaveAttribute('rows', '1');
+    expect(maxBtn).toHaveTextContent('Maximizar');
   });
 
   it('opens and closes GIF picker popup when clicking GIF button', () => {

@@ -412,3 +412,53 @@
   font-weight: 600;
   margin-right: 8px;
 }
+
+/* Filtros das Publicações do Perfil */
+.feed-profile-posts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.feed-profile-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.feed-profile-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.feed-profile-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.feed-profile-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.feed-profile-filter-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  color: #a5b4fc;
+}

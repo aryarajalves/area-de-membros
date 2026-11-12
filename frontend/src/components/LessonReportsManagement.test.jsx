@@ -244,5 +244,114 @@ describe('LessonReportsManagement Component', () => {
     expect(screen.queryByTestId('toggle-status-btn-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-report-btn-1')).not.toBeInTheDocument();
   });
+
+  it('allows opening direct message (DM) with report creator', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockReports
+    });
+
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+    render(
+      <ToastProvider>
+        <LessonReportsManagement onUpdateSummary={vi.fn()} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dm-contact-btn-1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('dm-contact-btn-1'));
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'open_direct_message',
+        detail: {
+          contact: {
+            id: 1,
+            name: 'Carlos Aluno',
+            email: 'carlos@teste.com',
+            role: 'aluno'
+          }
+        }
+      })
+    );
+  });
+
+  it('allows accessing lesson directly from report card', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockReports
+    });
+
+    const onNavigateTabMock = vi.fn();
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+    render(
+      <ToastProvider>
+        <LessonReportsManagement onUpdateSummary={vi.fn()} onNavigateTab={onNavigateTabMock} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('access-lesson-btn-1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('access-lesson-btn-1'));
+
+    expect(onNavigateTabMock).toHaveBeenCalledWith('courses');
+    await waitFor(() => {
+      expect(dispatchSpy).toHaveBeenCalled();
+    });
+  });
+
+  it('paginates reports showing 20 per page and navigates correctly', async () => {
+    const twentyFiveReports = Array.from({ length: 25 }, (_, idx) => ({
+      id: idx + 1,
+      lesson_id: 100 + idx,
+      user_id: idx + 1,
+      issue_type: 'video',
+      description: `Problema reportado número ${idx + 1}`,
+      status: 'open',
+      created_at: '2026-09-30T13:00:00Z',
+      user_name: `Aluno ${idx + 1}`,
+      user_email: `aluno${idx + 1}@teste.com`,
+      user_role: 'aluno',
+      lesson_title: `Aula ${idx + 1}`,
+      course_id: 1,
+      course_title: 'Curso Geral'
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => twentyFiveReports
+    });
+
+    render(
+      <ToastProvider>
+        <LessonReportsManagement onUpdateSummary={vi.fn()} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Problema reportado número 1')).toBeInTheDocument();
+      expect(screen.getByText('Problema reportado número 20')).toBeInTheDocument();
+      // Página 1 só mostra os 20 primeiros
+      expect(screen.queryByText('Problema reportado número 21')).not.toBeInTheDocument();
+      expect(screen.getByTestId('pagination-summary')).toHaveTextContent('Exibindo 1–20 de 25 relatos');
+    });
+
+    // Clica na Próxima Página
+    fireEvent.click(screen.getByTestId('pagination-next-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Problema reportado número 1')).not.toBeInTheDocument();
+      expect(screen.getByText('Problema reportado número 21')).toBeInTheDocument();
+      expect(screen.getByText('Problema reportado número 25')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-summary')).toHaveTextContent('Exibindo 21–25 de 25 relatos');
+    });
+  });
 });
 

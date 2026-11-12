@@ -221,6 +221,7 @@
 .feed-post-insights-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   border-radius: 8px;
@@ -231,11 +232,20 @@
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 8px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .feed-post-insights-btn:hover {
   background: rgba(56, 189, 248, 0.16);
   border-color: rgba(56, 189, 248, 0.4);
   transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .feed-post-insights-btn {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 4px;
+  }
 }

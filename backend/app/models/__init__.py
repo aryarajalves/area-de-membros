@@ -44,6 +44,9 @@ from app.models.community_feed import (
     CommunityNotification,
     CommunityFollow,
     CommunityPostView,
+    CommunityPostPollVote,
+    CommunityPostReport,
+    CommunityStrike,
 )
 from app.models.community_stories import (
     CommunityStory,

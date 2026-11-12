@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.user import User
+from app.models.chat import ChatMessage
 from app.models.course import (
     Course, UserCourse, Module, Lesson,
     LessonProgress, LessonRating, LessonReport, LessonNote
@@ -464,6 +465,7 @@ def list_reported_issues(
         lesson_title = rep.lesson.title if rep.lesson else None
         course_id = rep.lesson.module.course_id if (rep.lesson and rep.lesson.module) else None
         course_title = rep.lesson.module.course.title if (rep.lesson and rep.lesson.module and rep.lesson.module.course) else None
+        module_id = rep.lesson.module_id if rep.lesson else None
 
         results.append(LessonReportResponse(
             id=rep.id,
@@ -478,7 +480,8 @@ def list_reported_issues(
             user_role=user_role,
             lesson_title=lesson_title,
             course_id=course_id,
-            course_title=course_title
+            course_title=course_title,
+            module_id=module_id
         ))
     return results
 
@@ -514,6 +517,56 @@ def update_report_status(
     lesson_title = rep.lesson.title if rep.lesson else None
     course_id = rep.lesson.module.course_id if (rep.lesson and rep.lesson.module) else None
     course_title = rep.lesson.module.course.title if (rep.lesson and rep.lesson.module and rep.lesson.module.course) else None
+    module_id = rep.lesson.module_id if rep.lesson else None
+
+    # Quando marcado como resolvido, notifica o aluno que abriu o chamado via DM
+    if new_status == "resolved" and rep.user_id:
+        try:
+            lesson_name = lesson_title or f"Aula #{rep.lesson_id}"
+            notification_text = (
+                f"Olá, {user_name or 'Aluno'}! O relato que você enviou sobre a aula \"{lesson_name}\" "
+                f"foi analisado e marcado como resolvido pela nossa equipe. Obrigado pelo seu feedback!"
+            )
+            button_url = f"internal://lesson/{course_id}/{rep.lesson_id}" if course_id else None
+            dm_msg = ChatMessage(
+                channel_type="dm",
+                user_id=current_user.id,
+                recipient_id=rep.user_id,
+                message=notification_text,
+                button_text="Acessar Aula",
+                button_url=button_url,
+                button_action_type="lesson"
+            )
+            db.add(dm_msg)
+            db.commit()
+            db.refresh(dm_msg)
+
+            try:
+                from app.api.v1.endpoints.chat import chat_manager
+                chat_manager.send_to_user_sync(
+                    rep.user_id,
+                    "new_dm",
+                    {
+                        "sender_id": current_user.id,
+                        "recipient_id": rep.user_id,
+                        "message": {
+                            "id": dm_msg.id,
+                            "channel_type": "dm",
+                            "message": dm_msg.message,
+                            "user": {"id": current_user.id, "name": current_user.name, "role": current_user.role},
+                            "recipient_id": rep.user_id,
+                            "created_at": dm_msg.created_at.isoformat() if dm_msg.created_at else None,
+                            "button_text": dm_msg.button_text,
+                            "button_url": dm_msg.button_url,
+                            "button_action_type": dm_msg.button_action_type,
+                        }
+                    }
+                )
+                chat_manager.send_to_user_sync(rep.user_id, "dm_updated", {"user_id": rep.user_id})
+            except Exception as ws_err:
+                logger.warning(f"Erro ao emitir evento de WebSocket para relato resolvido: {ws_err}")
+        except Exception as dm_err:
+            logger.error(f"Erro ao criar mensagem de notificação para relato resolvido: {dm_err}")
 
     logger.info(f"Relato {report_id} atualizado para status '{new_status}' por {current_user.email}")
 
@@ -530,7 +583,8 @@ def update_report_status(
         user_role=user_role,
         lesson_title=lesson_title,
         course_id=course_id,
-        course_title=course_title
+        course_title=course_title,
+        module_id=module_id
     )
 
 

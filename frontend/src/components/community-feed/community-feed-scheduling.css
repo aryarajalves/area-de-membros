@@ -1,0 +1,266 @@
+/* Estilos para Enumeração de Mídias, Reordenação, Localização, Agendamento e Hashtags */
+
+/* Badge Numérico de Posição da Mídia */
+.feed-media-position-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+  letter-spacing: 0.5px;
+}
+
+/* Ações de Reordenação (< > X) nas Miniaturas */
+.feed-media-reorder-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 2;
+}
+
+.feed-media-reorder-btn {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-media-reorder-btn:hover {
+  background: rgba(99, 102, 241, 0.9);
+  border-color: #818cf8;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* Hashtags Clicáveis */
+.feed-post-hashtag {
+  color: #38bdf8;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.feed-post-hashtag:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  text-decoration: underline;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+/* Tag de Localização nos Posts */
+.feed-post-location-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Banner de Post Agendado */
+.feed-scheduled-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+}
+
+.feed-scheduled-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #fbbf24;
+}
+
+.feed-scheduled-icon {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.feed-publish-now-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.feed-publish-now-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+/* Controles de Localização e Agendamento no Form */
+.feed-schedule-location-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-attached-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  backdrop-filter: blur(6px);
+  animation: fadeInPill 0.2s ease;
+}
+
+.feed-attached-pill.location {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.feed-attached-pill.schedule {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.feed-pill-remove-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  margin-left: 2px;
+  transition: opacity 0.15s ease;
+}
+
+.feed-pill-remove-btn:hover {
+  opacity: 1;
+}
+
+.feed-popover-anchor {
+  position: relative;
+}
+
+.feed-mini-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+  padding: 12px;
+  border-radius: 12px;
+  z-index: 50;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(12px);
+}
+
+.feed-mini-popover-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.feed-mini-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feed-mini-popover-input,
+.feed-mini-popover-datetime {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.feed-mini-popover-input:focus,
+.feed-mini-popover-datetime:focus {
+  border-color: #6366f1;
+}
+
+.feed-mini-popover-apply-btn,
+.feed-mini-popover-confirm-btn {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.feed-mini-popover-apply-btn:disabled,
+.feed-mini-popover-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feed-mini-popover-apply-btn:hover:not(:disabled),
+.feed-mini-popover-confirm-btn:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.feed-submit-btn.scheduled-mode {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+}
+
+@keyframes fadeInPill {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

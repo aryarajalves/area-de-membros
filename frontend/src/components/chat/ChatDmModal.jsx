@@ -28,15 +28,20 @@ export default function ChatDmModal({
     setCurrentPage(1);
   }, [activeTab]);
 
-  // Bloqueio do scroll do fundo quando o modal estiver aberto
+  // Bloqueio do scroll do fundo e fechamento automático ao navegar para aula
   useEffect(() => {
     if (!isOpen) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const handleCloseModal = () => onClose?.();
+    window.addEventListener('open_course_lesson', handleCloseModal);
+    window.addEventListener('close_dm_modal', handleCloseModal);
     return () => {
       document.body.style.overflow = originalOverflow;
+      window.removeEventListener('open_course_lesson', handleCloseModal);
+      window.removeEventListener('close_dm_modal', handleCloseModal);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 

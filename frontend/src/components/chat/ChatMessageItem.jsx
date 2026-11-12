@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, Shield, Award, User, Heart, Star, Pin, MessageSquare, ExternalLink } from 'lucide-react';
-import { formatMessageWithMentions, resolveButtonUrl } from './chatMentionUtils';
+import { formatMessageWithMentions, resolveButtonUrl, handleInternalNavigation } from './chatMentionUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
 import ChatUserEloBadge, { getChatAvatarEloStyle } from './ChatUserEloBadge';
 
@@ -246,7 +246,19 @@ export default function ChatMessageItem({
                         }
                         return;
                       }
-                      if (message.button_action_type === 'course' || message.button_action_type === 'lesson' || resolvedHref.startsWith('/')) {
+                      if (
+                        message.button_action_type === 'course' ||
+                        message.button_action_type === 'lesson' ||
+                        resolvedHref.startsWith('internal://') ||
+                        resolvedHref.startsWith('/courses') ||
+                        resolvedHref.includes('course_id=') ||
+                        resolvedHref.includes('lesson_id=')
+                      ) {
+                        e.preventDefault();
+                        handleInternalNavigation(message.button_url || resolvedHref);
+                        return;
+                      }
+                      if (resolvedHref.startsWith('/')) {
                         e.preventDefault();
                         window.location.href = resolvedHref;
                       }

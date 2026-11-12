@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, or_, and_, func
 
 from app.core.database import get_db
 from app.core.limiter import limiter
@@ -55,6 +55,7 @@ from app.services.community_follow_service import (
     require_community_manager,
 )
 from app.services.community_insights_service import record_post_view, get_post_insights
+from app.services.community_strikes_service import check_user_is_banned
 
 router = APIRouter()
 
@@ -78,8 +79,10 @@ _format_post = format_post
 @limiter.limit("60/minute")
 def get_feed(
     request: Request,
-    filter: str = Query("all", description="'all', 'my_course', 'popular', 'my_posts', 'saved', 'following'"),
+    filter: str = Query("all", description="'all', 'my_course', 'popular', 'my_posts', 'saved', 'following', 'scheduled'"),
     course_id: Optional[int] = Query(None),
+    category: Optional[str] = Query(None, description="Filtro por categoria / tag (ex: duvida, vitoria, dica, aviso, networking)"),
+    hashtag: Optional[str] = Query(None, description="Filtro por hashtag (ex: #estudos, #react)"),
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=50),
@@ -99,6 +102,19 @@ def get_feed(
             joinedload(CommunityPost.comments).joinedload(CommunityPostComment.user)
         )
     )
+
+    if filter == "scheduled":
+        query = query.filter(CommunityPost.is_scheduled == True)
+        if current_user.role not in ("admin", "superadmin"):
+            query = query.filter(CommunityPost.user_id == current_user.id)
+    else:
+        # Em feeds gerais, exclui posts que estão agendados para o futuro
+        query = query.filter(
+            or_(
+                CommunityPost.is_scheduled == False,
+                and_(CommunityPost.scheduled_at != None, CommunityPost.scheduled_at <= func.now())
+            )
+        )
 
     if course_id:
         query = query.filter(CommunityPost.course_id == course_id)
@@ -121,12 +137,25 @@ def get_feed(
         )
         query = query.filter(or_(CommunityPost.user_id.in_(following_ids_query), CommunityPost.user_id == current_user.id))
 
+    if category and category.strip() and category.strip().lower() != "todas":
+        query = query.filter(CommunityPost.category == category.strip().lower())
+
+    if hashtag and hashtag.strip():
+        tag_term = hashtag.strip().lstrip("#")
+        query = query.filter(CommunityPost.content.ilike(f"%#{tag_term}%"))
+
     if search and search.strip():
         term = f"%{search.strip()}%"
-        query = query.filter(CommunityPost.content.ilike(term))
+        query = query.filter(or_(CommunityPost.content.ilike(term), CommunityPost.category.ilike(term)))
 
-    if filter == "popular":
+    if filter in ("popular", "most_liked"):
         query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.likes_count.desc(), CommunityPost.created_at.desc())
+    elif filter == "most_commented":
+        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.comments_count.desc(), CommunityPost.created_at.desc())
+    elif filter == "most_saved":
+        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.bookmarks_count.desc(), CommunityPost.created_at.desc())
+    elif filter == "most_shared":
+        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.shares_count.desc(), CommunityPost.created_at.desc())
     else:
         query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.created_at.desc())
 
@@ -154,6 +183,12 @@ def create_post(
     """
     Cria uma nova publicação no feed da comunidade.
     """
+    if check_user_is_banned(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você está temporariamente banido de publicar no Feed da Comunidade por acumular 3 strikes. Você pode solicitar recurso no painel de moderação."
+        )
+
     if not data.content or not data.content.strip():
         raise HTTPException(status_code=400, detail="O conteúdo da publicação não pode estar vazio.")
 
@@ -168,6 +203,23 @@ def create_post(
             else:
                 media_type = "image"
 
+    formatted_poll_options = None
+    if data.poll_question and data.poll_options:
+        formatted_poll_options = []
+        for idx, opt in enumerate(data.poll_options, start=1):
+            if isinstance(opt, str) and opt.strip():
+                formatted_poll_options.append({"id": idx, "text": opt.strip()})
+            elif isinstance(opt, dict) and "text" in opt:
+                formatted_poll_options.append({"id": opt.get("id", idx), "text": str(opt["text"]).strip()})
+
+    is_scheduled = False
+    scheduled_at = None
+    if data.scheduled_at:
+        scheduled_at = data.scheduled_at
+        is_scheduled = True
+
+    post_location = data.location.strip() if (data.location and data.location.strip()) else None
+
     post = CommunityPost(
         user_id=current_user.id,
         course_id=data.course_id,
@@ -175,6 +227,14 @@ def create_post(
         media_urls=data.media_urls or [],
         media_type=media_type,
         media_thumbnail_url=data.media_thumbnail_url if media_type == "video" else None,
+        category=(data.category or "geral").strip().lower(),
+        location=post_location,
+        scheduled_at=scheduled_at,
+        is_scheduled=is_scheduled,
+        poll_question=data.poll_question.strip() if (data.poll_question and formatted_poll_options) else None,
+        poll_options=formatted_poll_options,
+        achievement_type=data.achievement_type,
+        achievement_data=data.achievement_data,
         likes_count=0,
         comments_count=0,
         is_pinned=False,
@@ -183,15 +243,16 @@ def create_post(
     db.commit()
     db.refresh(post)
 
-    # Gamificação: atribui pontos se for aluno
-    try:
-        award_points(db, current_user, "community_feed_post", post.id)
-    except Exception as e:
-        logger.warning(f"Erro ao atribuir pontos de feed: {e}")
+    # Gamificação: atribui pontos se for aluno (apenas se publicado agora)
+    if not is_scheduled:
+        try:
+            award_points(db, current_user, "community_feed_post", post.id)
+        except Exception as e:
+            logger.warning(f"Erro ao atribuir pontos de feed: {e}")
 
-    # Processa menções inteligentes (@aluno)
-    _process_mentions_in_text(db, post.content, current_user, post_id=post.id)
-    db.commit()
+        # Processa menções inteligentes (@aluno)
+        _process_mentions_in_text(db, post.content, current_user, post_id=post.id)
+        db.commit()
 
     logger.info(f"[FEED] Nova publicação criada id={post.id} por user_id={current_user.id}")
     return _format_post(post, current_user.id)
@@ -362,14 +423,16 @@ def toggle_bookmark_post(
 
     if existing_bm:
         db.delete(existing_bm)
+        post.bookmarks_count = max(0, (post.bookmarks_count or 0) - 1)
         bookmarked = False
     else:
         new_bm = CommunityPostBookmark(post_id=post_id, user_id=current_user.id)
         db.add(new_bm)
+        post.bookmarks_count = (post.bookmarks_count or 0) + 1
         bookmarked = True
 
     db.commit()
-    return {"bookmarked": bookmarked}
+    return {"bookmarked": bookmarked, "bookmarks_count": post.bookmarks_count}
 
 
 @router.get("/feed/{post_id}/likes", response_model=List[CommunityLikeUserOut], summary="Listar Curtidas da Publicação", description="Retorna a lista de usuários que curtiram uma publicação.")
@@ -467,8 +530,20 @@ def create_comment(
     """
     Adiciona um comentário a uma publicação.
     """
-    if not data.content or not data.content.strip():
-        raise HTTPException(status_code=400, detail="O comentário não pode estar vazio.")
+    if check_user_is_banned(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você está banido de comentar no Feed da Comunidade por acumular 3 strikes."
+        )
+
+    content = data.content.strip() if data.content else ""
+    if not content:
+        if data.media_type == "audio":
+            content = "[Áudio]"
+        elif data.media_type == "gif":
+            content = "[GIF]"
+        else:
+            raise HTTPException(status_code=400, detail="O comentário não pode estar vazio.")
 
     post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
     if not post:
@@ -478,7 +553,9 @@ def create_comment(
         post_id=post_id,
         user_id=current_user.id,
         parent_id=data.parent_id,
-        content=data.content.strip(),
+        content=content,
+        media_type=data.media_type or "text",
+        media_url=data.media_url,
     )
     db.add(comment)
     post.comments_count += 1
@@ -858,75 +935,5 @@ async def upload_profile_avatar(
     db.commit()
 
     return {"avatar_url": avatar_url, "message": "Foto de perfil atualizada com sucesso!"}
-
-
-@router.post("/feed/users/{user_id}/follow", response_model=FollowToggleOut, summary="Seguir/Deixar de Seguir Membro", description="Seguir ou deixar de seguir um membro da comunidade.")
-@limiter.limit("60/minute")
-def toggle_follow(
-    request: Request,
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_community_manager),
-):
-    """
-    Seguir ou deixar de seguir um membro da comunidade.
-    """
-    return toggle_follow_user(db, follower_id=current_user.id, target_user_id=user_id)
-
-
-@router.get("/feed/users/{user_id}/followers", response_model=List[FollowUserItem], summary="Listar Seguidores do Membro", description="Lista os seguidores de um membro da comunidade.")
-@limiter.limit("60/minute")
-def list_user_followers(
-    request: Request,
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_community_manager),
-):
-    """
-    Lista os seguidores de um membro da comunidade.
-    """
-    return get_user_followers(db, target_user_id=user_id, current_user_id=current_user.id)
-
-
-@router.get("/feed/users/{user_id}/following", response_model=List[FollowUserItem], summary="Listar Quem o Membro Está Seguindo", description="Lista quem o membro da comunidade está seguindo.")
-@limiter.limit("60/minute")
-def list_user_following(
-    request: Request,
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_community_manager),
-):
-    """
-    Lista quem o membro da comunidade está seguindo.
-    """
-    return get_user_following(db, target_user_id=user_id, current_user_id=current_user.id)
-
-
-@router.post("/feed/{post_id}/view", summary="Registrar Visualização de Publicação", description="Registra uma visualização única do post para métricas de alcance e insights.")
-@limiter.limit("120/minute")
-def track_post_view(
-    request: Request,
-    post_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_community_manager),
-):
-    """
-    Registra uma visualização única do post para métricas de alcance e insights.
-    """
-    return record_post_view(db, post_id=post_id, user_id=current_user.id)
-
-
-@router.get("/feed/{post_id}/insights", response_model=PostInsightsOut, summary="Métricas e Insights da Publicação", description="Retorna métricas de alcance e engajamento da publicação (apenas autor ou admin).")
-@limiter.limit("60/minute")
-def get_insights(
-    request: Request,
-    post_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_community_manager),
-):
-    """
-    Retorna métricas de alcance e engajamento da publicação (apenas autor ou admin).
-    """
-    return get_post_insights(db, post_id=post_id, current_user=current_user)
 
 

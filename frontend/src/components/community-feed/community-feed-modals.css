@@ -1,0 +1,459 @@
+/* ==============================================================================
+   COMMUNITY FEED - MODAIS DE CRIAÇÃO DE ENQUETE E DENÚNCIA (GLASSMORPHYSIM DARK)
+   ============================================================================== */
+
+.feed-report-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: feedModalFadeIn 0.2s ease-out;
+}
+
+@keyframes feedModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.feed-report-modal-panel {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 25px rgba(99, 102, 241, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-poll-modal-panel {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.feed-report-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.feed-report-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feed-report-header-title h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.feed-report-header-icon {
+  font-size: 1.25rem;
+}
+
+.feed-report-close-x {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.feed-report-close-x:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.feed-report-form {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.feed-report-subtitle {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.feed-report-error-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+/* --- Grupos e Inputs da Enquete --- */
+.feed-poll-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.feed-poll-form-group label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.feed-poll-text-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #1e293b !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+  font-size: 0.9rem !important;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.feed-poll-text-input:focus {
+  border-color: #6366f1 !important;
+  background: #1e293b !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35) !important;
+}
+
+.feed-poll-text-input::placeholder {
+  color: #64748b !important;
+}
+
+.feed-poll-options-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-poll-opt-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.feed-poll-opt-idx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7d2fe;
+  font-size: 0.86rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.feed-poll-opt-input-row .feed-poll-text-input {
+  flex: 1;
+}
+
+.feed-poll-remove-opt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.feed-poll-remove-opt-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  transform: scale(1.04);
+}
+
+.feed-poll-add-opt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-top: 4px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed rgba(99, 102, 241, 0.45);
+  color: #c7d2fe;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-poll-add-opt-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
+/* --- Rodapé do Modal --- */
+.feed-report-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feed-report-btn-cancel {
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-report-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.feed-poll-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.35);
+}
+
+.feed-poll-btn-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+/* --- Estilos do Modal de Denúncia --- */
+.feed-report-reasons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-report-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-report-radio-label:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.feed-report-radio-label input[type="radio"] {
+  accent-color: #6366f1;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.feed-report-radio-text {
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.feed-report-textarea-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-report-textarea-group label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.feed-report-textarea-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1e293b !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+  font-size: 0.88rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.feed-report-textarea-group textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.feed-report-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}
+
+.feed-report-btn-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+}
+
+.feed-report-success-state {
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.feed-report-success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  border: 2px solid #10b981;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.feed-report-success-text {
+  font-size: 0.95rem;
+  color: #e2e8f0;
+  margin: 0;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+/* Modais de Confirmação e Exclusão do Feed */
+.feed-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+}
+
+.feed-modal-container {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  max-width: 420px;
+  width: 100%;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+}
+
+.feed-modal-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.feed-modal-alert-icon { color: #ef4444; }
+.feed-modal-title { font-size: 1.2rem; font-weight: 700; color: #ffffff; margin: 0 0 8px; }
+.feed-modal-message { font-size: 0.88rem; color: #94a3b8; margin: 0 0 20px; line-height: 1.5; }
+.feed-modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+.feed-modal-cancel-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+}
+
+.feed-modal-confirm-btn {
+  background: #ef4444;
+  border: none;
+  color: #ffffff;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+}

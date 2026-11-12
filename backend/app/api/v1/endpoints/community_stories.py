@@ -25,6 +25,7 @@ from app.schemas.community_stories import (
 from app.api.v1.endpoints.users import get_current_user
 from app.services.gamification_service import award_points
 from app.services.chat_encryption_service import encrypt_dm_message
+from app.services.community_strikes_service import check_user_is_banned
 from app.core.logger import logger
 
 router = APIRouter()
@@ -198,6 +199,11 @@ def create_story(
     Publica um novo story com validade padrão de 24 horas.
     Concede +5 XP de gamificação (limite de 5 stories/dia = 25 XP/dia).
     """
+    if check_user_is_banned(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você está banido da comunidade por acumular 3 strikes e não pode publicar stories."
+        )
     now = datetime.utcnow()
     expires = now + timedelta(hours=24)
 

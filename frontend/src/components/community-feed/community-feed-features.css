@@ -1,0 +1,464 @@
+/* ==========================================================================
+   COMMUNITY FEED V2 - RECURSOS AVANÇADOS (ENQUETES, CATEGORIAS, DESTAQUES)
+   ========================================================================== */
+
+/* --- Post Fixado com Destaque Neon --- */
+.feed-post-card.feed-post-pinned-neon {
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.12), inset 0 0 15px rgba(99, 102, 241, 0.04);
+}
+
+.feed-pinned-badge.feed-pinned-neon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+/* --- Badge de Elo RPG do Autor e Comentários --- */
+.feed-author-elo-badge,
+.feed-comment-elo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+/* --- Tag de Categoria no Post --- */
+.feed-post-category-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.feed-post-category-tag.tag-vitoria {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.feed-post-category-tag.tag-duvida {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.feed-post-category-tag.tag-dica {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.feed-post-category-tag.tag-aviso {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.feed-post-category-tag.tag-networking {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* --- Pílulas de Categoria (FeedCategoryPills) --- */
+.feed-category-pills-container {
+  width: 100%;
+  margin: 12px 0 16px 0;
+}
+
+.feed-category-pills-scroll {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.feed-category-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.feed-category-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.feed-category-pill-btn.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+  border-color: #6366f1;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+}
+
+/* --- Widget de Enquete (FeedPollWidget) --- */
+.feed-poll-container {
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feed-poll-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.feed-poll-icon {
+  font-size: 1.1rem;
+}
+
+.feed-poll-question {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.feed-poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-poll-vote-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.feed-poll-vote-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #ffffff;
+}
+
+.feed-poll-radio-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.feed-poll-vote-btn:hover .feed-poll-radio-circle {
+  border-color: #6366f1;
+}
+
+/* Resultado da Enquete com Barra de Progresso */
+.feed-poll-result-bar {
+  position: relative;
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.feed-poll-result-bar.voted {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.feed-poll-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35));
+  border-radius: 7px 0 0 7px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feed-poll-result-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 14px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: #f1f5f9;
+}
+
+.feed-poll-my-badge {
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.feed-poll-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* --- Barra de Extras na Criação (FeedPostExtrasBar) --- */
+.feed-create-extras-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feed-category-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.feed-category-icon {
+  color: #94a3b8;
+}
+
+.feed-category-select {
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.feed-category-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.feed-attach-poll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-attach-poll-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
+.feed-poll-attached-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
+  font-size: 0.8rem;
+}
+
+.feed-poll-remove-badge-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.feed-poll-remove-badge-btn:hover {
+  color: #ef4444;
+}
+
+/* --- Estilos do Modal de Criação de Enquetes (FeedCreatePollModal) --- */
+.feed-poll-modal-panel {
+  max-width: 520px;
+  background: #0f172a;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.15);
+}
+
+.feed-poll-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.feed-poll-form-group label {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.feed-poll-text-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.feed-poll-text-input:focus {
+  border-color: #6366f1;
+  background: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+.feed-poll-text-input::placeholder {
+  color: #64748b;
+}
+
+.feed-poll-options-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-poll-opt-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.feed-poll-opt-idx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  font-size: 0.84rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.feed-poll-opt-input-row .feed-poll-text-input {
+  flex: 1;
+}
+
+.feed-poll-remove-opt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.feed-poll-remove-opt-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  transform: scale(1.05);
+}
+
+.feed-poll-add-opt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-poll-add-opt-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
+.feed-poll-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+.feed-poll-btn-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}

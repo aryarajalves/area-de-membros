@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
     birth_date: Optional[date] = None
     avatar_url: Optional[str] = None
     playback_rate: Optional[float] = 1.0
+    autoplay_enabled: Optional[bool] = True
     created_at: datetime
     first_login_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
@@ -118,6 +119,7 @@ class InviteResponse(BaseModel):
     allowed_course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = []
     playback_rate: Optional[float] = 1.0
+    autoplay_enabled: Optional[bool] = True
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -157,6 +159,7 @@ class UserProfileUpdate(BaseModel):
     birth_date: Optional[date] = None
     avatar_url: Optional[str] = None
     playback_rate: Optional[float] = None
+    autoplay_enabled: Optional[bool] = None
     password: Optional[str] = None
 
     @field_validator("birth_date", mode="before")

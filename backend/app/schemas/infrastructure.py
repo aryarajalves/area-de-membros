@@ -42,6 +42,19 @@ class DatabaseMetrics(BaseModel):
     peak_pct_today: float
     peak_time_today: str
     history_24h: List[ConnectionHistoryItem]
+    project_active_connections: Optional[int] = 1
+    project_idle_connections: Optional[int] = 0
+    project_total_open: Optional[int] = 1
+    workers_count: Optional[int] = 4
+    pool_base_per_worker: Optional[int] = 30
+    overflow_per_worker: Optional[int] = 20
+    project_max_connections: Optional[int] = 200
+    global_connections_total: Optional[int] = 1
+    global_active_connections: Optional[int] = 1
+    global_idle_connections: Optional[int] = 0
+    postgres_max_connections: Optional[int] = 100
+    database_size_pretty: Optional[str] = "20 MB"
+    cluster_size_pretty: Optional[str] = "28 MB"
 
 
 class InfrastructureOverview(BaseModel):

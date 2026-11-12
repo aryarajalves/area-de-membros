@@ -1,0 +1,362 @@
+/* ==============================================================================
+   FEED SOCIAL - MODAL DE STRIKES E RECURSOS DO USUÁRIO (DARK NEON)
+   ============================================================================== */
+
+.feed-strikes-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: feedStrikesFadeIn 0.2s ease-out;
+}
+
+@keyframes feedStrikesFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.feed-strikes-modal-panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(239, 68, 68, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.feed-strikes-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 10px;
+}
+
+.feed-strikes-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.feed-strikes-modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.feed-strikes-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.feed-strikes-modal-title-wrap {
+  padding: 0 22px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feed-strikes-modal-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.feed-strikes-modal-subtitle {
+  margin: 6px 0 16px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Medidor de 3 Strikes */
+.feed-strikes-meter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.feed-strikes-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feed-strikes-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.feed-strikes-step.active {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.feed-strikes-step.active .feed-strikes-step-circle {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.feed-strikes-step.banned {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.feed-strikes-step.banned .feed-strikes-step-circle {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+
+.feed-strikes-step-label {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Lista de Strikes */
+.feed-strikes-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feed-strikes-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.feed-strikes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 40px 16px;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.feed-strike-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-strike-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feed-strike-item-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.feed-strike-item-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.feed-strike-item-reason strong {
+  color: #f87171;
+  font-size: 0.85rem;
+}
+
+.feed-strike-item-reason span {
+  color: #f1f5f9;
+  font-size: 0.85rem;
+}
+
+.feed-strike-item-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+/* Recurso */
+.feed-strike-appeal-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.feed-strike-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.feed-strike-status-pill.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.feed-strike-status-pill.approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.feed-strike-status-pill.rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.feed-strike-open-appeal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.feed-strike-open-appeal-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+  color: #ffffff;
+}
+
+/* Form Recurso */
+.feed-strike-appeal-form {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-strike-appeal-label {
+  font-size: 0.78rem;
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.feed-strike-appeal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  resize: vertical;
+}
+
+.feed-strike-appeal-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.feed-strike-appeal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.feed-strike-cancel-appeal-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.feed-strike-submit-appeal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #3b82f6;
+  border: 1px solid #60a5fa;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.feed-strike-submit-appeal-btn:hover:not(:disabled) {
+  background: #2563eb;
+}

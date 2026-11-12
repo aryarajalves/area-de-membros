@@ -5,6 +5,7 @@ import { fetchUserProfile, toggleFollowUser } from './communityFeedApi';
 import { calculateStudentLevel, getTierBadgeStyle } from '../../utils/gamificationLevelUtils';
 import FeedEditProfileModal from './FeedEditProfileModal';
 import FeedFollowListModal from './FeedFollowListModal';
+import FeedPostDetailModal from './FeedPostDetailModal';
 import './community-feed-profile.css';
 
 export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost, onProfileUpdated }) {
@@ -14,6 +15,8 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [followListState, setFollowListState] = useState({ isOpen: false, tab: 'followers' });
+  const [selectedPostDetail, setSelectedPostDetail] = useState(null);
+  const [postsFilter, setPostsFilter] = useState('recent');
 
   const loadProfile = async (targetId) => {
     if (!targetId) return;
@@ -310,14 +313,43 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
 
                 {/* Grade de Publicações */}
                 <div className="feed-profile-posts-section">
-                  <div className="feed-profile-posts-title">Publicações</div>
+                  <div className="feed-profile-posts-header">
+                    <div className="feed-profile-posts-title">Publicações</div>
+                    <div className="feed-profile-filter-tabs" data-testid="feed-profile-filter-tabs">
+                      {[
+                        { id: 'recent', label: 'Recentes' },
+                        { id: 'likes', label: 'Mais Curtidas' },
+                        { id: 'comments', label: 'Mais Comentadas' },
+                        { id: 'saves', label: 'Mais Salvas' },
+                        { id: 'shares', label: 'Compartilhadas' },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={`feed-profile-filter-btn ${postsFilter === f.id ? 'active' : ''}`}
+                          onClick={() => setPostsFilter(f.id)}
+                          data-testid={`feed-profile-filter-${f.id}`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {(!profile.posts || profile.posts.length === 0) ? (
                     <div className="feed-likes-empty" data-testid="feed-profile-no-posts">
                       <p>Nenhuma publicação feita ainda.</p>
                     </div>
                   ) : (
                     <div className="feed-profile-grid" data-testid="feed-profile-grid">
-                      {profile.posts.map((post) => {
+                      {[...profile.posts]
+                        .sort((a, b) => {
+                          if (postsFilter === 'likes') return (b.likes_count || 0) - (a.likes_count || 0);
+                          if (postsFilter === 'comments') return (b.comments_count || 0) - (a.comments_count || 0);
+                          if (postsFilter === 'saves') return (b.saves_count || 0) - (a.saves_count || 0);
+                          if (postsFilter === 'shares') return (b.shares_count || 0) - (a.shares_count || 0);
+                          return (b.id || 0) - (a.id || 0);
+                        })
+                        .map((post) => {
                         const hasMedia = post.media_urls && post.media_urls.length > 0;
                         const isVideo = post.media_type === 'video';
                         const thumb = post.media_thumbnail_url || (hasMedia ? post.media_urls[0] : null);
@@ -327,8 +359,8 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
                             key={post.id}
                             className="feed-profile-grid-item"
                             onClick={() => {
+                              setSelectedPostDetail(post);
                               if (onSelectPost) onSelectPost(post.id);
-                              onClose();
                             }}
                             data-testid={`feed-profile-grid-item-${post.id}`}
                           >
@@ -385,6 +417,32 @@ export default function FeedProfileModal({ isOpen, userId, onClose, onSelectPost
           loadProfile(selectedUserId);
         }}
       />
+
+      {/* Modal da Publicação Maximizada */}
+      {selectedPostDetail && (
+        <FeedPostDetailModal
+          isOpen={Boolean(selectedPostDetail)}
+          post={selectedPostDetail}
+          postId={selectedPostDetail.id}
+          currentUser={{ id: profile?.is_me ? profile?.id : null }}
+          onClose={() => setSelectedPostDetail(null)}
+          onPostUpdated={(updatedPost) => {
+            setSelectedPostDetail(updatedPost);
+            setProfile((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    posts: prev.posts?.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
+                  }
+                : prev
+            );
+          }}
+          onOpenProfile={(uid) => {
+            setSelectedPostDetail(null);
+            loadProfile(uid);
+          }}
+        />
+      )}
     </>
   );
 }

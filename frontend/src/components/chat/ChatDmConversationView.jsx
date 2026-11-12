@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Loader2, ExternalLink, Lock } from 'lucide-react';
-import { formatMessageWithMentions, resolveButtonUrl } from './chatMentionUtils';
+import { formatMessageWithMentions, resolveButtonUrl, handleInternalNavigation } from './chatMentionUtils';
 import ChatDateSeparator from './ChatDateSeparator';
 import { isSameDay } from './chatDateUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
@@ -198,7 +198,19 @@ export default function ChatDmConversationView({
                                 }
                                 return;
                               }
-                              if (m.button_action_type === 'course' || m.button_action_type === 'lesson' || resolvedHref.startsWith('/')) {
+                              if (
+                                m.button_action_type === 'course' ||
+                                m.button_action_type === 'lesson' ||
+                                resolvedHref.startsWith('internal://') ||
+                                resolvedHref.startsWith('/courses') ||
+                                resolvedHref.includes('course_id=') ||
+                                resolvedHref.includes('lesson_id=')
+                              ) {
+                                e.preventDefault();
+                                handleInternalNavigation(m.button_url || resolvedHref);
+                                return;
+                              }
+                              if (resolvedHref.startsWith('/')) {
                                 e.preventDefault();
                                 window.location.href = resolvedHref;
                               }

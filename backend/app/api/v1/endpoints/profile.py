@@ -77,6 +77,10 @@ def update_my_profile(
         if 0 < profile_data.playback_rate <= 4.0:
             current_user.playback_rate = round(float(profile_data.playback_rate), 2)
 
+    # Atualizar preferência de reprodução automática de aulas
+    if profile_data.autoplay_enabled is not None:
+        current_user.autoplay_enabled = bool(profile_data.autoplay_enabled)
+
     # 5. Atualizar senha (se não for superadmin)
     if profile_data.password and not is_superadmin:
         clean_pw = profile_data.password.strip()

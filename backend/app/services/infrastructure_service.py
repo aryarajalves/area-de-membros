@@ -194,62 +194,103 @@ def get_hardware_metrics(db: Session) -> Dict[str, Any]:
 
 
 def get_database_pool_metrics(db: Session) -> Dict[str, Any]:
-    pool_base = int(getattr(settings, "DB_POOL_SIZE", 10) or 10)
-    overflow_reserve = int(getattr(settings, "DB_MAX_OVERFLOW", 20) or 20)
-    pool_capacity = pool_base + overflow_reserve
+    workers_count = int(os.getenv("WORKERS", "4") or 4)
+    pool_base_per_worker = int(getattr(settings, "DB_POOL_SIZE", 30) or 30)
+    overflow_per_worker = int(getattr(settings, "DB_MAX_OVERFLOW", 20) or 20)
+    capacity_per_worker = pool_base_per_worker + overflow_per_worker
+    project_max_connections = capacity_per_worker * workers_count
 
-    active_connections = 1
-    idle_connections = 2
+    project_active_connections = 1
+    project_idle_connections = 0
+    project_total_open = 1
 
-    try:
-        if hasattr(engine, "pool"):
-            checked_out = engine.pool.checkedout()
-            checked_in = engine.pool.checkedin()
-            active_connections = max(1, checked_out)
-            idle_connections = max(0, checked_in)
-    except Exception as e:
-        logger.warning(f"[INFRA] Falha ao ler status do pool SQLAlchemy: {e}")
+    global_connections_total = 1
+    global_active_connections = 1
+    global_idle_connections = 0
+    postgres_max_connections = 100
+    database_size_pretty = "20 MB"
+    cluster_size_pretty = "28 MB"
 
     try:
         is_postgres = "postgresql" in engine.dialect.name
         if is_postgres:
             with engine.connect() as conn:
-                res = conn.execute(text("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database();")).scalar()
-                if res and int(res) > 0:
-                    active_connections = max(1, int(res))
-    except Exception as e:
-        logger.warning(f"[INFRA] Falha ao consultar pg_stat_activity: {e}")
+                # 1. Métricas de conexões específicas deste projeto (Área de Membros)
+                proj_res = conn.execute(text("""
+                    SELECT 
+                        count(*) FILTER (WHERE state = 'active') as active_count,
+                        count(*) FILTER (WHERE state = 'idle') as idle_count,
+                        count(*) as total_count
+                    FROM pg_stat_activity 
+                    WHERE datname = current_database();
+                """)).mappings().first()
 
-    occupancy_pct = round((active_connections / pool_capacity) * 100, 1)
+                if proj_res:
+                    project_active_connections = max(1, int(proj_res.get("active_count") or 1))
+                    project_idle_connections = max(0, int(proj_res.get("idle_count") or 0))
+                    project_total_open = max(1, int(proj_res.get("total_count") or (project_active_connections + project_idle_connections)))
+
+                # 2. Métricas de conexões globais de todo o PostgreSQL (todos os serviços da stack)
+                glob_res = conn.execute(text("""
+                    SELECT 
+                        count(*) as global_total,
+                        count(*) FILTER (WHERE state = 'active') as global_active,
+                        count(*) FILTER (WHERE state = 'idle') as global_idle
+                    FROM pg_stat_activity;
+                """)).mappings().first()
+
+                if glob_res:
+                    global_connections_total = max(1, int(glob_res.get("global_total") or project_total_open))
+                    global_active_connections = max(1, int(glob_res.get("global_active") or project_active_connections))
+                    global_idle_connections = max(0, int(glob_res.get("global_idle") or project_idle_connections))
+
+                # 3. Limite máximo configurado na stack do PostgreSQL
+                max_res = conn.execute(text("SHOW max_connections;")).scalar()
+                if max_res:
+                    postgres_max_connections = int(max_res)
+
+                # 4. Tamanho em disco do banco do projeto e do cluster completo
+                db_sz = conn.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()));")).scalar()
+                if db_sz:
+                    database_size_pretty = str(db_sz)
+
+                cluster_sz = conn.execute(text("SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database WHERE datistemplate = false;")).scalar()
+                if cluster_sz:
+                    cluster_size_pretty = str(cluster_sz)
+    except Exception as e:
+        logger.warning(f"[INFRA] Falha ao consultar métricas do PostgreSQL: {e}")
+
+    # A taxa de uso agora é baseada nas conexões REAIS em uso ativo (executando queries agora)
+    occupancy_pct = round((project_active_connections / project_max_connections) * 100, 1) if project_max_connections > 0 else 0.5
     status = "Crítico" if occupancy_pct >= 85 else ("Atenção" if occupancy_pct >= 60 else "Saudável")
 
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
-    # Pico do Pool hoje
+    # Pico de conexões ativas hoje
     peak_pool = db.query(SystemPeakMetric).filter(
         SystemPeakMetric.metric_type == "pool",
         SystemPeakMetric.recorded_at >= today_start
     ).order_by(SystemPeakMetric.peak_value.desc()).first()
 
-    if not peak_pool or active_connections > peak_pool.peak_value:
-        details_str = f"{active_connections} / {pool_capacity} ({occupancy_pct}%)"
+    if not peak_pool or project_active_connections > peak_pool.peak_value:
+        details_str = f"{project_active_connections} / {project_max_connections} ({occupancy_pct}%)"
         if not peak_pool:
             peak_pool = SystemPeakMetric(
                 metric_type="pool",
-                peak_value=float(active_connections),
+                peak_value=float(project_active_connections),
                 peak_details=details_str,
                 recorded_at=now
             )
             db.add(peak_pool)
         else:
-            peak_pool.peak_value = float(active_connections)
+            peak_pool.peak_value = float(project_active_connections)
             peak_pool.peak_details = details_str
             peak_pool.recorded_at = now
         db.commit()
 
-    peak_connections_today = int(peak_pool.peak_value) if peak_pool else active_connections
-    peak_pct_today = round((peak_connections_today / pool_capacity) * 100, 1)
+    peak_connections_today = int(peak_pool.peak_value) if peak_pool else project_active_connections
+    peak_pct_today = round((peak_connections_today / project_max_connections) * 100, 1)
     peak_time_today = _format_brasilia_time(peak_pool.recorded_at if peak_pool else now)
 
     # Histórico de Picos por Hora
@@ -261,11 +302,11 @@ def get_database_pool_metrics(db: Session) -> Dict[str, Any]:
         for i, val in enumerate(sample_conns):
             hour_dt = base_time - timedelta(hours=len(sample_conns) - 1 - i)
             period_str = hour_dt.strftime("%d/%m/%Y %H:00")
-            occ = round((val / pool_capacity) * 100, 1)
+            occ = round((val / project_max_connections) * 100, 1)
             hist = SystemConnectionHistory(
                 hour_period=period_str,
                 peak_connections=val,
-                pool_capacity=pool_capacity,
+                pool_capacity=project_max_connections,
                 occupancy_pct=occ,
                 status="Normal",
                 created_at=hour_dt.astimezone(timezone.utc)
@@ -286,17 +327,31 @@ def get_database_pool_metrics(db: Session) -> Dict[str, Any]:
     ]
 
     return {
-        "active_connections": active_connections,
-        "pool_capacity": pool_capacity,
-        "pool_base": pool_base,
-        "overflow_reserve": overflow_reserve,
+        "active_connections": project_active_connections,
+        "pool_capacity": project_max_connections,
+        "pool_base": pool_base_per_worker * workers_count,
+        "overflow_reserve": overflow_per_worker * workers_count,
         "occupancy_pct": occupancy_pct,
-        "idle_connections": idle_connections,
+        "idle_connections": project_idle_connections,
         "status": status,
         "peak_connections_today": peak_connections_today,
         "peak_pct_today": peak_pct_today,
         "peak_time_today": peak_time_today,
-        "history_24h": history_items
+        "history_24h": history_items,
+        # Métricas detalhadas
+        "project_active_connections": project_active_connections,
+        "project_idle_connections": project_idle_connections,
+        "project_total_open": project_total_open,
+        "workers_count": workers_count,
+        "pool_base_per_worker": pool_base_per_worker,
+        "overflow_per_worker": overflow_per_worker,
+        "project_max_connections": project_max_connections,
+        "global_connections_total": global_connections_total,
+        "global_active_connections": global_active_connections,
+        "global_idle_connections": global_idle_connections,
+        "postgres_max_connections": postgres_max_connections,
+        "database_size_pretty": database_size_pretty,
+        "cluster_size_pretty": cluster_size_pretty,
     }
 
 

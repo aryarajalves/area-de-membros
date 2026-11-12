@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert, Calendar } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ShieldAlert, Calendar, PlayCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ProfileAvatarSection from './ProfileAvatarSection';
 import ProfileGamificationCard from './ProfileGamificationCard';
@@ -27,6 +27,7 @@ export default function PlatformProfileTab({
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [birthDate, setBirthDate] = useState(currentUser?.birth_date ? String(currentUser.birth_date).slice(0, 10) : '');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar_url || '');
+  const [autoplayEnabled, setAutoplayEnabled] = useState(currentUser?.autoplay_enabled !== false);
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,6 +42,7 @@ export default function PlatformProfileTab({
       setPhone(currentUser.phone || '');
       setBirthDate(currentUser.birth_date ? String(currentUser.birth_date).slice(0, 10) : '');
       setAvatarUrl(currentUser.avatar_url || '');
+      setAutoplayEnabled(currentUser.autoplay_enabled !== false);
     }
   }, [currentUser]);
 
@@ -76,6 +78,7 @@ export default function PlatformProfileTab({
         avatar_url: avatarUrl,
         phone: (phone || '').trim(),
         birth_date: birthDate ? birthDate : null,
+        autoplay_enabled: autoplayEnabled,
       };
 
       if (!isSuperAdmin) {
@@ -97,6 +100,11 @@ export default function PlatformProfileTab({
 
       if (res.ok) {
         const updated = await res.json();
+        try {
+          localStorage.setItem('area_de_membros_autoplay_enabled', String(autoplayEnabled));
+        } catch {
+          // ignora
+        }
         if (onUserUpdated) {
           onUserUpdated(updated);
         }
@@ -367,6 +375,66 @@ export default function PlatformProfileTab({
               </div>
             </>
           )}
+        </div>
+
+        {/* Bloco de Preferências de Aulas e Reprodução */}
+        <div
+          style={{
+            borderTop: cardBorder,
+            paddingTop: '20px',
+            marginBottom: '26px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ flex: 1, minWidth: '260px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <PlayCircle size={16} color="#38bdf8" />
+                <h4 style={{ fontSize: '14.5px', fontWeight: 600, margin: 0, color: textColor }}>
+                  Reprodução Automática de Aulas
+                </h4>
+              </div>
+              <p style={{ fontSize: '12.5px', color: subTextColor, margin: 0, lineHeight: 1.4 }}>
+                Avançar automaticamente para a próxima aula com contagem de 5 segundos ao concluir o vídeo. Desative caso prefira assistir no seu próprio ritmo sem pular sozinho.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoplayEnabled}
+              onClick={() => setAutoplayEnabled(!autoplayEnabled)}
+              data-testid="switch-autoplay-enabled"
+              title={autoplayEnabled ? 'Desativar avanço automático' : 'Ativar avanço automático'}
+              style={{
+                position: 'relative',
+                width: '48px',
+                height: '26px',
+                borderRadius: '13px',
+                backgroundColor: autoplayEnabled ? '#0284c7' : (isLightBg ? '#cbd5e1' : 'rgba(255, 255, 255, 0.15)'),
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                flexShrink: 0,
+                padding: 0,
+                outline: 'none',
+                boxShadow: autoplayEnabled ? '0 0 10px rgba(2, 132, 199, 0.5)' : 'none',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: autoplayEnabled ? '25px' : '3px',
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                  transition: 'left 0.2s ease',
+                }}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Botão de Envio */}

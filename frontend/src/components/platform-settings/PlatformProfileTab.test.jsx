@@ -338,4 +338,50 @@ describe('PlatformProfileTab Component', () => {
       expect(sentPayload.birth_date).toBe('1995-10-15');
     });
   });
+
+  it('permite alternar e salvar a opção de desativar reprodução automática de aulas', async () => {
+    const onUserUpdated = vi.fn();
+    let sentPayload = null;
+
+    global.fetch = vi.fn().mockImplementation((url, options = {}) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/auth/me') && options.method === 'PATCH') {
+        sentPayload = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...mockAluno,
+              autoplay_enabled: sentPayload.autoplay_enabled,
+            }),
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAluno),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderProfileTab({ ...mockAluno, autoplay_enabled: true }, onUserUpdated);
+
+    const switchBtn = screen.getByTestId('switch-autoplay-enabled');
+    expect(switchBtn).toBeInTheDocument();
+    expect(switchBtn).toHaveAttribute('aria-checked', 'true');
+
+    // Desativa a reprodução automática
+    fireEvent.click(switchBtn);
+    expect(switchBtn).toHaveAttribute('aria-checked', 'false');
+
+    // Clica em salvar
+    fireEvent.click(screen.getByTestId('btn-save-profile'));
+
+    await waitFor(() => {
+      expect(onUserUpdated).toHaveBeenCalled();
+      expect(sentPayload).not.toBeNull();
+      expect(sentPayload.autoplay_enabled).toBe(false);
+    });
+  });
 });

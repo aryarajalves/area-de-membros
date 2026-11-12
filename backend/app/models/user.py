@@ -19,10 +19,13 @@ class User(Base):
     avatar_url = Column(String, nullable=True) # Foto/logo de perfil do usuário
     bio = Column(String(150), nullable=True) # Biografia do perfil no Feed Social (estilo Instagram, máx 150 caracteres)
     bio_link = Column(String(255), nullable=True) # Link/website externo na bio do perfil
+    community_strikes_count = Column(Integer, default=0, nullable=False) # Quantidade de strikes acumulados na comunidade
+    is_community_banned = Column(Boolean, default=False, nullable=False) # Se o usuário está banido da comunidade (3 strikes)
     token_version = Column(Integer, default=1, nullable=False) # Invalidação imediata de JWT ao alterar senha/deslogar
     failed_login_attempts = Column(Integer, default=0, nullable=False) # Contador de tentativas falhas de login
     locked_until = Column(DateTime, nullable=True) # Timestamp de bloqueio temporário por força bruta
     playback_rate = Column(Float, default=1.0, nullable=True) # Velocidade preferida de reprodução do player
+    autoplay_enabled = Column(Boolean, default=True, nullable=False) # Se a reprodução automática da próxima aula está ativada
     ai_tutor_active = Column(Boolean, default=False, nullable=False) # Se o usuário possui assinatura ativa do Tutor IA
     ai_tutor_expires_at = Column(DateTime, nullable=True) # Data de expiração/renovação da assinatura do Tutor IA
     ai_tutor_custom_monthly_limit = Column(Integer, nullable=True) # Limite mensal customizado (None = global, -1 = VIP ilimitado)

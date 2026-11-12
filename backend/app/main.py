@@ -267,6 +267,7 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS passing_score_pct INTEGER DEFAULT 70;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS import_identifier VARCHAR;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS autoplay_enabled BOOLEAN DEFAULT TRUE NOT NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;
@@ -524,6 +525,49 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_follows_following_id ON community_follows(following_id);
 
                         ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0 NOT NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS bookmarks_count INTEGER DEFAULT 0 NOT NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS shares_count INTEGER DEFAULT 0 NOT NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'geral' NOT NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS location VARCHAR(100) NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP WITH TIME ZONE NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_scheduled BOOLEAN DEFAULT FALSE NOT NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS poll_question VARCHAR(255) NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS poll_options JSONB NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS achievement_type VARCHAR(50) NULL;
+                        ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS achievement_data JSONB NULL;
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_category ON community_posts(category);
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_scheduled_at ON community_posts(scheduled_at);
+                        CREATE INDEX IF NOT EXISTS ix_community_posts_is_scheduled ON community_posts(is_scheduled);
+
+                        ALTER TABLE community_post_comments ADD COLUMN IF NOT EXISTS media_type VARCHAR(50) DEFAULT 'text' NOT NULL;
+                        ALTER TABLE community_post_comments ADD COLUMN IF NOT EXISTS media_url TEXT NULL;
+
+                        CREATE TABLE IF NOT EXISTS community_post_poll_votes (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            option_id INTEGER NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_post_poll_vote UNIQUE (post_id, user_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_poll_votes_post_id ON community_post_poll_votes(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_poll_votes_user_id ON community_post_poll_votes(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_poll_votes_option_id ON community_post_poll_votes(option_id);
+
+                        CREATE TABLE IF NOT EXISTS community_post_reports (
+                            id SERIAL PRIMARY KEY,
+                            post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                            reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            reason VARCHAR(255) NOT NULL,
+                            description TEXT NULL,
+                            status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_community_post_report UNIQUE (post_id, reporter_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_post_reports_post_id ON community_post_reports(post_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_reports_reporter_id ON community_post_reports(reporter_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_post_reports_status ON community_post_reports(status);
+
                         CREATE TABLE IF NOT EXISTS community_post_views (
                             id SERIAL PRIMARY KEY,
                             post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
@@ -533,6 +577,28 @@ async def lifespan(app: FastAPI):
                         );
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id);
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id);
+
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS community_strikes_count INTEGER DEFAULT 0 NOT NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_community_banned BOOLEAN DEFAULT FALSE NOT NULL;
+
+                        CREATE TABLE IF NOT EXISTS community_strikes (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            moderator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                            post_id INTEGER REFERENCES community_posts(id) ON DELETE SET NULL,
+                            comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE SET NULL,
+                            reason VARCHAR(255) NOT NULL,
+                            description TEXT NULL,
+                            strike_number INTEGER DEFAULT 1 NOT NULL,
+                            appeal_status VARCHAR(50) DEFAULT 'none' NOT NULL,
+                            appeal_reason TEXT NULL,
+                            appeal_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                            appeal_reviewed_at TIMESTAMP WITH TIME ZONE NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_community_strikes_user_id ON community_strikes(user_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_strikes_moderator_id ON community_strikes(moderator_id);
+                        CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_status ON community_strikes(appeal_status);
 
                         CREATE TABLE IF NOT EXISTS community_stories (
                             id SERIAL PRIMARY KEY,
@@ -587,6 +653,7 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP",
                         "ALTER TABLE users ADD COLUMN playback_rate FLOAT DEFAULT 1.0",
+                        "ALTER TABLE users ADD COLUMN autoplay_enabled BOOLEAN DEFAULT 1",
                         "ALTER TABLE users ADD COLUMN ai_tutor_active BOOLEAN DEFAULT 0",
                         "ALTER TABLE users ADD COLUMN ai_tutor_expires_at TIMESTAMP NULL",
                         "ALTER TABLE users ADD COLUMN ai_tutor_custom_monthly_limit INTEGER NULL",
@@ -692,9 +759,28 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_follows_follower_id ON community_follows(follower_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_follows_following_id ON community_follows(following_id)"))
                         conn.execute(text("ALTER TABLE community_posts ADD COLUMN views_count INTEGER DEFAULT 0 NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN bookmarks_count INTEGER DEFAULT 0 NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN shares_count INTEGER DEFAULT 0 NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN category VARCHAR(50) DEFAULT 'geral' NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN location VARCHAR(100) NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN scheduled_at TIMESTAMP NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN is_scheduled BOOLEAN DEFAULT 0 NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN poll_question VARCHAR(255) NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN poll_options TEXT NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN achievement_type VARCHAR(50) NULL"))
+                        conn.execute(text("ALTER TABLE community_posts ADD COLUMN achievement_data TEXT NULL"))
+                        conn.execute(text("ALTER TABLE community_post_comments ADD COLUMN media_type VARCHAR(50) DEFAULT 'text' NOT NULL"))
+                        conn.execute(text("ALTER TABLE community_post_comments ADD COLUMN media_url TEXT NULL"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_poll_votes (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, option_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_poll_vote UNIQUE (post_id, user_id))"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_reports (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, reason VARCHAR(255) NOT NULL, description TEXT NULL, status VARCHAR(50) DEFAULT 'pending' NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_report UNIQUE (post_id, reporter_id))"))
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_views (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_view UNIQUE (post_id, user_id))"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id)"))
+                        conn.execute(text("ALTER TABLE users ADD COLUMN community_strikes_count INTEGER DEFAULT 0 NOT NULL"))
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_community_banned BOOLEAN DEFAULT 0 NOT NULL"))
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS community_strikes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, moderator_id INTEGER REFERENCES users(id) ON DELETE SET NULL, post_id INTEGER REFERENCES community_posts(id) ON DELETE SET NULL, comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE SET NULL, reason VARCHAR(255) NOT NULL, description TEXT NULL, strike_number INTEGER DEFAULT 1 NOT NULL, appeal_status VARCHAR(50) DEFAULT 'none' NOT NULL, appeal_reason TEXT NULL, appeal_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL, appeal_reviewed_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_user_id ON community_strikes(user_id)"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_status ON community_strikes(appeal_status)"))
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_stories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_url TEXT NOT NULL, media_type VARCHAR(20) DEFAULT 'image' NOT NULL, media_thumbnail_url TEXT NULL, caption VARCHAR(500) NULL, duration_seconds INTEGER DEFAULT 5 NOT NULL, is_highlight BOOLEAN DEFAULT 0 NOT NULL, highlight_title VARCHAR(100) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, expires_at TIMESTAMP NOT NULL)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_user_id ON community_stories(user_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_stories_expires_at ON community_stories(expires_at)"))

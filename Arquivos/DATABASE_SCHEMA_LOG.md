@@ -2,6 +2,65 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [12/11/2026] - Perfil do Usuário: Opção de Desativar Reprodução Automática de Aulas (autoplay_enabled em users)
+- **Objetivo:** Permitir ao aluno ou usuário ativar ou desativar o avanço/reprodução automática para a próxima aula ao término do vídeo através de uma configuração clara no seu perfil.
+- **Tabela Afetada:**
+  - `users`:
+    - `autoplay_enabled`: BOOLEAN DEFAULT TRUE NOT NULL (Flag indicando se a reprodução/avanço automático está ativo)
+- **Script de Migração:** `backend/scripts/add_autoplay_enabled_to_users.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE users ADD COLUMN IF NOT EXISTS autoplay_enabled BOOLEAN DEFAULT TRUE NOT NULL;` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [11/11/2026] - Feed Social: Suporte a Localização e Agendamento de Postagens (location, scheduled_at, is_scheduled em community_posts)
+- **Objetivo:** Permitir adicionar localização física/geográfica nas publicações e agendamento de postagens com data/hora futura e visualização exclusiva para o autor e administradores.
+- **Tabela Afetada:**
+  - `community_posts`:
+    - `location`: VARCHAR(100) NULL (Localização da publicação, ex: 'São Paulo, SP')
+    - `scheduled_at`: TIMESTAMP WITH TIME ZONE NULL (Data e hora programada para liberação automática)
+    - `is_scheduled`: BOOLEAN DEFAULT FALSE NOT NULL (Flag indicando post agendado)
+    - Índices: `ix_community_posts_scheduled_at`, `ix_community_posts_is_scheduled`
+- **Script de Migração:** `backend/scripts/migrate_post_location_and_scheduling.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS ...` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [11/11/2026] - Feed Social: Sistema de 3 Strikes, Banimento Automático e Recursos (community_strikes e tabela users)
+- **Objetivo:** Implementar penalidades graduais estilo YouTube: até 3 strikes por violação de regras da comunidade, com banimento automático ao atingir o 3º strike, histórico detalhado e sistema de recursos para os alunos.
+- **Tabelas Afetadas:**
+  - `users`:
+    - `community_strikes_count`: INTEGER DEFAULT 0 NOT NULL (quantidade de strikes ativos)
+    - `is_community_banned`: BOOLEAN DEFAULT FALSE NOT NULL (flag de banimento)
+  - `community_strikes` (Nova Tabela):
+    - `id`: SERIAL PRIMARY KEY
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `moderator_id`: INTEGER REFERENCES users(id) ON DELETE SET NULL
+    - `post_id`: INTEGER REFERENCES community_posts(id) ON DELETE SET NULL
+    - `comment_id`: INTEGER REFERENCES community_post_comments(id) ON DELETE SET NULL
+    - `reason`: VARCHAR(255) NOT NULL
+    - `description`: TEXT NULL
+    - `strike_number`: INTEGER DEFAULT 1 NOT NULL
+    - `appeal_status`: VARCHAR(50) DEFAULT 'none' NOT NULL ('none', 'pending', 'approved', 'rejected')
+    - `appeal_reason`: TEXT NULL
+    - `appeal_reviewed_by`: INTEGER REFERENCES users(id) ON DELETE SET NULL
+    - `appeal_reviewed_at`: TIMESTAMP WITH TIME ZONE NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+- **Script de Migração:** `backend/scripts/migrate_community_strikes_and_bans.py`
+- **Auto-migração no Startup:** Incluído no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [11/11/2026] - Feed Social: Contadores de Salvos e Compartilhamentos (bookmarks_count e shares_count em community_posts)
+- **Objetivo:** Adicionar rastreamento de quantidade de salvamentos (`bookmarks_count`) e compartilhamentos (`shares_count`) para suportar os novos filtros do feed (mais comentadas, mais curtidas, mais salvas e mais compartilhadas).
+- **Tabela Afetada:**
+  - `community_posts`:
+    - `bookmarks_count`: INTEGER DEFAULT 0 NOT NULL (quantidade de vezes que a publicação foi salva)
+    - `shares_count`: INTEGER DEFAULT 0 NOT NULL (quantidade de compartilhamentos)
+- **Script de Migração:** `backend/scripts/add_community_feed_shares_and_bookmarks_count.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS ...` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [11/11/2026] - Otimização de Banco de Dados: Indexação de 100% das Chaves Estrangeiras (Foreign Keys)
 - **Objetivo:** Auditar todas as 111 ForeignKeys de todos os modelos SQLAlchemy e garantir que 100% delas possuam índices explícitos criados no banco, eliminando risco de Full Table Scans durante JOINs e exclusões em cascata.
 - **Novos Índices Criados (PostgreSQL e SQLite):**
@@ -1207,4 +1266,39 @@ ecording_url: VARCHAR(1024).
     - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 - **Auto-migração no Startup:** Incluído no `lifespan` do `backend/app/main.py` (PostgreSQL e SQLite).
 - **Script de Migração:** `backend/scripts/migrate_community_stories.py`
+
+---
+
+### [11/11/2026] - Community Feed v2: Enquetes, Categorias, Moderação e Áudio
+- **Novas Colunas em `community_posts`:**
+  - `category`: VARCHAR(50) DEFAULT 'geral' (com índice `ix_community_posts_category`)
+  - `poll_question`: VARCHAR(255) NULL
+  - `poll_options`: JSON NULL
+  - `achievement_type`: VARCHAR(50) NULL
+  - `achievement_data`: JSON NULL
+- **Novas Colunas em `community_post_comments`:**
+  - `media_type`: VARCHAR(20) DEFAULT 'text'
+  - `media_url`: TEXT NULL
+- **Novas Tabelas Criadas:**
+  - `community_post_poll_votes`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `option_id`: INTEGER NOT NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    - UNIQUE (`post_id`, `user_id`)
+    - Índices: `ix_community_post_poll_votes_post_id`, `ix_community_post_poll_votes_user_id`
+  - `community_post_reports`:
+    - `id`: SERIAL PRIMARY KEY
+    - `post_id`: INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE
+    - `reporter_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `reason`: VARCHAR(50) NOT NULL
+    - `description`: TEXT NULL
+    - `status`: VARCHAR(20) NOT NULL DEFAULT 'pending'
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    - UNIQUE (`post_id`, `reporter_id`)
+    - Índices: `ix_community_post_reports_post_id`, `ix_community_post_reports_reporter_id`
+- **Auto-migração no Startup:** Incluído no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+- **Script de Migração:** `backend/scripts/add_community_feed_features_v2.py`
+
 

@@ -41,6 +41,7 @@ export function handleInternalNavigation(url) {
       const [courseId] = raw.split('?');
       const cleanCourseId = courseId?.trim();
       if (cleanCourseId) {
+        window.dispatchEvent(new CustomEvent('close_dm_modal'));
         window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open_course_lesson', {
@@ -58,6 +59,7 @@ export function handleInternalNavigation(url) {
       const cleanCourseId = parts[0]?.trim();
       const cleanLessonId = parts[1]?.trim();
       if (cleanCourseId) {
+        window.dispatchEvent(new CustomEvent('close_dm_modal'));
         window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open_course_lesson', {
@@ -73,8 +75,34 @@ export function handleInternalNavigation(url) {
       const [tabId] = raw.split('?');
       const cleanTabId = tabId?.trim();
       if (cleanTabId) {
+        window.dispatchEvent(new CustomEvent('close_dm_modal'));
         window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: cleanTabId } }));
         return;
+      }
+    }
+
+    if (url.includes('course_id=') || url.includes('courseId=') || url.startsWith('/courses')) {
+      try {
+        const dummyUrl = new URL(url, 'http://localhost');
+        const courseId = dummyUrl.searchParams.get('course_id') || dummyUrl.searchParams.get('courseId');
+        const moduleId = dummyUrl.searchParams.get('module_id') || dummyUrl.searchParams.get('moduleId');
+        const lessonId = dummyUrl.searchParams.get('lesson_id') || dummyUrl.searchParams.get('lessonId');
+        if (courseId) {
+          window.dispatchEvent(new CustomEvent('close_dm_modal'));
+          window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('open_course_lesson', {
+              detail: {
+                courseId: Number(courseId),
+                moduleId: moduleId ? Number(moduleId) : undefined,
+                lessonId: lessonId ? Number(lessonId) : null
+              }
+            }));
+          }, 80);
+          return;
+        }
+      } catch (err) {
+        console.error('Erro ao interpretar rota de curso/aula:', err);
       }
     }
 

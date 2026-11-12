@@ -134,6 +134,12 @@ describe('chatMentionUtils', () => {
 
       expect(dispatchEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
+          type: 'close_dm_modal',
+        })
+      );
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
           type: 'app:navigate_tab',
           detail: { tab: 'courses' },
         })
@@ -145,6 +151,32 @@ describe('chatMentionUtils', () => {
         expect.objectContaining({
           type: 'open_course_lesson',
           detail: { courseId: 77, lessonId: 888 },
+        })
+      );
+    });
+
+    it('navigates to lesson using legacy course query url format', () => {
+      handleInternalNavigation('/courses?course_id=50&module_id=8&lesson_id=120');
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'close_dm_modal',
+        })
+      );
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'app:navigate_tab',
+          detail: { tab: 'courses' },
+        })
+      );
+
+      vi.advanceTimersByTime(100);
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'open_course_lesson',
+          detail: { courseId: 50, moduleId: 8, lessonId: 120 },
         })
       );
     });

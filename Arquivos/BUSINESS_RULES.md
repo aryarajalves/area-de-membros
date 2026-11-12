@@ -416,7 +416,12 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - **Overlay Central Neon de Buffering:** Sempre que a transmissÃ£o precisa carregar dados na rede (`waiting`, `stalled`, `seeking`), o centro da tela exibe um painel elegante translÃºcido com spinner animado e mensagens claras ("Carregando vÃ­deo... Baixando dados de transmissÃ£o, aguarde..."), eliminando a sensaÃ§Ã£o de tela congelada.
     - **Barra de Buffer Visual na Timeline:** O trilho de progresso exibe uma barra de buffer translÃºcida (`video-buffered-bar`) Ã  frente do tempo atual, permitindo acompanhar o carregamento contÃ­nuo dos pacotes de mÃ­dia.
     - **Streaming e Compatibilidade de Formatos:** O backend serve requisiÃ§Ãµes de corte de intervalo (HTTP 206 Partial Content / Range requests) com `media_type` ajustado conforme a extensÃ£o (`.mp4`, `.mov`, `.webm`, `.mkv`), otimizando o fluxo de dados.
-  - **NavegaÃ§Ã£o:** O player permite avanÃ§ar para a "PrÃ³xima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
+  - **NavegaÃ§Ã£o e ReproduÃ§Ã£o AutomÃ¡tica de PrÃ³xima Aula (`NextLessonAutoPlayOverlay`):**
+    - O player permite avanÃ§ar para a "PrÃ³xima Aula" ou retroceder para a "Aula Anterior" diretamente na interface.
+    - **Comportamento ao TÃ©rmino do VÃ­deo (`onEnded`):**
+      - Se a preferÃªncia do usuÃ¡rio for **ReproduÃ§Ã£o AutomÃ¡tica Ativada (`autoplay_enabled: true`)**: O player exibe um popup modal centralizado escuro com contagem regressiva de 5 segundos (*"PRÃ“XIMA AULA EM 5S..."*), thumbnail e tÃ­tulo da prÃ³xima aula, com botÃµes para *"Assistir Agora"* ou *"Cancelar"*. Ao atingir 0s, navega automaticamente para a prÃ³xima aula.
+      - Se a preferÃªncia do usuÃ¡rio for **ReproduÃ§Ã£o AutomÃ¡tica Desativada (`autoplay_enabled: false`)**: O player encerra a reproduÃ§Ã£o de forma estÃ¡vel, **NÃƒO** exibe o modal de contagem regressiva e **NÃƒO** avanÃ§a automaticamente para a prÃ³xima aula, mantendo o usuÃ¡rio na aula atual atÃ© que ele decida navegar manualmente.
+      - A preferÃªncia Ã© configurÃ¡vel pelo prÃ³prio usuÃ¡rio na aba **"Meu Perfil"** das ConfiguraÃ§Ãµes.
 - **Aba de ComentÃ¡rios da Aula:**
   - Aba dedicada abaixo do player de cada aula.
   - **Caixa de Envio Premium (NewCommentBox):** Card com Glassmorphism, degradê suave, bordas translúcidas e anel de foco dinâmico em azul (#3b82f6). Exibe avatar com iniciais do usuário logado, badge de perfil, atalho Ctrl+Enter e botão Limpar.
@@ -488,12 +493,25 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
     - **MÃ©tricas no Topo:** Cards exibindo "Total de Relatos", "Pendentes / Em Aberto" (em vermelho) e "Resolvidos" (em verde).
     - **Filtros e Busca:** Campo de busca textual (aluno, e-mail, aula, curso, descriÃ§Ã£o) e seletores por tipo de problema e status.
     - **IdentificaÃ§Ã£o do Autor do Relato:** Cada card exibe o nome, e-mail e um **badge de perfil** colorido identificando o tipo de usuÃ¡rio (`Super Admin`, `Admin`, `Aluno` ou `UsuÃ¡rio`).
-    - **Fuso HorÃ¡rio de BrasÃ­lia:** A data e a hora do chamado sÃ£o obrigatoriamente convertidas e exibidas no **HorÃ¡rio Oficial de BrasÃ­lia (`America/Sao_Paulo`)**, garantindo exatidÃ£o no acompanhamento.
-    - **AÃ§Ãµes Administrativas com ConfirmaÃ§Ã£o:**
-      - **Popup de ConfirmaÃ§Ã£o para "Marcar como Resolvido":** Ao clicar no botÃ£o para resolver o chamado, um modal centralizado com fundo preto translÃºcido (`ActionConfirmModal`) Ã© exibido para confirmaÃ§Ã£o antes de atualizar o status.
+    - **Fuso Horário de Brasília:** A data e a hora do chamado são obrigatoriamente convertidas e exibidas no **Horário Oficial de Brasília (`America/Sao_Paulo`)**, garantindo exatidão no acompanhamento.
+    - **Paginação de Relatos (20 por página):**
+      - A listagem exibe no máximo **20 chamados por página** (`LessonReportsPagination`), calculando dinamicamente o intervalo (ex: `Exibindo 1–20 de 25 relatos (20 por página)`), com botões `Anterior`, números de página e `Próxima`.
+      - A paginação é automaticamente resetada para a página 1 ao alterar filtros de tipo, status ou busca textual.
+    - **Acesso Direto à Aula ("Acessar Aula"):**
+      - Cada card conta com o título do curso/aula e o botão **"Acessar Aula"** com ícone `ExternalLink`.
+      - Ao ser clicado, a plataforma navega automaticamente para a aba de Cursos e abre a sala de aula específica em exibição (`open_course_lesson`).
+    - **Contato Direto via DM ("Contatar na DM"):**
+      - Cada chamado possui o botão **"Contatar na DM"** (`MessageSquare`) permitindo ao gestor abrir instantaneamente a conversa direta com o aluno autor do relato através do evento `open_direct_message`.
+    - **Ações Administrativas com Confirmação e Notificação Automática:**
+      - **Popup de Confirmação para "Marcar como Resolvido":** Ao clicar no botão para resolver o chamado, um modal centralizado com fundo preto translúcido (`ActionConfirmModal`) é exibido para confirmação antes de atualizar o status.
+      - **Notificação Automática ao Aluno na Resolução e Redirecionamento Direto para a Aula:**
+        - Quando o chamado é marcado como resolvido (status = 'resolved'), o backend cria automaticamente uma mensagem direta (DM) no chat enviada para o aluno autor do relato, informando que a falha reportada foi resolvida e disparando notificação em tempo real via WebSocket (
+ew_dm e dm_updated).
+        - **Botão 'Acessar Aula':** A mensagem acompanha um botão destacado (utton_text='Acessar Aula', utton_action_type='lesson' com link interno internal://lesson/{course_id}/{lesson_id}).
+        - **Navegação SPA Instantânea:** Ao clicar no botão dentro da DM, o modal de mensagens diretas fecha automaticamente (close_dm_modal) e a aplicação transita imediatamente para a aba de Cursos (pp:navigate_tab), abrindo a sala de aula específica (open_course_lesson) sem recarregamento da página (window.location.href), com retrocompatibilidade para links legados /courses?course_id=...&lesson_id=....
       - **Reabertura:** O administrador pode reabrir o chamado a qualquer momento.
-      - Ao resolver ou reabrir, o contador do badge na barra lateral Ã© atualizado em tempo real.
-      - **ExclusÃ£o Segura:** OpÃ§Ã£o de excluir o registro com popup de confirmaÃ§Ã£o centralizado com fundo escuro translÃºcido.
+      - Ao resolver ou reabrir, o contador do badge na barra lateral é atualizado em tempo real.
+      - **Exclusão Segura:** Opção de excluir o registro com popup de confirmação centralizado com fundo escuro translúcido.
 
 ---
 
@@ -891,6 +909,10 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
         5. **GravaÃ§Ã£o e Envio de Ãudio Nativo:** Microfone integrado com gravaÃ§Ã£o em tempo real, timer, cancelamento e envio de Ã¡udio no formato WebM/OGG.
         6. **GravaÃ§Ã£o de VÃ­deo pela CÃ¢mera:** BotÃ£o de vÃ­deo (`Video`) abrindo modal de gravaÃ§Ã£o via webcam com espelhamento ao vivo, timer e revisÃ£o antes do envio.
         7. **Links Internos Interativos com CTA:** InserÃ§Ã£o de links para abas, cursos ou aulas especÃ­ficas da Ãrea de Membros.
+      - **Layout em Duas Camadas da Barra de Digitação (ChatInputBar e ChatInputActionsToolbar):**
+        - **Linha Superior (Barra de Ferramentas / Ações Rápidas):** Reúne todos os botões de ação à esquerda (Anexo, Imagem, GIF, Emoji, Menção, Microfone, Vídeo e Link Interno) com espaçamento harmônico e um botão dedicado de **'Maximizar / Recolher'** (Maximize2/Minimize2) à direita.
+        - **Linha Inferior (Campo de Entrada Amplo):** O campo de texto (	extarea) ocupa praticamente toda a extensão horizontal disponível (lex: 1, width: 100%), acompanhado na extremidade direita exclusivamente pelo botão azul de envio (Send).
+        - **Comportamento de Maximização (isMaximized):** Ao clicar em 'Maximizar', o textarea expande verticalmente (altura de 160px a 320px com rolagem interna) com borda ciano destacada, permitindo redigir mensagens longas confortavelmente.
       - **RenderizaÃ§Ã£o Rica de MÃ­dias nos BalÃµes da DM (`ChatMessageMediaAttachment`):**
         - Fotos e GIFs com thumbnail de visualizaÃ§Ã£o nÃ­tida e zoom em nova aba ao clicar.
         - VÃ­deos com player nativo responsivo HTML5 e controles de reproduÃ§Ã£o.
@@ -966,6 +988,12 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - **Nome do Contato / UsuÃ¡rio (`name`).**
   - **E-mail de Acesso (`email`).**
   - **WhatsApp / Telefone de Contato (`phone`).**
+  - **PreferÃªncias de Aulas e ReproduÃ§Ã£o AutomÃ¡tica (`autoplay_enabled`):**
+    - Permite ao usuÃ¡rio definir se o player de vÃ­deo deve avanÃ§ar automaticamente para a prÃ³xima aula ao tÃ©rmino do vÃ­deo.
+    - Controlado atravÃ©s do switch toggle acessÃ­vel *"ReproduÃ§Ã£o AutomÃ¡tica de Aulas"* (`switch-autoplay-enabled`), acompanhado de badge explicativo.
+    - **PadrÃ£o:** Ativado (`true`).
+    - **Quando desativado (`false`):** Ao concluir o vÃ­deo de qualquer aula, o sistema suprime o modal de contagem regressiva de 5 segundos (*"PRÃ“XIMA AULA EM 5S..."*) e nunca avanÃ§a sozinho para a prÃ³xima aula, mantendo o usuÃ¡rio no vÃ­deo atual.
+    - **PersistÃªncia e Sincronia Imediata:** A preferÃªncia Ã© salva no banco de dados (`users.autoplay_enabled`) via `PATCH /api/v1/auth/me` e espelhada no `localStorage` do navegador (`area_de_membros_autoplay_enabled`), garantindo efeito imediato na sala de aula sem recarregar a pÃ¡gina.
   - **SeguranÃ§a e Troca de Senha (`password`):**
     - Campos "Nova Senha" e "Confirmar Nova Senha" com alternÃ¢ncia de visibilidade (`Eye/EyeOff`) e validaÃ§Ã£o de requisitos (mÃ­nimo 12 caracteres, maiÃºscula, minÃºscula, nÃºmero e sÃ­mbolo especial).
 - **Regra de ProteÃ§Ã£o do Super Admin:**
@@ -1488,7 +1516,16 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 - **Proteção contra Sobrecarga (OOM Killer):** O limite configurado para alerta de RAM atua de forma preventiva antes que o sistema operacional encerre processos por falta de memória.
 
 ### 16.3. Conexões e Pool do PostgreSQL
-- **Métricas do Pool:** Monitora conexões ativas em uso instantâneo, conexões ociosas prontas no pool, ocupação percentual e capacidade total (DB_POOL_SIZE + DB_MAX_OVERFLOW).
+- **Conexões do Projeto (Área de Membros):**
+  - **Em Uso Agora:** Monitora estritamente conexões ativas executando queries no exato momento (`pg_stat_activity.state = 'active'`), eliminando falsos positivos gerados por conexões em standby mantidas no pool pelo SQLAlchemy.
+  - **Conexões em Standby:** Registradas e exibidas no rodapé do card informativo (`state = 'idle'`), prontas para responder requisições instantaneamente sem latência de handshake.
+  - **Capacidade do Projeto (Pool SQLAlchemy & Workers):** O Uvicorn opera em produção com múltiplos workers (padrão 4). Cada worker possui seu próprio pool independente (`DB_POOL_SIZE` base + `DB_MAX_OVERFLOW`). A capacidade máxima do projeto é calculada como `workers_count * (pool_base + max_overflow)` (ex: 4 * (30 + 50) = 320 conexões simultâneas máximas).
+  - **Ocupação Percentual do Projeto:** Calculada com base nas conexões ativas reais em relação à capacidade máxima total do projeto (`project_active_connections / project_max_connections * 100`).
+- **Conexões Globais do PostgreSQL (Cluster Completo):**
+  - Exibidas em seção dedicada para dar visão completa do servidor PostgreSQL compartilhado.
+  - Monitora o total de conexões abertas no servidor somando **todos os bancos e serviços** da stack (outros projetos, n8n, etc.), detalhando ativas (`state = 'active'`) e ociosas (`state = 'idle'`), além de referenciar o teto do PostgreSQL (`max_connections`, configurado em 500 conexões na stack do usuário).
+- **Armazenamento e Tamanho do Banco no Disco:**
+  - Exibe o tamanho do banco de dados específico deste projeto (`pg_size_pretty(pg_database_size(current_database()))`) e o tamanho total do cluster somando todos os bancos (`sum(pg_database_size(datname))`).
 - **Histórico Horário:** Armazena e exibe a tabela de histórico de conexões das últimas 24 horas com classificação de status (Normal, Atenção, Crítico).
 
 ### 16.4. Alertas e Notificações por Webhook
@@ -1734,6 +1771,20 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 - **Criação de Conteúdo e Publicações (Limitações Padrão Instagram):**
   - Textos e legendas com limite exato de **até 2.200 caracteres** (padrão Instagram) com contador em tempo real no rodapé (`X / 2.200`). Upload de imagens/fotos (JPG, PNG, WEBP, GIF de até 10MB) e vídeos curtos (MP4, WebM, MOV de até 50MB).
   - **Carrossel de Imagens (Estilo Instagram):** Suporte para envio de até 10 fotos em um único post, com preview numerado de cada foto, navegação por setas laterais, barra de bolinhas indicadoras (`dots`) e badge contador (`X / Y`).
+  - **Enumeração e Reordenação das Mídias no Carrossel:**
+    - No preview da criação de post, cada foto anexada recebe um badge numérico (`#1`, `#2`, `#3`...) indicando sua posição exata na sequência.
+    - Controles de troca rápida de posição (`◀` para esquerda e `▶` para direita) permitem reposicionar qualquer mídia na ordem desejada antes de publicar.
+  - **Sistema de Hashtags (#tag):**
+    - Todas as hashtags no texto das publicações são detectadas automaticamente e estilizadas com destaque visual em ciano neon (`.feed-post-hashtag`).
+    - Clicar em qualquer hashtag filtra imediatamente o feed por aquela hashtag na barra de busca e na listagem de publicações.
+  - **Localização na Publicação (`location`):**
+    - Seletor de localização opcional no card de criação de posts, permitindo ao aluno informar cidade/estado (ex: *"📍 São Paulo, SP"*).
+    - Exibido como tag com ícone de pin no cabeçalho dos posts (`FeedPostCard`) e no modal de detalhes maximizados (`FeedPostDetailModal`).
+  - **Agendamento de Publicações (`scheduled_at` / `is_scheduled`):**
+    - Alunos e gestores podem agendar postagens escolhendo data e horário futuros via seletor datetime.
+    - Posts agendados não aparecem no feed geral até que atinjam a data/hora programada.
+    - Ficam acessíveis ao autor e administradores através da aba exclusiva **"📅 Agendados"** no feed.
+    - Cada post agendado exibe um banner temático com a data/hora programada e o botão **"Publicar Agora"**, permitindo liberação imediata a qualquer momento.
   - **Vídeos Curtos (Reels/Clipes) e Capa Personalizada (Thumbnail):**
     - Player responsivo nativo HTML5 com controles completos e botão de ampliação.
     - Suporte a envio de imagem de capa/thumbnail personalizada (`media_thumbnail_url`) de até 10MB para o vídeo.
@@ -1802,7 +1853,19 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - [x] No perfil, além do badge com o título e ícone do Elo (ex: `🛡️ Bronze I`), devemos exibir os pontos totais e uma barra de progresso para o próximo nível?
     - **Resposta:** Sim. O badge de Elo com ícone e cor temática é exibido na linha do nome (ao lado do cargo), e um card de status de gamificação com total de XP e barra de avanço para o próximo nível é renderizado entre as estatísticas e a bio.
 
-- **Sistema de Stories no Feed da Comunidade (`community_stories`):**
+- **Diretrizes e Regras de Convivência da Comunidade (`FeedCommunityGuidelinesModal`):**
+  - **Acesso às Diretrizes:** Botão em destaque no cabeçalho do Feed (*"Regras da Comunidade"*) e link direto no rodapé da caixa de criação de publicação (`FeedCreatePostCard`).
+  - **Condutas Estritamente Proibidas:**
+    - 🚫 **Política e Debates Ideológicos:** Proibido debates político-partidários, campanhas eleitorais ou provocações de cunho ideológico. Foco total nos estudos e evolução técnica.
+    - 🚫 **Preconceito e Discurso de Ódio:** Tolerância zero para discriminação, racismo, homofobia, machismo, preconceito religioso, social ou xenofobia.
+    - 🚫 **Xingamentos, Ofensas e Cyberbullying:** Proibido ataques verbais, calúnias, assédio, deboches ou perseguição contra colegas e instrutores.
+    - 🚫 **Spam, Pirataria e Vendas Não Autorizadas:** Proibido envio de links externos de afiliados não autorizados, esquemas comerciais, pirataria ou golpes.
+    - 🚫 **Conteúdo Inadequado ou Explícito:** Proibido pornografia, nudez, violência gráfica ou materiais ilícitos.
+  - **Sistema de Moderação Ativa:**
+    - Botão de denúncia comunitária disponível em cada publicação e comentário.
+    - Painel de moderação para gestores com ações de resolução, descarte e exclusão sumária.
+    - Penalidades: remoção imediata da publicação, notificação ao infrator e, em casos graves ou reincidência, suspensão ou banimento da conta do aluno.
+
   - [x] Quem terá permissão para postar Stories: todos os membros da comunidade (alunos e administradores) ou apenas Administradores/Professores para recados oficiais?
     - **Resposta:** Aberto para todos os membros ativos da comunidade (Alunos, Administradores e Super Admins).
   - [x] O tempo de expiração dos Stories será o padrão de 24 horas, ou haverá opção para Stories fixados/destaques no perfil?
@@ -1814,4 +1877,33 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
   - [x] Postar Story concederá pontos de gamificação RPG (ex: +5 XP com limite diário)?
     - **Resposta:** Sim. Postar story concede **+5 pontos de XP** no RPG, com limite diário anti-spam de até **5 publicações pontuadas por dia (máximo de 25 XP/dia)**.
 
+- **Sistema de 3 Strikes, Banimento Automático do Feed e Recursos (`community_strikes`):**
+  - **Mecânica de 3 Strikes (Estilo YouTube):**
+    - **1º Strike (`strike_number = 1`):** Advertência formal. O aluno visualiza um banner amarelo de alerta no topo do Feed (`1/3 Strikes`) e recebe notificação imediata. Continua podendo postar e comentar.
+    - **2º Strike (`strike_number = 2`):** Alerta crítico. O aluno visualiza um banner laranja (`2/3 Strikes`) avisando que a próxima infração resultará em banimento automático.
+    - **3º Strike (`strike_number = 3`):** **Banimento Automático Imediato (`is_community_banned = True`)**. A caixa de criação de publicações é substituída pelo `FeedBannedCard`, e qualquer tentativa de criar postagem, story ou comentário na API retorna `HTTP 403 Forbidden`.
+  - **Visibilidade para o Usuário (`FeedStrikesBanner` e `FeedUserStrikesModal`):**
+    - Sempre que o aluno possui 1 ou mais strikes ativos, um banner de destaque aparece no topo do Feed.
+    - Ao clicar em *"Ver Strikes e Recorrer"* (ou *"Solicitar Recurso"*), abre-se o modal com o medidor visual de 3 etapas (`1º Advertência`, `2º Alerta Crítico`, `3º Banimento`) e o histórico detalhado de cada infração (motivo, descrição e data).
+  - **Direito de Recurso / Defesa (`appeal_status`):**
+    - Para cada strike ativo com `appeal_status = "none"`, o aluno pode clicar em **"Recorrer deste Strike"** e enviar uma justificativa/defesa por escrito (`POST /api/v1/community/strikes/{strike_id}/appeal`), alterando o status para `pending` (*"Recurso em Análise pela Moderação"*).
+  - **Julgamento pela Administração (`FeedAdminModerationModal`):**
+    - Administradores e Super Admins possuem no modal de **Moderação** duas abas: **"Denúncias Pendentes"** (onde podem excluir a publicação ou **"Excluir + Aplicar Strike"**) e **"Recursos de Strikes"**.
+    - Ao **Aprovar Recurso (`approve`)**: o strike é revogado/removido, a contagem de strikes do aluno é recalculada automaticamente e, caso caia para menos de 3 strikes, o banimento do feed é suspenso imediatamente (`is_community_banned = False`).
+    - Ao **Rejeitar Recurso (`reject`)**: o strike é mantido com status `rejected` e o aluno é notificado da decisão.
 
+
+
+
+
+## 20. Aba Apresente-se dos Alunos (/introductions)
+- **Objetivo:** Estimular o networking, conexões e engajamento da comunidade através de apresentações completas com nicho, objetivos, links sociais e mídias.
+- **Visualização de Apresentações e Mídia Anexada (IntroductionPostModal e IntroductionMediaEmbed):**
+  - Ao abrir uma apresentação, o modal exibe o cabeçalho, autor, matchmaking (nicho, localização, o que busca e oferece), texto e a mídia anexada pelo autor (foto ou vídeo).
+  - A exibição de fotos anexadas utiliza altura proporcional harmoniosa (max-height: 380px, object-fit: contain), garantindo que o rosto e detalhes da foto não sejam cortados nem empurrem os comentários para fora da área visível.
+- **Seção Destacada de Comentários (Design Premium Glassmorphism Neon):**
+  - **Identidade Visual:** Card com fundo escuro rgba(15, 23, 42, 0.85), borda ciano suave 1px solid rgba(56, 189, 248, 0.2) e sombra suave 0 10px 30px rgba(0, 0, 0, 0.35).
+  - **Cabeçalho com Badge:** Ícone MessageSquare com cor ciano neon e pílula com a contagem total de comentários.
+  - **Formulário de Comentário:** Campo de texto estilizado com fundo translúcido escuro, foco neon ciano, avatar do usuário comentando com anel neon e botão de envio em gradiente azul/ciano.
+  - **Rolagem Automática para Comentários:** Ao clicar no botão Comentar, a janela desce suavemente ate o campo de digitação.
+  - **Empty State Acolhedor:** Quando a apresentação não possui comentários, exibe um card com ícone de balão de mensagem e texto de incentivo convidativo para dar as boas-vindas.

@@ -332,17 +332,16 @@ export default function ChatInputBar({
       {showVideoRecorder && <ChatVideoRecorderModal onSendRecordedVideo={handleSendRecordedVideo} onClose={() => setShowVideoRecorder(false)} />}
       {showInternalLinkModal && <ChatInternalLinkModal isOpen={showInternalLinkModal} onClose={() => setShowInternalLinkModal(false)} onSelectLink={handleSelectInternalLink} />}
 
-      {/* Container Principal de Digitação */}
+      {/* Container Principal de Digitação em Duas Linhas (Toolbar Acima, Input Expandido Abaixo) */}
       <div
         style={{
           position: 'relative',
           display: 'flex',
-          flexDirection: isMaximized ? 'column' : 'row',
-          alignItems: isMaximized ? 'stretch' : 'flex-end',
-          gap: isCompact ? '6px' : '10px',
+          flexDirection: 'column',
+          alignItems: 'stretch',
           backgroundColor: '#1e293b',
           borderRadius: '12px',
-          padding: isCompact ? '6px 8px' : '10px 14px',
+          padding: isCompact ? '8px 10px' : '10px 14px',
           border: isMaximized ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: isMaximized ? '0 8px 32px rgba(56, 189, 248, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.25)',
           transition: 'all 0.2s ease',
@@ -350,7 +349,7 @@ export default function ChatInputBar({
           boxSizing: 'border-box',
         }}
       >
-        {/* Barra de Ferramentas / Ações Rápidas */}
+        {/* Linha 1 (Superior): Barra de Ferramentas / Ações Rápidas + Botão Maximizar */}
         <ChatInputActionsToolbar
           fileInputRef={fileInputRef}
           imageOnlyInputRef={imageOnlyInputRef}
@@ -373,13 +372,12 @@ export default function ChatInputBar({
           onTriggerMention={handleTriggerMention}
         />
 
-        {/* Textarea e Botão de Enviar */}
+        {/* Linha 2 (Inferior): Campo de Texto Horizontal Amplo + Botão Enviar */}
         <div
           style={{
             display: 'flex',
-            alignItems: isMaximized ? 'stretch' : 'flex-end',
-            gap: '8px',
-            flex: 1,
+            alignItems: 'flex-end',
+            gap: '10px',
             width: '100%',
           }}
         >
@@ -395,38 +393,40 @@ export default function ChatInputBar({
             data-testid="chat-message-textarea"
             style={{
               flex: 1,
-              minWidth: '100px',
-              backgroundColor: isMaximized ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
-              borderRadius: isMaximized ? '8px' : '0',
-              padding: isMaximized ? '10px' : '0',
-              border: isMaximized ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+              width: '100%',
+              backgroundColor: isMaximized ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              border: isMaximized ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
               outline: 'none',
               color: '#f8fafc',
               fontSize: '0.9rem',
               lineHeight: 1.5,
               resize: 'none',
-              minHeight: isMaximized ? '140px' : 'auto',
-              maxHeight: isMaximized ? '280px' : '120px',
+              minHeight: isMaximized ? '160px' : '44px',
+              maxHeight: isMaximized ? '320px' : '140px',
               fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              transition: 'all 0.15s ease',
             }}
           />
 
           <div
             style={{
               display: 'flex',
-              flexDirection: isMaximized ? 'column' : 'row',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: isMaximized ? 'flex-end' : 'center',
-              gap: '8px',
+              justifyContent: 'flex-end',
+              gap: '6px',
               flexShrink: 0,
             }}
           >
             {text.length > 2500 && (
               <span
                 style={{
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   color: text.length > 2900 ? '#ef4444' : '#f59e0b',
-                  fontWeight: 500,
+                  fontWeight: 600,
                 }}
               >
                 {text.length}/3000
@@ -440,9 +440,9 @@ export default function ChatInputBar({
               data-testid="chat-send-button"
               title="Enviar mensagem (Enter)"
               style={{
-                width: isMaximized ? '42px' : '38px',
-                height: isMaximized ? '42px' : '38px',
-                borderRadius: '8px',
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
                 backgroundColor: isButtonDisabled ? 'rgba(59, 130, 246, 0.3)' : '#2563eb',
                 color: '#ffffff',
                 border: 'none',
@@ -450,11 +450,12 @@ export default function ChatInputBar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'background-color 0.15s ease',
-                boxShadow: isButtonDisabled ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)',
+                transition: 'all 0.15s ease',
+                boxShadow: isButtonDisabled ? 'none' : '0 2px 10px rgba(37, 99, 235, 0.4)',
+                flexShrink: 0,
               }}
             >
-              {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {sending ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}
             </button>
           </div>
         </div>

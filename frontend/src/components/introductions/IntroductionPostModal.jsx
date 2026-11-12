@@ -131,6 +131,7 @@ export default function IntroductionPostModal({
   const handleFocusComment = () => {
     if (commentInputRef.current) {
       commentInputRef.current.focus();
+      commentInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -302,13 +303,19 @@ export default function IntroductionPostModal({
 
           {/* Seção de Comentários */}
           <div className="intro-comments-section" data-testid="intro-comments-section">
-            <h4 className="comments-heading">
-              Comentários ({post.comments?.length || 0})
-            </h4>
+            <div className="comments-heading-row">
+              <h4 className="comments-heading">
+                <MessageSquare size={17} className="comments-heading-icon" />
+                <span>Comentários</span>
+                <span className="comments-count-pill" data-testid="modal-comments-count-badge">
+                  {post.comments?.length || 0}
+                </span>
+              </h4>
+            </div>
 
             {/* Input para Novo Comentário */}
             <form onSubmit={handleSubmitComment} className="intro-new-comment-form">
-              <div className="comment-user-avatar">
+              <div className="comment-user-avatar" title={`Comentando como ${currentUser?.name || 'Você'}`}>
                 {currentUser?.avatar_url ? (
                   <img src={currentUser.avatar_url} alt={currentUser.name} className="comment-avatar-img" />
                 ) : (
@@ -322,7 +329,7 @@ export default function IntroductionPostModal({
                   type="text"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Deixe uma mensagem de boas-vindas ou comentário..."
+                  placeholder={`Comentar como ${currentUser?.name || 'aluno'}...`}
                   data-testid="new-comment-input"
                   disabled={submittingComment}
                 />
@@ -392,8 +399,12 @@ export default function IntroductionPostModal({
                 })}
               </div>
             ) : (
-              <div className="intro-no-comments">
-                <p>Nenhuma mensagem ainda. Seja o primeiro a dar as boas-vindas!</p>
+              <div className="intro-no-comments" data-testid="intro-no-comments-empty">
+                <div className="no-comments-icon-bubble">
+                  <MessageSquare size={22} />
+                </div>
+                <p className="no-comments-primary-text">Nenhuma mensagem ainda.</p>
+                <p className="no-comments-secondary-text">Seja o primeiro a dar as boas-vindas para {post.user_name || 'este membro'}!</p>
               </div>
             )}
           </div>

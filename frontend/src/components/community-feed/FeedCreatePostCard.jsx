@@ -1,16 +1,26 @@
 import React, { useState, useRef } from 'react';
-import { Image, Video, Send, X, Loader2, Sparkles, BookOpen } from 'lucide-react';
+import { Image, Video, Send, Loader2, Sparkles, BookOpen, ShieldCheck, Calendar } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { createFeedPost, uploadFeedMedia } from './communityFeedApi';
 import FeedMentionAutocomplete from './FeedMentionAutocomplete';
+import FeedPostExtrasBar from './FeedPostExtrasBar';
+import FeedCreatePollModal from './FeedCreatePollModal';
+import FeedBannedCard from './FeedBannedCard';
+import FeedMediaReorderGrid from './FeedMediaReorderGrid';
+import FeedScheduleLocationControls from './FeedScheduleLocationControls';
 
-export default function FeedCreatePostCard({ user, courses = [], onPostCreated, onOpenProfile }) {
+export default function FeedCreatePostCard({ user, courses = [], onPostCreated, onOpenProfile, onOpenGuidelines, isBanned = false, onOpenStrikesModal }) {
   const { addToast } = useToast();
   const [content, setContent] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [category, setCategory] = useState('geral');
+  const [pollData, setPollData] = useState(null);
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [mediaUrls, setMediaUrls] = useState([]);
-  const [mediaType, setMediaType] = useState('none'); // 'none', 'image', 'carousel', 'video'
+  const [mediaType, setMediaType] = useState('none');
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState(null);
+  const [location, setLocation] = useState(null);
+  const [scheduledAt, setScheduledAt] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mentionQuery, setMentionQuery] = useState(null);
@@ -173,6 +183,14 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
     }
   };
 
+  const handleMoveMedia = (fromIndex, toIndex) => {
+    if (toIndex < 0 || toIndex >= mediaUrls.length) return;
+    const next = [...mediaUrls];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setMediaUrls(next);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!content.trim()) {
@@ -189,13 +207,27 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
         mediaUrls,
         mediaType: finalType,
         mediaThumbnailUrl: finalType === 'video' ? mediaThumbnailUrl : null,
+        category,
+        pollQuestion: pollData ? pollData.question : null,
+        pollOptions: pollData ? pollData.options : null,
+        location,
+        scheduledAt,
       });
-      addToast('Publicação compartilhada na comunidade! 🎉', 'success');
+      addToast(
+        scheduledAt
+          ? 'Publicação agendada com sucesso! 📅'
+          : 'Publicação compartilhada na comunidade! 🎉',
+        'success'
+      );
       setContent('');
       setSelectedCourseId('');
+      setCategory('geral');
+      setPollData(null);
       setMediaUrls([]);
       setMediaType('none');
       setMediaThumbnailUrl(null);
+      setLocation(null);
+      setScheduledAt(null);
       if (onPostCreated) {
         onPostCreated(newPost);
       }
@@ -205,6 +237,10 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
       setIsSubmitting(false);
     }
   };
+
+  if (isBanned) {
+    return <FeedBannedCard onOpenStrikesModal={onOpenStrikesModal} />;
+  }
 
   return (
     <div className="feed-create-card" data-testid="feed-create-post-card">
@@ -259,76 +295,16 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
           )}
         </div>
 
-        {mediaUrls.length > 0 && (
-          <div className="feed-create-media-preview" data-testid="feed-create-media-preview">
-            {mediaType === 'video' ? (
-              <div className="feed-video-preview-wrapper" data-testid="feed-video-preview-wrapper">
-                <div className="feed-media-preview-item video">
-                  <video
-                    src={mediaUrls[0]}
-                    poster={mediaThumbnailUrl || undefined}
-                    className="feed-preview-video-thumb"
-                  />
-                  <span className="feed-media-preview-badge">Vídeo</span>
-                  <button
-                    type="button"
-                    className="feed-media-preview-remove"
-                    onClick={() => handleRemoveMedia(0)}
-                    title="Remover vídeo"
-                    data-testid="feed-remove-media-btn"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                {/* Bloco de Capa / Thumbnail do Vídeo */}
-                {mediaThumbnailUrl ? (
-                  <div className="feed-media-preview-item thumbnail" data-testid="feed-thumbnail-preview-item">
-                    <img src={mediaThumbnailUrl} alt="Capa do Vídeo" />
-                    <span className="feed-media-preview-badge thumb">Capa</span>
-                    <button
-                      type="button"
-                      className="feed-media-preview-remove"
-                      onClick={() => setMediaThumbnailUrl(null)}
-                      title="Remover capa"
-                      data-testid="feed-remove-thumbnail-btn"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="feed-add-thumb-card"
-                    onClick={() => thumbnailInputRef.current?.click()}
-                    disabled={isUploading}
-                    title="Definir imagem de capa para o vídeo"
-                    data-testid="feed-add-thumbnail-btn"
-                  >
-                    <Image size={18} className="feed-add-thumb-icon" />
-                    <span>+ Capa / Thumbnail</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              mediaUrls.map((url, idx) => (
-                <div key={idx} className="feed-media-preview-item">
-                  <img src={url} alt={`Upload ${idx + 1}`} />
-                  <span className="feed-media-preview-badge">{idx + 1}</span>
-                  <button
-                    type="button"
-                    className="feed-media-preview-remove"
-                    onClick={() => handleRemoveMedia(idx)}
-                    title="Remover foto"
-                    data-testid={`feed-remove-media-btn-${idx}`}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+        <FeedMediaReorderGrid
+          mediaUrls={mediaUrls}
+          mediaType={mediaType}
+          mediaThumbnailUrl={mediaThumbnailUrl}
+          isUploading={isUploading}
+          thumbnailInputRef={thumbnailInputRef}
+          onRemoveMedia={handleRemoveMedia}
+          onMoveMedia={handleMoveMedia}
+          onRemoveThumbnail={() => setMediaThumbnailUrl(null)}
+        />
 
         <div className="feed-create-footer">
           <div className="feed-create-tools">
@@ -398,6 +374,23 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
               </button>
             )}
 
+            {/* Barra de Extras (Categoria e Enquete) */}
+            <FeedPostExtrasBar
+              category={category}
+              onCategoryChange={setCategory}
+              pollData={pollData}
+              onOpenPollModal={() => setIsPollModalOpen(true)}
+              onRemovePoll={() => setPollData(null)}
+            />
+
+            {/* Controles de Localização e Agendamento */}
+            <FeedScheduleLocationControls
+              location={location}
+              onLocationChange={setLocation}
+              scheduledAt={scheduledAt}
+              onScheduledAtChange={setScheduledAt}
+            />
+
             {/* Seletor de Cursos */}
             {courses && courses.length > 0 && (
               <div className="feed-course-select-wrapper">
@@ -428,14 +421,19 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
             )}
             <button
               type="submit"
-              className="feed-submit-btn"
+              className={`feed-submit-btn ${scheduledAt ? 'scheduled-mode' : ''}`}
               disabled={isSubmitting || isUploading || !content.trim()}
               data-testid="feed-submit-post-btn"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="feed-spinner" />
-                  Publicando...
+                  {scheduledAt ? 'Agendando...' : 'Publicando...'}
+                </>
+              ) : scheduledAt ? (
+                <>
+                  <Calendar size={15} />
+                  Agendar
                 </>
               ) : (
                 <>
@@ -446,7 +444,18 @@ export default function FeedCreatePostCard({ user, courses = [], onPostCreated, 
             </button>
           </div>
         </div>
+
+        {onOpenGuidelines && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '4px' }}>
+            <button type="button" className="feed-create-guidelines-link" onClick={onOpenGuidelines} title="Ver regras de publicação e moderação" data-testid="feed-create-guidelines-link">
+              <ShieldCheck size={13} color="#10b981" />
+              <span>Diretrizes da Comunidade (Proibido ofensas, política e preconceito)</span>
+            </button>
+          </div>
+        )}
       </form>
+
+      <FeedCreatePollModal isOpen={isPollModalOpen} onClose={() => setIsPollModalOpen(false)} onSavePoll={(data) => setPollData(data)} initialQuestion={pollData?.question || ''} initialOptions={pollData?.options || ['', '']} />
     </div>
   );
 }

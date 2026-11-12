@@ -128,6 +128,15 @@ export default function TopNavbar({
     window.addEventListener('dm_updated', handleUpdate);
     window.addEventListener('notifications_updated', handleUpdate);
 
+    const handleOpenDirectMessage = (e) => {
+      const contact = e?.detail?.contact;
+      if (contact) {
+        setDmTargetContact(contact);
+        setIsDmOpen(true);
+      }
+    };
+    window.addEventListener('open_direct_message', handleOpenDirectMessage);
+
     // Polling de contingência em background (a cada 30s) caso o WebSocket seja interrompido
     const intervalId = setInterval(() => {
       fetchUnreadNotifications();
@@ -140,6 +149,7 @@ export default function TopNavbar({
       window.removeEventListener('favorites_updated', handleUpdate);
       window.removeEventListener('dm_updated', handleUpdate);
       window.removeEventListener('notifications_updated', handleUpdate);
+      window.removeEventListener('open_direct_message', handleOpenDirectMessage);
       clearInterval(intervalId);
     };
   }, [fetchTotalCount, fetchUnreadDms, fetchUnreadNotifications, fetchOnlineStats]);
@@ -235,16 +245,7 @@ export default function TopNavbar({
             className="mobile-menu-btn"
             data-testid="mobile-menu-toggle-btn"
             aria-label="Abrir menu lateral"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <Menu size={20} />
           </button>

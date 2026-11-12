@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sparkles,
-  Flame,
-  Search,
-  BookOpen,
-  UserCheck,
-  TrendingUp,
-  RefreshCw,
-  Loader2,
-  Compass,
-  Bookmark,
-  Bell,
-  Users,
+  Sparkles, Flame, Search, BookOpen, UserCheck, TrendingUp, RefreshCw,
+  Loader2, Compass, Bookmark, BookmarkCheck, MessageSquare, Share2,
+  Bell, Users, Calendar, ShieldAlert, ShieldCheck
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { fetchFeed, deleteFeedPost, fetchFeedCourses, fetchFeedUnreadCount } from './communityFeedApi';
@@ -20,10 +11,21 @@ import FeedPostCard from './FeedPostCard';
 import FeedNotificationsModal from './FeedNotificationsModal';
 import FeedProfileModal from './FeedProfileModal';
 import CommunityStoriesBar from './CommunityStoriesBar';
+import FeedCategoryPills from './FeedCategoryPills';
+import FeedAdminModerationModal from './FeedAdminModerationModal';
+import FeedCommunityGuidelinesModal from './FeedCommunityGuidelinesModal';
+import FeedStrikesBanner from './FeedStrikesBanner';
+import FeedUserStrikesModal from './FeedUserStrikesModal';
+import { fetchMyStrikesStatus } from './communityStrikesApi';
 import './community-feed.css';
 import './community-feed-post.css';
 import './community-feed-media.css';
 import './community-feed-notif.css';
+import './community-feed-features.css';
+import './community-feed-interactions.css';
+import './community-feed-strikes.css';
+import './community-feed-empty.css';
+import './community-feed-scheduling.css';
 
 export default function CommunityFeedManagement({ user }) {
   const { addToast } = useToast();
@@ -32,6 +34,11 @@ export default function CommunityFeedManagement({ user }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('todas');
+  const [isModModalOpen, setIsModModalOpen] = useState(false);
+  const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
+  const [strikesStatus, setStrikesStatus] = useState(null);
+  const [isStrikesModalOpen, setIsStrikesModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +47,8 @@ export default function CommunityFeedManagement({ user }) {
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [viewingProfileUserId, setViewingProfileUserId] = useState(null);
+
+  const isManager = ['admin', 'superadmin'].includes(user?.role);
 
   // Debounce da busca
   useEffect(() => {
@@ -81,9 +90,12 @@ export default function CommunityFeedManagement({ user }) {
       }
 
       try {
+        const isHashtagSearch = debouncedSearch.startsWith('#');
         const res = await fetchFeed({
           filter: activeFilter,
-          search: debouncedSearch,
+          category: selectedCategory,
+          hashtag: isHashtagSearch ? debouncedSearch.slice(1).trim() : null,
+          search: isHashtagSearch ? '' : debouncedSearch,
           page: pageToLoad,
           limit: 15,
         });
@@ -104,18 +116,39 @@ export default function CommunityFeedManagement({ user }) {
         setIsLoadingMore(false);
       }
     },
-    [activeFilter, debouncedSearch]
+    [activeFilter, selectedCategory, debouncedSearch]
   );
+
+  const loadStrikes = useCallback(async () => {
+    try {
+      const data = await fetchMyStrikesStatus();
+      setStrikesStatus(data);
+    } catch {
+      // Ignora erro silencioso
+    }
+  }, []);
 
   useEffect(() => {
     loadFeed(1, false);
+    loadStrikes();
 
     const handleFocus = () => {
       loadFeed(1, false);
+      loadStrikes();
     };
+    const onHashtag = (e) => {
+      if (e.detail?.hashtag) {
+        setSearchTerm(`#${e.detail.hashtag}`);
+      }
+    };
+
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [loadFeed]);
+    window.addEventListener('feed-filter-hashtag', onHashtag);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('feed-filter-hashtag', onHashtag);
+    };
+  }, [loadFeed, loadStrikes]);
 
   // Sincronização em segundo plano a cada 25s para novos posts de outros alunos
   useEffect(() => {
@@ -151,11 +184,15 @@ export default function CommunityFeedManagement({ user }) {
 
   const filterTabs = [
     { id: 'all', label: 'Para Você / Geral', icon: Compass },
-    { id: 'following', label: 'Seguindo', icon: Users },
     { id: 'popular', label: 'Mais Curtidos', icon: Flame },
+    { id: 'most_commented', label: 'Mais Comentados', icon: MessageSquare },
+    { id: 'most_saved', label: 'Mais Salvos', icon: BookmarkCheck },
+    { id: 'most_shared', label: 'Mais Compartilhados', icon: Share2 },
+    { id: 'following', label: 'Seguindo', icon: Users },
     { id: 'my_course', label: 'Meu Curso', icon: BookOpen },
     { id: 'my_posts', label: 'Minhas Publicações', icon: UserCheck },
-    { id: 'saved', label: 'Salvos', icon: Bookmark },
+    { id: 'scheduled', label: 'Agendados', icon: Calendar },
+    { id: 'saved', label: 'Salvos por Mim', icon: Bookmark },
   ];
 
   return (
@@ -176,6 +213,30 @@ export default function CommunityFeedManagement({ user }) {
         </div>
 
         <div className="feed-header-actions">
+          <button
+            type="button"
+            className="feed-guidelines-btn"
+            onClick={() => setIsGuidelinesOpen(true)}
+            title="Diretrizes e Regras da Comunidade"
+            data-testid="feed-guidelines-btn"
+          >
+            <ShieldCheck size={16} />
+            <span>Regras da Comunidade</span>
+          </button>
+
+          {isManager && (
+            <button
+              type="button"
+              className="feed-mod-btn"
+              onClick={() => setIsModModalOpen(true)}
+              title="Moderação de denúncias"
+              data-testid="feed-mod-open-btn"
+            >
+              <ShieldAlert size={17} />
+              <span>Moderação</span>
+            </button>
+          )}
+
           <button
             type="button"
             className="feed-notif-btn"
@@ -215,12 +276,21 @@ export default function CommunityFeedManagement({ user }) {
       {/* Barra de Stories da Comunidade */}
       <CommunityStoriesBar currentUser={user} />
 
-      {/* Caixa de Criação de Post */}
+      {/* Banner de Alerta de Strikes & Banimento */}
+      <FeedStrikesBanner
+        strikesStatus={strikesStatus}
+        onOpenStrikesModal={() => setIsStrikesModalOpen(true)}
+      />
+
+      {/* Caixa de Criação de Post (Bloqueada se banido) */}
       <FeedCreatePostCard
         user={user}
         courses={courses}
         onPostCreated={handlePostCreated}
         onOpenProfile={setViewingProfileUserId}
+        onOpenGuidelines={() => setIsGuidelinesOpen(true)}
+        isBanned={Boolean(strikesStatus?.is_banned)}
+        onOpenStrikesModal={() => setIsStrikesModalOpen(true)}
       />
 
       {/* Filtros e Barra de Busca */}
@@ -259,6 +329,15 @@ export default function CommunityFeedManagement({ user }) {
           />
         </div>
       </div>
+
+      {/* Pílulas de Categorias e Tópicos */}
+      <FeedCategoryPills
+        selectedCategory={selectedCategory}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          setCurrentPage(1);
+        }}
+      />
 
       {/* Conteúdo do Feed */}
       <div className="feed-stream-container" data-testid="feed-stream-container">
@@ -334,6 +413,39 @@ export default function CommunityFeedManagement({ user }) {
               )
             );
           }
+        }}
+      />
+
+      {/* Modal de Moderação de Denúncias (Admin) */}
+      <FeedAdminModerationModal
+        isOpen={isModModalOpen}
+        onClose={() => setIsModModalOpen(false)}
+        onPostDeleted={(deletedPostId) => {
+          setPosts((prev) => prev.filter((p) => p.id !== deletedPostId));
+          setTotalPosts((prev) => Math.max(0, prev - 1));
+        }}
+      />
+
+      {/* Modal de Diretrizes e Regras da Comunidade */}
+      <FeedCommunityGuidelinesModal
+        isOpen={isGuidelinesOpen}
+        onClose={() => setIsGuidelinesOpen(false)}
+      />
+
+      {/* Modal de Visualização de Strikes e Envio de Recursos */}
+      <FeedUserStrikesModal
+        isOpen={isStrikesModalOpen}
+        strikesStatus={strikesStatus}
+        onClose={() => setIsStrikesModalOpen(false)}
+        onStrikeAppealed={(updatedStrike) => {
+          setStrikesStatus((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  strikes: prev.strikes.map((s) => (s.id === updatedStrike.id ? updatedStrike : s)),
+                }
+              : prev
+          );
         }}
       />
     </div>

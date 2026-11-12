@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, ConfigDict
 class CommunityCommentCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=2000)
     parent_id: Optional[int] = None
+    media_type: Optional[str] = "text"  # 'text', 'audio', 'gif', 'image'
+    media_url: Optional[str] = None
 
 
 class CommunityCommentOut(BaseModel):
@@ -17,9 +19,24 @@ class CommunityCommentOut(BaseModel):
     user_role: str
     parent_id: Optional[int] = None
     content: str
+    media_type: Optional[str] = "text"
+    media_url: Optional[str] = None
+    user_level_title: Optional[str] = None
+    user_level_badge: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PollOptionIn(BaseModel):
+    text: str = Field(..., min_length=1, max_length=100)
+
+
+class PollOptionOut(BaseModel):
+    id: int
+    text: str
+    votes: int = 0
+    percent: float = 0.0
 
 
 class CommunityPostCreate(BaseModel):
@@ -28,12 +45,20 @@ class CommunityPostCreate(BaseModel):
     media_urls: Optional[List[str]] = None
     media_type: Optional[str] = "none"
     media_thumbnail_url: Optional[str] = None
+    category: Optional[str] = "geral"
+    location: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    poll_question: Optional[str] = None
+    poll_options: Optional[List[str]] = None
+    achievement_type: Optional[str] = None
+    achievement_data: Optional[dict] = None
 
 
 class CommunityPostUpdate(BaseModel):
     content: Optional[str] = Field(None, min_length=1, max_length=2200)
     media_thumbnail_url: Optional[str] = None
     is_pinned: Optional[bool] = None
+    category: Optional[str] = None
 
 
 class CommunityPostOut(BaseModel):
@@ -42,14 +67,28 @@ class CommunityPostOut(BaseModel):
     user_name: str
     user_avatar: Optional[str] = None
     user_role: str
+    user_level_title: Optional[str] = None
+    user_level_badge: Optional[str] = None
     course_id: Optional[int] = None
     course_title: Optional[str] = None
     content: str
     media_urls: Optional[List[str]] = None
     media_type: str = "none"
     media_thumbnail_url: Optional[str] = None
+    category: str = "geral"
+    location: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    is_scheduled: bool = False
+    poll_question: Optional[str] = None
+    poll_options: Optional[List[PollOptionOut]] = None
+    my_poll_vote: Optional[int] = None
+    total_poll_votes: int = 0
+    achievement_type: Optional[str] = None
+    achievement_data: Optional[dict] = None
     likes_count: int = 0
     comments_count: int = 0
+    bookmarks_count: int = 0
+    shares_count: int = 0
     views_count: int = 0
     is_liked_by_me: bool = False
     is_bookmarked_by_me: bool = False
@@ -58,6 +97,31 @@ class CommunityPostOut(BaseModel):
     comments: Optional[List[CommunityCommentOut]] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PollVoteIn(BaseModel):
+    option_id: int
+
+
+class PostReportIn(BaseModel):
+    reason: str = Field(..., min_length=2, max_length=255)
+    description: Optional[str] = None
+
+
+class PostReportOut(BaseModel):
+    id: int
+    post_id: int
+    reporter_id: int
+    reporter_name: Optional[str] = None
+    reason: str
+    description: Optional[str] = None
+    status: str
+    post_content_snippet: Optional[str] = None
+    created_at: datetime
+    message: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class CommunityLikeUserOut(BaseModel):

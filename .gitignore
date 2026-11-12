@@ -67,6 +67,8 @@ backend/app/uploads/videos/
 backend/app/uploads/attachments/
 backend/app/uploads/avatars/
 backend/app/uploads/community/
+backend/app/uploads/community_stories/
+backend/app/uploads/community_feed/
 backend/app/uploads/*.json
 backend/uploads/
 

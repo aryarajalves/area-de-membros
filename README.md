@@ -7,7 +7,20 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.2.9 (Auditoria de Banco de Dados, Indexação 100% de Foreign Keys e Repositório Docker Unificado)
+### 🚀 Novidades da Versão v1.2.9 (Preferências de Autoplay de Aulas, Gestão de Relatos com Notificação DM, Métricas do PostgreSQL, Strikes na Comunidade e Otimização de Banco)
+- **🎬 Desativação de Reprodução Automática de Aulas (`autoplay_enabled`):**
+  - Switch toggle no perfil do usuário (*"Meu Perfil"*) permitindo desligar o avanço automático entre aulas.
+  - Quando desativado, elimina o modal de contagem regressiva (*"PRÓXIMA AULA EM 5S..."*) e mantém o aluno na aula atual pausada.
+  - Sincronização imediata no banco de dados (`users.autoplay_enabled`) e no `localStorage` do navegador.
+- **📩 Gestão Aprimorada de Relatos de Aulas com Paginação e DM de Resolução:**
+  - Paginação rápida limitando em 20 relatos por página com filtros inteligentes por tipo e status.
+  - Botão de contato direto via mensagem privada (DM) com o aluno autor do relato.
+  - Notificação automática enviada via DM para o aluno com link de acesso à aula assim que o relato for marcado como resolvido.
+- **💬 Ergonomia e Layout Aprimorado do Chat / Mensagens:**
+  - Redesenho da barra de digitação com expansão horizontal maximizada e botão dedicado para expandir em tela cheia.
+  - Acesso direto e amigável às aulas vinculadas nos cartões de mensagem.
+- **🛡️ Sistema de Moderação, Diretrizes Comunitárias e Strikes no Feed:**
+  - Módulos completos para aplicação de strikes, banimento temporário/permanente, recurso contra penalidades e exibição das diretrizes da comunidade.
 - **⚡ Auditoria e Otimização de Conexões e Banco de Dados (`scripts/check_db_optimization.py`):**
   - **Connection Pooling:** Auditoria de parâmetros do pool SQLAlchemy (`DB_POOL_SIZE=30`, `DB_MAX_OVERFLOW=50`, `DB_POOL_RECYCLE=1800s`, `pool_pre_ping=True` contra conexões zumbis e `connect_timeout=10s`).
   - **100% das Chaves Estrangeiras Indexadas:** Varredura em 100% dos modelos (111 ForeignKeys declaradas) com garantia de índices (`index=True` ou índices compostos) em todas as FKs, eliminando Full Table Scans em JOINs e deleções em cascata.

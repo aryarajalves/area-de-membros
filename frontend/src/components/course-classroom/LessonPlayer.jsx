@@ -298,6 +298,7 @@ export default function LessonPlayer({
               onToggleTheaterMode={handleToggleTheaterMode}
               userPlaybackRate={currentUser?.playback_rate}
               watermarkEnabled={watermarkEnabled}
+              autoplayEnabled={currentUser?.autoplay_enabled !== false}
               nextLesson={nextLesson}
               autoPlay={autoPlayActive}
               onPlayNextLesson={() => {

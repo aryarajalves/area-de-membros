@@ -97,4 +97,62 @@ describe('ChatDmConversationView Component', () => {
       expect(onSendMessage).toHaveBeenCalledWith('Nova mensagem teste', null, null);
     });
   });
+
+  it('navigates directly to lesson classroom and closes DM modal when lesson CTA button is clicked', () => {
+    vi.useFakeTimers();
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+    const mockMessages = [
+      {
+        id: 201,
+        message: 'Seu relato foi resolvido!',
+        button_text: 'Acessar Aula',
+        button_url: 'internal://lesson/10/25',
+        button_action_type: 'lesson',
+        created_at: '2026-10-06T10:00:00Z',
+        user: { id: 1 },
+      },
+    ];
+
+    render(
+      <ToastProvider>
+        <ChatDmConversationView
+          selectedContact={mockContact}
+          currentUser={mockUser}
+          messages={mockMessages}
+          loading={false}
+          onSendMessage={vi.fn()}
+        />
+      </ToastProvider>
+    );
+
+    const ctaBtn = screen.getByTestId('dm-cta-button-201');
+    expect(ctaBtn).toHaveTextContent('Acessar Aula');
+
+    fireEvent.click(ctaBtn);
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'close_dm_modal',
+      })
+    );
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'app:navigate_tab',
+        detail: { tab: 'courses' },
+      })
+    );
+
+    vi.advanceTimersByTime(100);
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'open_course_lesson',
+        detail: { courseId: 10, lessonId: 25 },
+      })
+    );
+
+    dispatchSpy.mockRestore();
+    vi.useRealTimers();
+  });
 });

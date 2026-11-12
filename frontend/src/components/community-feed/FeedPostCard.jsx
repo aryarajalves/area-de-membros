@@ -1,30 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Pin,
-  MoreVertical,
-  Trash2,
-  Edit2,
-  Check,
-  X,
-  BookOpen,
-  Loader2,
-} from 'lucide-react';
+import { Pin, MoreVertical, Trash2, Edit2, Check, X, BookOpen, Loader2, Flag, MapPin, Calendar, Send } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import {
-  toggleLikeFeedPost,
-  togglePinFeedPost,
-  updateFeedPost,
-  toggleBookmarkFeedPost,
-  recordFeedPostView,
+  toggleLikeFeedPost, togglePinFeedPost, updateFeedPost,
+  toggleBookmarkFeedPost, recordFeedPostView, publishFeedPostNow
 } from './communityFeedApi';
 import FeedCommentsSection from './FeedCommentsSection';
-import DeleteFeedItemModal from './DeleteFeedItemModal';
-import FeedMediaCarousel from './FeedMediaCarousel';
-import FeedVideoPlayer from './FeedVideoPlayer';
-import FeedLightboxModal from './FeedLightboxModal';
-import FeedLikesModal from './FeedLikesModal';
+import FeedPostMedia from './FeedPostMedia';
 import FeedPostActions from './FeedPostActions';
-import FeedPostInsightsModal from './FeedPostInsightsModal';
+import FeedPollWidget from './FeedPollWidget';
+import FeedPostModals from './FeedPostModals';
+import { renderTextWithLinks } from '../../utils/linkifyUtils';
 
 export default function FeedPostCard({
   post,
@@ -52,6 +38,12 @@ export default function FeedPostCard({
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [showLikesModal, setShowLikesModal] = useState(false);
   const [showInsightsModal, setShowInsightsModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [currentPost, setCurrentPost] = useState(post);
+
+  useEffect(() => {
+    setCurrentPost(post);
+  }, [post]);
 
   // Rastreia visualização única no mount do post
   useEffect(() => {
@@ -68,10 +60,24 @@ export default function FeedPostCard({
   // Deleção
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPublishingNow, setIsPublishingNow] = useState(false);
 
   const isManager = ['admin', 'superadmin'].includes(currentUser?.role);
   const isAuthor = currentUser?.id === post.user_id;
   const canManage = isAuthor || isManager;
+
+  const handlePublishNow = async () => {
+    setIsPublishingNow(true);
+    try {
+      const updated = await publishFeedPostNow(post.id);
+      addToast('Post publicado com sucesso no feed geral! 🚀', 'success');
+      if (onPostUpdated) onPostUpdated(updated);
+    } catch (err) {
+      addToast(err.message || 'Erro ao publicar post agendado.', 'error');
+    } finally {
+      setIsPublishingNow(false);
+    }
+  };
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -196,13 +202,35 @@ export default function FeedPostCard({
   return (
     <>
       <article
-        className={`feed-post-card ${isPinned ? 'is-pinned' : ''}`}
+        className={`feed-post-card ${isPinned ? 'is-pinned feed-post-pinned-neon' : ''} ${showMenu ? 'menu-open' : ''}`}
         data-testid={`feed-post-card-${post.id}`}
       >
         {isPinned && (
-          <div className="feed-pinned-badge" data-testid="feed-pinned-badge">
+          <div className="feed-pinned-badge feed-pinned-neon" data-testid="feed-pinned-badge">
             <Pin size={13} className="feed-pin-icon" />
             <span>Publicação Fixada</span>
+          </div>
+        )}
+
+        {post.is_scheduled && (
+          <div className="feed-scheduled-banner" data-testid={`feed-scheduled-banner-${post.id}`}>
+            <div className="feed-scheduled-info">
+              <Calendar size={13} className="feed-scheduled-icon" />
+              <span>Agendado para: <strong>{new Date(post.scheduled_at).toLocaleString('pt-BR')}</strong></span>
+            </div>
+            {canManage && (
+              <button
+                type="button"
+                className="feed-publish-now-btn"
+                onClick={handlePublishNow}
+                disabled={isPublishingNow}
+                title="Publicar agora no feed geral"
+                data-testid={`feed-publish-now-btn-${post.id}`}
+              >
+                <Send size={12} />
+                <span>{isPublishingNow ? 'Publicando...' : 'Publicar Agora'}</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -231,6 +259,11 @@ export default function FeedPostCard({
                 >
                   {post.user_name}
                 </span>
+                {post.user_level_badge && (
+                  <span className="feed-author-elo-badge" title={post.user_level_title || 'Nível'}>
+                    {post.user_level_badge}
+                  </span>
+                )}
                 {post.user_role === 'superadmin' && (
                   <span className="feed-role-badge superadmin">Super Admin</span>
                 )}
@@ -240,6 +273,16 @@ export default function FeedPostCard({
               </div>
               <div className="feed-post-subline">
                 <span className="feed-post-time">{formatDate(post.created_at)}</span>
+                {post.location && (
+                  <span className="feed-post-location-tag" title={`Localização: ${post.location}`}>
+                    <MapPin size={11} /> {post.location}
+                  </span>
+                )}
+                {post.category && post.category !== 'geral' && (
+                  <span className={`feed-post-category-tag tag-${post.category}`}>
+                    #{post.category}
+                  </span>
+                )}
                 {post.course_title && (
                   <span className="feed-post-course-tag" title={post.course_title}>
                     <BookOpen size={11} /> {post.course_title}
@@ -249,63 +292,75 @@ export default function FeedPostCard({
             </div>
           </div>
 
-          {canManage && (
-            <div className="feed-post-actions-menu-wrapper">
-              <button
-                type="button"
-                className="feed-menu-btn"
-                onClick={() => setShowMenu(!showMenu)}
-                title="Opções"
-                data-testid={`feed-post-menu-btn-${post.id}`}
-              >
-                <MoreVertical size={16} />
-              </button>
+          <div className={`feed-post-actions-menu-wrapper ${showMenu ? 'menu-open' : ''}`}>
+            <button
+              type="button"
+              className="feed-menu-btn"
+              onClick={() => setShowMenu(!showMenu)}
+              title="Opções"
+              data-testid={`feed-post-menu-btn-${post.id}`}
+            >
+              <MoreVertical size={16} />
+            </button>
 
-              {showMenu && (
-                <div className="feed-menu-dropdown" data-testid={`feed-menu-dropdown-${post.id}`}>
-                  {isManager && (
-                    <button
-                      type="button"
-                      className="feed-menu-item"
-                      onClick={handleTogglePin}
-                      data-testid={`feed-pin-toggle-btn-${post.id}`}
-                    >
-                      <Pin size={14} />
-                      {isPinned ? 'Desafixar do Topo' : 'Fixar no Topo'}
-                    </button>
-                  )}
-                  {canManage && !isEditing && (
-                    <button
-                      type="button"
-                      className="feed-menu-item"
-                      onClick={() => {
-                        setIsEditing(true);
-                        setShowMenu(false);
-                      }}
-                      data-testid={`feed-edit-btn-${post.id}`}
-                    >
-                      <Edit2 size={14} />
-                      Editar Texto
-                    </button>
-                  )}
-                  {canManage && (
-                    <button
-                      type="button"
-                      className="feed-menu-item danger"
-                      onClick={() => {
-                        setShowDeleteModal(true);
-                        setShowMenu(false);
-                      }}
-                      data-testid={`feed-delete-btn-${post.id}`}
-                    >
-                      <Trash2 size={14} />
-                      Excluir Publicação
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            {showMenu && (
+              <div className="feed-menu-dropdown" data-testid={`feed-menu-dropdown-${post.id}`}>
+                {isManager && (
+                  <button
+                    type="button"
+                    className="feed-menu-item"
+                    onClick={handleTogglePin}
+                    data-testid={`feed-pin-toggle-btn-${post.id}`}
+                  >
+                    <Pin size={14} />
+                    {isPinned ? 'Desafixar do Topo' : 'Fixar no Topo'}
+                  </button>
+                )}
+                {canManage && !isEditing && (
+                  <button
+                    type="button"
+                    className="feed-menu-item"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setShowMenu(false);
+                    }}
+                    data-testid={`feed-edit-btn-${post.id}`}
+                  >
+                    <Edit2 size={14} />
+                    Editar Texto
+                  </button>
+                )}
+                {canManage && (
+                  <button
+                    type="button"
+                    className="feed-menu-item danger"
+                    onClick={() => {
+                      setShowDeleteModal(true);
+                      setShowMenu(false);
+                    }}
+                    data-testid={`feed-delete-btn-${post.id}`}
+                  >
+                    <Trash2 size={14} />
+                    Excluir Publicação
+                  </button>
+                )}
+                {!isAuthor && (
+                  <button
+                    type="button"
+                    className="feed-menu-item warning"
+                    onClick={() => {
+                      setShowReportModal(true);
+                      setShowMenu(false);
+                    }}
+                    data-testid={`feed-report-btn-${post.id}`}
+                  >
+                    <Flag size={14} />
+                    Denunciar Publicação
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Conteúdo / Texto do Post */}
@@ -347,49 +402,33 @@ export default function FeedPostCard({
             </div>
           ) : (
             <p className="feed-post-text" data-testid={`feed-post-content-${post.id}`}>
-              {post.content}
+              {renderTextWithLinks(post.content)}
             </p>
           )}
 
-          {/* Mídia da Publicação: Carrossel, Vídeo ou Imagem Única */}
-          {post.media_urls && post.media_urls.length > 0 && (
-            <div className="feed-post-media-container" data-testid={`feed-post-media-${post.id}`}>
-              {post.media_type === 'video' || post.media_urls[0]?.match(/\.(mp4|webm|mov|m4v)$/i) ? (
-                <FeedVideoPlayer
-                  videoUrl={post.media_urls[0]}
-                  thumbnailUrl={post.media_thumbnail_url}
-                  onOpenLightbox={() => {
-                    setLightboxIndex(0);
-                    setLightboxOpen(true);
-                  }}
-                />
-              ) : post.media_type === 'carousel' || post.media_urls.length > 1 ? (
-                <FeedMediaCarousel
-                  mediaUrls={post.media_urls}
-                  onOpenLightbox={(idx) => {
-                    setLightboxIndex(idx);
-                    setLightboxOpen(true);
-                  }}
-                />
-              ) : (
-                <div
-                  className="feed-post-image-wrapper clickable"
-                  onClick={() => {
-                    setLightboxIndex(0);
-                    setLightboxOpen(true);
-                  }}
-                  title="Clique para ampliar"
-                >
-                  <img
-                    src={post.media_urls[0]}
-                    alt={`Mídia do post ${post.id}`}
-                    className="feed-post-image"
-                    loading="lazy"
-                  />
-                </div>
-              )}
-            </div>
+          {/* Enquete Interativa */}
+          {currentPost.poll_question && (
+            <FeedPollWidget
+              postId={currentPost.id}
+              question={currentPost.poll_question}
+              options={currentPost.poll_options}
+              myVote={currentPost.my_poll_vote}
+              totalVotes={currentPost.total_poll_votes}
+              onVoteSuccess={(updated) => {
+                setCurrentPost(updated);
+                onPostUpdated?.(updated);
+              }}
+            />
           )}
+
+          {/* Mídia da Publicação: Carrossel, Vídeo ou Imagem Única */}
+          <FeedPostMedia
+            post={currentPost}
+            onOpenLightbox={(idx) => {
+              setLightboxIndex(idx);
+              setLightboxOpen(true);
+            }}
+          />
         </div>
 
         {/* Barra de Reações e Interações Sociais */}
@@ -429,34 +468,21 @@ export default function FeedPostCard({
         )}
       </article>
 
-      <DeleteFeedItemModal
-        isOpen={showDeleteModal}
-        title="Excluir Publicação"
-        message="Deseja realmente apagar esta publicação? Todos os comentários e curtidas serão excluídos permanentemente."
+      <FeedPostModals
+        post={post}
+        showDeleteModal={showDeleteModal}
         isDeleting={isDeleting}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setShowDeleteModal(false)}
-      />
-
-      <FeedLightboxModal
-        isOpen={lightboxOpen}
-        mediaUrls={post.media_urls || []}
-        initialIndex={lightboxIndex}
-        mediaType={post.media_type}
-        thumbnailUrl={post.media_thumbnail_url}
-        onClose={() => setLightboxOpen(false)}
-      />
-
-      <FeedLikesModal
-        isOpen={showLikesModal}
-        postId={post.id}
-        onClose={() => setShowLikesModal(false)}
-      />
-
-      <FeedPostInsightsModal
-        isOpen={showInsightsModal}
-        postId={post.id}
-        onClose={() => setShowInsightsModal(false)}
+        onConfirmDelete={handleConfirmDelete}
+        onCloseDelete={() => setShowDeleteModal(false)}
+        lightboxOpen={lightboxOpen}
+        lightboxIndex={lightboxIndex}
+        onCloseLightbox={() => setLightboxOpen(false)}
+        showLikesModal={showLikesModal}
+        onCloseLikes={() => setShowLikesModal(false)}
+        showInsightsModal={showInsightsModal}
+        onCloseInsights={() => setShowInsightsModal(false)}
+        showReportModal={showReportModal}
+        onCloseReport={() => setShowReportModal(false)}
       />
     </>
   );

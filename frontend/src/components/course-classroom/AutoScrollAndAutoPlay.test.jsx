@@ -90,4 +90,25 @@ describe('Item 3 - Auto-Scroll na Sidebar & AutoPlay imediato da próxima aula',
     const videoEl = screen.getByTestId('lesson-html5-video');
     expect(videoEl).toHaveAttribute('autoplay');
   });
+
+  it('respeita a opcao autoplayEnabled=false e nao dispara overlay de contagem regressiva ao termino do video', () => {
+    const onPlayNext = vi.fn();
+    render(
+      <CustomVideoPlayer
+        src="https://example.com/video1.mp4"
+        title="Aula 01"
+        nextLesson={{ id: 2, title: 'Aula 02' }}
+        onPlayNextLesson={onPlayNext}
+        autoplayEnabled={false}
+      />
+    );
+
+    const videoEl = screen.getByTestId('lesson-html5-video');
+    act(() => {
+      videoEl.dispatchEvent(new Event('ended'));
+    });
+
+    expect(screen.queryByTestId('autoplay-countdown-label')).not.toBeInTheDocument();
+    expect(onPlayNext).not.toHaveBeenCalled();
+  });
 });

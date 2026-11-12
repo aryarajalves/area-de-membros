@@ -122,3 +122,22 @@ def test_playback_rate_invalid_values(seed_users):
     # Valor excessivo (> 4.0)
     res_excess = client.patch("/api/v1/auth/playback-rate", json={"playback_rate": 5.0}, headers=headers)
     assert res_excess.status_code == 400
+
+
+def test_user_can_update_autoplay_enabled(seed_users):
+    headers = get_headers("admin_profile@test.com", "AdminPass12345!")
+
+    # 1. Desativar reprodução automática no perfil
+    res = client.patch("/api/v1/auth/me", json={"autoplay_enabled": False}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["autoplay_enabled"] is False
+
+    # 2. Conferir no /me
+    res_me = client.get("/api/v1/auth/me", headers=headers)
+    assert res_me.status_code == 200
+    assert res_me.json()["autoplay_enabled"] is False
+
+    # 3. Reativar reprodução automática
+    res_re = client.patch("/api/v1/auth/me", json={"autoplay_enabled": True}, headers=headers)
+    assert res_re.status_code == 200
+    assert res_re.json()["autoplay_enabled"] is True

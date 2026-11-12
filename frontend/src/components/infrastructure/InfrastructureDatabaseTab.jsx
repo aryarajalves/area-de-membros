@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Clock, Server } from 'lucide-react';
+import { Database, Clock, Server, Layers, HardDrive } from 'lucide-react';
 
 export default function InfrastructureDatabaseTab({ database }) {
   if (!database) return null;
@@ -16,9 +16,18 @@ export default function InfrastructureDatabaseTab({ database }) {
 
   const poolBadge = getStatusBadge(database.status);
 
+  // Cálculos consolidados do projeto
+  const projectActive = database.project_active_connections ?? database.active_connections;
+  const projectIdle = database.project_idle_connections ?? database.idle_connections;
+  const projectTotal = database.project_total_open ?? (projectActive + projectIdle);
+  const projectMax = database.project_max_connections ?? database.pool_capacity;
+  const workers = database.workers_count || 4;
+  const basePerWorker = database.pool_base_per_worker || database.pool_base || 30;
+  const overflowPerWorker = database.overflow_per_worker || database.overflow_reserve || 20;
+
   return (
     <div className="infra-tab-content" data-testid="infra-database-tab" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Grade de 3 Cards Superiores com Glassmorphism */}
+      {/* Grade de 3 Cards Superiores com Glassmorphism (Foco no Projeto) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
         {/* Card 1: Conexões em Uso Agora */}
         <div
@@ -57,8 +66,8 @@ export default function InfrastructureDatabaseTab({ database }) {
             </div>
 
             <div style={{ fontSize: '25px', fontWeight: 800, color: '#f8fafc', marginBottom: '14px' }}>
-              {database.active_connections}{' '}
-              <span style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 500 }}>/ {database.pool_capacity}</span>{' '}
+              {projectActive}{' '}
+              <span style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 500 }}>/ {projectMax}</span>{' '}
               <span style={{ fontSize: '16px', color: '#38bdf8', fontWeight: 700 }}>({database.occupancy_pct}%)</span>
             </div>
 
@@ -78,7 +87,7 @@ export default function InfrastructureDatabaseTab({ database }) {
           </div>
 
           <div style={{ fontSize: '12px', color: '#94a3b8', borderTop: '1px solid rgba(255, 255, 255, 0.07)', paddingTop: '12px' }}>
-            <span>{database.idle_connections} conexões ociosas prontas no pool.</span>
+            <span>{projectIdle} conexões em standby no pool ({projectTotal} abertas no projeto).</span>
           </div>
         </div>
 
@@ -120,7 +129,7 @@ export default function InfrastructureDatabaseTab({ database }) {
 
             <div style={{ fontSize: '25px', fontWeight: 800, color: '#f8fafc', marginBottom: '14px' }}>
               {database.peak_connections_today}{' '}
-              <span style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 500 }}>/ {database.pool_capacity}</span>{' '}
+              <span style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 500 }}>/ {projectMax}</span>{' '}
               <span style={{ fontSize: '16px', color: '#34d399', fontWeight: 700 }}>({database.peak_pct_today}%)</span>
             </div>
 
@@ -144,7 +153,7 @@ export default function InfrastructureDatabaseTab({ database }) {
           </div>
         </div>
 
-        {/* Card 3: Capacidade do Servidor */}
+        {/* Card 3: Capacidade do Projeto */}
         <div
           className="infra-card"
           style={{
@@ -161,18 +170,126 @@ export default function InfrastructureDatabaseTab({ database }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '16px' }}>
             <Server size={18} color="#94a3b8" />
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#cbd5e1' }}>Capacidade do Servidor</span>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#cbd5e1' }}>Capacidade do Projeto (Pool)</span>
           </div>
 
           <div>
             <div style={{ fontSize: '25px', fontWeight: 800, color: '#f8fafc', marginBottom: '10px' }}>
-              {database.pool_capacity}{' '}
+              {projectMax}{' '}
               <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>conexões simultâneas máx</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#cbd5e1' }}>
-              <div>• Pool Base: <strong style={{ color: '#f8fafc' }}>{database.pool_base} conexões abertas</strong></div>
-              <div>• Overflow Reserva: <strong style={{ color: '#f8fafc' }}>+{database.overflow_reserve} conexões temporárias</strong></div>
+              <div>• Workers Uvicorn: <strong style={{ color: '#f8fafc' }}>{workers} workers ativos</strong></div>
+              <div>• Pool Base: <strong style={{ color: '#f8fafc' }}>{basePerWorker * workers} conexões ({basePerWorker}/worker)</strong></div>
+              <div>• Overflow Reserva: <strong style={{ color: '#f8fafc' }}>+{overflowPerWorker * workers} temporárias (+{overflowPerWorker}/worker)</strong></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Seção Inferior: Servidor PostgreSQL Global & Armazenamento */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+        {/* Card Conexões Globais do PostgreSQL */}
+        <div
+          className="infra-card"
+          style={{
+            background: 'rgba(15, 23, 42, 0.75)',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.09)',
+            padding: '22px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Layers size={18} color="#a78bfa" />
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#cbd5e1' }}>Conexões Globais do PostgreSQL</span>
+              </div>
+              <span
+                style={{
+                  background: 'rgba(167, 139, 250, 0.2)',
+                  color: '#c4b5fd',
+                  border: '1px solid rgba(167, 139, 250, 0.35)',
+                  padding: '3px 11px',
+                  borderRadius: '20px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                }}
+              >
+                Todos os Serviços
+              </span>
+            </div>
+
+            <div style={{ fontSize: '25px', fontWeight: 800, color: '#f8fafc', marginBottom: '12px' }}>
+              {database.global_connections_total ?? projectTotal}{' '}
+              <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>conexões abertas no servidor</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#cbd5e1' }}>
+              <div>• Ativas executando queries: <strong style={{ color: '#38bdf8' }}>{database.global_active_connections ?? projectActive} conexões</strong></div>
+              <div>• Ociosas em standby: <strong style={{ color: '#94a3b8' }}>{database.global_idle_connections ?? projectIdle} conexões</strong></div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '12px', color: '#94a3b8', borderTop: '1px solid rgba(255, 255, 255, 0.07)', paddingTop: '12px', marginTop: '14px' }}>
+            <span>Soma de todos os serviços conectados ao PostgreSQL. Teto configurado na stack: <strong style={{ color: '#f8fafc' }}>{database.postgres_max_connections || 500} conexões</strong>.</span>
+          </div>
+        </div>
+
+        {/* Card Armazenamento e Tamanho do Banco no Disco */}
+        <div
+          className="infra-card"
+          style={{
+            background: 'rgba(15, 23, 42, 0.75)',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.09)',
+            padding: '22px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <HardDrive size={18} color="#f59e0b" />
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#cbd5e1' }}>Tamanho do Banco no Disco</span>
+              </div>
+              <span
+                style={{
+                  background: 'rgba(245, 158, 11, 0.2)',
+                  color: '#fbbf24',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  padding: '3px 11px',
+                  borderRadius: '20px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                }}
+              >
+                Armazenamento
+              </span>
+            </div>
+
+            <div style={{ fontSize: '25px', fontWeight: 800, color: '#f8fafc', marginBottom: '12px' }}>
+              {database.database_size_pretty || 'N/A'}{' '}
+              <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>(Área de Membros)</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#cbd5e1' }}>
+              <div>• Banco deste projeto: <strong style={{ color: '#f8fafc' }}>{database.database_size_pretty || 'N/A'}</strong></div>
+              <div>• Total do Cluster (Todos os Bancos): <strong style={{ color: '#f59e0b' }}>{database.cluster_size_pretty || database.database_size_pretty || 'N/A'}</strong></div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '12px', color: '#94a3b8', borderTop: '1px solid rgba(255, 255, 255, 0.07)', paddingTop: '12px', marginTop: '14px' }}>
+            <span>Espaço em disco ocupado pelas tabelas, índices e dados gravados no volume persistente do banco.</span>
           </div>
         </div>
       </div>

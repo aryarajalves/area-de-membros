@@ -1,0 +1,183 @@
+/* ==============================================================================
+   FEED SOCIAL - SISTEMA DE 3 STRIKES, BANIMENTO E RECURSO (DARK NEON)
+   ============================================================================== */
+
+/* --- Banner de Alerta de Strikes no Topo do Feed --- */
+.feed-strikes-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  animation: feedStrikeBannerIn 0.25s ease-out;
+  flex-wrap: wrap;
+}
+
+@keyframes feedStrikeBannerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feed-strikes-banner.warning-medium {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.12);
+}
+
+.feed-strikes-banner.warning-high {
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.18);
+}
+
+.feed-strikes-banner.banned {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 4px 25px rgba(239, 68, 68, 0.25);
+}
+
+.feed-strikes-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.feed-strikes-banner-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.feed-strikes-banner-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feed-strikes-banner-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feed-strikes-banner-title strong {
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.feed-strikes-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+.feed-strikes-banner.banned .feed-strikes-pill {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.feed-strikes-banner-desc {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.feed-strikes-banner-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.feed-strikes-banner-action-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+/* --- Card de Bloqueio no Criador de Posts quando Banido --- */
+.feed-banned-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 30px 20px;
+  border-radius: 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.feed-banned-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.feed-banned-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #f87171;
+}
+
+.feed-banned-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  max-width: 520px;
+  line-height: 1.45;
+}
+
+.feed-banned-appeal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #ef4444;
+  border: 1px solid #f87171;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+}
+
+.feed-banned-appeal-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}

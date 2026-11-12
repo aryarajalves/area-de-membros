@@ -417,7 +417,7 @@ def optimize_b2_video_by_url(video_url: str, db_session=None) -> Optional[str]:
                 head = s3.head_object(Bucket=bucket, Key=s3_key)
                 metadata = head.get("Metadata", {}) or {}
                 if metadata.get("zv-optimized") == "1" and s3_key.lower().endswith(".mp4"):
-                    logger.info(f"[VideoOptimizer] Vídeo {s3_key} já consta como otimizado no B2.")
+                    logger.debug(f"[VideoOptimizer] Vídeo {s3_key} já consta como otimizado no B2.")
                     _set_optimization_stage(
                         s3_key,
                         stage="completed",
@@ -950,10 +950,19 @@ def run_pending_media_optimizations() -> dict:
             if lv.video_url and "AreaDeMembros/videos/" in lv.video_url:
                 video_urls.add(lv.video_url)
 
+        stats["videos_total_checked"] = len(video_urls)
+        stats["videos_already_optimized"] = 0
+
         for v_url in video_urls:
+            s3_key = extract_s3_key_from_url(v_url)
             new_v_url = optimize_b2_video_by_url(v_url, db_session=db)
-            if new_v_url:
+            stage_info = _optimization_progress.get(s3_key or "", {})
+            if stage_info.get("stage_label") == "Vídeo já otimizado (FastStart)!":
+                stats["videos_already_optimized"] += 1
+            elif new_v_url and stage_info.get("stage") == "completed":
                 stats["videos_optimized"] += 1
+            else:
+                stats["videos_already_optimized"] += 1
 
         return stats
     except Exception as exc:

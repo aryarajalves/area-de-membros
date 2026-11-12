@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import './community-feed-modals.css';
 
 export default function DeleteFeedItemModal({
   isOpen,

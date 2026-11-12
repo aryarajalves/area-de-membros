@@ -12,10 +12,12 @@ const getHeaders = (isMultipart = false) => {
   return headers;
 };
 
-export const fetchFeed = async ({ filter = 'all', courseId = null, search = '', page = 1, limit = 20 } = {}) => {
+export const fetchFeed = async ({ filter = 'all', courseId = null, category = null, hashtag = null, search = '', page = 1, limit = 20 } = {}) => {
   const params = new URLSearchParams();
   if (filter) params.append('filter', filter);
   if (courseId) params.append('course_id', courseId);
+  if (category && category !== 'todas') params.append('category', category);
+  if (hashtag) params.append('hashtag', hashtag);
   if (search) params.append('search', search);
   params.append('page', page);
   params.append('limit', limit);
@@ -36,6 +38,11 @@ export const createFeedPost = async ({
   mediaUrls = [],
   mediaType = 'none',
   mediaThumbnailUrl = null,
+  category = 'geral',
+  pollQuestion = null,
+  pollOptions = null,
+  location = null,
+  scheduledAt = null,
 }) => {
   const res = await fetch(`${API_BASE}/feed`, {
     method: 'POST',
@@ -46,6 +53,11 @@ export const createFeedPost = async ({
       media_urls: mediaUrls,
       media_type: mediaType,
       media_thumbnail_url: mediaThumbnailUrl || null,
+      category: category || 'geral',
+      poll_question: pollQuestion || null,
+      poll_options: pollOptions || null,
+      location: location || null,
+      scheduled_at: scheduledAt || null,
     }),
   });
   if (!res.ok) {
@@ -362,6 +374,101 @@ export const fetchFeedPostInsights = async (postId) => {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Erro ao carregar insights da publicação.');
+  }
+  return res.json();
+};
+
+export const fetchFeedPost = async (postId) => {
+  const res = await fetch(`${API_BASE}/feed/post/${postId}`, { headers: getHeaders() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao carregar publicação.');
+  }
+  return res.json();
+};
+
+export const shareFeedPost = async (postId) => {
+  const res = await fetch(`${API_BASE}/feed/${postId}/share`, { method: 'POST', headers: getHeaders() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao compartilhar publicação.');
+  }
+  return res.json();
+};
+
+export const publishFeedPostNow = async (postId) => {
+  const res = await fetch(`${API_BASE}/feed/${postId}/publish-now`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao publicar post.');
+  }
+  return res.json();
+};
+
+export const voteFeedPoll = async (postId, optionId) => {
+  const res = await fetch(`${API_BASE}/feed/${postId}/poll/vote`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ option_id: optionId }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao registrar voto na enquete.');
+  }
+  return res.json();
+};
+
+export const reportFeedPost = async (postId, { reason, description = '' }) => {
+  const res = await fetch(`${API_BASE}/feed/${postId}/report`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ reason, description }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao denunciar publicação.');
+  }
+  return res.json();
+};
+
+export const fetchAdminFeedReports = async (status = 'pending') => {
+  const res = await fetch(`${API_BASE}/feed/admin/reports?status=${encodeURIComponent(status)}`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao buscar denúncias.');
+  }
+  return res.json();
+};
+
+export const moderateFeedReport = async (reportId, action) => {
+  const res = await fetch(`${API_BASE}/feed/admin/reports/${reportId}?action=${encodeURIComponent(action)}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao moderar denúncia.');
+  }
+  return res.json();
+};
+
+export const uploadCommentAudio = async (audioBlob) => {
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'audio_comment.webm');
+
+  const res = await fetch(`${API_BASE}/feed/comments/upload-audio`, {
+    method: 'POST',
+    headers: getHeaders(true),
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Erro ao enviar áudio do comentário.');
   }
   return res.json();
 };
