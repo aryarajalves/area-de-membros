@@ -9,6 +9,7 @@ import LessonChaptersCard from './LessonChaptersCard';
 import ConfirmRetriggerAiModal from './ConfirmRetriggerAiModal';
 import AgentFlowLessonSync from './AgentFlowLessonSync';
 import LessonAiTranscriptionErrorState from './LessonAiTranscriptionErrorState';
+import LessonTranscriptionTranslateBar from './LessonTranscriptionTranslateBar';
 
 // Cache em memória persistido por ID da aula para navegação instantânea e zero layout shift
 const transcriptionMemoryCache = new Map();
@@ -18,9 +19,13 @@ export default function LessonAiTranscriptionTab({
   moduleId,
   lesson,
   currentUser,
-  isLightBg = false
+  isLightBg = false,
+  selectedLang = 'pt',
+  activePartNumber = 1,
+  isCurrentPartUntranscribed = false
 }) {
-  const cachedData = lesson?.id ? transcriptionMemoryCache.get(lesson.id) : null;
+  const cacheKey = lesson?.id ? `${lesson.id}:${selectedLang}` : null;
+  const cachedData = cacheKey ? transcriptionMemoryCache.get(cacheKey) : null;
   const [data, setData] = useState(cachedData || null);
   const [loading, setLoading] = useState(!cachedData);
   const [transcribing, setTranscribing] = useState(false);
@@ -46,16 +51,17 @@ export default function LessonAiTranscriptionTab({
 
   const fetchTranscription = useCallback(async (isInitial = false) => {
     if (!lesson?.id || !courseId || !moduleId) return;
-    const hasCache = transcriptionMemoryCache.has(lesson.id);
+    const key = `${lesson.id}:${selectedLang}`;
+    const hasCache = transcriptionMemoryCache.has(key);
     try {
       if (isInitial && !hasCache) setLoading(true);
       const res = await fetch(
-        `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription`,
+        `/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/transcription?lang=${encodeURIComponent(selectedLang)}`,
         { headers: getAuthHeaders() }
       );
       if (res.ok) {
         const json = await res.json();
-        transcriptionMemoryCache.set(lesson.id, json);
+        transcriptionMemoryCache.set(key, json);
         setData(json);
         if (Array.isArray(json?.chapters) && json.chapters.length > 0) {
           window.dispatchEvent(new CustomEvent('video-chapters-loaded', { detail: { chapters: json.chapters } }));
@@ -73,10 +79,10 @@ export default function LessonAiTranscriptionTab({
     } finally {
       setLoading(false);
     }
-  }, [courseId, moduleId, lesson?.id]);
+  }, [courseId, moduleId, lesson?.id, selectedLang]);
 
   useEffect(() => {
-    const existing = lesson?.id ? transcriptionMemoryCache.get(lesson.id) : null;
+    const existing = cacheKey ? transcriptionMemoryCache.get(cacheKey) : null;
     if (existing) {
       setData(existing);
       setLoading(false);
@@ -214,8 +220,8 @@ export default function LessonAiTranscriptionTab({
     );
   }
 
-  // Se não foi gerado ainda
-  if (!isCompleted && !isProcessing) {
+  // Se não foi gerado ainda (ou se a parte atual ainda não foi transcrita)
+  if ((!isCompleted || isCurrentPartUntranscribed) && !isProcessing) {
     return (
       <div
         data-testid="ai-transcription-empty"
@@ -237,12 +243,16 @@ export default function LessonAiTranscriptionTab({
           <Sparkles size={26} />
         </div>
         <h4 style={{ fontSize: '16px', fontWeight: 600, color: textColor, margin: 0 }}>
-          Transcrição & Resumo com IA
+          {isCurrentPartUntranscribed ? `Parte ${activePartNumber} sem Transcrição & Resumo` : 'Transcrição & Resumo com IA'}
         </h4>
         <p style={{ fontSize: '13.5px', color: subTextColor, maxWidth: '480px', margin: 0, lineHeight: 1.6 }}>
-          {isManager
-            ? 'Transforme o vídeo desta aula em texto integral com o Whisper da OpenAI e gere um documento inteligente com os principais destaques pedagógicos.'
-            : 'O resumo inteligente e a transcrição desta aula ainda não foram gerados pelo instrutor.'}
+          {isCurrentPartUntranscribed
+            ? (isManager
+              ? `A Parte ${activePartNumber} ainda não foi transcrita. Clique abaixo para processar apenas as partes novas e atualizar o resumo da aula.`
+              : `A transcrição e o resumo da Parte ${activePartNumber} ainda não foram gerados pelo instrutor.`)
+            : (isManager
+              ? 'Transforme o vídeo desta aula em texto integral com o Whisper da OpenAI e gere um documento inteligente com os principais destaques pedagógicos.'
+              : 'O resumo inteligente e a transcrição desta aula ainda não foram gerados pelo instrutor.')}
         </p>
 
         {isManager && (
@@ -298,6 +308,19 @@ export default function LessonAiTranscriptionTab({
 
   return (
     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }} data-testid="ai-transcription-container">
+      {/* Barra de Tradução dos Textos por Idioma */}
+      <LessonTranscriptionTranslateBar
+        courseId={courseId}
+        moduleId={moduleId}
+        lessonId={lesson?.id}
+        selectedLang={selectedLang}
+        activeLanguage={data?.active_language || 'pt'}
+        availableTranslations={data?.available_translations || []}
+        isManager={isManager}
+        onTranslated={() => fetchTranscription(false)}
+        isLightBg={isLightBg}
+      />
+
       {/* Barra de Ações do Topo (Exclusiva para Administradores/Gestores) */}
       {isManager && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -311,18 +334,7 @@ export default function LessonAiTranscriptionTab({
             <span
               data-testid="ai-transcription-cost-badge"
               title="Custo estimado total em reais cobrado pelas APIs da OpenAI (Whisper + GPT-4o-mini)"
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                backgroundColor: 'rgba(16, 185, 129, 0.14)',
-                color: '#10b981',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
+              style={{ fontSize: '12px', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.14)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '4px 10px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
               <Coins size={12} />
               <span>Custo: {data.estimated_cost_formatted}</span>

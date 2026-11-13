@@ -166,24 +166,30 @@ export default function TestimonialsManagement({ user }) {
     }
   };
 
-  // Alternar destaque
-  const handleToggleFeature = async (testimonialId, isFeatured) => {
+  // Alternar destaque ou exemplo oficial
+  const handleToggleFlag = async (testimonialId, payload, successMsg, errorFallback) => {
     try {
       const res = await fetch(`/api/v1/testimonials/${testimonialId}`, {
         method: 'PATCH',
         headers: getHeaders(),
-        body: JSON.stringify({ is_featured: isFeatured })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Erro ao atualizar destaque.');
+        throw new Error(errData.detail || errorFallback);
       }
-      addToast(isFeatured ? 'Depoimento destacado!' : 'Destaque removido.', 'success');
+      addToast(successMsg, 'success');
       fetchTestimonials();
     } catch (err) {
-      addToast(err.message || 'Erro ao atualizar destaque.', 'error');
+      addToast(err.message || errorFallback, 'error');
     }
   };
+
+  const handleToggleFeature = (testimonialId, isFeatured) =>
+    handleToggleFlag(testimonialId, { is_featured: isFeatured }, isFeatured ? 'Depoimento destacado!' : 'Destaque removido.', 'Erro ao atualizar destaque.');
+
+  const handleToggleExample = (testimonialId, isExample) =>
+    handleToggleFlag(testimonialId, { is_example: isExample }, isExample ? 'Depoimento fixado como exemplo!' : 'Exemplo removido.', 'Erro ao atualizar exemplo.');
 
   // Confirmar Exclusão
   const handleConfirmDelete = async () => {
@@ -453,6 +459,7 @@ export default function TestimonialsManagement({ user }) {
               onDelete={(t) => setDeletingTestimonial(t)}
               onModerate={handleModerate}
               onToggleFeature={handleToggleFeature}
+              onToggleExample={handleToggleExample}
             />
           ))}
         </div>

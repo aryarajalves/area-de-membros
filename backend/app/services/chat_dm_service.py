@@ -10,11 +10,48 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, desc, func, asc
 from fastapi import HTTPException, status
 
-from app.models.chat import ChatMessage
+from app.models.chat import ChatMessage, ChatMessageReaction
 from app.models.user import User
-from app.schemas.chat import ChatUser, ChatDmConversationItem, ChatAdminDmConversationItem, ChatMessageResponse
+from app.schemas.chat import (
+    ChatUser,
+    ChatDmConversationItem,
+    ChatAdminDmConversationItem,
+    ChatMessageResponse,
+    ChatMessageReactionSummary,
+)
 from app.services.chat_encryption_service import decrypt_dm_message
 from app.core.logger import logger
+
+
+def build_reactions_summary(reactions_list, current_user_id: int) -> List[ChatMessageReactionSummary]:
+    """
+    Agrupa as reações de uma mensagem por emoji e indica se o usuário atual reagiu.
+    """
+    if not reactions_list:
+        return []
+    grouped = {}
+    for r in reactions_list:
+        em = getattr(r, "emoji", None)
+        if not em:
+            continue
+        if em not in grouped:
+            grouped[em] = {"count": 0, "reacted_by_me": False, "users": []}
+        grouped[em]["count"] += 1
+        if r.user_id == current_user_id:
+            grouped[em]["reacted_by_me"] = True
+        u_name = getattr(getattr(r, "user", None), "name", None)
+        if u_name:
+            grouped[em]["users"].append(u_name)
+
+    return [
+        ChatMessageReactionSummary(
+            emoji=em,
+            count=info["count"],
+            reacted_by_me=info["reacted_by_me"],
+            users=info["users"],
+        )
+        for em, info in grouped.items()
+    ]
 
 
 def get_user_dm_conversations(
@@ -147,7 +184,11 @@ def get_dm_messages_history(
 ) -> List[ChatMessageResponse]:
     """
     Retorna as mensagens privadas entre current_user e contact_id.
-    Marca automaticamente as mensagens recebidas como lidas.
+    REGRA DE NEGÓCIO: NÃO marca automaticamente as mensagens como lidas ao abrir a janela.
+    A DM só é marcada como lida se:
+    1) O usuário enviar uma mensagem; OU
+    2) O usuário reagir a uma mensagem com emoji; OU
+    3) O usuário clicar explicitamente no botão de 'Marcar como lida'.
     """
     contact = db.query(User).filter(User.id == contact_id).first()
     if not contact:
@@ -156,38 +197,13 @@ def get_dm_messages_history(
             detail="Contato não encontrado.",
         )
 
-    # Marcar mensagens recebidas como lidas
-    unread_msgs = (
-        db.query(ChatMessage)
-        .filter(
-            ChatMessage.channel_type == "dm",
-            ChatMessage.user_id == contact_id,
-            ChatMessage.recipient_id == current_user.id,
-            ChatMessage.is_read == False,
-        )
-        .all()
-    )
-    now_utc = datetime.now(timezone.utc)
-    for m in unread_msgs:
-        m.is_read = True
-        m.read_at = now_utc
-    if unread_msgs:
-        db.commit()
-        from app.services.chat_ws_manager import chat_manager
-        chat_manager.send_to_user_sync(
-            current_user.id,
-            "dm_read",
-            {"user_id": current_user.id, "contact_id": contact_id}
-        )
-        chat_manager.send_to_user_sync(
-            contact_id,
-            "dm_read",
-            {"reader_id": current_user.id, "contact_id": current_user.id}
-        )
-
-
     query = (
         db.query(ChatMessage)
+        .options(
+            joinedload(ChatMessage.user),
+            joinedload(ChatMessage.recipient),
+            joinedload(ChatMessage.reactions).joinedload(ChatMessageReaction.user),
+        )
         .filter(
             ChatMessage.channel_type == "dm",
             or_(
@@ -256,6 +272,7 @@ def get_dm_messages_history(
                 is_deleted=bool(msg.is_deleted),
                 deleted_at=msg.deleted_at,
                 deleted_by_user_id=msg.deleted_by_user_id,
+                reactions=build_reactions_summary(msg.reactions, current_user.id),
             )
         )
     return result
@@ -495,7 +512,227 @@ def get_superadmin_thread_messages(
                 is_deleted=bool(msg.is_deleted),
                 deleted_at=msg.deleted_at,
                 deleted_by_user_id=msg.deleted_by_user_id,
+                reactions=build_reactions_summary(getattr(msg, "reactions", []), 0),
             )
         )
     return result
+
+
+def mark_dm_as_read(db: Session, current_user: User, contact_id: int) -> int:
+    """
+    Marca como lidas todas as mensagens pendentes recebidas do contato por current_user.
+    Dispara eventos WebSocket de atualização para ambos os participantes.
+    """
+    unread_msgs = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.channel_type == "dm",
+            ChatMessage.user_id == contact_id,
+            ChatMessage.recipient_id == current_user.id,
+            ChatMessage.is_read == False,
+        )
+        .all()
+    )
+    now_utc = datetime.now(timezone.utc)
+    marked_count = 0
+    for m in unread_msgs:
+        m.is_read = True
+        m.read_at = now_utc
+        marked_count += 1
+
+    if marked_count > 0:
+        db.commit()
+        from app.services.chat_ws_manager import chat_manager
+        chat_manager.send_to_user_sync(
+            current_user.id,
+            "dm_read",
+            {"user_id": current_user.id, "contact_id": contact_id, "marked_count": marked_count}
+        )
+        chat_manager.send_to_user_sync(
+            contact_id,
+            "dm_read",
+            {"reader_id": current_user.id, "contact_id": current_user.id, "marked_count": marked_count}
+        )
+        chat_manager.send_to_user_sync(
+            current_user.id,
+            "dm_updated",
+            {"contact_id": contact_id, "is_read": True}
+        )
+    return marked_count
+
+
+def mark_dm_as_unread(db: Session, current_user: User, contact_id: int) -> int:
+    """
+    Marca como NÃO lida a conversa com o contato (altera a última mensagem recebida para is_read = False).
+    Caso não haja mensagem recebida, altera a última mensagem da thread.
+    Dispara eventos WebSocket de atualização para ambos os participantes.
+    """
+    # Procura a mensagem mais recente recebida do contato
+    target_msg = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.channel_type == "dm",
+            ChatMessage.user_id == contact_id,
+            ChatMessage.recipient_id == current_user.id,
+            ChatMessage.is_deleted == False,
+        )
+        .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
+        .first()
+    )
+
+    # Se não houver mensagem recebida, procura a última mensagem qualquer entre eles
+    if not target_msg:
+        target_msg = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.channel_type == "dm",
+                or_(
+                    and_(ChatMessage.user_id == current_user.id, ChatMessage.recipient_id == contact_id),
+                    and_(ChatMessage.user_id == contact_id, ChatMessage.recipient_id == current_user.id),
+                ),
+                ChatMessage.is_deleted == False,
+            )
+            .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
+            .first()
+        )
+
+    if not target_msg:
+        return 0
+
+    target_msg.is_read = False
+    target_msg.read_at = None
+    db.commit()
+
+    from app.services.chat_ws_manager import chat_manager
+    chat_manager.send_to_user_sync(
+        current_user.id,
+        "dm_unread",
+        {"user_id": current_user.id, "contact_id": contact_id, "message_id": target_msg.id}
+    )
+    chat_manager.send_to_user_sync(
+        current_user.id,
+        "dm_updated",
+        {"contact_id": contact_id, "is_read": False}
+    )
+    return 1
+
+
+def toggle_message_reaction(
+    db: Session,
+    current_user: User,
+    message_id: int,
+    emoji: str,
+) -> dict:
+    """
+    Adiciona, remove ou substitui uma reação de emoji em uma mensagem.
+    - Se o usuário já reagiu com o mesmo emoji: remove a reação (toggle off).
+    - Se o usuário reagiu com outro emoji: substitui pelo novo emoji.
+    - Se não reagiu ainda: adiciona a nova reação.
+    - Se a mensagem for de uma DM, reagir marca a DM como lida pelo usuário.
+    """
+    msg = db.query(ChatMessage).filter(ChatMessage.id == message_id).first()
+    if not msg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mensagem não encontrada.",
+        )
+
+    if msg.is_deleted and current_user.role not in ("superadmin", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mensagem indisponível.",
+        )
+
+    # Se for DM, valida permissão de acesso
+    contact_id = None
+    if msg.channel_type == "dm":
+        is_participant = (
+            current_user.id in (msg.user_id, msg.recipient_id, msg.dm_thread_admin_id)
+            or current_user.role in ("superadmin", "admin")
+        )
+        if not is_participant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você não tem permissão para reagir a esta mensagem direta.",
+            )
+        contact_id = msg.recipient_id if msg.user_id == current_user.id else msg.user_id
+
+    # Busca reações existentes desse usuário nesta mensagem
+    existing_reaction = (
+        db.query(ChatMessageReaction)
+        .filter(
+            ChatMessageReaction.message_id == message_id,
+            ChatMessageReaction.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    action = "added"
+    if existing_reaction:
+        if existing_reaction.emoji == emoji:
+            db.delete(existing_reaction)
+            action = "removed"
+        else:
+            existing_reaction.emoji = emoji
+            action = "switched"
+    else:
+        new_reaction = ChatMessageReaction(
+            message_id=message_id,
+            user_id=current_user.id,
+            emoji=emoji,
+        )
+        db.add(new_reaction)
+
+    # Se for DM e a ação adicionou ou trocou reação: marca conversa como lida pelo usuário
+    if msg.channel_type == "dm" and contact_id and action in ("added", "switched"):
+        try:
+            mark_dm_as_read(db, current_user, contact_id)
+        except Exception as e:
+            logger.warning(f"Erro ao marcar DM como lida na reação: {e}")
+
+    db.commit()
+
+    # Recarregar lista completa de reações atualizadas
+    updated_reactions = (
+        db.query(ChatMessageReaction)
+        .options(joinedload(ChatMessageReaction.user))
+        .filter(ChatMessageReaction.message_id == message_id)
+        .all()
+    )
+    summary = build_reactions_summary(updated_reactions, current_user.id)
+
+    # Notificação em tempo real
+    from app.services.chat_ws_manager import chat_manager
+    event_payload = {
+        "message_id": message_id,
+        "emoji": emoji,
+        "action": action,
+        "reactions": [s.model_dump(mode="json") for s in summary],
+        "user_id": current_user.id,
+        "channel_type": msg.channel_type,
+        "contact_id": contact_id,
+    }
+
+    if msg.channel_type == "dm":
+        if msg.user_id:
+            chat_manager.send_to_user_sync(msg.user_id, "message_reaction", event_payload)
+        if msg.recipient_id and msg.recipient_id != msg.user_id:
+            chat_manager.send_to_user_sync(msg.recipient_id, "message_reaction", event_payload)
+        if msg.dm_thread_admin_id:
+            chat_manager.send_to_user_sync(msg.dm_thread_admin_id, "message_reaction", event_payload)
+    else:
+        chat_manager.broadcast_channel_sync(
+            msg.channel_type,
+            "message_reaction",
+            event_payload,
+            course_id=msg.course_id,
+        )
+
+    return {
+        "message_id": message_id,
+        "emoji": emoji,
+        "action": action,
+        "reactions": summary,
+        "contact_id": contact_id,
+    }
 

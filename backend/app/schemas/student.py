@@ -84,6 +84,8 @@ class StudentImportResponse(BaseModel):
 class StudentLessonActivityItem(BaseModel):
     lesson_id: int
     lesson_title: str
+    module_id: Optional[int] = None
+    module_order: Optional[int] = None
     module_title: Optional[str] = None
     is_completed: bool = True
     completed_at: Optional[datetime] = None

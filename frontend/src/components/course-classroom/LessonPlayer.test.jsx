@@ -359,5 +359,126 @@ describe('LessonPlayer Component', () => {
     // Mesmo com transcrição completed, se o tutor estiver oculto para aluno, a aba não deve existir
     expect(screen.queryByTestId('tab-lesson-tutor')).not.toBeInTheDocument();
   });
+
+  it('renderiza a barra de partes abaixo do player de vídeo', () => {
+    const multiPartLesson = {
+      ...mockLesson,
+      videos: [
+        { id: 1, language: 'pt', language_label: 'Português', title: 'Parte 1', video_url: 'https://b2.com/p1.mp4', video_type: 'upload' },
+        { id: 2, language: 'pt', language_label: 'Português', title: 'Parte 2', video_url: 'https://b2.com/p2.mp4', video_type: 'upload' }
+      ]
+    };
+
+    render(
+      <LessonPlayer
+        lesson={multiPartLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    const videoEl = screen.getByTestId('lesson-html5-video');
+    const partsBar = screen.getByTestId('lesson-parts-bar');
+    // Node.DOCUMENT_POSITION_FOLLOWING (4) significa que partsBar vem depois de videoEl no DOM
+    expect(videoEl.compareDocumentPosition(partsBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('exibe popup de carregamento ao trocar de aula e fecha automaticamente após carregar as informações', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolvePendingFetch;
+      global.fetch = vi.fn().mockImplementation(() =>
+        new Promise((resolve) => {
+          resolvePendingFetch = resolve;
+        })
+      );
+
+      const { rerender } = render(
+        <LessonPlayer
+          lesson={mockLesson}
+          moduleTitle="Módulo 1"
+          courseId={1}
+          moduleId={1}
+          currentUser={{ id: 1, role: 'aluno' }}
+        />
+      );
+
+      // No carregamento inicial não exibe o popup de troca de aula
+      expect(screen.queryByTestId('lesson-switching-modal')).not.toBeInTheDocument();
+
+      // Troca para a aula 2 enquanto o fetch ainda está pendente
+      const nextMockLesson = {
+        ...mockLesson,
+        id: 2,
+        title: 'Aula 02 - Nova Aula'
+      };
+
+      const resolvers = [];
+      global.fetch = vi.fn().mockImplementation(() =>
+        new Promise((resolve) => {
+          resolvers.push(() => resolve({ ok: true, json: async () => ({}) }));
+        })
+      );
+
+      rerender(
+        <LessonPlayer
+          lesson={nextMockLesson}
+          moduleTitle="Módulo 1"
+          courseId={1}
+          moduleId={1}
+          currentUser={{ id: 1, role: 'aluno' }}
+        />
+      );
+
+      // Popup deve aparecer imediatamente com o título da nova aula
+      const modal = screen.getByTestId('lesson-switching-modal');
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveTextContent('Aula 02 - Nova Aula');
+
+      // Finaliza todas as requisições pendentes da nova aula e avança o tempo mínimo de exibição
+      await act(async () => {
+        resolvers.forEach((fn) => fn());
+        if (resolvePendingFetch) resolvePendingFetch({ ok: true, json: async () => ({}) });
+        await vi.advanceTimersByTimeAsync(500);
+      });
+
+      // Popup deve fechar automaticamente após terminar o carregamento
+      expect(screen.queryByTestId('lesson-switching-modal')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('não herda a descrição da Parte 1 quando uma nova parte (Parte 2) não possui descrição própria', () => {
+    const multiPartLesson = {
+      ...mockLesson,
+      description: 'Descrição exclusiva da Parte 1',
+      videos: [
+        { id: 1, language: 'pt', language_label: 'Português', title: 'Parte 1', description: 'Descrição exclusiva da Parte 1', video_url: 'https://b2.com/p1.mp4', video_type: 'upload', is_transcribed: true },
+        { id: 2, language: 'pt', language_label: 'Português', title: 'Parte 2', description: '', video_url: 'https://b2.com/p2.mp4', video_type: 'upload', is_transcribed: false }
+      ]
+    };
+
+    render(
+      <LessonPlayer
+        lesson={multiPartLesson}
+        moduleTitle="Módulo 1"
+        courseId={1}
+        moduleId={1}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    // Parte 1 exibe sua descrição
+    expect(screen.getByTestId('active-lesson-description')).toHaveTextContent('Descrição exclusiva da Parte 1');
+
+    // Clica na Parte 2
+    fireEvent.click(screen.getByTestId('lesson-part-btn-1'));
+
+    // Parte 2 não tem descrição e NÃO deve exibir a da Parte 1
+    expect(screen.queryByText('Descrição exclusiva da Parte 1')).not.toBeInTheDocument();
+  });
 });
 

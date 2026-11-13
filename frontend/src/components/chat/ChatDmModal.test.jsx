@@ -575,4 +575,108 @@ describe('ChatDmModal and ChatDmConversationView Components', () => {
       expect(screen.getByTestId('dm-tab-inbox')).toBeInTheDocument();
     });
   });
+
+  it('exibe botão Marcar como lida quando há mensagem não lida e dispara requisição mark-read', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/v1/chat/dm/messages/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              id: 101,
+              channel_type: 'dm',
+              message: 'Olá, preciso de ajuda',
+              is_read: false,
+              created_at: '2026-11-12T10:00:00Z',
+              user: mockContact,
+              reactions: [],
+            },
+          ],
+        });
+      }
+      if (url.includes('/mark-read')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, contact_id: 2, marked_count: 1, is_read: true }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+          targetContact={mockContact}
+        />
+      </ToastProvider>
+    );
+
+    const markReadBtn = await screen.findByTestId('dm-mark-read-btn');
+    expect(markReadBtn).toBeInTheDocument();
+    expect(markReadBtn).toHaveTextContent('Marcar como lida');
+
+    fireEvent.click(markReadBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/chat/dm/2/mark-read'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
+
+  it('exibe botão Marcar como não lida quando mensagens estão lidas e dispara mark-unread', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/v1/chat/dm/messages/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              id: 102,
+              channel_type: 'dm',
+              message: 'Tudo certo',
+              is_read: true,
+              created_at: '2026-11-12T10:00:00Z',
+              user: mockContact,
+              reactions: [],
+            },
+          ],
+        });
+      }
+      if (url.includes('/mark-unread')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, contact_id: 2, marked_count: 1, is_read: false }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(
+      <ToastProvider>
+        <ChatDmModal
+          isOpen={true}
+          onClose={vi.fn()}
+          currentUser={currentUser}
+          targetContact={mockContact}
+        />
+      </ToastProvider>
+    );
+
+    const markUnreadBtn = await screen.findByTestId('dm-mark-unread-btn');
+    expect(markUnreadBtn).toBeInTheDocument();
+    expect(markUnreadBtn).toHaveTextContent('Marcar como não lida');
+
+    fireEvent.click(markUnreadBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/chat/dm/2/mark-unread'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
 });

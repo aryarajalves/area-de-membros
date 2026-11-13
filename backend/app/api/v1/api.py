@@ -8,7 +8,7 @@ from app.api.v1.endpoints import (
     infrastructure, course_upsell, events, course_lessons, certificates,
     lesson_mindmaps, tutor_ia, presence, chat_superadmin_dms,
     community_feed, community_stories, community_feed_interactions,
-    community_strikes
+    community_strikes, chat_reactions
 )
 
 api_router = APIRouter()
@@ -33,6 +33,7 @@ api_router.include_router(api_tokens.router, prefix="/api-tokens", tags=["api-to
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_superadmin_dms.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_members.router, prefix="/chat", tags=["chat"])
+api_router.include_router(chat_reactions.router, prefix="/chat", tags=["chat"])
 api_router.include_router(chat_broadcast.router)
 api_router.include_router(funnels.router)
 api_router.include_router(testimonials.router, prefix="/testimonials", tags=["testimonials"])

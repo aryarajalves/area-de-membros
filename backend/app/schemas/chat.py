@@ -42,6 +42,15 @@ class ChatUnreadSummaryResponse(BaseModel):
     mentions_unread: int = 0
 
 
+class ChatMessageReactionSummary(BaseModel):
+    emoji: str
+    count: int = 0
+    reacted_by_me: bool = False
+    users: List[str] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ChatMessageResponse(BaseModel):
     id: int
     channel_type: str
@@ -71,6 +80,7 @@ class ChatMessageResponse(BaseModel):
     is_deleted: bool = False
     deleted_at: Optional[datetime] = None
     deleted_by_user_id: Optional[int] = None
+    reactions: List[ChatMessageReactionSummary] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -203,5 +213,24 @@ class ChatDmCandidatesResponse(BaseModel):
     page: int
     limit: int
     pages: int
+
+
+class ChatMessageReactionToggleRequest(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=20, description="Emoji da reação (ex: 👍, ❤️, 😂, etc.)")
+
+
+class ChatMessageReactionToggleResponse(BaseModel):
+    message_id: int
+    emoji: str
+    action: str  # 'added' | 'removed' | 'switched'
+    reactions: List[ChatMessageReactionSummary] = []
+    contact_id: Optional[int] = None
+
+
+class ChatDmMarkStatusResponse(BaseModel):
+    success: bool
+    contact_id: int
+    marked_count: int
+    is_read: bool
 
 

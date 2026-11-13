@@ -22,6 +22,7 @@ class Testimonial(Base):
     content = Column(Text, nullable=False)  # Texto do depoimento
     status = Column(String(30), default="pending", nullable=False, index=True)  # 'pending' | 'approved' | 'rejected'
     is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    is_example = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

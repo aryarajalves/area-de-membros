@@ -11,6 +11,7 @@ export default function IntroductionManagement({ user, bgColor }) {
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
   const { addToast } = useToast();
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
@@ -82,6 +83,35 @@ export default function IntroductionManagement({ user, bgColor }) {
     }
   };
 
+  const handleUpdatePost = async (postId, postPayload) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/introductions/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(postPayload),
+      });
+
+      if (res.ok) {
+        const updatedPost = await res.json();
+        setPosts((prev) => prev.map((p) => (p.id === postId ? updatedPost : p)));
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+        addToast('Apresentação atualizada com sucesso!', 'success');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao atualizar apresentação.');
+      }
+    } catch (err) {
+      addToast(err.message || 'Falha ao atualizar apresentação.', 'error');
+      throw err;
+    }
+  };
+
   const handleDeletePost = async (postId) => {
     const token = getAuthToken();
     try {
@@ -138,6 +168,50 @@ export default function IntroductionManagement({ user, bgColor }) {
       }
     } catch (err) {
       addToast(err.message || 'Falha ao fixar apresentação.', 'error');
+    }
+  };
+
+  const handleToggleExample = async (postId) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/introductions/${postId}/example`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const updatedIsExample = Boolean(data.is_example);
+        const updatedIsPinned = Boolean(data.is_pinned);
+
+        setPosts((prev) => {
+          const updated = prev.map((p) =>
+            p.id === postId ? { ...p, is_example: updatedIsExample, is_pinned: updatedIsPinned } : p
+          );
+          return [...updated].sort((a, b) => {
+            if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+        });
+
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost((prev) =>
+            prev ? { ...prev, is_example: updatedIsExample, is_pinned: updatedIsPinned } : null
+          );
+        }
+
+        addToast(
+          updatedIsExample
+            ? 'Apresentação fixada como Exemplo Oficial!'
+            : 'Destaque de apresentação de exemplo removido.',
+          'success'
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao alterar status de exemplo.');
+      }
+    } catch (err) {
+      addToast(err.message || 'Falha ao marcar apresentação como exemplo.', 'error');
     }
   };
 
@@ -272,10 +346,22 @@ export default function IntroductionManagement({ user, bgColor }) {
     }
   };
 
-  const handleOpenDm = (authorId, authorName) => {
+  const handleOpenDm = (authorId, authorName, authorData = {}) => {
+    if (!authorId) return;
+    // Fecha o modal de apresentação aberto para liberar a visão da conversa na DM
+    setSelectedPost(null);
+
     window.dispatchEvent(
-      new CustomEvent('open-user-dm', {
-        detail: { userId: authorId, userName: authorName },
+      new CustomEvent('open_direct_message', {
+        detail: {
+          contact: {
+            id: authorId,
+            name: authorName,
+            email: authorData?.email,
+            role: authorData?.role,
+            avatar: authorData?.avatar,
+          },
+        },
       })
     );
     addToast(`Iniciando conversa direta com ${authorName}...`, 'info');
@@ -311,18 +397,25 @@ export default function IntroductionManagement({ user, bgColor }) {
           onClose={() => setSelectedPost(null)}
           onToggleLike={handleToggleLike}
           onTogglePin={handleTogglePin}
+          onToggleExample={handleToggleExample}
           onAddComment={handleAddComment}
           onDeleteComment={handleDeleteComment}
           onDeletePost={handleDeletePost}
+          onEditPost={(post) => setEditingPost(post)}
           onOpenDm={handleOpenDm}
         />
       )}
 
-      {/* Modal para Criar Nova Apresentação */}
+      {/* Modal para Criar ou Editar Apresentação */}
       <IntroductionCreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        isOpen={isCreateModalOpen || Boolean(editingPost)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setEditingPost(null);
+        }}
         onCreate={handleCreatePost}
+        onUpdate={handleUpdatePost}
+        initialData={editingPost}
       />
     </div>
   );

@@ -28,6 +28,7 @@ from app.schemas.student import (
 from app.schemas.student_tag import StudentTagAssignmentItem
 from app.schemas.gamification import GamificationHistoryItem
 from app.services.gamification_level_service import calculate_student_level
+from app.services.student_progress_filter import filter_students_by_progress, get_target_progress_percent
 from app.services.presence_service import get_online_user_ids
 from app.services.webhook_service import execute_webhook_request, SUPPORTED_EVENTS
 from app.api.v1.endpoints.users import require_admin_or_superadmin, get_current_user, calculate_course_expiration
@@ -239,6 +240,9 @@ def list_students(
     registration_month: Optional[str] = None,
     order_by: Optional[str] = Query("recent"),
     only_online: Optional[bool] = Query(False, description="Filtra apenas alunos atualmente online"),
+    engagement_level: Optional[str] = Query(None, description="Nível de engajamento: low (0-35%), medium (36-70%), high (71-100%)"),
+    min_progress: Optional[int] = Query(None, ge=0, le=100, description="Progresso mínimo (%)"),
+    max_progress: Optional[int] = Query(None, ge=0, le=100, description="Progresso máximo (%)"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -295,6 +299,12 @@ def list_students(
             except (ValueError, IndexError):
                 pass
 
+        has_progress_filter = bool(
+            (engagement_level and engagement_level.strip().lower() in ["low", "medium", "high"])
+            or min_progress is not None
+            or max_progress is not None
+        )
+
         # Ordenação
         if order_by in ["recent", "oldest", "name_asc", "name_desc"]:
             if order_by == "name_asc":
@@ -306,21 +316,41 @@ def list_students(
             else:  # recent
                 query = query.order_by(User.created_at.desc())
 
-            total = query.count()
-            pages = ceil(total / limit) if total > 0 else 1
-            offset = (page - 1) * limit
+            if not has_progress_filter:
+                total = query.count()
+                pages = ceil(total / limit) if total > 0 else 1
+                offset = (page - 1) * limit
 
-            students = query.offset(offset).limit(limit).all()
-            items = _build_students_details(students, db)
+                students = query.offset(offset).limit(limit).all()
+                items = _build_students_details(students, db)
+            else:
+                all_students = query.all()
+                all_items = filter_students_by_progress(
+                    _build_students_details(all_students, db),
+                    course_id=course_id,
+                    engagement_level=engagement_level,
+                    min_progress=min_progress,
+                    max_progress=max_progress,
+                )
+                total = len(all_items)
+                pages = ceil(total / limit) if total > 0 else 1
+                offset = (page - 1) * limit
+                items = all_items[offset : offset + limit]
 
         else:
             # Ordenação por métricas calculadas (progresso ou renovação)
             all_students = query.all()
-            all_items = _build_students_details(all_students, db)
+            all_items = filter_students_by_progress(
+                _build_students_details(all_students, db),
+                course_id=course_id,
+                engagement_level=engagement_level,
+                min_progress=min_progress,
+                max_progress=max_progress,
+            )
 
             if order_by == "progress_desc":
-                # Alunos mais perto de terminar o curso (maior percentual de conclusão)
-                all_items.sort(key=lambda s: s.overall_progress_percent, reverse=True)
+                # Alunos mais perto de terminar o curso (no curso selecionado ou geral)
+                all_items.sort(key=lambda s: get_target_progress_percent(s, course_id), reverse=True)
             elif order_by == "renewal_asc":
                 # Alunos quase precisando renovar o curso (menor número de dias restantes primeiro)
                 def renewal_sort_key(s):
@@ -612,6 +642,18 @@ def get_student_course_history(
     if not course:
         raise HTTPException(status_code=404, detail="Curso não encontrado.")
 
+    # Busca módulos ordenados para determinar a numeração ordinal de cada módulo
+    modules = (
+        db.query(Module)
+        .filter(Module.course_id == course_id)
+        .order_by(Module.order_index.asc(), Module.id.asc())
+        .all()
+    )
+    module_info_map = {
+        m.id: {"order": idx + 1, "title": m.title}
+        for idx, m in enumerate(modules)
+    }
+
     # Busca todas as aulas do curso com seus módulos
     lessons = (
         db.query(Lesson)
@@ -619,7 +661,15 @@ def get_student_course_history(
         .filter(Module.course_id == course_id)
         .all()
     )
-    lesson_map = {l.id: (l.title, l.module.title if l.module else None) for l in lessons}
+    lesson_map = {
+        l.id: {
+            "title": l.title,
+            "module_id": l.module_id,
+            "module_order": module_info_map.get(l.module_id, {}).get("order"),
+            "module_title": module_info_map.get(l.module_id, {}).get("title") or (l.module.title if l.module else None),
+        }
+        for l in lessons
+    }
     lesson_ids = list(lesson_map.keys())
 
     if not lesson_ids:
@@ -639,12 +689,14 @@ def get_student_course_history(
 
     activities: List[StudentLessonActivityItem] = []
     for pr in progress_records:
-        lesson_info = lesson_map.get(pr.lesson_id, ("Aula Desconhecida", None))
+        l_info = lesson_map.get(pr.lesson_id, {})
         activities.append(
             StudentLessonActivityItem(
                 lesson_id=pr.lesson_id,
-                lesson_title=lesson_info[0],
-                module_title=lesson_info[1],
+                lesson_title=l_info.get("title", "Aula Desconhecida"),
+                module_id=l_info.get("module_id"),
+                module_order=l_info.get("module_order"),
+                module_title=l_info.get("module_title"),
                 is_completed=pr.is_completed,
                 completed_at=pr.completed_at or pr.updated_at or pr.created_at,
                 updated_at=pr.updated_at,

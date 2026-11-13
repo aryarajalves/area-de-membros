@@ -284,5 +284,35 @@ describe('LessonVideoManager Component', () => {
     // Botão de tela cheia deve existir
     expect(screen.getByTestId('fullscreen-desc-btn-pt')).toBeInTheDocument();
   });
+
+  it('allows adding and managing multiple lesson parts with custom duration', () => {
+    const onChange = vi.fn();
+    render(
+      <LessonVideoManager
+        videos={[
+          { language: 'pt', language_label: 'Parte 1', duration: '15:00', video_url: 'https://b2.com/p1.mp4', video_type: 'upload' }
+        ]}
+        onChange={onChange}
+      />
+    );
+
+    // Deve exibir botão de Adicionar Parte
+    const addPartBtn = screen.getByTestId('add-part-btn');
+    expect(addPartBtn).toBeInTheDocument();
+    fireEvent.click(addPartBtn);
+
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ language: 'pt', video_url: 'https://b2.com/p1.mp4' }),
+      expect.objectContaining({ language: 'pt', language_label: 'Português', title: 'Parte 2', order_index: 1 })
+    ]));
+
+    // Campo de duração da parte
+    const durInput = screen.getByTestId('lesson-video-duration-input');
+    expect(durInput).toHaveValue('15:00');
+    fireEvent.change(durInput, { target: { value: '18:40' } });
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ duration: '18:40' })
+    ]));
+  });
 });
 

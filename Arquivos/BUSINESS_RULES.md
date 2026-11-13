@@ -99,6 +99,15 @@ Este documento registra as decisÃµes de regras de negÃ³cio da plataforma par
 - **Preservação de Contexto e Navegação na Sala de Aula (`CourseClassroom` e `useCourseContent`):**
   - Ao anexar novos arquivos complementares, editar dados da aula (título, descrição, metadados gerados por IA), renomear anexo ou atualizar o conteúdo da aula, o sistema preserva com precisão o módulo ativo (`selectedModuleId`) e a aula ativa (`activeLesson`), garantindo que o usuário ou instrutor continue exatamente na aula e módulo em que estava trabalhando, sem jamais reverter para a primeira aula do primeiro módulo.
   - O recarregamento em segundo plano (`fetchCourseData(preferredLessonId, preferredModuleId)`) não desmonta o player ou a visualização do curso, mantendo abas ativas (como *Materiais Complementares*) e o estado da tela no mesmo ponto.
+- **Aulas Multi-Partes e Hierarquia Idioma → Partes (`LessonVideoManager`, `LessonPartsBar`):**
+  - O cadastro de vídeos da aula segue uma hierarquia em 2 níveis: primeiro seleciona-se o **Idioma** (Português, Inglês, Espanhol, etc.) e, dentro de cada idioma, gerenciam-se as **Partes da Aula** (Parte 1, Parte 2, Parte 3...).
+  - Cada parte possui seu próprio vídeo (upload direto no Backblaze B2 ou link externo/embed), título específico, duração estimada (`duration`) e ordenação (`order_index`).
+  - No player (`LessonPlayer`), a barra `LessonPartsBar` exibe as pílulas das partes à esquerda e o seletor de idioma à direita (quando houver mais de 1 idioma). Ao trocar o idioma, o player preserva a parte atual se ela existir naquele idioma.
+- **Transcrição Incremental por Parte & Tradução de Textos por Idioma (`ai_multipart_transcription_service`):**
+  - Ao gerar transcrição com IA para uma aula multi-partes, o backend verifica individualmente cada parte no idioma principal: se `lesson_videos.transcript_text` já existir e `transcribed_video_url == video_url`, a parte é **reaproveitada do cache** sem chamar o Whisper novamente. Apenas partes novas ou com vídeo alterado são transcritas.
+  - O cache de transcrição por parte é preservado mesmo ao editar/adicionar novas partes na aula (`update_lesson`), desde que a `video_url` da parte não tenha sido alterada.
+  - Ao consolidar as partes em `full_transcript`, os resumos, destaques e capítulos gerados abrangem a aula inteira.
+  - Para aulas com outros idiomas (ex: Inglês, Espanhol), os textos gerados por IA (Resumo, Pontos-chave e Capítulos) podem ser traduzidos sob demanda via `POST .../transcription/translate` e salvos em cache (`lesson_transcriptions.translations_json`), sendo carregados automaticamente na aba de transcrição conforme o idioma escolhido no player.
 
 ---
 
@@ -1929,3 +1938,23 @@ ew_dm e dm_updated).
   - **Formulário de Comentário:** Campo de texto estilizado com fundo translúcido escuro, foco neon ciano, avatar do usuário comentando com anel neon e botão de envio em gradiente azul/ciano.
   - **Rolagem Automática para Comentários:** Ao clicar no botão Comentar, a janela desce suavemente ate o campo de digitação.
   - **Empty State Acolhedor:** Quando a apresentação não possui comentários, exibe um card com ícone de balão de mensagem e texto de incentivo convidativo para dar as boas-vindas.
+
+---
+
+## 21. Chat Privado e Mensagens Diretas (DMs)
+- **Reações com Emoji nas Mensagens da DM (`ChatDmReactionPicker` e `ChatDmReactionBadges`):**
+  - Cada mensagem possui um botão discreto de emoji ao lado do horário e das ações.
+  - Ao clicar, abre um menu rápido suspenso com os emojis populares: 👍, ❤️, 😂, 😮, 😢, 🙏, 🔥, 👏.
+  - As reações são exibidas logo abaixo da mensagem em pílulas translúcidas com contadores.
+  - Ao clicar em uma pílula já existente, o usuário alterna (toggle) instantaneamente a sua própria reação.
+  - Se o usuário selecionar um novo emoji diferente do anterior, sua reação é atualizada para o novo. Se clicar no mesmo, a reação é removida (toggle off).
+  - As reações são sincronizadas em tempo real para os dois participantes da conversa via WebSocket (`message_reaction`).
+
+- **Regra de Leitura Manual e Condicional da DM (Sem marcação automática ao abrir):**
+  - A abertura da janela ou consulta do histórico da conversa **NÃO marca as mensagens como lidas automaticamente**.
+  - A conversa só é marcada como lida (`is_read = True`) em três situações específicas:
+    1. **Envio de Mensagem:** Quando o usuário responde enviando uma nova mensagem para o contato;
+    2. **Reação com Emoji:** Quando o usuário reage a uma mensagem recebida na DM com qualquer emoji;
+    3. **Botão Explícito:** Quando o usuário clica expressamente no botão **"Marcar como lida"** no topo da conversa.
+  - **Botão "Marcar como não lida":** No cabeçalho da DM, quando todas as mensagens recebidas estiverem lidas, o usuário tem à disposição o botão **"Marcar como não lida"**, permitindo restaurar o badge de conversa pendente na Inbox para lembrar de responder mais tarde.
+

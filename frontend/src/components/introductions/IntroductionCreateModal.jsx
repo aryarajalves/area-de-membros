@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Handshake, Sparkles, Send, Briefcase, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Handshake, Sparkles, Send, Briefcase, MapPin, Save } from 'lucide-react';
 import IntroCreateMediaTab from './IntroCreateMediaTab';
 import IntroCreateSocialTab from './IntroCreateSocialTab';
 import IntroCreateMatchmakingTab from './IntroCreateMatchmakingTab';
@@ -8,7 +8,10 @@ export default function IntroductionCreateModal({
   isOpen,
   onClose,
   onCreate,
+  onUpdate = null,
+  initialData = null,
 }) {
+  const isEditing = Boolean(initialData);
   const [activeTab, setActiveTab] = useState('about'); // 'about', 'media', 'social', 'matchmaking'
 
   // Form states
@@ -37,6 +40,47 @@ export default function IntroductionCreateModal({
   const [offering, setOffering] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab('about');
+    setMediaUploadError('');
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setContent(initialData.content || '');
+      setNiche(initialData.niche || '');
+      setLocation(initialData.location || '');
+      const hasEmbed = Boolean(initialData.video_embed_url);
+      const hasUpload = Boolean(initialData.media_url);
+      setMediaOption(hasEmbed ? 'embed' : (hasUpload ? 'upload' : 'none'));
+      setMediaFile(null);
+      setMediaUrl(initialData.media_url || '');
+      setMediaType(initialData.media_type || 'none');
+      setVideoEmbedUrl(initialData.video_embed_url || '');
+      setInstagram(initialData.instagram || '');
+      setLinkedin(initialData.linkedin || '');
+      setWhatsapp(initialData.whatsapp || '');
+      setWebsite(initialData.website || '');
+      setSeeking(initialData.seeking || '');
+      setOffering(initialData.offering || '');
+    } else {
+      setTitle('');
+      setContent('');
+      setNiche('');
+      setLocation('');
+      setMediaOption('none');
+      setMediaFile(null);
+      setMediaUrl('');
+      setMediaType('none');
+      setVideoEmbedUrl('');
+      setInstagram('');
+      setLinkedin('');
+      setWhatsapp('');
+      setWebsite('');
+      setSeeking('');
+      setOffering('');
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -107,7 +151,11 @@ export default function IntroductionCreateModal({
         offering: offering.trim() || null,
       };
 
-      await onCreate(payload);
+      if (isEditing && onUpdate) {
+        await onUpdate(initialData.id, payload);
+      } else {
+        await onCreate(payload);
+      }
 
       // Reset
       setTitle('');
@@ -139,8 +187,8 @@ export default function IntroductionCreateModal({
               <Handshake size={20} />
             </div>
             <div>
-              <h3>Criar Apresentação</h3>
-              <p>Apresente-se, adicione mídias, redes e parcerias para se conectar.</p>
+              <h3>{isEditing ? 'Editar Apresentação' : 'Criar Apresentação'}</h3>
+              <p>{isEditing ? 'Atualize suas informações, mídias, redes e parcerias.' : 'Apresente-se, adicione mídias, redes e parcerias para se conectar.'}</p>
             </div>
           </div>
 
@@ -323,8 +371,12 @@ export default function IntroductionCreateModal({
               disabled={!title.trim() || !content.trim() || submitting || uploadingMedia}
               data-testid="submit-create-post-btn"
             >
-              <Send size={15} />
-              <span>{submitting ? 'Publicando...' : 'Publicar Apresentação'}</span>
+              {isEditing ? <Save size={15} /> : <Send size={15} />}
+              <span>
+                {submitting
+                  ? (isEditing ? 'Salvando...' : 'Publicando...')
+                  : (isEditing ? 'Salvar Alterações' : 'Publicar Apresentação')}
+              </span>
             </button>
           </div>
         </form>

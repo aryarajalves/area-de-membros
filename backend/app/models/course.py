@@ -125,7 +125,7 @@ class Lesson(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     module = relationship("Module", back_populates="lessons")
-    videos = relationship("LessonVideo", back_populates="lesson", cascade="all, delete-orphan", order_by="LessonVideo.id.asc()")
+    videos = relationship("LessonVideo", back_populates="lesson", cascade="all, delete-orphan", order_by="LessonVideo.order_index.asc(), LessonVideo.id.asc()")
     comments = relationship("LessonComment", back_populates="lesson", cascade="all, delete-orphan", order_by="LessonComment.created_at.desc()")
     attachments = relationship("LessonAttachment", back_populates="lesson", cascade="all, delete-orphan", order_by="LessonAttachment.id.asc()")
     progress = relationship("LessonProgress", back_populates="lesson", cascade="all, delete-orphan")
@@ -143,15 +143,24 @@ class LessonVideo(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_index = Column(Integer, nullable=False, default=0)
+    duration = Column(String, nullable=True)
     language = Column(String, nullable=False, default="pt")
     language_label = Column(String, nullable=False, default="Português")
     title = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     video_url = Column(String, nullable=False)
     video_type = Column(String, default="upload")
+    transcript_text = Column(Text, nullable=True)
+    transcribed_video_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
     lesson = relationship("Lesson", back_populates="videos")
+
+    @property
+    def is_transcribed(self) -> bool:
+        """Indica se esta parte específica já possui transcrição válida para a URL atual."""
+        return bool(self.transcript_text and self.transcribed_video_url == self.video_url)
 
 
 class LessonComment(Base):
@@ -380,6 +389,7 @@ class LessonTranscription(Base):
     estimated_cost_brl = Column(Float, nullable=True)
     agentflow_kb_id = Column(Integer, nullable=True)
     agentflow_synced_at = Column(DateTime, nullable=True)
+    translations_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

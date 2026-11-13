@@ -6,6 +6,7 @@ import {
   deleteInviteApi,
   bulkDeleteInvitesApi,
 } from './userManagementApi';
+import { filterUsersList } from './userFilterUtils';
 
 export function useUserManagement(currentUser) {
   const [activeSubTab, setActiveSubTab] = useState(() => {
@@ -45,7 +46,21 @@ export function useUserManagement(currentUser) {
 
   // Filtros
   const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userDdiFilter, setUserDdiFilter] = useState('all');
+  const [userDddFilter, setUserDddFilter] = useState('');
+  const [userMonthFilter, setUserMonthFilter] = useState('all');
   const [inviteStatusFilter, setInviteStatusFilter] = useState('all');
+
+  const handleClearUserFilters = () => {
+    setUserRoleFilter('all');
+    setUserSearchTerm('');
+    setUserDdiFilter('all');
+    setUserDddFilter('');
+    setUserMonthFilter('all');
+    setUsersPage(1);
+    setSelectedUserIds([]);
+  };
 
   // Paginação (20 por página)
   const [usersPage, setUsersPage] = useState(1);
@@ -64,51 +79,24 @@ export function useUserManagement(currentUser) {
   const { addToast } = useToast();
 
   const fetchUsers = async () => {
-    const token = localStorage.getItem('auth_token');
     try {
-      const res = await fetch('/api/v1/auth/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      } else {
-        const text = await res.text();
-        console.warn('Erro ao carregar usuários:', text);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      const res = await fetch('/api/v1/auth/users', { headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` } });
+      if (res.ok) setUsers(await res.json());
+    } catch (err) { console.error(err); }
   };
 
   const fetchInvites = async () => {
-    const token = localStorage.getItem('auth_token');
     try {
-      const res = await fetch('/api/v1/auth/invites', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setInvites(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      const res = await fetch('/api/v1/auth/invites', { headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` } });
+      if (res.ok) setInvites(await res.json());
+    } catch (err) { console.error(err); }
   };
 
   const fetchCourses = async () => {
-    const token = localStorage.getItem('auth_token');
     try {
-      const res = await fetch('/api/v1/courses', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      const res = await fetch('/api/v1/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` } });
+      if (res.ok) setCourses(await res.json());
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
@@ -270,9 +258,8 @@ export function useUserManagement(currentUser) {
       message: `Tem certeza que deseja excluir o usuário "${userName}"? Esta ação é irreversível.`,
       confirmAction: async () => {
         setConfirmDeleteModal((prev) => ({ ...prev, loading: true }));
-        const token = localStorage.getItem('auth_token');
         try {
-          await deleteUserApi(userId, token);
+          await deleteUserApi(userId, localStorage.getItem('auth_token'));
           addToast('Usuário excluído com sucesso!', 'success');
           setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
           closeConfirmDeleteModal();
@@ -294,9 +281,8 @@ export function useUserManagement(currentUser) {
       message: `Tem certeza que deseja excluir os ${selectedUserIds.length} usuário(s) selecionado(s)? Esta ação é irreversível.`,
       confirmAction: async () => {
         setConfirmDeleteModal((prev) => ({ ...prev, loading: true }));
-        const token = localStorage.getItem('auth_token');
         try {
-          const data = await bulkDeleteUsersApi(selectedUserIds, token);
+          const data = await bulkDeleteUsersApi(selectedUserIds, localStorage.getItem('auth_token'));
           addToast(data.message || 'Usuários excluídos com sucesso!', 'success');
           setSelectedUserIds([]);
           closeConfirmDeleteModal();
@@ -317,9 +303,8 @@ export function useUserManagement(currentUser) {
       message: 'Tem certeza que deseja excluir este convite? Ele não poderá mais ser utilizado.',
       confirmAction: async () => {
         setConfirmDeleteModal((prev) => ({ ...prev, loading: true }));
-        const token = localStorage.getItem('auth_token');
         try {
-          await deleteInviteApi(inviteId, token);
+          await deleteInviteApi(inviteId, localStorage.getItem('auth_token'));
           addToast('Convite excluído com sucesso!', 'success');
           setSelectedInviteIds((prev) => prev.filter((id) => id !== inviteId));
           closeConfirmDeleteModal();
@@ -341,7 +326,6 @@ export function useUserManagement(currentUser) {
       message: `Tem certeza que deseja excluir os ${selectedInviteIds.length} convite(s) selecionado(s)? Esta ação é irreversível.`,
       confirmAction: async () => {
         setConfirmDeleteModal((prev) => ({ ...prev, loading: true }));
-        const token = localStorage.getItem('auth_token');
         try {
           const data = await bulkDeleteInvitesApi(selectedInviteIds, token);
           addToast(data.message || 'Convites excluídos com sucesso!', 'success');
@@ -358,7 +342,13 @@ export function useUserManagement(currentUser) {
   };
 
   // Filtros
-  const filteredUsers = users.filter((u) => userRoleFilter === 'all' || u.role === userRoleFilter);
+  const filteredUsers = filterUsersList(users, {
+    searchTerm: userSearchTerm,
+    roleFilter: userRoleFilter,
+    ddiFilter: userDdiFilter,
+    dddFilter: userDddFilter,
+    monthFilter: userMonthFilter,
+  });
   const filteredInvites = invites.filter((inv) => {
     if (inviteStatusFilter === 'all') return true;
     if (inviteStatusFilter === 'used') return inv.is_used;
@@ -457,6 +447,15 @@ export function useUserManagement(currentUser) {
     handleBulkDeleteInvites,
     userRoleFilter,
     setUserRoleFilter,
+    userSearchTerm,
+    setUserSearchTerm,
+    userDdiFilter,
+    setUserDdiFilter,
+    userDddFilter,
+    setUserDddFilter,
+    userMonthFilter,
+    setUserMonthFilter,
+    handleClearUserFilters,
     inviteStatusFilter,
     setInviteStatusFilter,
     usersPage,

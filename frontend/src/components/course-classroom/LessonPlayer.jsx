@@ -19,6 +19,9 @@ import LessonEmptyState from './LessonEmptyState';
 import LessonPlayerHeader from './LessonPlayerHeader';
 import TheaterModeToggleBtn from './TheaterModeToggleBtn';
 import SuperAdminVideoOptimizerBadge from './SuperAdminVideoOptimizerBadge';
+import LessonPartsBar from './LessonPartsBar';
+import LessonSwitchingModal from './LessonSwitchingModal';
+import { useLessonSwitchLoader } from './useLessonSwitchLoader';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 const LANG_FLAGS = {
@@ -63,85 +66,17 @@ export default function LessonPlayer({
   const initialActive = initialTab || (targetCommentId ? 'comments' : 'overview');
   const [activeTab, setActiveTab] = useState(initialActive);
   const [visitedTabs, setVisitedTabs] = useState(['overview', ...(initialActive === 'comments' ? ['comments'] : [])]);
-  const [notesCount, setNotesCount] = useState(0);
-  const [commentsCount, setCommentsCount] = useState(0);
   const [autoPlayActive, setAutoPlayActive] = useState(false);
-  const [isTranscriptionCompleted, setIsTranscriptionCompleted] = useState(false);
+  const {
+    notesCount,
+    commentsCount,
+    isTranscriptionCompleted,
+    isSwitchingLesson
+  } = useLessonSwitchLoader({ courseId, moduleId, lesson });
+
   useEffect(() => {
     if (!isTutorVisible && activeTab === 'tutor') setActiveTab('overview');
   }, [isTutorVisible, activeTab]);
-
-  useEffect(() => {
-    setIsTranscriptionCompleted(false);
-    if (!courseId || !lesson?.id) return;
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const modId = moduleId || lesson.module_id;
-
-    if (modId) {
-      fetch(`/api/v1/courses/${courseId}/modules/${modId}/lessons/${lesson.id}/transcription`, { headers })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          const isDone = (data?.status === 'completed' || data?.status === 'ready') && Boolean(data?.full_transcript || data?.summary_markdown || data?.summary_html);
-          setIsTranscriptionCompleted(Boolean(isDone));
-        })
-        .catch(() => setIsTranscriptionCompleted(false));
-    }
-  }, [courseId, moduleId, lesson?.id]);
-
-  useEffect(() => {
-    const handleTranscriptionStatus = (e) => {
-      if (e?.detail?.lessonId === lesson?.id) {
-        const isDone = e.detail.isCompleted !== undefined
-          ? e.detail.isCompleted
-          : (e.detail.status === 'completed' || e.detail.status === 'ready');
-        setIsTranscriptionCompleted(Boolean(isDone));
-      }
-    };
-    window.addEventListener('lesson-transcription-status-updated', handleTranscriptionStatus);
-    return () => window.removeEventListener('lesson-transcription-status-updated', handleTranscriptionStatus);
-  }, [lesson?.id]);
-
-  useEffect(() => {
-    setNotesCount(0);
-    setCommentsCount(0);
-    if (!courseId || !lesson?.id) return;
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-    // Busca rápida e silenciosa das anotações e comentários para alimentar as badges das abas
-    fetch(`/api/v1/courses/${courseId}/lessons/${lesson.id}/notes`, { headers })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setNotesCount(Array.isArray(data) ? data.length : data?.content ? 1 : 0))
-      .catch(() => {});
-
-    const modId = moduleId || lesson.module_id;
-    if (modId) {
-      fetch(`/api/v1/courses/${courseId}/modules/${modId}/lessons/${lesson.id}/comments`, { headers })
-        .then((res) => (res.ok ? res.json() : []))
-        .then((data) => setCommentsCount(Array.isArray(data) ? data.length : 0))
-        .catch(() => {});
-    }
-  }, [courseId, moduleId, lesson?.id]);
-
-  useEffect(() => {
-    const handleNotesUpdated = (e) => {
-      if (e?.detail?.lessonId === lesson?.id && typeof e?.detail?.count === 'number') {
-        setNotesCount(e.detail.count);
-      }
-    };
-    const handleCommentsUpdated = (e) => {
-      if (e?.detail?.lessonId === lesson?.id && typeof e?.detail?.count === 'number') {
-        setCommentsCount(e.detail.count);
-      }
-    };
-    window.addEventListener('lesson-notes-count-updated', handleNotesUpdated);
-    window.addEventListener('lesson-comments-count-updated', handleCommentsUpdated);
-    return () => {
-      window.removeEventListener('lesson-notes-count-updated', handleNotesUpdated);
-      window.removeEventListener('lesson-comments-count-updated', handleCommentsUpdated);
-    };
-  }, [lesson?.id]);
   const isManager = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
   const [isTheaterMode, setIsTheaterMode] = useState(() => {
     try {
@@ -191,7 +126,12 @@ export default function LessonPlayer({
       ? [{ language: 'pt', language_label: 'Português', video_url: lesson.video_url, video_type: lesson.video_type || 'upload' }]
       : []);
 
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [selectedLang, setSelectedLang] = useState('pt');
+
+  useEffect(() => {
+    setActiveVideoIndex(0);
+  }, [lesson?.id]);
 
   useEffect(() => {
     if (videos.length > 0 && !videos.some((v) => v.language === selectedLang)) {
@@ -219,11 +159,30 @@ export default function LessonPlayer({
     );
   }
 
-  const activeVideo = videos.find((v) => v.language === selectedLang) || videos[0] || null;
+  const uniqueLanguages = [];
+  const seenLangs = new Set();
+  for (const v of videos) {
+    const code = v.language || 'pt';
+    if (!seenLangs.has(code)) {
+      seenLangs.add(code);
+      uniqueLanguages.push({ code, label: v.language_label || code });
+    }
+  }
+  const currentLangVideos = videos.filter((v) => (v.language || 'pt') === selectedLang);
+  const safePartIdx = activeVideoIndex < currentLangVideos.length ? activeVideoIndex : 0;
+  const activeVideo = currentLangVideos[safePartIdx] || currentLangVideos[0] || videos[0] || null;
   const currentVideoUrl = activeVideo?.video_url || lesson.video_url;
   const currentVideoType = activeVideo?.video_type || lesson.video_type;
   const currentTitle = (videos.length > 1 && activeVideo?.title) ? activeVideo.title : (lesson.title || activeVideo?.title);
-  const currentDescription = (videos.length > 1 && activeVideo?.description) ? activeVideo.description : (lesson.description || activeVideo?.description);
+  const currentDescription = safePartIdx > 0
+    ? (activeVideo?.description || '')
+    : ((videos.length > 1 && activeVideo?.description) ? activeVideo.description : (lesson.description || activeVideo?.description));
+  const isCurrentPartUntranscribed = Boolean(
+    currentLangVideos.length > 1 &&
+    safePartIdx > 0 &&
+    activeVideo?.id &&
+    activeVideo?.is_transcribed === false
+  );
 
   const isComingSoon = isLessonComingSoon(lesson);
   const embedUrl = !isComingSoon ? getEmbedUrl(currentVideoUrl, currentVideoType) : null;
@@ -235,6 +194,7 @@ export default function LessonPlayer({
 
   return (
     <div data-testid="lesson-player-container" style={{ width: '100%' }}>
+      <LessonSwitchingModal isOpen={isSwitchingLesson} lessonTitle={currentTitle} />
       {/* Topo: Seletor de Idiomas + Player de Vídeo Widescreen (Modo Normal 1080px vs Modo Teatro 100%) */}
       <div
         data-testid="lesson-player-theater-wrapper"
@@ -249,37 +209,6 @@ export default function LessonPlayer({
           transition: 'max-width 0.3s ease, margin 0.3s ease, border-radius 0.3s ease'
         }}
       >
-        {!isComingSoon && videos.length > 1 && (
-          <div
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: '#0f172a', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap', gap: '8px' }}
-            data-testid="lesson-language-selector"
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Globe size={15} color="#94a3b8" />
-              <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#e2e8f0' }}>Idioma da Aula:</span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {videos.map((v) => {
-                const flag = LANG_FLAGS[v.language] || '🌐';
-                const isActive = v.language === selectedLang;
-                return (
-                  <button
-                    key={v.language}
-                    type="button"
-                    onClick={() => setSelectedLang(v.language)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: isActive ? '#eab308' : '#1e293b', color: isActive ? '#0f172a' : '#94a3b8', transition: 'all 0.15s ease' }}
-                    data-testid={`player-lang-btn-${v.language}`}
-                  >
-                    <span>{flag}</span>
-                    <span>{v.language_label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         <div style={{ position: 'relative', width: '100%', backgroundColor: '#05080f', aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isComingSoon ? (
             <LessonComingSoonScreen
@@ -335,6 +264,18 @@ export default function LessonPlayer({
             </div>
           ) : null}
         </div>
+
+        {!isComingSoon && (currentLangVideos.length > 1 || uniqueLanguages.length > 1) && (
+          <LessonPartsBar
+            videos={currentLangVideos}
+            activeIndex={safePartIdx}
+            onSelectPart={(idx) => setActiveVideoIndex(idx)}
+            languages={uniqueLanguages}
+            selectedLang={selectedLang}
+            onSelectLang={(code) => setSelectedLang(code)}
+            isLightBg={false}
+          />
+        )}
       </div>
 
       {/* Área Inferior em 2 Colunas: Conteúdo Editorial à Esquerda + Timeline de Módulos/Aulas à Direita */}
@@ -415,7 +356,16 @@ export default function LessonPlayer({
             </div>
             <div style={{ display: activeTab === 'transcription' ? 'block' : 'none' }}>
               {visitedTabs.includes('transcription') && (
-                <LessonAiTranscriptionTab courseId={courseId} moduleId={moduleId || lesson.module_id} lesson={lesson} currentUser={currentUser} isLightBg={isLightBg} />
+                <LessonAiTranscriptionTab
+                  courseId={courseId}
+                  moduleId={moduleId || lesson.module_id}
+                  lesson={lesson}
+                  currentUser={currentUser}
+                  isLightBg={isLightBg}
+                  selectedLang={selectedLang}
+                  activePartNumber={safePartIdx + 1}
+                  isCurrentPartUntranscribed={isCurrentPartUntranscribed}
+                />
               )}
             </div>
             <div style={{ display: activeTab === 'tutor' && isTranscriptionCompleted && isTutorVisible ? 'block' : 'none' }}>

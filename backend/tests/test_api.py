@@ -817,6 +817,7 @@ def test_student_course_history_and_expiration_timeline():
     assert history[0]["lesson_id"] == aula1_id
     assert history[0]["lesson_title"] == "Aula 1 - Boas Vindas"
     assert history[0]["module_title"] == "Módulo 1 - Fundamentos"
+    assert history[0]["module_order"] == 1
     assert history[0]["is_completed"] is True
     assert history[0]["completed_at"] is not None
 

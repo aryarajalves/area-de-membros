@@ -55,8 +55,9 @@ def list_testimonials(
         if status_filter:
             query = query.filter(Testimonial.status == status_filter)
 
-    # Ordenação: Destacados primeiro, depois mais recentes
+    # Ordenação: Exemplos primeiro, depois Destacados, depois mais recentes
     testimonials = query.order_by(
+        Testimonial.is_example.desc(),
         Testimonial.is_featured.desc(),
         Testimonial.created_at.desc()
     ).all()
@@ -90,6 +91,7 @@ def list_testimonials(
                 content=item.content,
                 status=item.status,
                 is_featured=item.is_featured,
+                is_example=bool(getattr(item, "is_example", False)),
                 created_at=item.created_at,
                 updated_at=item.updated_at,
                 user=t_user,
@@ -229,6 +231,7 @@ def create_testimonial(
         content=testimonial.content,
         status=testimonial.status,
         is_featured=testimonial.is_featured,
+        is_example=bool(getattr(testimonial, "is_example", False)),
         created_at=testimonial.created_at,
         updated_at=testimonial.updated_at,
         user=TestimonialUser(
@@ -291,6 +294,12 @@ def update_testimonial(
             testimonial.status = data.status
         if data.is_featured is not None:
             testimonial.is_featured = data.is_featured
+        if data.is_example is not None:
+            testimonial.is_example = data.is_example
+            if data.is_example:
+                testimonial.status = "approved"
+                if data.is_featured is None:
+                    testimonial.is_featured = True
 
     testimonial.updated_at = datetime.utcnow()
     db.commit()
@@ -307,6 +316,7 @@ def update_testimonial(
         content=testimonial.content,
         status=testimonial.status,
         is_featured=testimonial.is_featured,
+        is_example=bool(getattr(testimonial, "is_example", False)),
         created_at=testimonial.created_at,
         updated_at=testimonial.updated_at,
         user=TestimonialUser(

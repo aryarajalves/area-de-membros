@@ -131,7 +131,7 @@ export default function LessonModal({
 
   const tabs = [
     { id: 'info', label: 'Dados Gerais', icon: FileText },
-    ...(contentType === 'video' ? [{ id: 'videos', label: 'Vídeos e Idiomas', icon: Video }] : []),
+    ...(contentType === 'video' ? [{ id: 'videos', label: 'Partes e Vídeos', icon: Video }] : []),
     ...(contentType === 'text' ? [{ id: 'text_body', label: 'Texto do Artigo', icon: BookOpen }] : []),
     ...(contentType === 'quiz' ? [{ id: 'quiz', label: 'Perguntas do Quiz', icon: HelpCircle }] : []),
     { id: 'thumbnail', label: 'Capa da Aula', icon: ImageIcon },
@@ -147,13 +147,15 @@ export default function LessonModal({
 
     const validVideos = videos
       .filter((v) => v.video_url && v.video_url.trim())
-      .map((v) => ({
+      .map((v, idx) => ({
         language: v.language || 'pt',
-        language_label: v.language_label || 'Português',
+        language_label: v.language_label || `Parte ${idx + 1}`,
         title: v.title ? v.title.trim() : null,
         description: v.description ? v.description.trim() : null,
         video_url: v.video_url.trim(),
-        video_type: v.video_type || 'upload'
+        video_type: v.video_type || 'upload',
+        order_index: v.order_index !== undefined && v.order_index !== null ? v.order_index : idx,
+        duration: v.duration || null
       }));
 
     const validAttachments = attachments

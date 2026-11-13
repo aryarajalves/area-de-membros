@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import IntroductionManagement from './IntroductionManagement';
 import { ToastProvider } from '../../context/ToastContext';
@@ -275,5 +275,145 @@ describe('IntroductionManagement Component', () => {
     // Clica em Cancelar
     fireEvent.click(screen.getByTestId('cancel-delete-post-btn'));
     expect(screen.queryByTestId('intro-confirm-delete-overlay')).not.toBeInTheDocument();
+  });
+
+  it('dispara o evento open_direct_message e fecha modal ao clicar em Chamar na DM', async () => {
+    const postOutroUsuario = {
+      id: 202,
+      user_id: 99,
+      user_name: 'jordão',
+      user_role: 'admin',
+      user_email: 'jordao@exemplo.com',
+      title: 'Me chamo jordao',
+      content: 'Sou apaixonado por tecnologia.',
+      likes_count: 1,
+      comments_count: 0,
+      is_liked_by_me: false,
+      created_at: '2026-10-13T21:12:00Z',
+      comments: [],
+    };
+
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [postOutroUsuario],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => postOutroUsuario,
+      });
+
+    const dmEventListener = vi.fn();
+    window.addEventListener('open_direct_message', dmEventListener);
+
+    render(
+      <ToastProvider>
+        <IntroductionManagement user={mockUser} bgColor="#090d16" />
+      </ToastProvider>
+    );
+
+    // Abre o modal do post
+    const postRow = await screen.findByTestId('intro-post-row-202');
+    fireEvent.click(postRow);
+
+    const modal = await screen.findByTestId('intro-post-modal');
+    expect(modal).toBeInTheDocument();
+
+    // Clica no botão Chamar na DM dentro do modal
+    const dmBtn = within(modal).getByTestId('intro-link-dm');
+    expect(dmBtn).toBeInTheDocument();
+    fireEvent.click(dmBtn);
+
+    // O evento global open_direct_message deve ter sido disparado com o contato
+    expect(dmEventListener).toHaveBeenCalledTimes(1);
+    const eventArg = dmEventListener.mock.calls[0][0];
+    expect(eventArg.detail.contact).toEqual(
+      expect.objectContaining({
+        id: 99,
+        name: 'jordão',
+        email: 'jordao@exemplo.com',
+        role: 'admin',
+      })
+    );
+
+    // O modal da apresentação deve ter sido fechado para exibir a conversa da DM
+    await waitFor(() => {
+      expect(screen.queryByTestId('intro-post-modal')).not.toBeInTheDocument();
+    });
+
+    window.removeEventListener('open_direct_message', dmEventListener);
+  });
+
+  it('permite editar uma apresentação existente via PUT e atualiza a interface', async () => {
+    const editablePost = {
+      id: 303,
+      user_id: mockUser.id,
+      user_name: mockUser.name,
+      user_role: mockUser.role,
+      title: 'Apresentação Antiga',
+      content: 'Texto inicial da minha apresentação.',
+      niche: 'Astrologia',
+      location: 'Florianópolis - SC',
+      likes_count: 0,
+      comments_count: 0,
+      is_liked_by_me: false,
+      is_pinned: false,
+      created_at: '2026-10-06T12:00:00Z',
+      comments: [],
+    };
+
+    const updatedPost = {
+      ...editablePost,
+      title: 'Apresentação Editada',
+      content: 'Texto atualizado da minha apresentação.',
+    };
+
+    global.fetch = vi.fn((url, options) => {
+      if (url === '/api/v1/introductions' && (!options || !options.method)) {
+        return Promise.resolve({ ok: true, json: async () => [editablePost] });
+      }
+      if (url === '/api/v1/introductions/303' && (!options || !options.method)) {
+        return Promise.resolve({ ok: true, json: async () => editablePost });
+      }
+      if (url === '/api/v1/introductions/303' && options?.method === 'PUT') {
+        return Promise.resolve({ ok: true, json: async () => updatedPost });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <IntroductionManagement user={mockUser} bgColor="#090d16" />
+      </ToastProvider>
+    );
+
+    const postRow = await screen.findByTestId('intro-post-row-303');
+    fireEvent.click(postRow);
+
+    const detailModal = await screen.findByTestId('intro-post-modal');
+    const editBtn = within(detailModal).getByTestId('edit-intro-post-trigger-btn');
+    fireEvent.click(editBtn);
+
+    const editModal = await screen.findByTestId('intro-create-modal');
+    expect(within(editModal).getByText('Editar Apresentação')).toBeInTheDocument();
+
+    const titleInput = within(editModal).getByDisplayValue('Apresentação Antiga');
+    fireEvent.change(titleInput, { target: { value: 'Apresentação Editada' } });
+
+    const submitBtn = within(editModal).getByTestId('submit-create-post-btn');
+    expect(submitBtn).toHaveTextContent('Salvar Alterações');
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/introductions/303',
+        expect.objectContaining({ method: 'PUT' })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('intro-create-modal')).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByText('Apresentação Editada').length).toBeGreaterThanOrEqual(1);
   });
 });

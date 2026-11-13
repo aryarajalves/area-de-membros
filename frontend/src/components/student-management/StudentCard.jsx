@@ -7,6 +7,7 @@ import StudentGamificationHistoryModal from './StudentGamificationHistoryModal';
 import StudentAssignTagsModal from './StudentAssignTagsModal';
 import StudentRpgLevelBadge from './StudentRpgLevelBadge';
 import StudentAiTutorModal from './StudentAiTutorModal';
+import { ENGAGEMENT_TIERS, getEngagementTierFromPercent, EngagementSignalBars } from './StudentEngagementCard';
 import { formatBrasiliaDateTime } from './studentDateUtils';
 import ZodiacBadge from '../common/ZodiacBadge';
 import OnlineStatusBadge, { OnlineStatusDot } from '../common/OnlineStatusBadge';
@@ -338,6 +339,38 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
             <Bot size={14} color={student.ai_tutor_active ? '#c084fc' : textMuted} />
             <span>{student.ai_tutor_active ? 'Tutor IA Ativo' : 'Tutor IA'}</span>
           </button>
+
+          {(() => {
+            const engTier = ENGAGEMENT_TIERS[getEngagementTierFromPercent(student.overall_progress_percent || 0)];
+            return (
+              <div
+                data-testid={`student-engagement-badge-${student.id}`}
+                title={`Engajamento ${engTier.label} (${engTier.range}) baseado no progresso geral`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '5px 10px',
+                  borderRadius: '8px',
+                  backgroundColor: engTier.bg,
+                  border: `1px solid ${engTier.color}44`,
+                  flexShrink: 0,
+                }}
+              >
+                <EngagementSignalBars
+                  bars={engTier.bars}
+                  color={engTier.color}
+                  inactiveColor={isLightBg ? '#cbd5e1' : 'rgba(255, 255, 255, 0.15)'}
+                  heights={[7, 11, 15]}
+                  barWidth={3.5}
+                  gap={2.5}
+                />
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: engTier.color }}>
+                  Engajamento: {engTier.label}
+                </span>
+              </div>
+            );
+          })()}
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: '0.78rem', color: textMuted }}>Progresso Geral</div>

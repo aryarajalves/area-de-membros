@@ -63,6 +63,7 @@ class IntroductionPostUpdate(BaseModel):
     seeking: Optional[str] = None
     offering: Optional[str] = None
     is_pinned: Optional[bool] = None
+    is_example: Optional[bool] = None
 
 
 class IntroductionPostOut(BaseModel):
@@ -102,6 +103,7 @@ class IntroductionPostOut(BaseModel):
 
     # Destaque
     is_pinned: bool = False
+    is_example: bool = False
 
     last_comment_user_name: Optional[str] = None
     last_comment_at: Optional[datetime] = None
@@ -118,6 +120,12 @@ class IntroductionMediaUploadResponse(BaseModel):
 
 class IntroductionPinResponse(BaseModel):
     id: int
+    is_pinned: bool
+
+
+class IntroductionExampleResponse(BaseModel):
+    id: int
+    is_example: bool
     is_pinned: bool
 
 

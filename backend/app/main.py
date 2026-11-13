@@ -266,6 +266,11 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS availability_status VARCHAR DEFAULT 'available';
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS passing_score_pct INTEGER DEFAULT 70;
                         ALTER TABLE lessons ADD COLUMN IF NOT EXISTS import_identifier VARCHAR;
+                        ALTER TABLE lesson_videos ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0;
+                        ALTER TABLE lesson_videos ADD COLUMN IF NOT EXISTS duration VARCHAR;
+                        ALTER TABLE lesson_videos ADD COLUMN IF NOT EXISTS transcript_text TEXT;
+                        ALTER TABLE lesson_videos ADD COLUMN IF NOT EXISTS transcribed_video_url VARCHAR;
+                        ALTER TABLE lesson_transcriptions ADD COLUMN IF NOT EXISTS translations_json TEXT;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS playback_rate FLOAT DEFAULT 1.0;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS autoplay_enabled BOOLEAN DEFAULT TRUE NOT NULL;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
@@ -313,6 +318,8 @@ async def lifespan(app: FastAPI):
                         ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS seeking TEXT;
                         ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS offering TEXT;
                         ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+                        ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS is_example BOOLEAN DEFAULT FALSE;
+                        ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS is_example BOOLEAN DEFAULT FALSE;
                         ALTER TABLE introduction_likes ADD COLUMN IF NOT EXISTS reaction_type VARCHAR(20) DEFAULT 'like';
 
                         -- Tutoriais em Texto vs Vídeo
@@ -461,6 +468,7 @@ async def lifespan(app: FastAPI):
                             likes_count INTEGER DEFAULT 0 NOT NULL,
                             comments_count INTEGER DEFAULT 0 NOT NULL,
                             is_pinned BOOLEAN DEFAULT FALSE NOT NULL,
+                            is_example BOOLEAN DEFAULT FALSE NOT NULL,
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
                         );
@@ -642,6 +650,28 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_story_reactions_story_id ON community_story_reactions(story_id);
                         CREATE INDEX IF NOT EXISTS ix_community_story_reactions_user_id ON community_story_reactions(user_id);
 
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM pg_constraint c
+                                JOIN pg_class t ON c.conrelid = t.oid
+                                WHERE t.relname = 'chat_messages' AND c.contype = 'p'
+                            ) THEN
+                                ALTER TABLE chat_messages ADD PRIMARY KEY (id);
+                            END IF;
+                        END $$;
+
+                        CREATE TABLE IF NOT EXISTS chat_message_reactions (
+                            id SERIAL PRIMARY KEY,
+                            message_id INTEGER NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            emoji VARCHAR(50) NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            CONSTRAINT uq_chat_message_reaction_user_emoji UNIQUE (message_id, user_id, emoji)
+                        );
+                        CREATE INDEX IF NOT EXISTS ix_chat_message_reactions_message_id ON chat_message_reactions(message_id);
+                        CREATE INDEX IF NOT EXISTS ix_chat_message_reactions_user_id ON chat_message_reactions(user_id);
+
                         CREATE INDEX IF NOT EXISTS ix_api_tokens_user_id ON api_tokens(user_id);
                         CREATE INDEX IF NOT EXISTS ix_events_course_id ON events(course_id);
                         CREATE INDEX IF NOT EXISTS ix_chat_messages_pinned_by_user_id ON chat_messages(pinned_by_user_id);
@@ -681,6 +711,11 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE invites ADD COLUMN allowed_course_ids VARCHAR",
                         "ALTER TABLE registration_verifications ADD COLUMN attempts INTEGER DEFAULT 0",
                         "ALTER TABLE registration_verifications ADD COLUMN phone VARCHAR",
+                        "ALTER TABLE lesson_videos ADD COLUMN order_index INTEGER DEFAULT 0",
+                        "ALTER TABLE lesson_videos ADD COLUMN duration VARCHAR",
+                        "ALTER TABLE lesson_videos ADD COLUMN transcript_text TEXT",
+                        "ALTER TABLE lesson_videos ADD COLUMN transcribed_video_url VARCHAR",
+                        "ALTER TABLE lesson_transcriptions ADD COLUMN translations_json TEXT",
                         "ALTER TABLE events ADD COLUMN course_ids_json TEXT NULL",
                         "ALTER TABLE introduction_posts ADD COLUMN media_type VARCHAR(50) DEFAULT 'none'",
                         "ALTER TABLE introduction_posts ADD COLUMN media_url TEXT",
@@ -694,6 +729,8 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE introduction_posts ADD COLUMN seeking TEXT",
                         "ALTER TABLE introduction_posts ADD COLUMN offering TEXT",
                         "ALTER TABLE introduction_posts ADD COLUMN is_pinned BOOLEAN DEFAULT 0",
+                        "ALTER TABLE introduction_posts ADD COLUMN is_example BOOLEAN DEFAULT 0",
+                        "ALTER TABLE testimonials ADD COLUMN is_example BOOLEAN DEFAULT 0",
                         "ALTER TABLE introduction_likes ADD COLUMN reaction_type VARCHAR(20) DEFAULT 'like'",
                         "ALTER TABLE tutorials ADD COLUMN content_type VARCHAR(50) DEFAULT 'video'",
                         "ALTER TABLE tutorials ADD COLUMN text_content TEXT",

@@ -11,8 +11,13 @@ from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscr
 from app.schemas.course import (
     LessonTranscriptionResponse,
     LessonTranscriptionTriggerRequest,
+    LessonTranscriptionTranslateRequest,
     LessonChaptersUpdateRequest,
     LessonChapter
+)
+from app.services.ai_multipart_transcription_service import (
+    run_multipart_transcription_background_task,
+    translate_lesson_transcription
 )
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.api.v1.endpoints.courses import _verify_student_course_access
@@ -70,6 +75,7 @@ def get_lesson_transcription(
     course_id: int,
     module_id: int,
     lesson_id: int,
+    lang: Optional[str] = Query("pt"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -126,16 +132,29 @@ def get_lesson_transcription(
     from app.services.audio_chunker import get_transcription_progress
     prog = get_transcription_progress(lesson_id) if transcription.status == "processing" else {}
 
+    req_lang = (lang or "pt").strip().lower()
+    translations_dict = {}
+    if transcription.translations_json:
+        try:
+            translations_dict = json.loads(transcription.translations_json)
+        except Exception:
+            translations_dict = {}
+
+    active_data = translations_dict.get(req_lang) if req_lang != "pt" else None
+    active_lang_resp = req_lang if active_data else "pt"
+
     return LessonTranscriptionResponse(
         id=transcription.id,
         lesson_id=transcription.lesson_id,
         lesson_title=lesson.title,
         lesson_description=lesson.description,
         full_transcript=(transcription.full_transcript or "") if is_admin else "",
-        summary_html=transcription.summary_html,
-        summary_markdown=transcription.summary_markdown,
-        key_takeaways=transcription.key_takeaways,
-        chapters=transcription.chapters,
+        summary_html=active_data.get("summary_html") if active_data else transcription.summary_html,
+        summary_markdown=active_data.get("summary_markdown") if active_data else transcription.summary_markdown,
+        key_takeaways=active_data.get("key_takeaways") if active_data else transcription.key_takeaways,
+        chapters=active_data.get("chapters") if active_data else transcription.chapters,
+        active_language=active_lang_resp,
+        available_translations=list(translations_dict.keys()),
         status=transcription.status or "ready",
         error_message=transcription.error_message,
         audio_duration_seconds=cost_info.get("audio_duration_seconds") if is_admin else None,
@@ -211,15 +230,39 @@ def trigger_lesson_transcription(
     db.commit()
     db.refresh(transcription)
 
-    logger.info(f"Enfileirando tarefa de transcrição IA para a aula {lesson_id} pelo usuário {current_user.email}")
+    logger.info(f"Enfileirando tarefa de transcrição incremental (multi-partes) para aula {lesson_id} por {current_user.email}")
     background_tasks.add_task(
-        run_transcription_background_task,
+        run_multipart_transcription_background_task,
         lesson_id=lesson_id,
-        video_source=video_url,
-        user_id=current_user.id
+        user_id=current_user.id,
+        force_retranscribe=bool(payload.force_retranscribe) if payload else False
     )
 
     return transcription
+
+
+@router.post(
+    "/{course_id}/modules/{module_id}/lessons/{lesson_id}/transcription/translate",
+    summary="Traduzir textos da transcrição (Resumo, Capítulos, Destaques) para outro idioma"
+)
+async def translate_transcription_endpoint(
+    course_id: int,
+    module_id: int,
+    lesson_id: int,
+    payload: LessonTranscriptionTranslateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Traduz sob demanda (com cache persistente) os textos gerados por IA para o idioma escolhido."""
+    _check_lesson_access(db, course_id, module_id, lesson_id, current_user)
+    translated = await translate_lesson_transcription(
+        db=db,
+        lesson_id=lesson_id,
+        target_language=payload.target_language,
+        target_language_label=payload.target_language_label,
+        force_retranslate=bool(payload.force_retranslate)
+    )
+    return {"status": "ok", "target_language": payload.target_language, "data": translated}
 
 
 @router.get(

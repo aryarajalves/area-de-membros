@@ -153,3 +153,61 @@ def test_student_submits_testimonial_and_admin_moderates(setup_testimonial_data)
     # 8. Aluno pode excluir seu próprio depoimento
     res_del = client.delete(f"/api/v1/testimonials/{testimonial_id}", headers=headers_aluno1)
     assert res_del.status_code == 204
+
+
+def test_admin_can_pin_testimonial_as_example_and_orders_first(setup_testimonial_data):
+    headers_aluno1 = get_headers("aluno_depo1@test.com", "Pass123!")
+    headers_admin = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    c_id = setup_testimonial_data["course_id"]
+
+    # Cria um depoimento do aluno (pendente, is_example=False)
+    res_create = client.post("/api/v1/testimonials", json={
+        "course_id": c_id,
+        "rating": 5,
+        "title": "Depoimento Modelo",
+        "content": "Conteúdo completo para servir de referência aos novos alunos."
+    }, headers=headers_aluno1)
+    assert res_create.status_code == 201
+    t_id = res_create.json()["id"]
+    assert res_create.json()["is_example"] is False
+
+    # Cria um depoimento mais recente do admin já aprovado e destacado (não exemplo)
+    res_admin_t = client.post("/api/v1/testimonials", json={
+        "course_id": c_id,
+        "rating": 5,
+        "title": "Depoimento Mais Recente",
+        "content": "Depoimento recente apenas destacado, não é exemplo oficial."
+    }, headers=headers_admin)
+    assert res_admin_t.status_code == 201
+    t_recent_id = res_admin_t.json()["id"]
+    client.patch(f"/api/v1/testimonials/{t_recent_id}", json={
+        "status": "approved",
+        "is_featured": True
+    }, headers=headers_admin)
+
+    # Admin fixa o depoimento do aluno como Exemplo Oficial
+    res_pin = client.patch(f"/api/v1/testimonials/{t_id}", json={
+        "is_example": True
+    }, headers=headers_admin)
+    assert res_pin.status_code == 200
+    pinned = res_pin.json()
+    assert pinned["is_example"] is True
+    assert pinned["status"] == "approved"
+    assert pinned["is_featured"] is True
+
+    # Listagem deve trazer o depoimento exemplo no topo, antes do mais recente destacado
+    res_list = client.get(f"/api/v1/testimonials?course_id={c_id}", headers=headers_admin)
+    assert res_list.status_code == 200
+    ids = [item["id"] for item in res_list.json()]
+    assert ids[0] == t_id
+
+    # Admin remove o status de exemplo
+    res_unpin = client.patch(f"/api/v1/testimonials/{t_id}", json={
+        "is_example": False
+    }, headers=headers_admin)
+    assert res_unpin.status_code == 200
+    assert res_unpin.json()["is_example"] is False
+
+    # Limpeza
+    client.delete(f"/api/v1/testimonials/{t_id}", headers=headers_admin)
+    client.delete(f"/api/v1/testimonials/{t_recent_id}", headers=headers_admin)

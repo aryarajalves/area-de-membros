@@ -6,18 +6,14 @@ import { isSameDay } from './chatDateUtils';
 import ChatMessageMediaAttachment from './ChatMessageMediaAttachment';
 import ChatInputBar from './ChatInputBar';
 import DeleteChatMessageModal from './DeleteChatMessageModal';
+import ChatDmReactionPicker from './ChatDmReactionPicker';
+import ChatDmReactionBadges from './ChatDmReactionBadges';
 
 export function formatDateTimeFull(isoString) {
   if (!isoString) return '--/--/---- às --:--';
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return '--/--/---- às --:--';
-    const datePart = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const timePart = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    return `${datePart} às ${timePart}`;
-  } catch {
-    return '--/--/---- às --:--';
-  }
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '--/--/---- às --:--';
+  return `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
 }
 
 export default function ChatDmConversationView({
@@ -27,6 +23,7 @@ export default function ChatDmConversationView({
   loading = false,
   onSendMessage,
   onDeleteMessage,
+  onToggleReaction,
   adminThread = null,
 }) {
   const messagesEndRef = useRef(null);
@@ -311,6 +308,15 @@ export default function ChatDmConversationView({
                     })()}
                   </div>
 
+                  {!isDeleted && (
+                    <ChatDmReactionBadges
+                      messageId={m.id}
+                      reactions={m.reactions}
+                      isMine={isMine}
+                      onToggleReaction={onToggleReaction}
+                    />
+                  )}
+
                   <div
                     style={{
                       display: 'inline-flex',
@@ -324,6 +330,13 @@ export default function ChatDmConversationView({
                     <span>
                       {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {!isDeleted && (
+                      <ChatDmReactionPicker
+                        messageId={m.id}
+                        isMine={isMine}
+                        onSelectReaction={onToggleReaction}
+                      />
+                    )}
                     {canDeleteThisMsg && (
                       <button
                         type="button"

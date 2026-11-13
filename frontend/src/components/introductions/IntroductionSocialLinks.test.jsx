@@ -9,7 +9,7 @@ describe('IntroductionSocialLinks Component', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renderiza links de Instagram, LinkedIn, WhatsApp e Website', () => {
+  it('renderiza links de Instagram, LinkedIn e Website e não exibe WhatsApp', () => {
     render(
       <IntroductionSocialLinks
         instagram="@dev.joao"
@@ -26,8 +26,7 @@ describe('IntroductionSocialLinks Component', () => {
     const li = screen.getByTestId('intro-link-linkedin');
     expect(li).toHaveAttribute('href', 'https://linkedin.com/in/devjoao');
 
-    const wa = screen.getByTestId('intro-link-whatsapp');
-    expect(wa.getAttribute('href')).toContain('https://wa.me/11988887777');
+    expect(screen.queryByTestId('intro-link-whatsapp')).not.toBeInTheDocument();
 
     const web = screen.getByTestId('intro-link-website');
     expect(web).toHaveAttribute('href', 'https://devjoao.com');

@@ -33,8 +33,9 @@ class IntroductionPost(Base):
     seeking = Column(Text, nullable=True)  # O que busca na comunidade
     offering = Column(Text, nullable=True)  # Como posso ajudar / O que domino
 
-    # Fixado no topo pelo Admin
+    # Fixado no topo pelo Admin e Marcação de Apresentação Exemplo
     is_pinned = Column(Boolean, default=False, nullable=False)
+    is_example = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

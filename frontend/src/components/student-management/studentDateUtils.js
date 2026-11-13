@@ -183,3 +183,32 @@ export function formatCourseRemainingTime(expiresAt, isExpiredOverride = false, 
     totalMinutes,
   };
 }
+
+/**
+ * Formata o rótulo do módulo exibindo o número e o nome:
+ * Ex: "Módulo 01 - Introdução a Astrologia" ou "Módulo 02 - Os Personagens Da Aventura"
+ * Preserva o título caso já contenha prefixo numérico ("Módulo 1 - Fundamentos").
+ */
+export function formatModuleDisplayLabel(moduleTitle, moduleOrder) {
+  if (!moduleTitle) return null;
+  const trimmed = String(moduleTitle).trim();
+
+  // Se o título já começa com "Módulo X" ou "Modulo X" (ex: "Módulo 01", "Módulo 2 - Fundamentos")
+  if (/^m[oó]dulo\s+\d+/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Se possuir a numeração ordinal do módulo (ex: 1, 2, 3...)
+  if (moduleOrder != null && Number(moduleOrder) > 0) {
+    const num = String(moduleOrder).padStart(2, '0');
+    // Remove eventual prefixo solto "Módulo:" ou "Módulo -" sem número
+    const cleanTitle = trimmed.replace(/^m[oó]dulo\s*[:\-–]?\s*/i, '').trim();
+    return `Módulo ${num} - ${cleanTitle}`;
+  }
+
+  // Fallback caso não venha numeração
+  if (/^m[oó]dulo/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `Módulo: ${trimmed}`;
+}

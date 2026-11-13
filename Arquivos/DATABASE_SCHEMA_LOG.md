@@ -2,6 +2,66 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [13/11/2026] - Depoimento de Exemplo Fixado em testimonials
+- **Objetivo:** Permitir ao Super Admin/Admin fixar depoimentos como Exemplo Oficial (`is_example`) no topo da vitrine para que outros alunos possam seguir o modelo.
+- **Tabela Afetada:**
+  - `testimonials`:
+    - `is_example`: BOOLEAN DEFAULT FALSE NOT NULL (indica se o depoimento é um exemplo oficial fixado no topo)
+- **Script de Migração:** `backend/scripts/add_testimonial_is_example.py`
+- **Auto-migração no Startup:** Comando `ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS is_example ...` incluído no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [13/11/2026] - Apresentação de Exemplo Fixada em introduction_posts
+- **Objetivo:** Permitir ao Super Admin/Admin marcar e fixar uma apresentação como Exemplo Oficial (`is_example`) para que os outros alunos sigam o modelo, ocultando botões de contato/DM e reações na interface.
+- **Tabela Afetada:**
+  - `introduction_posts`:
+    - `is_example`: BOOLEAN DEFAULT FALSE NOT NULL (indica se a apresentação é um modelo oficial de exemplo)
+- **Script de Migração:** `backend/scripts/add_introduction_is_example.py`
+- **Auto-migração no Startup:** Comando `ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS is_example ...` incluído no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [13/11/2026] - Transcrição Incremental por Parte & Tradução de Textos por Idioma
+- **Objetivo:** Evitar retranscrição de partes já transcritas (`lesson_videos.transcript_text` + `transcribed_video_url`) e armazenar traduções em cache para os textos gerados por IA (`lesson_transcriptions.translations_json`) de acordo com o idioma selecionado pelo aluno.
+- **Tabelas Afetadas:**
+  - `lesson_videos`:
+    - `transcript_text`: TEXT NULL (cache do texto transcrito individual daquela parte)
+    - `transcribed_video_url`: VARCHAR NULL (URL do vídeo referente à transcrição em cache; invalida o cache se o vídeo da parte for trocado)
+  - `lesson_transcriptions`:
+    - `translations_json`: TEXT NULL (JSON com cache de resumo, pontos-chave, capítulos e transcrição traduzidos por idioma)
+- **Script de Migração:** `backend/scripts/add_lesson_video_transcript_and_translations.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [13/11/2026] - Aulas Multi-Partes: Colunas order_index e duration em lesson_videos
+- **Objetivo:** Permitir upload e organização de múltiplas partes de uma mesma aula (ex: Parte 1, Parte 2, Parte 3), com ordenação explícita e duração de cada parte para alternância fluida no player do aluno.
+- **Tabela Afetada:**
+  - `lesson_videos`:
+    - `order_index`: INTEGER DEFAULT 0 NOT NULL (ordem da parte/vídeo)
+    - `duration`: VARCHAR NULL (duração da parte, ex: "15:30")
+- **Script de Migração:** `backend/scripts/add_lesson_video_order_duration.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE lesson_videos ADD COLUMN IF NOT EXISTS ...` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [13/11/2026] - Chat e DM: Reações com Emoji e Tabela chat_message_reactions
+- **Objetivo:** Permitir aos usuários reagir a mensagens na comunidade e DM com emojis (ex: 👍, ❤️, 😂, 😮, 😢, 🙏, 🔥, 👏), com contadores e rastreabilidade por usuário.
+- **Tabela Afetada:**
+  - `chat_message_reactions` (Nova Tabela):
+    - `id`: SERIAL PRIMARY KEY
+    - `message_id`: INTEGER NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE
+    - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    - `emoji`: VARCHAR(50) NOT NULL
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - Constraint única: `uq_chat_message_reaction_user_emoji` (message_id, user_id, emoji)
+    - Índices: `ix_chat_message_reactions_message_id`, `ix_chat_message_reactions_user_id`
+- **Script de Migração:** `backend/scripts/add_chat_message_reactions.py`
+- **Auto-migração no Startup:** Instrução `CREATE TABLE IF NOT EXISTS chat_message_reactions (...)` incluída no `lifespan` de `backend/app/main.py`.
+
+---
+
 ### [12/11/2026] - Chat e Mensagens Diretas: Soft Delete com Retenção para Moderação (is_deleted, deleted_at, deleted_by_user_id em chat_messages)
 - **Objetivo:** Permitir que alunos excluam mensagens enviadas com ocultação imediata para alunos (soft delete), enquanto administradores e superadministradores mantêm acesso de auditoria visual com transparência suave; administradores contam com exclusão definitiva (hard delete).
 - **Tabela Afetada:**

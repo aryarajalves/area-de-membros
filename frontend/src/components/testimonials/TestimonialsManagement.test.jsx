@@ -222,6 +222,18 @@ describe('TestimonialsManagement Component', () => {
         })
       );
     });
+
+    // Clicar em Fixar Exemplo
+    fireEvent.click(screen.getByTestId('example-btn-25'));
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/testimonials/25',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ is_example: true })
+        })
+      );
+    });
   });
 
   it('opens confirmation modal and deletes testimonial', async () => {

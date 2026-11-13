@@ -487,6 +487,36 @@ describe('LessonAiTranscriptionTab Component', () => {
 
     window.removeEventListener('lesson-title-updated', titleUpdateSpy);
   });
+
+  it('exibe estado vazio específico quando a parte atual ainda não foi transcrita', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        lesson_id: 1,
+        status: 'completed',
+        full_transcript: 'Transcrição da Parte 1',
+        summary_markdown: 'Resumo da Parte 1'
+      })
+    });
+
+    render(
+      <LessonAiTranscriptionTab
+        courseId={10}
+        moduleId={5}
+        lesson={mockLesson}
+        currentUser={adminUser}
+        activePartNumber={2}
+        isCurrentPartUntranscribed={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-transcription-empty')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Parte 2 sem Transcrição & Resumo')).toBeInTheDocument();
+    expect(screen.queryByText('Resumo da Parte 1')).not.toBeInTheDocument();
+  });
 });
 
 

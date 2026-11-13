@@ -24,7 +24,14 @@ from app.models.course import (
 )
 from app.models.course_upsell import CourseUpsellOffer, CourseUpsellView
 from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
-from app.models.chat import ChatMessage
+from app.models.chat import (
+    ChatMessage,
+    ChatMessageLike,
+    ChatMessageFavorite,
+    ChatMessageMention,
+    ChatChannelReadStatus,
+    ChatMessageReaction,
+)
 from app.models.testimonial import Testimonial
 from app.models.gamification import GamificationPoint
 from app.models.webhook import Webhook, WebhookLog
@@ -84,6 +91,7 @@ __all__ = [
     "SupportTopicPin",
     "SupportTopicFavorite",
     "ChatMessage",
+    "ChatMessageReaction",
     "Testimonial",
     "GamificationPoint",
     "Webhook",

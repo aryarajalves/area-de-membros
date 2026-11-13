@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { History, CheckCircle2, BookOpen, Clock, Loader2, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import { formatBrasiliaDateTime } from './studentDateUtils';
+import { formatBrasiliaDateTime, formatModuleDisplayLabel } from './studentDateUtils';
 
 export default function StudentAccessHistoryModal({ isOpen, onClose, student, course, isLightBg }) {
   const [history, setHistory] = useState([]);
@@ -167,8 +167,19 @@ export default function StudentAccessHistoryModal({ isOpen, onClose, student, co
                         {item.lesson_title}
                       </div>
                       {item.module_title && (
-                        <div style={{ fontSize: '0.78rem', color: subTextColor, marginTop: '2px' }}>
-                          Módulo: {item.module_title}
+                        <div
+                          style={{
+                            fontSize: '0.78rem',
+                            color: subTextColor,
+                            marginTop: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                          }}
+                          data-testid={`history-module-label-${item.lesson_id}`}
+                        >
+                          <BookOpen size={13} style={{ opacity: 0.7 }} />
+                          <span>{formatModuleDisplayLabel(item.module_title, item.module_order)}</span>
                         </div>
                       )}
                       <div

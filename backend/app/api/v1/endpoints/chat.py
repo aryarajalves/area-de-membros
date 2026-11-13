@@ -1,16 +1,11 @@
 from app.core.limiter import limiter
-from fastapi import Request
-import json
-import os
-import uuid
-import re
+from fastapi import Request, APIRouter, Depends, HTTPException, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+import json, os, uuid, re
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc, asc, func
-
 from app.core.database import get_db, SessionLocal
 from app.core.logger import logger
 from app.core.security import decode_access_token
@@ -19,23 +14,15 @@ from app.models.user import User
 from app.models.course import Course, UserCourse
 from app.models.chat import ChatMessage, ChatMessageLike, ChatMessageFavorite, ChatMessageMention
 from app.schemas.chat import (
-    ChatChannelItem,
-    ChatMessageResponse,
-    ChatMessageCreate,
-    ChatUser,
-    ChatMessageLikeToggleResponse,
-    ChatMessageFavoriteToggleResponse,
-    ChatMentionNotificationItem,
-    ChatNotificationItem,
-    ChatNotificationCountsResponse,
-    ChatMentionContactItem,
-    ChatDmConversationItem,
-    ChatUnreadSummaryResponse,
+    ChatChannelItem, ChatMessageResponse, ChatMessageCreate, ChatUser,
+    ChatMessageLikeToggleResponse, ChatMessageFavoriteToggleResponse,
+    ChatMentionNotificationItem, ChatNotificationItem, ChatNotificationCountsResponse,
+    ChatMentionContactItem, ChatDmConversationItem, ChatUnreadSummaryResponse,
 )
 from app.services.chat_ws_manager import chat_manager
 from app.services.chat_gamification import get_users_gamification_map, build_chat_user
 from app.services.chat_media_service import process_chat_media_upload, CHAT_MEDIA_DIR
-from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history
+from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history, mark_dm_as_read
 from app.services.chat_encryption_service import encrypt_dm_message, decrypt_dm_message
 from app.services.chat_unread_service import (
     get_channel_last_read_map,
@@ -462,6 +449,10 @@ def send_chat_message(
         )
 
         if payload.channel_type == "dm" and payload.recipient_id:
+            try:
+                mark_dm_as_read(db, current_user, payload.recipient_id)
+            except Exception as _r_err:
+                logger.warning(f"Erro ao marcar DM como lida no envio: {_r_err}")
             dm_payload = {
                 "recipient_id": payload.recipient_id,
                 "sender_id": current_user.id,

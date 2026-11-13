@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, RefreshCw, X, BookOpen, ArrowUpDown, Calendar, Filter } from 'lucide-react';
+import { Search, RefreshCw, X, BookOpen, ArrowUpDown, Calendar, Filter, BarChart2, Percent } from 'lucide-react';
 
 export default function StudentFilterBar({
   search,
@@ -17,6 +17,12 @@ export default function StudentFilterBar({
   setSelectedDate,
   onlyOnline = false,
   setOnlyOnline,
+  engagementLevel = '',
+  setEngagementLevel,
+  minProgress = '',
+  setMinProgress,
+  maxProgress = '',
+  setMaxProgress,
   onResetFilters,
   hasActiveFilters,
   isLightBg,
@@ -340,7 +346,95 @@ export default function StudentFilterBar({
           </button>
         )}
 
-        {/* 6. Botão Limpar Filtros */}
+        {/* 6. Filtro por Nível de Engajamento */}
+        {setEngagementLevel && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <BarChart2 size={15} style={{ color: '#f59e0b' }} />
+            <select
+              value={engagementLevel}
+              onChange={(e) => setEngagementLevel(e.target.value)}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '7px',
+                backgroundColor: inputBg,
+                border: engagementLevel ? '1px solid #f59e0b' : inputBorder,
+                color: textColor,
+                fontSize: '0.85rem',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+              data-testid="filter-engagement-select"
+              aria-label="Filtrar por engajamento"
+              title={selectedCourseId ? 'Filtrar engajamento no curso selecionado' : 'Filtrar engajamento geral'}
+            >
+              <option value="" style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>
+                Engajamento: Todos
+              </option>
+              <option value="low" style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>
+                Engajamento Baixo (0–35%)
+              </option>
+              <option value="medium" style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>
+                Engajamento Médio (36–70%)
+              </option>
+              <option value="high" style={{ backgroundColor: '#090d16', color: '#f8fafc' }}>
+                Engajamento Alto (71–100%)
+              </option>
+            </select>
+          </div>
+        )}
+
+        {/* 7. Filtro por Progresso (%) */}
+        {setMinProgress && setMaxProgress && (
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            title={selectedCourseId ? 'Progresso (%) no curso selecionado' : 'Progresso geral (%)'}
+          >
+            <Percent size={15} style={{ color: '#c084fc' }} />
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={minProgress}
+              onChange={(e) => setMinProgress(e.target.value)}
+              placeholder="Min %"
+              data-testid="filter-min-progress-input"
+              aria-label="Progresso mínimo em porcentagem"
+              style={{
+                width: '74px',
+                padding: '6px 8px',
+                borderRadius: '7px',
+                backgroundColor: inputBg,
+                border: minProgress !== '' ? '1px solid #c084fc' : inputBorder,
+                color: textColor,
+                fontSize: '0.85rem',
+                outline: 'none',
+              }}
+            />
+            <span style={{ color: subTextColor, fontSize: '0.8rem' }}>–</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={maxProgress}
+              onChange={(e) => setMaxProgress(e.target.value)}
+              placeholder="Max %"
+              data-testid="filter-max-progress-input"
+              aria-label="Progresso máximo em porcentagem"
+              style={{
+                width: '74px',
+                padding: '6px 8px',
+                borderRadius: '7px',
+                backgroundColor: inputBg,
+                border: maxProgress !== '' ? '1px solid #c084fc' : inputBorder,
+                color: textColor,
+                fontSize: '0.85rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+        )}
+
+        {/* 8. Botão Limpar Filtros */}
         {hasActiveFilters && (
           <button
             type="button"

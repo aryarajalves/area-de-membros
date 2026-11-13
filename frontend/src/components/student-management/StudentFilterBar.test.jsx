@@ -83,4 +83,50 @@ describe('StudentFilterBar Component', () => {
     const resetBtn = screen.getByTestId('reset-filters-btn');
     expect(resetBtn).toBeInTheDocument();
   });
+
+  it('dispara alteração de engajamento e faixa de progresso (%)', () => {
+    const setEngagementLevel = vi.fn();
+    const setMinProgress = vi.fn();
+    const setMaxProgress = vi.fn();
+
+    render(
+      <StudentFilterBar
+        search=""
+        setSearch={vi.fn()}
+        onSearchSubmit={vi.fn()}
+        onClearSearch={vi.fn()}
+        orderBy="recent"
+        setOrderBy={vi.fn()}
+        selectedCourseId=""
+        setSelectedCourseId={vi.fn()}
+        courses={dummyCourses}
+        selectedMonth=""
+        setSelectedMonth={vi.fn()}
+        selectedDate=""
+        setSelectedDate={vi.fn()}
+        engagementLevel=""
+        setEngagementLevel={setEngagementLevel}
+        minProgress=""
+        setMinProgress={setMinProgress}
+        maxProgress=""
+        setMaxProgress={setMaxProgress}
+        onResetFilters={vi.fn()}
+        hasActiveFilters={false}
+        isLightBg={false}
+        textColor="#f8fafc"
+        subTextColor="#94a3b8"
+        loading={false}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('filter-engagement-select'), { target: { value: 'medium' } });
+    expect(setEngagementLevel).toHaveBeenCalledWith('medium');
+
+    fireEvent.change(screen.getByTestId('filter-min-progress-input'), { target: { value: '51' } });
+    expect(setMinProgress).toHaveBeenCalledWith('51');
+
+    fireEvent.change(screen.getByTestId('filter-max-progress-input'), { target: { value: '90' } });
+    expect(setMaxProgress).toHaveBeenCalledWith('90');
+  });
 });

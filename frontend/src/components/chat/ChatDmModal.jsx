@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock, Users } from 'lucide-react';
+import { Mail, Inbox, BellOff, X, Loader2, Sparkles, UserPlus, ArrowLeft, Lock, Users, CheckCheck } from 'lucide-react';
 import ChatDmConversationView from './ChatDmConversationView';
 import ChatDmNewContactSelector from './ChatDmNewContactSelector';
 import ChatDmInboxList from './ChatDmInboxList';
@@ -25,9 +25,7 @@ export default function ChatDmModal({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [activeTab]);
 
   const handleClose = () => {
     setSelectedContact(null);
@@ -36,7 +34,6 @@ export default function ChatDmModal({
     onClose?.();
   };
 
-  // Bloqueio do scroll do fundo e fechamento automático ao navegar para aula
   useEffect(() => {
     if (!isOpen) {
       setSelectedContact(null);
@@ -58,7 +55,6 @@ export default function ChatDmModal({
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');
 
-  // Ao abrir o modal com contato pré-definido
   useEffect(() => {
     if (targetContact) {
       setSelectedContact(targetContact);
@@ -66,20 +62,14 @@ export default function ChatDmModal({
     }
   }, [targetContact]);
 
-  // Carregar conversas da inbox
   const fetchConversations = async () => {
     const token = getAuthToken();
     if (!token) return;
     setLoading(true);
     try {
       const unreadParam = activeTab === 'unread' ? '?unread_only=true' : '';
-      const res = await fetch(`/api/v1/chat/dm/conversations${unreadParam}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data);
-      }
+      const res = await fetch(`/api/v1/chat/dm/conversations${unreadParam}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setConversations(await res.json());
     } catch (err) {
       console.error('Erro ao buscar conversas:', err);
     } finally {
@@ -88,12 +78,9 @@ export default function ChatDmModal({
   };
 
   useEffect(() => {
-    if (isOpen && !selectedContact && !isSelectingNewContact) {
-      fetchConversations();
-    }
+    if (isOpen && !selectedContact && !isSelectingNewContact) fetchConversations();
   }, [isOpen, activeTab, selectedContact, isSelectingNewContact]);
 
-  // Carregar mensagens do contato ou da thread selecionada
   const fetchMessages = async (contactId, adminId = null) => {
     const token = getAuthToken();
     if (!token || !contactId) return;
@@ -103,10 +90,7 @@ export default function ChatDmModal({
         ? `/api/v1/chat/dm/admin-conversations/${contactId}/${adminId}/messages?limit=50`
         : `/api/v1/chat/dm/messages/${contactId}?limit=50`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data);
-      }
+      if (res.ok) setMessages(await res.json());
     } catch (err) {
       console.error('Erro ao buscar mensagens da DM:', err);
     } finally {
@@ -115,9 +99,7 @@ export default function ChatDmModal({
   };
 
   useEffect(() => {
-    if (selectedContact?.id) {
-      fetchMessages(selectedContact.id, selectedAdminThread?.admin?.id);
-    }
+    if (selectedContact?.id) fetchMessages(selectedContact.id, selectedAdminThread?.admin?.id);
   }, [selectedContact?.id, selectedAdminThread?.admin?.id]);
 
   // Sincronização em tempo real via WebSocket (recebe new_dm, dm_sent e dm_updated)
@@ -131,9 +113,16 @@ export default function ChatDmModal({
         const senderId = Number(dmData?.sender_id || dmData?.message?.user?.id || dmData?.user?.id);
         const recipientId = Number(dmData?.recipient_id || dmData?.message?.recipient_id);
 
-        const readerId = Number(dmData?.reader_id);
-        if (readerId === contactId) {
+        if (dmData?.action && dmData?.message_id && dmData?.reactions) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === dmData.message_id ? { ...m, reactions: dmData.reactions } : m))
+          );
+        } else if (Number(dmData?.reader_id) === contactId) {
           setMessages((prev) => prev.map((m) => (m.user?.id === currentUser?.id ? { ...m, is_read: true } : m)));
+        } else if (dmData?.is_read === false && (senderId === contactId || recipientId === contactId)) {
+          setMessages((prev) =>
+            prev.map((m, idx) => (idx === prev.length - 1 ? { ...m, is_read: false } : m))
+          );
         } else if (senderId === contactId || recipientId === contactId) {
           const msgObj = dmData?.message || (dmData?.channel_type === 'dm' ? dmData : null);
           if (msgObj && msgObj.id) {
@@ -174,7 +163,10 @@ export default function ChatDmModal({
       });
       if (res.ok) {
         const newMsg = await res.json();
-        setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+        setMessages((prev) => {
+          const updated = prev.map((m) => (m.user?.id === selectedContact.id ? { ...m, is_read: true } : m));
+          return updated.some((m) => m.id === newMsg.id) ? updated : [...updated, newMsg];
+        });
         fetchConversations();
         window.dispatchEvent(new CustomEvent('dm_updated', {
           detail: {
@@ -193,12 +185,95 @@ export default function ChatDmModal({
     }
   };
 
+  const handleToggleReaction = async (messageId, emoji) => {
+    const token = getAuthToken();
+    if (!token || !messageId || !emoji) return false;
+    try {
+      const res = await fetch(`/api/v1/chat/messages/${messageId}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ emoji }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id === messageId) {
+              return { ...m, reactions: data.reactions };
+            }
+            if (data.action !== 'removed' && m.user?.id === selectedContact?.id) {
+              return { ...m, is_read: true };
+            }
+            return m;
+          })
+        );
+        fetchConversations();
+        window.dispatchEvent(new CustomEvent('dm_updated', {
+          detail: {
+            message_id: messageId,
+            action: data.action,
+            reactions: data.reactions,
+            contact_id: selectedContact?.id,
+          }
+        }));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Erro ao alternar reação:', err);
+      return false;
+    }
+  };
+
+  const handleMarkAsRead = async () => {
+    if (!selectedContact?.id) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/chat/dm/${selectedContact.id}/mark-read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setMessages((prev) => prev.map((m) => (m.user?.id === selectedContact.id ? { ...m, is_read: true } : m)));
+        fetchConversations();
+        window.dispatchEvent(new CustomEvent('dm_updated', { detail: { contact_id: selectedContact.id, is_read: true } }));
+      }
+    } catch (err) {
+      console.error('Erro ao marcar DM como lida:', err);
+    }
+  };
+
+  const handleMarkAsUnread = async () => {
+    if (!selectedContact?.id) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/v1/chat/dm/${selectedContact.id}/mark-unread`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setMessages((prev) => {
+          let marked = false;
+          return [...prev].reverse().map((m) => {
+            if (!marked && m.user?.id === selectedContact.id) {
+              marked = true;
+              return { ...m, is_read: false };
+            }
+            return m;
+          }).reverse();
+        });
+        fetchConversations();
+        window.dispatchEvent(new CustomEvent('dm_updated', { detail: { contact_id: selectedContact.id, is_read: false } }));
+      }
+    } catch (err) {
+      console.error('Erro ao marcar DM como não lida:', err);
+    }
+  };
+
   const handleDeleteDmMessage = async (messageId) => {
     const token = getAuthToken();
     try {
       const res = await fetch(`/api/v1/chat/messages/${messageId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -206,13 +281,7 @@ export default function ChatDmModal({
         if (data.permanent || !isPrivileged) {
           setMessages((prev) => prev.filter((m) => m.id !== messageId));
         } else {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === messageId
-                ? { ...m, is_deleted: true, deleted_at: data.deleted_at || new Date().toISOString() }
-                : m
-            )
-          );
+          setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, is_deleted: true, deleted_at: data.deleted_at || new Date().toISOString() } : m)));
         }
         fetchConversations();
         return true;
@@ -227,6 +296,9 @@ export default function ChatDmModal({
   if (!isOpen) return null;
 
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
+  const hasUnreadMessages = Boolean(
+    selectedContact && !selectedAdminThread && messages.some((m) => !m.is_read && m.user?.id === selectedContact?.id)
+  );
 
   const modalContent = (
     <div
@@ -251,45 +323,28 @@ export default function ChatDmModal({
         {/* Cabeçalho do Modal */}
         <div
           style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             backgroundColor: '#131d35',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: '36px', height: '36px', borderRadius: '10px',
+                backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
               {isSelectingNewContact ? <UserPlus size={18} /> : <Mail size={18} />}
             </div>
             <div>
-              <h2
-                style={{
-                  fontSize: '1.05rem',
-                  fontWeight: 700,
-                  color: '#ffffff',
-                  margin: 0,
-                }}
-              >
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
                 {selectedAdminThread
                   ? `Atendimento: ${selectedAdminThread.student.name} ↔ ${selectedAdminThread.admin.name}`
                   : selectedContact
                   ? `Mensagens com ${selectedContact.name}`
-                  : isSelectingNewContact
-                  ? 'Iniciar Nova Conversa'
-                  : 'DMs (Mensagens Diretas)'}
+                  : isSelectingNewContact ? 'Iniciar Nova Conversa' : 'DMs (Mensagens Diretas)'}
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
@@ -314,6 +369,39 @@ export default function ChatDmModal({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {selectedContact && !selectedAdminThread && (
+              hasUnreadMessages ? (
+                <button
+                  type="button"
+                  onClick={handleMarkAsRead}
+                  data-testid="dm-mark-read-btn"
+                  title="Marcar todas as mensagens como lidas"
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.35)',
+                    color: '#38bdf8', cursor: 'pointer', padding: '4px 10px',
+                    borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                  }}
+                >
+                  <CheckCheck size={13} /> Marcar como lida
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleMarkAsUnread}
+                  data-testid="dm-mark-unread-btn"
+                  title="Marcar conversa como não lida"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#94a3b8', cursor: 'pointer', padding: '4px 10px',
+                    borderRadius: '6px', fontSize: '0.75rem',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                  }}
+                >
+                  <Mail size={13} /> Marcar como não lida
+                </button>
+              )
+            )}
             {(selectedContact || isSelectingNewContact) && (
               <button
                 type="button"
@@ -325,16 +413,9 @@ export default function ChatDmModal({
                 }}
                 data-testid="dm-back-to-inbox-btn"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#94a3b8', cursor: 'pointer', padding: '4px 10px', borderRadius: '6px',
+                  fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px',
                 }}
               >
                 <ArrowLeft size={13} /> Ver Inbox
@@ -345,15 +426,8 @@ export default function ChatDmModal({
               onClick={handleClose}
               data-testid="close-dm-modal-btn"
               style={{
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                padding: '6px',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer',
+                padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
               <X size={18} />
@@ -409,6 +483,7 @@ export default function ChatDmModal({
             loading={loadingMessages}
             onSendMessage={handleSendDmMessage}
             onDeleteMessage={handleDeleteDmMessage}
+            onToggleReaction={handleToggleReaction}
             adminThread={selectedAdminThread}
           />
         )}

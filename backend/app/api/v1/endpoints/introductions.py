@@ -19,6 +19,7 @@ from app.schemas.introduction import (
     IntroductionLikeResponse,
     IntroductionMediaUploadResponse,
     IntroductionPinResponse,
+    IntroductionExampleResponse,
 )
 from app.api.v1.endpoints.users import get_current_user
 from app.services.introduction_media_service import (
@@ -107,6 +108,7 @@ def _format_post_out(
         seeking=post.seeking,
         offering=post.offering,
         is_pinned=bool(post.is_pinned),
+        is_example=bool(getattr(post, "is_example", False)),
         last_comment_user_name=last_comment_name,
         last_comment_at=last_comment_date,
         created_at=post.created_at,
@@ -303,11 +305,51 @@ def toggle_pin_introduction(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao alterar status de fixação."
         )
+
+
+@router.post("/{post_id}/example", response_model=IntroductionExampleResponse)
+def toggle_example_introduction(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Marca ou desmarca um post de apresentação como Exemplo Oficial.
+    Ao marcar como exemplo, também fixa o post no topo automaticamente.
+    Apenas para Super Admin e Admin.
+    """
+    if current_user.role not in ["superadmin", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem marcar apresentações como exemplo."
+        )
+
+    post = db.query(IntroductionPost).filter(IntroductionPost.id == post_id).first()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Apresentação não encontrada."
+        )
+
+    try:
+        new_example_state = not bool(getattr(post, "is_example", False))
+        post.is_example = new_example_state
+        if new_example_state:
+            post.is_pinned = True
+        db.commit()
+        action = "marcado e fixado como exemplo" if post.is_example else "removido de exemplo"
+        logger.info(f"[Introductions] Post ID {post_id} {action} pelo admin {current_user.id}")
+        return IntroductionExampleResponse(
+            id=post.id,
+            is_example=bool(post.is_example),
+            is_pinned=bool(post.is_pinned),
+        )
+    except Exception as exc:
         db.rollback()
-        logger.error(f"[Introductions] Erro ao criar post de apresentação: {exc}")
+        logger.error(f"[Introductions] Erro ao alternar exemplo no post {post_id}: {exc}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Não foi possível publicar sua apresentação."
+            detail="Erro ao alterar status de exemplo."
         )
 
 
@@ -327,6 +369,88 @@ def get_introduction_detail(
             detail="Apresentação não encontrada."
         )
     return _format_post_out(post, current_user.id, include_comments=True)
+
+
+@router.put("/{post_id}", response_model=IntroductionPostOut, status_code=status.HTTP_200_OK)
+def update_introduction(
+    post_id: int,
+    post_in: IntroductionPostUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Atualiza uma apresentação existente. Permitido para o autor ou administradores/superadmins.
+    """
+    post = db.query(IntroductionPost).filter(IntroductionPost.id == post_id).first()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Apresentação não encontrada."
+        )
+
+    if post.user_id != current_user.id and current_user.role not in ["superadmin", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para editar esta apresentação."
+        )
+
+    update_data = post_in.model_dump(exclude_unset=True)
+
+    if "title" in update_data:
+        clean_title = (update_data["title"] or "").strip()
+        if len(clean_title) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O título da apresentação é obrigatório."
+            )
+        post.title = clean_title
+
+    if "content" in update_data:
+        clean_content = (update_data["content"] or "").strip()
+        if len(clean_content) < 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O conteúdo da apresentação é obrigatório."
+            )
+        post.content = clean_content
+
+    for field in ["instagram", "linkedin", "whatsapp", "website", "niche", "location", "seeking", "offering"]:
+        if field in update_data:
+            val = update_data[field]
+            setattr(post, field, val.strip() if isinstance(val, str) and val.strip() else None)
+
+    if "media_type" in update_data or "media_url" in update_data or "video_embed_url" in update_data:
+        media_type = update_data.get("media_type", post.media_type) or "none"
+        video_embed_url = update_data.get("video_embed_url", post.video_embed_url)
+        media_url = update_data.get("media_url", post.media_url)
+
+        if video_embed_url:
+            parsed_url, provider = parse_video_embed(video_embed_url)
+            video_embed_url = parsed_url or video_embed_url
+            if provider and provider in ["youtube", "loom", "vimeo"]:
+                media_type = provider
+            elif provider == "video":
+                media_type = "video"
+
+        post.media_type = media_type
+        post.media_url = media_url
+        post.video_embed_url = video_embed_url
+
+    if "is_pinned" in update_data and current_user.role in ["superadmin", "admin"]:
+        post.is_pinned = bool(update_data["is_pinned"])
+
+    try:
+        db.commit()
+        db.refresh(post)
+        logger.info(f"[Introductions] Post de apresentação ID {post_id} atualizado por {current_user.id}")
+        return _format_post_out(post, current_user.id, include_comments=True)
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"[Introductions] Erro ao atualizar post {post_id}: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao atualizar apresentação."
+        )
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_200_OK)

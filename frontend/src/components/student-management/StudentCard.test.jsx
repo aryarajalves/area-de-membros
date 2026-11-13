@@ -248,4 +248,25 @@ describe('StudentCard Component', () => {
     renderWithToast(<StudentCard student={offlineStudent} isLightBg={false} />);
     expect(screen.getByTestId('online-status-badge')).toHaveTextContent('Offline');
   });
+
+  it('exibe o badge de nível de engajamento (Baixo, Médio ou Alto) com base no progresso geral', () => {
+    const { rerender } = renderWithToast(
+      <StudentCard student={{ ...mockStudent, overall_progress_percent: 20 }} isLightBg={false} />
+    );
+    expect(screen.getByTestId(`student-engagement-badge-${mockStudent.id}`)).toHaveTextContent('Engajamento: Baixo');
+
+    rerender(
+      <ToastProvider>
+        <StudentCard student={{ ...mockStudent, overall_progress_percent: 46 }} isLightBg={false} />
+      </ToastProvider>
+    );
+    expect(screen.getByTestId(`student-engagement-badge-${mockStudent.id}`)).toHaveTextContent('Engajamento: Médio');
+
+    rerender(
+      <ToastProvider>
+        <StudentCard student={{ ...mockStudent, overall_progress_percent: 85 }} isLightBg={false} />
+      </ToastProvider>
+    );
+    expect(screen.getByTestId(`student-engagement-badge-${mockStudent.id}`)).toHaveTextContent('Engajamento: Alto');
+  });
 });

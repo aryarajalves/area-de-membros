@@ -50,6 +50,8 @@ class LessonVideoBase(BaseModel):
     description: Optional[str] = None
     video_url: str
     video_type: Optional[str] = "upload"
+    order_index: Optional[int] = 0
+    duration: Optional[str] = None
 
 class LessonVideoCreate(LessonVideoBase):
     pass
@@ -57,6 +59,7 @@ class LessonVideoCreate(LessonVideoBase):
 class LessonVideoResponse(LessonVideoBase):
     id: int
     lesson_id: int
+    is_transcribed: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -360,6 +363,7 @@ class LessonChapter(BaseModel):
     time: str
     seconds: Optional[float] = 0.0
     title: str
+    part_index: Optional[int] = 0
 
 class LessonChaptersUpdateRequest(BaseModel):
     chapters: List[LessonChapter] = []
@@ -388,6 +392,8 @@ class LessonTranscriptionResponse(BaseModel):
     progress_percent: Optional[int] = None
     progress_step: Optional[str] = None
     estimated_remaining_seconds: Optional[int] = None
+    active_language: Optional[str] = "pt"
+    available_translations: Optional[List[str]] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -427,6 +433,12 @@ class LessonTranscriptionResponse(BaseModel):
 class LessonTranscriptionTriggerRequest(BaseModel):
     language: Optional[str] = "pt"
     video_url: Optional[str] = None  # Se informado, usa essa URL específica; caso contrário usa o vídeo padrão da aula
+    force_retranscribe: Optional[bool] = False
+
+class LessonTranscriptionTranslateRequest(BaseModel):
+    target_language: str
+    target_language_label: Optional[str] = None
+    force_retranslate: Optional[bool] = False
 
 
 # --- Schemas de Histórico de Cliques na Página de Vendas ---

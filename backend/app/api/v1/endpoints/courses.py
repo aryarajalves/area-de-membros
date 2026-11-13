@@ -528,14 +528,16 @@ def create_lesson(
     db.commit()
     db.refresh(new_lesson)
 
-    # Persiste os vídeos em múltiplos idiomas
+    # Persiste os vídeos / partes da aula
     if lesson_in.videos:
-        for v in lesson_in.videos:
+        for idx, v in enumerate(lesson_in.videos):
             db.add(LessonVideo(
                 lesson_id=new_lesson.id,
+                order_index=v.order_index if v.order_index is not None else idx,
+                duration=v.duration,
                 language=v.language or "pt",
-                language_label=v.language_label or "Português",
-                title=v.title.strip() if v.title else new_lesson.title,
+                language_label=v.language_label or f"Parte {idx + 1}",
+                title=v.title.strip() if v.title else f"Parte {idx + 1}",
                 description=v.description if v.description is not None else new_lesson.description,
                 video_url=v.video_url,
                 video_type=v.video_type or "upload"
@@ -545,8 +547,10 @@ def create_lesson(
     elif new_lesson.video_url:
         db.add(LessonVideo(
             lesson_id=new_lesson.id,
+            order_index=0,
+            duration=new_lesson.duration,
             language="pt",
-            language_label="Português",
+            language_label="Parte 1",
             title=new_lesson.title,
             description=new_lesson.description,
             video_url=new_lesson.video_url,
@@ -616,25 +620,27 @@ def update_lesson(
     if lesson_in.release_date is not None: lesson.release_date = lesson_in.release_date
 
     if lesson_in.videos is not None:
-        # Atualizar a lista de vídeos da aula
+        # Preserva cache de transcrição das partes cuja video_url não mudou
+        old_cache = {v.video_url: v.transcript_text for v in lesson.videos if v.transcript_text and v.transcribed_video_url == v.video_url}
         db.query(LessonVideo).filter(LessonVideo.lesson_id == lesson_id).delete()
-        for v in lesson_in.videos:
+        for idx, v in enumerate(lesson_in.videos):
+            cached_txt = old_cache.get(v.video_url)
             db.add(LessonVideo(
                 lesson_id=lesson_id,
+                order_index=v.order_index if v.order_index is not None else idx,
+                duration=v.duration,
                 language=v.language or "pt",
-                language_label=v.language_label or "Português",
-                title=v.title.strip() if v.title else lesson.title,
+                language_label=v.language_label or f"Parte {idx + 1}",
+                title=v.title.strip() if v.title else f"Parte {idx + 1}",
                 description=v.description if v.description is not None else lesson.description,
                 video_url=v.video_url,
-                video_type=v.video_type or "upload"
+                video_type=v.video_type or "upload",
+                transcript_text=cached_txt,
+                transcribed_video_url=v.video_url if cached_txt else None
             ))
         if lesson_in.videos:
             lesson.video_url = lesson_in.videos[0].video_url
             lesson.video_type = lesson_in.videos[0].video_type or "upload"
-            if lesson_in.videos[0].title:
-                lesson.title = lesson_in.videos[0].title.strip()
-            if lesson_in.videos[0].description is not None:
-                lesson.description = lesson_in.videos[0].description
         else:
             lesson.video_url = None
     else:

@@ -113,4 +113,64 @@ describe('IntroductionPostModal Component', () => {
     fireEvent.click(deleteBtn);
     expect(onDeleteComment).toHaveBeenCalledWith(501);
   });
+
+  it('exibe botão de editar para o autor e chama onEditPost ao clicar', () => {
+    const onEditPost = vi.fn();
+
+    render(
+      <IntroductionPostModal
+        post={mockPost}
+        currentUser={mockUser}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        onAddComment={vi.fn()}
+        onDeleteComment={vi.fn()}
+        onDeletePost={vi.fn()}
+        onEditPost={onEditPost}
+      />
+    );
+
+    const editBtn = screen.getByTestId('edit-intro-post-trigger-btn');
+    expect(editBtn).toBeInTheDocument();
+    fireEvent.click(editBtn);
+    expect(onEditPost).toHaveBeenCalledWith(mockPost);
+  });
+
+  it('exibe botão de marcar como exemplo para superadmin e oculta DM/reações/comentários quando is_example é true', () => {
+    const onToggleExample = vi.fn();
+    const examplePost = {
+      ...mockPost,
+      user_id: 99,
+      is_pinned: true,
+      is_example: true,
+      instagram: '@luana',
+      comments: [],
+    };
+
+    render(
+      <IntroductionPostModal
+        post={examplePost}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        onToggleExample={onToggleExample}
+        onAddComment={vi.fn()}
+        onDeleteComment={vi.fn()}
+        onDeletePost={vi.fn()}
+        onOpenDm={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('modal-example-indicator')).toHaveTextContent('Apresentação de Exemplo');
+    expect(screen.getByTestId('intro-example-notice')).toBeInTheDocument();
+    expect(screen.getByTestId('intro-social-links')).toBeInTheDocument();
+    expect(screen.getByTestId('intro-link-instagram')).toBeInTheDocument();
+    expect(screen.queryByTestId('intro-link-dm')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('toggle-like-post-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('focus-comment-btn')).not.toBeInTheDocument();
+
+    const toggleExampleBtn = screen.getByTestId('toggle-example-intro-post-btn');
+    fireEvent.click(toggleExampleBtn);
+    expect(onToggleExample).toHaveBeenCalledWith(examplePost.id);
+  });
 });

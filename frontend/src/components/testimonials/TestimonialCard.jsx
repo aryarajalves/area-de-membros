@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, CheckCircle, XCircle, Trash2, Edit3, Bookmark, User, Clock } from 'lucide-react';
+import { Star, CheckCircle, XCircle, Trash2, Edit3, Bookmark, User, Clock, Sparkles } from 'lucide-react';
 
 export default function TestimonialCard({
   testimonial,
@@ -7,7 +7,8 @@ export default function TestimonialCard({
   onEdit,
   onDelete,
   onModerate,
-  onToggleFeature
+  onToggleFeature,
+  onToggleExample
 }) {
   const isManager = ['admin', 'superadmin'].includes(currentUser?.role);
   const isOwner = testimonial.user_id === currentUser?.id;
@@ -34,17 +35,21 @@ export default function TestimonialCard({
       style={{
         background: 'rgba(15, 23, 42, 0.75)',
         backdropFilter: 'blur(12px)',
-        border: testimonial.is_featured
-          ? '1px solid rgba(234, 179, 8, 0.45)'
-          : '1px solid rgba(255, 255, 255, 0.08)',
+        border: testimonial.is_example
+          ? '1px solid rgba(168, 85, 247, 0.5)'
+          : testimonial.is_featured
+            ? '1px solid rgba(234, 179, 8, 0.45)'
+            : '1px solid rgba(255, 255, 255, 0.08)',
         borderRadius: '16px',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        boxShadow: testimonial.is_featured
-          ? '0 10px 25px -5px rgba(234, 179, 8, 0.15)'
-          : '0 10px 20px -5px rgba(0, 0, 0, 0.3)',
+        boxShadow: testimonial.is_example
+          ? '0 10px 25px -5px rgba(168, 85, 247, 0.2)'
+          : testimonial.is_featured
+            ? '0 10px 25px -5px rgba(234, 179, 8, 0.15)'
+            : '0 10px 20px -5px rgba(0, 0, 0, 0.3)',
         position: 'relative',
         transition: 'all 0.2s ease-in-out'
       }}
@@ -111,6 +116,26 @@ export default function TestimonialCard({
             >
               {statusInfo.label}
             </span>
+
+            {testimonial.is_example && (
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  background: 'rgba(168, 85, 247, 0.2)',
+                  color: '#d8b4fe',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                data-testid="testimonial-example-badge"
+              >
+                <Sparkles size={11} /> Depoimento Exemplo
+              </span>
+            )}
 
             {testimonial.is_featured && (
               <span
@@ -266,6 +291,29 @@ export default function TestimonialCard({
             >
               <Bookmark size={14} /> {testimonial.is_featured ? 'Remover Destaque' : 'Destacar'}
             </button>
+
+            {onToggleExample && (
+              <button
+                type="button"
+                onClick={() => onToggleExample(testimonial.id, !testimonial.is_example)}
+                style={{
+                  background: testimonial.is_example ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: testimonial.is_example ? '#d8b4fe' : '#94a3b8',
+                  padding: '5px 10px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                data-testid={`example-btn-${testimonial.id}`}
+              >
+                <Sparkles size={14} /> {testimonial.is_example ? 'Remover Exemplo' : 'Fixar Exemplo'}
+              </button>
+            )}
           </div>
         )}
 

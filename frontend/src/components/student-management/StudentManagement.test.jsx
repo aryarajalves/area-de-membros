@@ -398,6 +398,28 @@ describe('StudentManagement Component', () => {
     expect(zapLink).toHaveAttribute('href', 'https://wa.me/5511987654321');
     expect(zapLink).toHaveTextContent('(11) 98765-4321');
   });
+
+  it('filters students by engagement level and min progress percentage', async () => {
+    render(
+      <ToastProvider>
+        <StudentManagement />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByTestId('student-engagement-card')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('filter-engagement-select'), { target: { value: 'high' } });
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls.map(([u]) => String(u));
+      expect(calls.some((u) => u.includes('/api/v1/students?') && u.includes('engagement_level=high'))).toBe(true);
+    });
+
+    fireEvent.change(screen.getByTestId('filter-min-progress-input'), { target: { value: '51' } });
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls.map(([u]) => String(u));
+      expect(calls.some((u) => u.includes('/api/v1/students?') && u.includes('min_progress=51'))).toBe(true);
+    });
+  });
 });
 
 

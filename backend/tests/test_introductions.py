@@ -186,3 +186,103 @@ def test_multiple_reactions_linkedin_style(student_user):
     assert res3.json()["liked"] is False
     assert res3.json()["reaction_type"] is None
     assert res3.json()["likes_count"] == 0
+
+
+def test_update_introduction_post_and_permissions(student_user):
+    db = SessionLocal()
+    other_user = db.query(User).filter(User.email == "outro_user_edit@teste.com").first()
+    if not other_user:
+        other_user = User(
+            email="outro_user_edit@teste.com",
+            name="Outro Usuário",
+            hashed_password="hashed_password",
+            role="aluno",
+            is_active=True
+        )
+        db.add(other_user)
+        db.commit()
+        db.refresh(other_user)
+    other_token = create_access_token(data={"sub": str(other_user.id), "role": other_user.role})
+    db.close()
+
+    author_headers = {"Authorization": f"Bearer {student_user['token']}"}
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    create_res = client.post(
+        "/api/v1/introductions",
+        json={
+            "title": "Título Original",
+            "content": "Conteúdo original da apresentação.",
+            "niche": "Design",
+            "location": "São Paulo - SP",
+        },
+        headers=author_headers,
+    )
+    assert create_res.status_code == 201
+    post_id = create_res.json()["id"]
+
+    # Outro aluno não pode editar
+    forbidden_res = client.put(
+        f"/api/v1/introductions/{post_id}",
+        json={"title": "Tentativa Inválida"},
+        headers=other_headers,
+    )
+    assert forbidden_res.status_code == 403
+
+    # Autor edita com sucesso
+    update_res = client.put(
+        f"/api/v1/introductions/{post_id}",
+        json={
+            "title": "Título Atualizado",
+            "content": "Novo texto atualizado com sucesso.",
+            "niche": "Psicologia Clínica",
+            "location": "Curitiba - PR",
+            "instagram": "@autor.editado",
+        },
+        headers=author_headers,
+    )
+    assert update_res.status_code == 200
+    updated = update_res.json()
+    assert updated["title"] == "Título Atualizado"
+    assert updated["content"] == "Novo texto atualizado com sucesso."
+    assert updated["niche"] == "Psicologia Clínica"
+    assert updated["location"] == "Curitiba - PR"
+    assert updated["instagram"] == "@autor.editado"
+
+    # Limpa o post de teste
+    client.delete(f"/api/v1/introductions/{post_id}", headers=author_headers)
+
+
+def test_toggle_example_introduction_and_permissions(superadmin_token, student_user):
+    student_headers = {"Authorization": f"Bearer {student_user['token']}"}
+    admin_headers = {"Authorization": f"Bearer {superadmin_token}"}
+
+    create_res = client.post(
+        "/api/v1/introductions",
+        json={
+            "title": "Apresentação da Luana",
+            "content": "Texto exemplo para os alunos seguirem.",
+            "niche": "Astrologia",
+        },
+        headers=student_headers,
+    )
+    assert create_res.status_code == 201
+    post_id = create_res.json()["id"]
+    assert create_res.json()["is_example"] is False
+
+    # Aluno normal não pode marcar como exemplo
+    forbidden = client.post(f"/api/v1/introductions/{post_id}/example", headers=student_headers)
+    assert forbidden.status_code == 403
+
+    # Superadmin marca como exemplo e fixa automaticamente no topo
+    res_on = client.post(f"/api/v1/introductions/{post_id}/example", headers=admin_headers)
+    assert res_on.status_code == 200
+    assert res_on.json()["is_example"] is True
+    assert res_on.json()["is_pinned"] is True
+
+    # Superadmin desmarca exemplo
+    res_off = client.post(f"/api/v1/introductions/{post_id}/example", headers=admin_headers)
+    assert res_off.status_code == 200
+    assert res_off.json()["is_example"] is False
+
+    client.delete(f"/api/v1/introductions/{post_id}", headers=admin_headers)

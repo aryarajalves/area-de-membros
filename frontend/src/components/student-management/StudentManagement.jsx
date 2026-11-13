@@ -8,6 +8,7 @@ import StudentPaginationBar from './StudentPaginationBar';
 import StudentTagsModal from './StudentTagsModal';
 import ChatBroadcastModal from './ChatBroadcastModal';
 import ChatBroadcastHistoryModal from './ChatBroadcastHistoryModal';
+import StudentEngagementCard from './StudentEngagementCard';
 import { useToast } from '../../context/ToastContext';
 
 export default function StudentManagement({ bgColor = '#090d16' }) {
@@ -21,6 +22,9 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [onlyOnline, setOnlyOnline] = useState(false);
+  const [engagementLevel, setEngagementLevel] = useState('');
+  const [minProgress, setMinProgress] = useState('');
+  const [maxProgress, setMaxProgress] = useState('');
   const [courses, setCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -101,6 +105,15 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       if (onlyOnline) {
         params.append('only_online', 'true');
       }
+      if (engagementLevel) {
+        params.append('engagement_level', engagementLevel);
+      }
+      if (minProgress !== '' && !Number.isNaN(Number(minProgress))) {
+        params.append('min_progress', String(Math.min(100, Math.max(0, Number(minProgress)))));
+      }
+      if (maxProgress !== '' && !Number.isNaN(Number(maxProgress))) {
+        params.append('max_progress', String(Math.min(100, Math.max(0, Number(maxProgress)))));
+      }
 
       const res = await fetch(`/api/v1/students?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -121,7 +134,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, onlyOnline, addToast]);
+  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, onlyOnline, engagementLevel, minProgress, maxProgress, addToast]);
 
   useEffect(() => {
     fetchStudents();
@@ -147,6 +160,9 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     setSelectedMonth('');
     setSelectedDate('');
     setOnlyOnline(false);
+    setEngagementLevel('');
+    setMinProgress('');
+    setMaxProgress('');
     setPage(1);
   };
 
@@ -157,7 +173,10 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     selectedCourseId ||
     selectedMonth ||
     selectedDate ||
-    onlyOnline
+    onlyOnline ||
+    engagementLevel ||
+    minProgress !== '' ||
+    maxProgress !== ''
   );
 
   const handleExport = async (format) => {
@@ -188,9 +207,20 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
 
   // Cálculo de estatísticas rápidas
   const activeStudentsCount = students.filter((s) => s.is_active).length;
+  const selectedCourseObj = selectedCourseId
+    ? courses.find((c) => String(c.id) === String(selectedCourseId))
+    : null;
   const overallAvgProgress =
     students.length > 0
-      ? Math.round(students.reduce((acc, s) => acc + (s.overall_progress_percent || 0), 0) / students.length)
+      ? Math.round(
+          students.reduce((acc, s) => {
+            if (selectedCourseId) {
+              const found = (s.courses || []).find((c) => String(c.course_id) === String(selectedCourseId));
+              return acc + (found?.progress_percent || 0);
+            }
+            return acc + (s.overall_progress_percent || 0);
+          }, 0) / students.length
+        )
       : 0;
 
   return (
@@ -259,6 +289,17 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
             </div>
           </div>
         ))}
+        <StudentEngagementCard
+          avgProgress={overallAvgProgress}
+          selectedCourseTitle={selectedCourseObj?.title || ''}
+          engagementLevel={engagementLevel}
+          onSelectEngagement={(lvl) => { setEngagementLevel(lvl); setPage(1); }}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
       </div>
 
       {/* Barra de Filtros, Busca e Ordenação */}
@@ -289,10 +330,13 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
           setPage(1);
         }}
         onlyOnline={onlyOnline}
-        setOnlyOnline={(val) => {
-          setOnlyOnline(val);
-          setPage(1);
-        }}
+        setOnlyOnline={(val) => { setOnlyOnline(val); setPage(1); }}
+        engagementLevel={engagementLevel}
+        setEngagementLevel={(val) => { setEngagementLevel(val); setPage(1); }}
+        minProgress={minProgress}
+        setMinProgress={(val) => { setMinProgress(val); setPage(1); }}
+        maxProgress={maxProgress}
+        setMaxProgress={(val) => { setMaxProgress(val); setPage(1); }}
         onResetFilters={handleResetFilters}
         hasActiveFilters={hasActiveFilters}
         isLightBg={isLightBg}

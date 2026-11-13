@@ -111,6 +111,7 @@ def test_student_filters_and_ordering():
     p2 = LessonProgress(user_id=u_a.id, lesson_id=l2.id, is_completed=True)
     db.add_all([p1, p2])
     db.commit()
+    c1_id = c1.id
     c2_id = c2.id
     db.close()
 
@@ -157,3 +158,29 @@ def test_student_filters_and_ordering():
     date_items = [st for st in res_date.json()["items"] if st["email"] in ["ziraldo@teste.com", "ana@teste.com", "carlos@teste.com"]]
     assert len(date_items) == 1
     assert date_items[0]["name"] == "Carlos Aluno"
+
+    # 7. Teste Filtro por Engajamento Alto (71-100%) e Baixo (0-35%) no curso c1
+    res_high = client.get(f"/api/v1/students?course_id={c1_id}&engagement_level=high", headers=headers)
+    assert res_high.status_code == 200
+    high_emails = [st["email"] for st in res_high.json()["items"]]
+    assert "ziraldo@teste.com" in high_emails
+    assert "ana@teste.com" not in high_emails
+
+    res_low = client.get(f"/api/v1/students?course_id={c1_id}&engagement_level=low", headers=headers)
+    assert res_low.status_code == 200
+    low_emails = [st["email"] for st in res_low.json()["items"]]
+    assert "ana@teste.com" in low_emails
+    assert "ziraldo@teste.com" not in low_emails
+
+    # 8. Teste Filtro por Progresso Mínimo (> 50%) no curso c1 e geral
+    res_min = client.get(f"/api/v1/students?course_id={c1_id}&min_progress=51", headers=headers)
+    assert res_min.status_code == 200
+    min_emails = [st["email"] for st in res_min.json()["items"]]
+    assert "ziraldo@teste.com" in min_emails
+    assert "ana@teste.com" not in min_emails
+
+    res_range = client.get("/api/v1/students?min_progress=0&max_progress=35", headers=headers)
+    assert res_range.status_code == 200
+    range_emails = [st["email"] for st in res_range.json()["items"]]
+    assert "ana@teste.com" in range_emails
+    assert "ziraldo@teste.com" not in range_emails

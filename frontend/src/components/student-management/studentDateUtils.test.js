@@ -7,6 +7,7 @@ import {
   getBrasiliaDateString,
   formatHoursAndMinutes,
   formatCourseRemainingTime,
+  formatModuleDisplayLabel,
 } from './studentDateUtils';
 
 describe('studentDateUtils', () => {
@@ -90,5 +91,31 @@ describe('studentDateUtils', () => {
     const info = formatCourseRemainingTime(expiresAt, false, nowSimulated);
     expect(info.isExpired).toBe(true);
     expect(info.text).toBe('Acesso Expirado');
+  });
+
+  describe('formatModuleDisplayLabel', () => {
+    it('formata módulo sem prefixo numérico incluindo o número ordinal e nome do módulo', () => {
+      expect(formatModuleDisplayLabel('Introdução a Astrologia', 1)).toBe('Módulo 01 - Introdução a Astrologia');
+      expect(formatModuleDisplayLabel('Os Personagens Da Aventura', 2)).toBe('Módulo 02 - Os Personagens Da Aventura');
+      expect(formatModuleDisplayLabel('Prática Avançada', 10)).toBe('Módulo 10 - Prática Avançada');
+    });
+
+    it('preserva módulos que já contenham o prefixo de numeração no próprio título', () => {
+      expect(formatModuleDisplayLabel('Módulo 01 - Trânsitos', 1)).toBe('Módulo 01 - Trânsitos');
+      expect(formatModuleDisplayLabel('Módulo 1 - Fundamentos', 1)).toBe('Módulo 1 - Fundamentos');
+      expect(formatModuleDisplayLabel('Modulo 2: Avançado', 2)).toBe('Modulo 2: Avançado');
+    });
+
+    it('remove prefixo solto "Módulo:" sem número e adiciona o número ordinal correto', () => {
+      expect(formatModuleDisplayLabel('Módulo: Introdução', 1)).toBe('Módulo 01 - Introdução');
+      expect(formatModuleDisplayLabel('Módulo - Aprofundamento', 3)).toBe('Módulo 03 - Aprofundamento');
+    });
+
+    it('faz fallback adequado quando não há numeração ordinal informada', () => {
+      expect(formatModuleDisplayLabel('Módulo Geral', null)).toBe('Módulo Geral');
+      expect(formatModuleDisplayLabel('Geral', null)).toBe('Módulo: Geral');
+      expect(formatModuleDisplayLabel(null, null)).toBeNull();
+      expect(formatModuleDisplayLabel('', 1)).toBeNull();
+    });
   });
 });

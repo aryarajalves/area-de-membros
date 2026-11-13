@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, MessageSquare, Send, Trash2, Shield, GraduationCap, Award, Pin, Sparkles } from 'lucide-react';
+import { X, MessageSquare, Send, Trash2, Shield, GraduationCap, Award, Pin, Sparkles, Pencil } from 'lucide-react';
 import IntroductionMediaEmbed from './IntroductionMediaEmbed';
 import IntroductionSocialLinks from './IntroductionSocialLinks';
 import IntroductionMatchmaking from './IntroductionMatchmaking';
@@ -56,9 +56,11 @@ export default function IntroductionPostModal({
   onClose,
   onToggleLike,
   onTogglePin,
+  onToggleExample,
   onAddComment,
   onDeleteComment,
   onDeletePost,
+  onEditPost,
   onOpenDm,
 }) {
   const isAstrology = useIsAstrologyPlatform();
@@ -66,6 +68,7 @@ export default function IntroductionPostModal({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [liking, setLiking] = useState(false);
   const [pinning, setPinning] = useState(false);
+  const [markingExample, setMarkingExample] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
   const commentInputRef = useRef(null);
@@ -107,6 +110,16 @@ export default function IntroductionPostModal({
     }
   };
 
+  const handleExampleClick = async () => {
+    if (markingExample || !onToggleExample) return;
+    setMarkingExample(true);
+    try {
+      await onToggleExample(post.id);
+    } finally {
+      setMarkingExample(false);
+    }
+  };
+
   const handleSubmitComment = async (e) => {
     e.preventDefault();
     const cleanText = commentText.trim();
@@ -142,15 +155,37 @@ export default function IntroductionPostModal({
         <div className="intro-modal-header">
           <div className="intro-modal-header-left">
             <h2 className="intro-modal-title">{post.title}</h2>
-            {post.is_pinned && (
+            {post.is_example ? (
+              <span
+                className="intro-pinned-indicator"
+                data-testid="modal-example-indicator"
+                style={{ backgroundColor: 'rgba(168, 85, 247, 0.16)', color: '#d8b4fe', borderColor: 'rgba(168, 85, 247, 0.35)' }}
+              >
+                <Sparkles size={12} />
+                <span>Apresentação de Exemplo</span>
+              </span>
+            ) : post.is_pinned ? (
               <span className="intro-pinned-indicator" data-testid="modal-pinned-indicator">
                 <Pin size={12} />
                 <span>Fixado</span>
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="intro-modal-header-actions">
+            {canPinPost && onToggleExample && (
+              <button
+                type="button"
+                className={`intro-pin-icon-btn ${post.is_example ? 'is-active-pin' : ''}`}
+                onClick={handleExampleClick}
+                disabled={markingExample}
+                title={post.is_example ? 'Remover destaque de Exemplo' : 'Fixar como Apresentação de Exemplo'}
+                data-testid="toggle-example-intro-post-btn"
+              >
+                <Sparkles size={17} />
+              </button>
+            )}
+
             {canPinPost && onTogglePin && (
               <button
                 type="button"
@@ -161,6 +196,18 @@ export default function IntroductionPostModal({
                 data-testid="toggle-pin-intro-post-btn"
               >
                 <Pin size={17} />
+              </button>
+            )}
+
+            {canDeletePost && onEditPost && (
+              <button
+                type="button"
+                className="intro-pin-icon-btn"
+                onClick={() => onEditPost(post)}
+                title="Editar apresentação"
+                data-testid="edit-intro-post-trigger-btn"
+              >
+                <Pencil size={17} />
               </button>
             )}
 
@@ -233,7 +280,7 @@ export default function IntroductionPostModal({
             title={post.title}
           />
 
-          {/* Redes Sociais e Botão Chamar na DM */}
+          {/* Redes Sociais (sempre visíveis; botão DM oculto em Apresentação de Exemplo) */}
           <IntroductionSocialLinks
             instagram={post.instagram}
             linkedin={post.linkedin}
@@ -242,11 +289,29 @@ export default function IntroductionPostModal({
             authorName={post.user_name}
             authorId={post.user_id}
             currentUserId={currentUser?.id}
-            onOpenDm={onOpenDm}
+            onOpenDm={
+              post.is_example
+                ? null
+                : (id, name) =>
+                    onOpenDm &&
+                    onOpenDm(id, name, {
+                      email: post.user_email,
+                      role: post.user_role,
+                      avatar: post.user_avatar,
+                    })
+            }
           />
 
-          {/* Resumo de Curtidas e Comentários */}
-          <div className="intro-stats-summary-bar">
+          {/* Ações / Reações / Comentários (ocultos em Apresentação de Exemplo) */}
+          {post.is_example ? (
+            <div data-testid="intro-example-notice" style={{ marginTop: '16px', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.28)', color: '#e9d5ff', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={16} color="#c084fc" style={{ flexShrink: 0 }} />
+              <span><strong>Apresentação de Exemplo:</strong> Use esta estrutura como modelo para criar a sua própria apresentação na comunidade.</span>
+            </div>
+          ) : (
+            <>
+              {/* Resumo de Curtidas e Comentários */}
+              <div className="intro-stats-summary-bar">
             <div className="summary-left">
               {post.likes_count > 0 ? (
                 <ReactionPillSummary
@@ -408,6 +473,8 @@ export default function IntroductionPostModal({
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       </div>
 

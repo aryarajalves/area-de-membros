@@ -7,7 +7,15 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
-### 🚀 Novidades da Versão v1.3.5 (Build e Publicação das Imagens de Produção & Estabilização da Esteira Pré-Push)
+### 🚀 Novidades da Versão v1.3.5 (Build e Publicação das Imagens de Produção, Engajamento, Exemplos Fixados e Múltiplas Partes)
+- **📊 Filtros de Progresso e Nível de Engajamento (`Alunos e Progresso`):**
+  - Card de **Engajamento** (`Baixo 0–35%`, `Médio 36–70%`, `Alto 71–100%`) com indicador visual de barras de sinal, filtro rápido por faixa, filtro por porcentagem (`Min %` / `Max %`) geral ou por curso específico e badge de engajamento individual no card de cada aluno.
+- **✨ Exemplos Oficiais Fixados (Apresentações e Depoimentos):**
+  - Suporte para fixar apresentações (`is_example`) e depoimentos (`is_example`) como modelos oficiais de referência no topo das listagens, além de edição de apresentações na comunidade e conexão via DM.
+- **🎬 Múltiplas Partes de Vídeo nas Aulas e Transcrição/Tradução IA:**
+  - Suporte a aulas divididas em partes (`LessonPartsBar`) com transcrição e tradução independentes por parte.
+- **💬 Reações e Recibos em DMs:**
+  - Reações com emoji nas mensagens diretas e melhorias na experiência de chat.
 - **🐳 Novas Imagens Oficiais de Produção (Docker Hub):**
   - Geração e publicação das imagens imutáveis: `aryalvesfernandes/area-de-membros:backend-1.3.5` e `aryalvesfernandes/area-de-membros:frontend-1.3.5`.
   - Atualização dos manifestos `docker-compose-producao.yml` e `.env.producao.example`.

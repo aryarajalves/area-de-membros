@@ -182,6 +182,7 @@
 .table-action-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background-color: #0f172a;
   color: white;
@@ -192,6 +193,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .table-action-btn:hover {

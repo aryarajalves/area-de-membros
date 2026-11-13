@@ -151,4 +151,53 @@ describe('StudentAccessHistoryModal Component', () => {
     expect(screen.queryByText('Aula Extra 1')).not.toBeInTheDocument();
     expect(screen.getByTestId('history-pagination-bar')).toHaveTextContent(/Exibindo 21–25 de 25 aulas concluídas/i);
   });
+
+  it('exibe o número ordinal e nome do módulo formatados nas aulas do histórico', async () => {
+    const mireilleHistory = [
+      {
+        lesson_id: 501,
+        lesson_title: 'Marte: O Guerreiro Interior e a Energia da Ação',
+        module_id: 12,
+        module_order: 2,
+        module_title: 'Os Personagens Da Aventura',
+        is_completed: true,
+        completed_at: '2026-11-12T12:25:00Z',
+      },
+      {
+        lesson_id: 502,
+        lesson_title: 'Desvendando a Linguagem Astrológica: Arquétipos e Sentidos',
+        module_id: 11,
+        module_order: 1,
+        module_title: 'Introdução a Astrologia',
+        is_completed: true,
+        completed_at: '2026-11-09T23:40:00Z',
+      },
+    ];
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => mireilleHistory,
+    });
+
+    render(
+      <ToastProvider>
+        <StudentAccessHistoryModal
+          isOpen={true}
+          onClose={() => {}}
+          student={mockStudent}
+          course={mockCourse}
+          isLightBg={false}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Marte: O Guerreiro Interior e a Energia da Ação')).toBeInTheDocument();
+      expect(screen.getByText('Desvendando a Linguagem Astrológica: Arquétipos e Sentidos')).toBeInTheDocument();
+    });
+
+    // Valida que o número e nome do módulo são exibidos com clareza
+    expect(screen.getByTestId('history-module-label-501')).toHaveTextContent('Módulo 02 - Os Personagens Da Aventura');
+    expect(screen.getByTestId('history-module-label-502')).toHaveTextContent('Módulo 01 - Introdução a Astrologia');
+  });
 });

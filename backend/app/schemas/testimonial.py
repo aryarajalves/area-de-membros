@@ -34,6 +34,7 @@ class TestimonialUpdate(BaseModel):
     content: Optional[str] = Field(None, min_length=3, max_length=5000)
     status: Optional[str] = Field(None, description="'pending' | 'approved' | 'rejected'")
     is_featured: Optional[bool] = None
+    is_example: Optional[bool] = None
 
 
 class TestimonialResponse(BaseModel):
@@ -45,6 +46,7 @@ class TestimonialResponse(BaseModel):
     content: str
     status: str
     is_featured: bool
+    is_example: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     user: TestimonialUser

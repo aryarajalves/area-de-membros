@@ -1,12 +1,10 @@
 import React from 'react';
-import { MessageCircle, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { InstagramIcon, LinkedinIcon } from '../platform-settings/linkIcons';
 
 export default function IntroCreateSocialTab({
   instagram,
   setInstagram,
-  whatsapp,
-  setWhatsapp,
   linkedin,
   setLinkedin,
   website,
@@ -15,7 +13,7 @@ export default function IntroCreateSocialTab({
   return (
     <div className="intro-tab-pane" data-testid="pane-social">
       <p className="intro-tab-desc">
-        Conecte suas redes para que outros alunos possam te encontrar com 1 clique.
+        Conecte suas redes para que outros alunos possam te encontrar com 1 clique. O botão de conversa direta via DM da comunidade é exibido automaticamente.
       </p>
 
       <div className="form-row-2cols">
@@ -34,22 +32,6 @@ export default function IntroCreateSocialTab({
         </div>
 
         <div className="form-group">
-          <label htmlFor="intro-whatsapp-input">
-            <MessageCircle size={13} /> WhatsApp
-          </label>
-          <input
-            id="intro-whatsapp-input"
-            type="text"
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="(11) 99999-9999"
-            data-testid="intro-whatsapp-input"
-          />
-        </div>
-      </div>
-
-      <div className="form-row-2cols">
-        <div className="form-group">
           <label htmlFor="intro-linkedin-input">
             <LinkedinIcon size={13} /> LinkedIn
           </label>
@@ -62,20 +44,20 @@ export default function IntroCreateSocialTab({
             data-testid="intro-linkedin-input"
           />
         </div>
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="intro-website-input">
-            <Globe size={13} /> Portfólio / Site Pessoal
-          </label>
-          <input
-            id="intro-website-input"
-            type="url"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            placeholder="https://meusite.com ou github"
-            data-testid="intro-website-input"
-          />
-        </div>
+      <div className="form-group">
+        <label htmlFor="intro-website-input">
+          <Globe size={13} /> Portfólio / Site Pessoal
+        </label>
+        <input
+          id="intro-website-input"
+          type="url"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          placeholder="https://meusite.com ou github"
+          data-testid="intro-website-input"
+        />
       </div>
     </div>
   );

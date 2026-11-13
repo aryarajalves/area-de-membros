@@ -45,6 +45,7 @@ class ChatMessage(Base):
     course = relationship("Course", foreign_keys=[course_id])
     parent = relationship("ChatMessage", remote_side=[id], backref="replies")
     likes = relationship("ChatMessageLike", back_populates="message", cascade="all, delete-orphan")
+    reactions = relationship("ChatMessageReaction", back_populates="message", cascade="all, delete-orphan")
     favorites = relationship("ChatMessageFavorite", back_populates="message", cascade="all, delete-orphan")
     mentions = relationship("ChatMessageMention", back_populates="message", cascade="all, delete-orphan")
 
@@ -123,4 +124,26 @@ class ChatChannelReadStatus(Base):
     )
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+class ChatMessageReaction(Base):
+    """
+    Reações com emoji em mensagens do chat da comunidade e DM.
+    Permite aos usuários expressarem reações (ex: ❤️, 👍, 😂, 😮, 😢, 🙏, 🔥, 👏).
+    """
+    __tablename__ = "chat_message_reactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    message_id = Column(Integer, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    emoji = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", "emoji", name="uq_chat_message_reaction_user_emoji"),
+    )
+
+    user = relationship("User", foreign_keys=[user_id])
+    message = relationship("ChatMessage", back_populates="reactions")
+
 

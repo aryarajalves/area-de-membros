@@ -59,6 +59,15 @@ export default function UserManagement({ currentUser }) {
     handleBulkDeleteInvites,
     userRoleFilter,
     setUserRoleFilter,
+    userSearchTerm,
+    setUserSearchTerm,
+    userDdiFilter,
+    setUserDdiFilter,
+    userDddFilter,
+    setUserDddFilter,
+    userMonthFilter,
+    setUserMonthFilter,
+    handleClearUserFilters,
     inviteStatusFilter,
     setInviteStatusFilter,
     usersPage,
@@ -169,6 +178,15 @@ export default function UserManagement({ currentUser }) {
           paginatedUsers={paginatedUsers}
           userRoleFilter={userRoleFilter}
           setUserRoleFilter={setUserRoleFilter}
+          userSearchTerm={userSearchTerm}
+          setUserSearchTerm={setUserSearchTerm}
+          userDdiFilter={userDdiFilter}
+          setUserDdiFilter={setUserDdiFilter}
+          userDddFilter={userDddFilter}
+          setUserDddFilter={setUserDddFilter}
+          userMonthFilter={userMonthFilter}
+          setUserMonthFilter={setUserMonthFilter}
+          handleClearUserFilters={handleClearUserFilters}
           selectedUserIds={selectedUserIds}
           setSelectedUserIds={setSelectedUserIds}
           selectableUserIds={selectableUserIds}

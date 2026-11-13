@@ -1,12 +1,12 @@
 import React from 'react';
-import { MessageSquare, Pin, Image as ImageIcon, Video, CornerDownRight } from 'lucide-react';
+import { MessageSquare, Pin, Image as ImageIcon, Video, CornerDownRight, Sparkles } from 'lucide-react';
 import IntroductionSocialLinks from './IntroductionSocialLinks';
 import IntroductionReactionsBar, { ReactionPillSummary } from './IntroductionReactionsBar';
 import ZodiacBadge from '../common/ZodiacBadge';
 import { OnlineStatusDot } from '../common/OnlineStatusBadge';
 import useIsAstrologyPlatform from '../../hooks/useIsAstrologyPlatform';
 
-function formatRelativeTime(dateString) {
+export function formatRelativeTime(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
   const now = new Date();
@@ -15,7 +15,7 @@ function formatRelativeTime(dateString) {
   if (diffInSeconds < 60) return 'agora há pouco';
   const minutes = Math.floor(diffInSeconds / 60);
   if (minutes < 60) return `há ${minutes} min`;
-  const hours = Math.floor(diffInSeconds / 60);
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) return `há ${hours} h`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `há ${days} ${days === 1 ? 'dia' : 'dias'}`;
@@ -47,13 +47,22 @@ export default function IntroductionPostCard({
         if (e.key === 'Enter' || e.key === ' ') onSelectPost(post);
       }}
     >
-      {/* Selo Fixado se houver */}
-      {post.is_pinned && (
+      {/* Selo Fixado / Exemplo se houver */}
+      {post.is_example ? (
+        <div
+          className="intro-pinned-badge"
+          data-testid={`intro-example-badge-${post.id}`}
+          style={{ backgroundColor: 'rgba(168, 85, 247, 0.16)', color: '#d8b4fe', borderColor: 'rgba(168, 85, 247, 0.35)' }}
+        >
+          <Sparkles size={12} />
+          <span>Apresentação de Exemplo</span>
+        </div>
+      ) : post.is_pinned ? (
         <div className="intro-pinned-badge" data-testid={`intro-pinned-badge-${post.id}`}>
           <Pin size={12} />
           <span>Fixado pela Comunidade</span>
         </div>
-      )}
+      ) : null}
 
       {/* Avatar do Autor */}
       <div className="intro-post-avatar-col" style={{ position: 'relative' }}>
@@ -117,7 +126,7 @@ export default function IntroductionPostCard({
           </div>
         )}
 
-        {/* Redes Sociais */}
+        {/* Redes Sociais (sempre visíveis; botão DM oculto em apresentações de exemplo) */}
         <div onClick={(e) => e.stopPropagation()}>
           <IntroductionSocialLinks
             instagram={post.instagram}
@@ -127,12 +136,22 @@ export default function IntroductionPostCard({
             authorName={post.user_name}
             authorId={post.user_id}
             currentUserId={currentUser?.id}
-            onOpenDm={onOpenDm}
+            onOpenDm={
+              post.is_example
+                ? null
+                : (id, name) =>
+                    onOpenDm &&
+                    onOpenDm(id, name, {
+                      email: post.user_email,
+                      role: post.user_role,
+                      avatar: post.user_avatar,
+                    })
+            }
           />
         </div>
 
         {/* Linha de Último Comentário se houver */}
-        {post.last_comment_user_name && (
+        {!post.is_example && post.last_comment_user_name && (
           <div className="intro-last-comment-hint">
             <CornerDownRight size={13} className="hint-icon" />
             <span>
@@ -142,28 +161,47 @@ export default function IntroductionPostCard({
         )}
       </div>
 
-      {/* Coluna Direita com Estatísticas / Interação */}
-      <div className="intro-post-stats-col" onClick={(e) => e.stopPropagation()}>
-        <IntroductionReactionsBar
-          isLiked={post.is_liked_by_me}
-          myReaction={post.my_reaction}
-          onToggleReaction={(rtype) => onToggleLike(post.id, rtype)}
-          buttonClassName="intro-stat-like-btn"
-          dataTestId={`like-post-btn-${post.id}`}
-        />
-
-        {post.likes_count > 0 && (
-          <ReactionPillSummary
-            likesCount={post.likes_count}
-            reactionsSummary={post.reactions_summary}
+      {/* Coluna Direita com Estatísticas / Interação (oculta em apresentações de exemplo) */}
+      {!post.is_example ? (
+        <div className="intro-post-stats-col" onClick={(e) => e.stopPropagation()}>
+          <IntroductionReactionsBar
+            isLiked={post.is_liked_by_me}
+            myReaction={post.my_reaction}
+            onToggleReaction={(rtype) => onToggleLike(post.id, rtype)}
+            buttonClassName="intro-stat-like-btn"
+            dataTestId={`like-post-btn-${post.id}`}
           />
-        )}
 
-        <div className="intro-comments-counter" title="Total de comentários">
-          <MessageSquare size={15} />
-          <span>{post.comments_count || 0}</span>
+          {post.likes_count > 0 && (
+            <ReactionPillSummary
+              likesCount={post.likes_count}
+              reactionsSummary={post.reactions_summary}
+            />
+          )}
+
+          <div className="intro-comments-counter" title="Total de comentários">
+            <MessageSquare size={15} />
+            <span>{post.comments_count || 0}</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="intro-post-stats-col" style={{ justifyContent: 'center' }}>
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#c084fc',
+              backgroundColor: 'rgba(168, 85, 247, 0.12)',
+              border: '1px solid rgba(168, 85, 247, 0.25)',
+              padding: '4px 10px',
+              borderRadius: '999px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Modelo para seguir
+          </span>
+        </div>
+      )}
     </div>
   );
 }
