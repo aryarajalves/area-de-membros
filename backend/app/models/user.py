@@ -68,8 +68,9 @@ class RegistrationVerification(Base):
     name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)
-    invite_token = Column(String, nullable=False)
-    code = Column(String, nullable=False)
+    invite_token = Column(String, nullable=True)
+    verification_token = Column(String, unique=True, index=True, nullable=True)
+    code = Column(String, nullable=True)
     phone = Column(String, nullable=True) # WhatsApp
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)

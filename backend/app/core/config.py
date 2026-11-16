@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
     BREVO_SENDER_EMAIL: str = os.getenv("BREVO_SENDER_EMAIL", "")
     BREVO_SENDER_NAME: str = os.getenv("BREVO_SENDER_NAME", "Área de Membros")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
 
     # Backblaze B2 / AWS S3 Configs para Backup Automático (Suporta tanto B2_* quanto BACKBLAZE_*)
     B2_ENDPOINT_URL: str = os.getenv("BACKBLAZE_ENDPOINT_URL") or os.getenv("B2_ENDPOINT_URL", "")

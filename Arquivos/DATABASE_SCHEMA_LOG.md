@@ -2,6 +2,18 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [15/11/2026] - Validação de E-mail via Link Único (Botão no E-mail) em registration_verifications
+- **Objetivo:** Substituir a digitação manual do código OTP de 6 dígitos por confirmação via link único (`verification_token`) com validade de 30 minutos para ambos os fluxos (Cadastro por Convite e Cadastro Público na Comunidade).
+- **Tabela Afetada:**
+  - `registration_verifications`:
+    - `verification_token`: VARCHAR NULL (índice `ix_registration_verifications_verification_token`, token único para confirmação via clique no botão do e-mail)
+    - `invite_token`: alterado para `NULL` permitido (para suportar cadastros públicos da comunidade sem convite)
+    - `code`: alterado para `NULL` permitido
+- **Script de Migração:** `backend/scripts/migrate_registration_verification_token.py`
+- **Auto-migração no Startup:** Comandos `ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS verification_token ...` e `DROP NOT NULL` incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [13/11/2026] - Depoimento de Exemplo Fixado em testimonials
 - **Objetivo:** Permitir ao Super Admin/Admin fixar depoimentos como Exemplo Oficial (`is_example`) no topo da vitrine para que outros alunos possam seguir o modelo.
 - **Tabela Afetada:**

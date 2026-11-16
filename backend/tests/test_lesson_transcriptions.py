@@ -185,6 +185,7 @@ def test_admin_triggers_transcription_with_mocked_ai(setup_transcription_data):
     }
 
     with patch("app.services.ai_transcription_service.SessionLocal", side_effect=TestingSessionLocal), \
+         patch("app.services.ai_multipart_transcription_service.SessionLocal", side_effect=TestingSessionLocal), \
          patch("app.services.ai_transcription_service.download_video_stream") as mock_download, \
          patch("app.services.ai_transcription_service.ai_transcription_service.extract_audio_from_video", new_callable=AsyncMock) as mock_extract, \
          patch("app.services.ai_transcription_service.ai_transcription_service.transcribe_audio_whisper", new_callable=AsyncMock) as mock_whisper, \
@@ -210,12 +211,12 @@ def test_admin_triggers_transcription_with_mocked_ai(setup_transcription_data):
         assert get_data["full_transcript"] == mock_transcript
         assert len(get_data["key_takeaways"]) == 2
         assert "Resumo Inteligente" in get_data["summary_html"]
-        assert get_data["lesson_title"] == "Arquitetura Limpa: Desacoplamento e Testes"
+        assert get_data["lesson_title"] == "Aula com Video IA"
 
         # Verifica persistência direta no banco de dados na entidade Lesson
         db_check = TestingSessionLocal()
         persisted_lesson = db_check.query(Lesson).filter(Lesson.id == data["lesson_id"]).first()
-        assert persisted_lesson.title == "Arquitetura Limpa: Desacoplamento e Testes"
+        assert persisted_lesson.title == "Aula com Video IA"
         db_check.close()
 
 

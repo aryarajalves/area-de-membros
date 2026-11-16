@@ -178,7 +178,9 @@ def test_login_endpoint_tracks_first_login_and_fires_trigger(db_session, seed_fi
 
 
 def test_public_register_tracks_first_login_and_fires_funnel(db_session):
-    """Valida que cadastro público já inicializa first_login_at e login_count = 1."""
+    """Valida que cadastro público via link de e-mail inicializa first_login_at e login_count = 1."""
+    from app.models.user import RegistrationVerification
+
     unique_email = f"aluno_pub_{datetime.now().timestamp()}@test.com"
     payload = {
         "name": "Aluno Cadastro Publico",
@@ -186,8 +188,19 @@ def test_public_register_tracks_first_login_and_fires_funnel(db_session):
         "password": "SenhaForte123!@",
     }
     res = client.post("/api/v1/auth/public-register", json=payload)
-    assert res.status_code == 201, res.text
-    data = res.json()
+    assert res.status_code == 200, res.text
+    assert res.json()["requires_verification"] is True
+
+    verif = (
+        db_session.query(RegistrationVerification)
+        .filter(RegistrationVerification.email == unique_email, RegistrationVerification.is_used == False)
+        .first()
+    )
+    assert verif is not None
+
+    confirm_res = client.post("/api/v1/auth/register/verify-link", json={"token": verif.verification_token})
+    assert confirm_res.status_code == 200, confirm_res.text
+    data = confirm_res.json()
     assert "access_token" in data
 
     db_session.expire_all()

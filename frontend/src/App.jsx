@@ -17,6 +17,7 @@ import { TestimonialsManagement } from './components/testimonials';
 import { GamificationRanking } from './components/gamification';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
+import VerifyEmailPage from './components/VerifyEmailPage';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import TopNavbar from './components/navigation/TopNavbar';
@@ -300,6 +301,24 @@ function App() {
     );
   }
 
+  // Se o caminho for de confirmação de e-mail via link (/verify-email?token=...)
+  const isVerifyEmailPage = pathname.includes('/verify-email');
+  if (isVerifyEmailPage) {
+    return (
+      <VerifyEmailPage
+        onVerifiedSuccess={(verifiedUser, verifiedToken) => {
+          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
+          setPathname('/');
+          handleLoginSuccess(verifiedUser, verifiedToken);
+        }}
+        onBackToLogin={() => {
+          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
+          setPathname('/');
+        }}
+      />
+    );
+  }
+
   // Se o caminho for de redefinição de senha (/reset-password)
   const isResetPasswordPage = pathname.includes('/reset-password');
   if (isResetPasswordPage) {
@@ -307,7 +326,7 @@ function App() {
   }
 
   // Se o caminho for de cadastro via convite (/register ou ?token=...)
-  const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage);
+  const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage && !isVerifyEmailPage);
   if (isRegisterPage) {
     const handleRedirectFromInvite = () => {
       if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');

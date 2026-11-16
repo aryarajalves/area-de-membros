@@ -516,11 +516,14 @@ def test_send_and_list_dm_messages(seed_chat_data):
     assert found["unread_count"] >= 1
     assert found["last_message"] == "Olá Aluno 2, mensagem privada!"
 
-    # 3. Aluno 2 abre as mensagens com Aluno 1 (marca como lida)
+    # 3. Aluno 2 abre as mensagens com Aluno 1 e marca conversa como lida
     res_msgs = client.get(f"/api/v1/chat/dm/messages/{aluno1.id}", headers=aluno2_headers)
     assert res_msgs.status_code == 200
     msgs = res_msgs.json()
     assert any(m["message"] == "Olá Aluno 2, mensagem privada!" for m in msgs)
+
+    res_mark = client.post(f"/api/v1/chat/dm/{aluno1.id}/mark-read", headers=aluno2_headers)
+    assert res_mark.status_code == 200
 
     # 4. Aluno 2 consulta conversas não lidas e deve estar zerado
     res_unread = client.get("/api/v1/chat/dm/conversations?unread_only=true", headers=aluno2_headers)

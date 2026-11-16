@@ -245,10 +245,12 @@ def test_broadcast_read_tracking(seed_broadcast_data):
     assert len(recipients) == 1
     assert recipients[0]["is_read"] is False
 
-    # 2. Aluno abre o chat DM com o admin -> mensagens são lidas
+    # 2. Aluno abre o chat DM com o admin e marca como lida
     aluno_b_headers = get_headers("broadcast_aluno_b@test.com", "pass123")
     res_dm = client.get(f"/api/v1/chat/dm/messages/{admin_id}", headers=aluno_b_headers)
     assert res_dm.status_code == 200
+    res_mark = client.post(f"/api/v1/chat/dm/{admin_id}/mark-read", headers=aluno_b_headers)
+    assert res_mark.status_code == 200
 
     # 3. Após leitura: is_read deve ser True e read_at preenchido
     res_details_after = client.get(f"/api/v1/chat/broadcast/campaigns/{camp_id}", headers=admin_headers)

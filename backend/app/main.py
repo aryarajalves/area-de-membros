@@ -293,8 +293,9 @@ async def lifespan(app: FastAPI):
                             name VARCHAR NOT NULL,
                             hashed_password VARCHAR NOT NULL,
                             role VARCHAR NOT NULL,
-                            invite_token VARCHAR NOT NULL,
-                            code VARCHAR NOT NULL,
+                            invite_token VARCHAR,
+                            verification_token VARCHAR,
+                            code VARCHAR,
                             phone VARCHAR,
                             expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
                             is_used BOOLEAN DEFAULT FALSE,
@@ -304,6 +305,10 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_registration_verifications_email ON registration_verifications(email);
                         ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;
                         ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS phone VARCHAR;
+                        ALTER TABLE registration_verifications ADD COLUMN IF NOT EXISTS verification_token VARCHAR;
+                        CREATE INDEX IF NOT EXISTS ix_registration_verifications_verification_token ON registration_verifications(verification_token);
+                        ALTER TABLE registration_verifications ALTER COLUMN invite_token DROP NOT NULL;
+                        ALTER TABLE registration_verifications ALTER COLUMN code DROP NOT NULL;
 
                         -- Mídias, Redes Sociais, Matchmaking e Pin em introduction_posts
                         ALTER TABLE introduction_posts ADD COLUMN IF NOT EXISTS media_type VARCHAR(50) DEFAULT 'none';
@@ -711,6 +716,7 @@ async def lifespan(app: FastAPI):
                         "ALTER TABLE invites ADD COLUMN allowed_course_ids VARCHAR",
                         "ALTER TABLE registration_verifications ADD COLUMN attempts INTEGER DEFAULT 0",
                         "ALTER TABLE registration_verifications ADD COLUMN phone VARCHAR",
+                        "ALTER TABLE registration_verifications ADD COLUMN verification_token VARCHAR",
                         "ALTER TABLE lesson_videos ADD COLUMN order_index INTEGER DEFAULT 0",
                         "ALTER TABLE lesson_videos ADD COLUMN duration VARCHAR",
                         "ALTER TABLE lesson_videos ADD COLUMN transcript_text TEXT",

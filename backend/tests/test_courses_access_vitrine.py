@@ -387,7 +387,7 @@ def test_update_lesson_full_and_partial_modal_payload(setup_courses_and_users):
     res_patch2 = client.patch(f"/api/v1/courses/{c1_id}/modules/{mod_id}/lessons/{l_id}", json=full_payload, headers=headers)
     assert res_patch2.status_code == 200
     data2 = res_patch2.json()
-    assert data2["title"] == "Vídeo Principal"
+    assert data2["title"] == "Aula 100% Atualizada"
     assert data2["duration"] == "15:30"
     assert data2["thumbnail_url"] == "https://storage.com/nova_thumb.png"
     assert len(data2["videos"]) == 1

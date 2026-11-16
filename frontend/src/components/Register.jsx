@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import RegisterFormStep from './register/RegisterFormStep';
-import RegisterOtpStep from './register/RegisterOtpStep';
+import RegisterEmailSentStep from './register/RegisterEmailSentStep';
 import {
   RegisterLoadingState,
   RegisterInviteErrorState,
@@ -266,7 +266,7 @@ export default function Register({
 
       setStep('verify');
       setResendCooldown(60);
-      addToast('Código de verificação enviado para o seu e-mail!', 'success');
+      addToast('Link de confirmação enviado para o seu e-mail!', 'success');
     } catch (err) {
       setFormError(err.message || 'Erro ao cadastrar.');
     } finally {
@@ -372,16 +372,12 @@ export default function Register({
 
   if (step === 'verify') {
     return (
-      <RegisterOtpStep
+      <RegisterEmailSentStep
         email={email}
-        otpCode={otpCode}
-        setOtpCode={setOtpCode}
         formError={formError}
-        verifying={verifying}
-        onVerifyCode={handleVerifyCode}
         resending={resending}
         resendCooldown={resendCooldown}
-        onResendCode={handleResendCode}
+        onResendEmail={handleResendCode}
         bgColor={platformBgColor}
         isLightBg={isLightBg}
         onBackToForm={() => {

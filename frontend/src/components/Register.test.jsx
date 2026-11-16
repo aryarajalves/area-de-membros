@@ -146,23 +146,13 @@ describe('Register Component', () => {
     expect(submitBtn).not.toBeDisabled();
     fireEvent.click(submitBtn);
 
-    // Deve avançar para a tela de OTP
-    expect(await screen.findByText('Validar E-mail')).toBeInTheDocument();
+    // Deve avançar para a tela de confirmação por link no e-mail (sem input de código OTP)
+    expect(await screen.findByText('Confirme seu E-mail')).toBeInTheDocument();
     expect(screen.getByText(/novouser@teste.com/i)).toBeInTheDocument();
-
-    const otpInput = screen.getByTestId('reg-otp-input');
-    const verifyBtn = screen.getByTestId('verify-submit-btn');
-
-    // Botão desabilitado se código tiver menos de 6 dígitos
-    fireEvent.change(otpInput, { target: { value: '123' } });
-    expect(verifyBtn).toBeDisabled();
-
-    // Digita 6 dígitos corretos
-    fireEvent.change(otpInput, { target: { value: '123456' } });
-    expect(verifyBtn).not.toBeDisabled();
-
-    fireEvent.click(verifyBtn);
-    expect(await screen.findByText('Conta criada com sucesso!')).toBeInTheDocument();
+    expect(screen.getByText(/30 minutos/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('reg-otp-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('resend-code-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('back-to-form-btn')).toBeInTheDocument();
   });
 
   it('formats whatsapp/phone input with Brazil +55 DDI and allows switching to international country code', async () => {
@@ -301,16 +291,10 @@ describe('Register Component', () => {
 
     fireEvent.click(screen.getByTestId('register-submit-btn'));
 
-    expect(await screen.findByText('Validar E-mail')).toBeInTheDocument();
-
-    const otpInput = screen.getByTestId('reg-otp-input');
-    fireEvent.change(otpInput, { target: { value: '451210' } });
-
-    const confirmOtpBtn = screen.getByTestId('verify-submit-btn');
-    fireEvent.click(confirmOtpBtn);
-
-    const errorBanner = await screen.findByTestId('verify-error');
-    expect(errorBanner).toHaveTextContent('Erro inesperado no servidor. Tente novamente mais tarde.');
+    expect(await screen.findByText('Confirme seu E-mail')).toBeInTheDocument();
+    expect(screen.getByTestId('back-to-form-btn')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('back-to-form-btn'));
+    expect(await screen.findByTestId('register-submit-btn')).toBeInTheDocument();
   });
 
   it('redireciona para a tela principal quando o convite já foi utilizado e o usuário possui sessão ativa válida', async () => {

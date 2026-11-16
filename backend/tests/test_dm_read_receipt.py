@@ -73,8 +73,10 @@ def test_dm_read_receipt_marking_and_response(dm_users):
         assert target_sender["is_read"] is False
         assert target_sender["read_at"] is None
 
-        # 3. Destinatário abre a conversa (marcando como lida)
+        # 3. Destinatário abre a conversa e marca como lida
         app.dependency_overrides[get_current_user] = lambda: recipient
+        res_mark = client.post(f"/api/v1/chat/dm/{sender.id}/mark-read")
+        assert res_mark.status_code == 200, f"Erro mark-read: {res_mark.status_code} - {res_mark.text}"
         res_recipient = client.get(f"/api/v1/chat/dm/messages/{sender.id}")
         assert res_recipient.status_code == 200, f"Erro: {res_recipient.status_code} - {res_recipient.text}"
         msgs_recipient = res_recipient.json()

@@ -1,11 +1,17 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.5`** | **Docker Hub: `backend-1.3.5` / `frontend-1.3.5`**
+> **Versão Oficial: `v1.3.6`** | **Docker Hub: `backend-1.3.6` / `frontend-1.3.6`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.3.6 (Confirmação de Conta por Botão no E-mail com Login Automático)
+- **✉️ Validação de E-mail via Botão Clicável (Magic Link):**
+  - Substituição da digitação manual do código OTP por botão direto no e-mail (**"Confirmar minha conta"**) com validade de **30 minutos**, aplicável tanto ao **Cadastro por Convite** quanto ao **Cadastro Público da Comunidade**.
+  - Template de e-mail atualizado para visual escuro com destaque dourado e link alternativo em texto.
+  - Ao clicar no botão do e-mail (`/verify-email?token=...`), a conta é validada, ativada e o usuário entra **automaticamente logado** na comunidade.
 
 ### 🚀 Novidades da Versão v1.3.5 (Build e Publicação das Imagens de Produção, Engajamento, Exemplos Fixados e Múltiplas Partes)
 - **📊 Filtros de Progresso e Nível de Engajamento (`Alunos e Progresso`):**

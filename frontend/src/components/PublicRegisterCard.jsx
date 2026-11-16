@@ -12,6 +12,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import PhoneInputWithCountry from './register/PhoneInputWithCountry';
+import RegisterEmailSentStep from './register/RegisterEmailSentStep';
+import { useResendVerificationEmail } from './register/useResendEmail';
 import { COUNTRIES, DEFAULT_COUNTRY, formatPhoneNumber } from './register/countryData';
 import { useToast } from '../context/ToastContext';
 
@@ -26,7 +28,15 @@ export default function PublicRegisterCard({ onRegisterSuccess, onBackToLogin })
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { addToast } = useToast();
+  const { resending, resendCooldown, setResendCooldown, resendEmail } = useResendVerificationEmail({
+    onSuccess: () => addToast('Novo e-mail de confirmação enviado!', 'success'),
+    onError: (msg) => {
+      setError(msg);
+      addToast(msg, 'error');
+    },
+  });
 
   // Garante que o formulário inicie estritamente vazio e sem valores preenchidos por autofill
   useEffect(() => {
@@ -104,6 +114,13 @@ export default function PublicRegisterCard({ onRegisterSuccess, onBackToLogin })
         throw new Error(errorMsg);
       }
 
+      if (data.requires_verification) {
+        setEmailSent(true);
+        setResendCooldown(60);
+        addToast('Enviamos um botão de confirmação para o seu e-mail!', 'success');
+        return;
+      }
+
       localStorage.setItem('auth_token', data.access_token);
       localStorage.setItem('auth_user', JSON.stringify(data.user));
       localStorage.setItem('active_tab', 'courses');
@@ -118,6 +135,26 @@ export default function PublicRegisterCard({ onRegisterSuccess, onBackToLogin })
       setLoading(false);
     }
   };
+
+  if (emailSent) {
+    return (
+      <div
+        className="auth-card public-register-card"
+        style={{ width: '100%', maxWidth: '450px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.06)', padding: '24px', margin: 'auto' }}
+        data-testid="public-register-container"
+      >
+        <RegisterEmailSentStep
+          email={email.trim()}
+          formError={error}
+          resending={resending}
+          resendCooldown={resendCooldown}
+          onResendEmail={() => { setError(''); resendEmail({ email: email.trim() }); }}
+          onBackToForm={() => { setEmailSent(false); setError(''); }}
+          inlineCard={true}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

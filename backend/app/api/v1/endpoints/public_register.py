@@ -1,80 +1,75 @@
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from app.core.limiter import limiter
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.logger import logger
-from app.core.security import get_password_hash, create_access_token
 from app.models.user import User
-from app.schemas.user import Token, UserResponse, PublicRegisterRequest
+from app.schemas.user import (
+    PublicRegisterRequest,
+    RegisterInitiateResponse,
+    Token,
+    VerifyLinkRequest,
+)
+from app.services.registration_verification_service import (
+    confirm_verification_by_token,
+    initiate_email_verification,
+)
 
 router = APIRouter(prefix="/auth", tags=["Autenticação Pública"])
 
+
 @router.post(
     "/public-register",
-    response_model=Token,
-    status_code=status.HTTP_201_CREATED,
-    summary="Criar Conta Pública de Aluno",
-    description="Permite que qualquer visitante crie uma conta gratuita com perfil de Aluno sem cursos vinculados para participar da comunidade."
+    response_model=RegisterInitiateResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Iniciar Cadastro Público de Aluno",
+    description="Envia um e-mail com botão de confirmação para validar o e-mail e ativar a conta gratuita na comunidade.",
 )
 @limiter.limit("5/hour")
-def public_register(
+async def public_register(
     request: Request,
     data: PublicRegisterRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # 1. Verifica se já existe usuário com este e-mail
-    existing = db.query(User).filter(User.email == data.email.strip().lower()).first()
+    clean_email = data.email.strip().lower()
+    existing = db.query(User).filter(User.email == clean_email).first()
     if existing:
-        logger.warning(f"[PublicRegister] Tentativa de cadastro com e-mail já existente: {data.email}")
+        logger.warning(f"[PublicRegister] Tentativa de cadastro com e-mail já existente: {clean_email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este e-mail já está cadastrado no sistema."
+            detail="Este e-mail já está cadastrado no sistema.",
         )
 
-    # 2. Criação do usuário como aluno ativo com 1º acesso registrado
-    now_utc = datetime.now(timezone.utc)
-    hashed_password = get_password_hash(data.password)
-    user = User(
-        name=data.name.strip(),
-        email=data.email.strip().lower(),
-        hashed_password=hashed_password,
+    await initiate_email_verification(
+        db,
+        email=clean_email,
+        name=data.name,
+        password=data.password,
         role="aluno",
-        is_active=True,
-        phone=data.phone.strip() if data.phone else None,
-        first_login_at=now_utc,
-        last_login_at=now_utc,
-        login_count=1,
+        phone=data.phone,
+        invite_token=None,
+        request=request,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
 
-    logger.info(f"[PublicRegister] Nova conta de aluno criada com sucesso: #{user.id} ({user.email})")
+    logger.info(f"[PublicRegister] E-mail de confirmação enviado para novo cadastro público: {clean_email}")
 
-    # 2.1 Aciona gatilhos de funis para novo aluno cadastrado e primeiro login
-    try:
-        from app.services.funnel_service import dispatch_student_created_funnels
-        dispatch_student_created_funnels(db, user.id)
-    except Exception as fn_err:
-        logger.error(f"[PublicRegister] Falha ao acionar funis para aluno #{user.id}: {fn_err}")
-
-    try:
-        from app.services.funnel_trigger_service import dispatch_first_login_funnels
-        dispatch_first_login_funnels(db, user.id)
-    except Exception as fn_err:
-        logger.error(f"[PublicRegister] Falha ao acionar funis de 1º login para aluno #{user.id}: {fn_err}")
-
-    # 3. Geração de token de acesso JWT
-    access_token = create_access_token(data={"sub": str(user.id), "role": user.role, "token_version": user.token_version or 1})
-
-    # 4. Resposta com Token e dados do usuário
-    user_resp = UserResponse.model_validate(user)
-    user_resp.course_ids = []
-    user_resp.course_access = []
-
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_resp
+    return RegisterInitiateResponse(
+        message="Enviamos um link de confirmação para o seu e-mail. Clique no botão do e-mail para ativar sua conta.",
+        email=clean_email,
+        requires_verification=True,
     )
+
+
+@router.post(
+    "/register/verify-link",
+    response_model=Token,
+    status_code=status.HTTP_200_OK,
+    summary="Confirmar Cadastro via Botão/Link do E-mail",
+    description="Valida o token recebido no e-mail, cria a conta do usuário e retorna o JWT para login automático.",
+)
+def verify_registration_link(
+    data: VerifyLinkRequest,
+    db: Session = Depends(get_db),
+):
+    return confirm_verification_by_token(db, data.token)

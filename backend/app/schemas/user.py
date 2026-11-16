@@ -204,9 +204,12 @@ class VerifyCodeRequest(BaseModel):
     email: EmailStr
     code: str
 
+class VerifyLinkRequest(BaseModel):
+    token: str
+
 class ResendCodeRequest(BaseModel):
     email: EmailStr
-    invite_token: str
+    invite_token: Optional[str] = None
 
 
 class PasswordResetRequestResponse(BaseModel):

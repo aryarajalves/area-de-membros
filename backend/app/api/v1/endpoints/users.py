@@ -783,7 +783,7 @@ invites_router.add_api_route("/bulk-delete", bulk_delete_invites, methods=["POST
 invites_router.add_api_route("/validate", validate_invite, methods=["GET"], response_model=InviteValidateResponse)
 
 @router.post("/register", response_model=RegisterInitiateResponse, status_code=status.HTTP_200_OK, summary="Iniciar Cadastro com Convite")
-async def register_user(data: RegisterWithInvite, db: Session = Depends(get_db)):
+async def register_user(request: Request, data: RegisterWithInvite, db: Session = Depends(get_db)):
     invite = db.query(Invite).filter(Invite.token == data.token).first()
     if not invite:
         raise HTTPException(status_code=400, detail="Convite não encontrado.")
@@ -811,42 +811,20 @@ async def register_user(data: RegisterWithInvite, db: Session = Depends(get_db))
             detail="Já existe um usuário cadastrado com este e-mail."
         )
 
-    # Gera código OTP de 6 dígitos
-    otp_code = f"{secrets.randbelow(900000) + 100000}"
-    code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
-    hashed_pw = get_password_hash(data.password)
-
-    # Invalida tentativas anteriores para esse e-mail
-    db.query(RegistrationVerification).filter(
-        RegistrationVerification.email == data.email,
-        RegistrationVerification.is_used == False
-    ).update({"is_used": True})
-
-    clean_phone = data.phone.strip() if data.phone else None
-
-    verification = RegistrationVerification(
+    from app.services.registration_verification_service import initiate_email_verification
+    await initiate_email_verification(
+        db,
         email=data.email,
         name=data.name,
-        phone=clean_phone,
-        hashed_password=hashed_pw,
+        password=data.password,
         role=invite.role,
+        phone=data.phone,
         invite_token=data.token,
-        code=otp_code,
-        expires_at=code_expires_at,
-        is_used=False
-    )
-    db.add(verification)
-    db.commit()
-
-    # Dispara e-mail via Brevo
-    await send_verification_email(
-        to_email=data.email,
-        to_name=data.name,
-        code=otp_code
+        request=request,
     )
 
     return RegisterInitiateResponse(
-        message="Código de verificação enviado para o seu e-mail.",
+        message="Link de confirmação enviado para o seu e-mail.",
         email=data.email,
         requires_verification=True
     )
@@ -947,34 +925,13 @@ def verify_registration(data: VerifyCodeRequest, db: Session = Depends(get_db)):
     ]
     return res
 
-@router.post("/register/resend-code", summary="Reenviar Código OTP de Cadastro")
-async def resend_registration_code(data: ResendCodeRequest, db: Session = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    last_verif = (
-        db.query(RegistrationVerification)
-        .filter(
-            RegistrationVerification.email == data.email,
-            RegistrationVerification.invite_token == data.invite_token,
-            RegistrationVerification.is_used == False
-        )
-        .order_by(RegistrationVerification.id.desc())
-        .first()
+@router.post("/register/resend-code", summary="Reenviar E-mail de Confirmação de Cadastro")
+async def resend_registration_code(request: Request, data: ResendCodeRequest, db: Session = Depends(get_db)):
+    from app.services.registration_verification_service import resend_email_verification
+    await resend_email_verification(
+        db,
+        email=data.email,
+        invite_token=data.invite_token,
+        request=request,
     )
-
-    if not last_verif:
-        raise HTTPException(status_code=400, detail="Nenhum cadastro pendente encontrado para este e-mail.")
-
-    # Gera novo código
-    new_code = f"{secrets.randbelow(900000) + 100000}"
-    last_verif.code = new_code
-    last_verif.expires_at = now + timedelta(minutes=15)
-    db.commit()
-
-    # Dispara e-mail
-    await send_verification_email(
-        to_email=last_verif.email,
-        to_name=last_verif.name,
-        code=new_code
-    )
-
-    return {"message": "Novo código de verificação enviado com sucesso."}
+    return {"message": "Novo e-mail de confirmação enviado com sucesso."}
