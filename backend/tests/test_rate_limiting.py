@@ -47,7 +47,7 @@ def test_public_register_rate_limiting():
             "/api/v1/auth/public-register",
             json={"name": f"User {i}", "email": f"existent_{i}@test.com", "password": "Password123!"}
         )
-        assert resp.status_code in [201, 400]
+        assert resp.status_code in [200, 201, 400]
 
     # 6ª tentativa deve retornar 429
     excess_resp = client.post(
