@@ -1,0 +1,13 @@
+{
+  "appId": "com.areademembros.app",
+  "appName": "Área de Membros",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

@@ -43,3 +43,6 @@ redis>=5.0.0
 
 # Suporte nativo a vetores de embedding e busca semantica de alta velocidade no PostgreSQL para o Tutor IA
 pgvector>=0.2.0
+
+# Envio de Push Notifications nativas (Android/iOS) via Firebase Cloud Messaging (FCM)
+firebase-admin>=6.5.0

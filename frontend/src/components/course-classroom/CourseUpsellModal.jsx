@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, ExternalLink, X, ArrowRight, Play } from 'lucide-react';
+import { isNativeApp } from '../../services/pushNotifications';
 
 export default function CourseUpsellModal({
   isOpen,
@@ -8,7 +9,7 @@ export default function CourseUpsellModal({
   onDismiss = () => {},
   onCtaClick = () => {}
 }) {
-  if (!isOpen || !offer) return null;
+  if (!isOpen || !offer || isNativeApp()) return null;
 
   const handleCta = () => {
     onCtaClick(offer);

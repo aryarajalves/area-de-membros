@@ -103,6 +103,11 @@ def get_feed(
         )
     )
 
+    from app.services.user_block_service import get_blocked_user_ids
+    blocked_ids = get_blocked_user_ids(db, current_user.id)
+    if blocked_ids:
+        query = query.filter(~CommunityPost.user_id.in_(blocked_ids))
+
     if filter == "scheduled":
         query = query.filter(CommunityPost.is_scheduled == True)
         if current_user.role not in ("admin", "superadmin"):
@@ -670,16 +675,24 @@ async def upload_feed_media(
     return {"url": url, "filename": filename, "media_type": media_type}
 
 
+_FEED_MEDIA_MIME_TYPES = {
+    ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".svg": "image/svg+xml", ".mp4": "video/mp4",
+    ".webm": "video/webm", ".mov": "video/quicktime", ".m4v": "video/mp4",
+    ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".wav": "audio/wav",
+}
+
+
 @router.get("/feed/media/{filename}", summary="Servir Mídia do Feed", description="Serve publicamente o arquivo de imagem ou vídeo da publicação do feed.")
 @limiter.limit("120/minute")
 def serve_feed_media(request: Request, filename: str):
-    """
-    Serve a imagem da publicação.
-    """
-    file_path = os.path.join(COMMUNITY_UPLOAD_DIR, filename)
+    """Serve a mídia da publicação com Content-Type explícito para compatibilidade com nosniff."""
+    safe_name = os.path.basename(filename)
+    file_path = os.path.join(COMMUNITY_UPLOAD_DIR, safe_name)
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="Mídia não encontrada.")
-    return FileResponse(file_path)
+    ext = os.path.splitext(safe_name)[1].lower()
+    return FileResponse(file_path, media_type=_FEED_MEDIA_MIME_TYPES.get(ext))
 
 
 @router.get("/feed/courses", summary="Listar Cursos para Marcação no Feed", description="Retorna os cursos disponíveis para marcação de posts no feed.")

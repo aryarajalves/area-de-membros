@@ -345,6 +345,11 @@ def send_chat_message(
         if not parent_msg or parent_msg.channel_type != payload.channel_type:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mensagem pai da thread não encontrada neste canal.")
 
+    if payload.channel_type == "dm" and payload.recipient_id:
+        from app.services.user_block_service import is_blocked_between
+        if is_blocked_between(db, current_user.id, payload.recipient_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não é possível enviar mensagem direta devido a um bloqueio entre os usuários.")
+
     try:
         saved_message_text = encrypt_dm_message(clean_text) if payload.channel_type == "dm" else clean_text
         new_msg = ChatMessage(
@@ -463,6 +468,8 @@ def send_chat_message(
             chat_manager.send_to_user_sync(current_user.id, "dm_sent", dm_payload)
             if new_msg.dm_thread_admin_id:
                 chat_manager.send_to_user_sync(new_msg.dm_thread_admin_id, "new_dm", dm_payload)
+            from app.services.push_notification_service import notify_dm_push
+            notify_dm_push(db, payload.recipient_id, current_user.name, current_user.id, new_msg.id, payload.message)
 
 
         return resp

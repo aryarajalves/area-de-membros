@@ -28,14 +28,18 @@ import { IntroductionManagement } from './components/introductions';
 import { CommunityFeedManagement } from './components/community-feed';
 import { EventsManagement } from './components/events';
 import CertificatePublicValidationPage from './components/certificates/CertificatePublicValidationPage';
+import PublicComplianceRouter from './components/common/PublicComplianceRouter';
 import LevelUpWatcher from './components/gamification/LevelUpWatcher';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
 import { useUrlNavigation } from './hooks/useUrlNavigation';
-
+import useCommunityFeedStudentsEnabled from './hooks/useCommunityFeedStudentsEnabled';
+import { usePushNotifications, unregisterPushNotifications } from './hooks/usePushNotifications';
 const ALUNO_ALLOWED_TABS = ['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
 
 function App() {
+  const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
+  const alunoAllowedTabs = communityFeedStudentsEnabled ? [...ALUNO_ALLOWED_TABS, 'community-feed'] : ALUNO_ALLOWED_TABS;
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -112,7 +116,7 @@ function App() {
         setUser(parsed);
         if (parsed?.role === 'aluno') {
           const currentTab = localStorage.getItem('active_tab') || 'courses';
-          if (!ALUNO_ALLOWED_TABS.includes(currentTab)) {
+          if (!alunoAllowedTabs.includes(currentTab)) {
             setActiveTab('courses');
             localStorage.setItem('active_tab', 'courses');
           }
@@ -261,32 +265,34 @@ function App() {
   }, [fetchPlatformTheme, fetchReportsSummary, fetchChatUnreadSummary]);
 
   useEffect(() => {
-    if (user?.role === 'aluno' && !ALUNO_ALLOWED_TABS.includes(activeTab)) {
+    if (user?.role === 'aluno' && !alunoAllowedTabs.includes(activeTab)) {
       setActiveTab('courses');
       localStorage.setItem('active_tab', 'courses');
       setIsInsideCourse(false);
     }
-  }, [user?.role, activeTab]);
-
+  }, [user?.role, activeTab, alunoAllowedTabs]);
   const handleLoginSuccess = (loggedInUser, userToken) => {
     setUser(loggedInUser);
     setToken(userToken);
     if (loggedInUser?.role === 'aluno') {
       const currentTab = localStorage.getItem('active_tab') || 'courses';
-      const initialTab = ALUNO_ALLOWED_TABS.includes(currentTab) ? currentTab : 'courses';
+      const initialTab = alunoAllowedTabs.includes(currentTab) ? currentTab : 'courses';
       setActiveTab(initialTab);
       localStorage.setItem('active_tab', initialTab);
       setIsInsideCourse(false);
     }
   };
-
+  usePushNotifications({ token, setActiveTab });
   const handlePromptLogout = () => { setIsMobileMenuOpen(false); setShowLogoutModal(true); };
   const handleConfirmLogout = () => {
+    unregisterPushNotifications(token);
     setShowLogoutModal(false);
     ['auth_token', 'auth_user', 'active_tab', 'active_subtab_usermanagement'].forEach((k) => localStorage.removeItem(k));
     setUser(null); setToken(null);
   };
-
+  if (pathname.includes('/privacidade') || pathname.includes('/termos') || pathname.includes('/excluir-conta')) {
+    return <PublicComplianceRouter pathname={pathname} onBack={() => { window.history.replaceState({}, document.title, '/'); setPathname('/'); }} />;
+  }
   // Validação pública de autenticidade de certificado via QR Code ou link (/validar-certificado/:code)
   if (pathname.includes('/validar-certificado')) {
     const certCode = pathname.split('/validar-certificado/')[1]?.split('/')[0]?.split('?')[0] || '';
@@ -439,7 +445,7 @@ function App() {
         {activeTab === 'introductions' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <IntroductionManagement user={user} bgColor={memberAreaBgColor} />
         )}
-        {activeTab === 'community-feed' && ['superadmin', 'admin'].includes(user?.role) && (
+        {activeTab === 'community-feed' && (['superadmin', 'admin'].includes(user?.role) || (communityFeedStudentsEnabled && user?.role === 'aluno')) && (
           <CommunityFeedManagement user={user} />
         )}
         {activeTab === 'ranking' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
@@ -478,18 +484,12 @@ function App() {
           </>
         )}
         {!isSuperAdmin && !(
-          (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports'].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
+          (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports', ...(communityFeedStudentsEnabled ? ['community-feed'] : [])].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
           (['students', 'users', 'funnels', 'integrations', 'community-feed'].includes(activeTab) && user?.role === 'admin') ||
           (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
         ) && <RestrictedWelcomeScreen user={user} />}
       </main>
-
-      <LogoutConfirmModal
-        isOpen={showLogoutModal}
-        onConfirm={handleConfirmLogout}
-        onClose={() => setShowLogoutModal(false)}
-      />
-
+      <LogoutConfirmModal isOpen={showLogoutModal} onConfirm={handleConfirmLogout} onClose={() => setShowLogoutModal(false)} />
       <BackgroundUploadWidget />
       <LevelUpWatcher currentUser={user} />
     </div>

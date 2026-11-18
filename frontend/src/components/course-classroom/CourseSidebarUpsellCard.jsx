@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, ExternalLink } from 'lucide-react';
 import { clickUpsellOffer } from '../course-management/courseUpsellApi';
+import { isNativeApp } from '../../services/pushNotifications';
 
 export default function CourseSidebarUpsellCard({
   offer,
@@ -10,7 +11,7 @@ export default function CourseSidebarUpsellCard({
 }) {
   const [clicking, setClicking] = useState(false);
 
-  if (!offer) return null;
+  if (!offer || isNativeApp()) return null;
 
   const handleClick = async (e) => {
     e.stopPropagation();

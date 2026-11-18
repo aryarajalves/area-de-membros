@@ -3,6 +3,7 @@ import { Tag, Image, Upload, RotateCcw, Check, Sparkles, HelpCircle, Eye } from 
 import defaultLoginBanner from '../../assets/login-banner.jpg';
 import PlatformWhiteLabelLogoCard from './PlatformWhiteLabelLogoCard';
 import PlatformAstrologySettingsCard from './PlatformAstrologySettingsCard';
+import PlatformCommunityFeedSettingsCard from './PlatformCommunityFeedSettingsCard';
 
 export default function PlatformWhiteLabelTab({
   currentUser,
@@ -17,6 +18,7 @@ export default function PlatformWhiteLabelTab({
   const [loginBannerUrl, setLoginBannerUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
   const [isAstrologyPlatform, setIsAstrologyPlatform] = useState(false);
+  const [communityFeedStudentsEnabled, setCommunityFeedStudentsEnabled] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,7 @@ export default function PlatformWhiteLabelTab({
           setLoginBannerUrl(data.login_banner_url || null);
           setLogoUrl(data.logo_url || null);
           setIsAstrologyPlatform(Boolean(data.is_astrology_platform));
+          setCommunityFeedStudentsEnabled(Boolean(data.community_feed_students_enabled));
         }
       } catch (err) {
         console.error('Erro ao carregar configurações WhiteLabel:', err);
@@ -373,6 +376,17 @@ export default function PlatformWhiteLabelTab({
           </div>
         </div>
       </div>
+
+      {/* Controle de Acesso ao Feed da Comunidade */}
+      <PlatformCommunityFeedSettingsCard
+        communityFeedStudentsEnabled={communityFeedStudentsEnabled}
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        addToast={addToast}
+        onSettingChange={(val) => setCommunityFeedStudentsEnabled(val)}
+      />
 
       {/* Módulo de Nicho / Astrologia (Exclusivo Super Admin) */}
       <PlatformAstrologySettingsCard

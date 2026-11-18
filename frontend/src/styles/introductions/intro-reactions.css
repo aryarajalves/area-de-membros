@@ -25,6 +25,10 @@
   animation: popInDock 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: auto;
 }
+.linkedin-reactions-dock.dock-align-right {
+  left: auto;
+  right: 0;
+}
 
 @keyframes popInDock {
   0% {

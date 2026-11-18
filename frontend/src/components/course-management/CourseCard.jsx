@@ -4,6 +4,7 @@ import { formatReleaseDateTimePtBr } from './CourseReleaseScheduleCard';
 import { formatCourseRemainingTime } from '../student-management/studentDateUtils';
 import ChainedLockOverlay from './ChainedLockOverlay';
 import { recordCourseSalesClick } from './courseSalesApi';
+import { isNativeApp } from '../../services/pushNotifications';
 
 export default function CourseCard({
   course,
@@ -54,6 +55,10 @@ export default function CourseCard({
         onSelectCourse(course);
       }
     } else {
+      if (isNativeApp()) {
+        onShowInfoToast?.('Conteúdo exclusivo para alunos deste treinamento.');
+        return;
+      }
       // Registra o clique do usuário que ainda não possui acesso ao produto
       recordCourseSalesClick(course.id);
       if (course.sales_page_url) {

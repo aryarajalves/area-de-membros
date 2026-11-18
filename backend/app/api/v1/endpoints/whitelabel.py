@@ -40,6 +40,7 @@ def get_stored_whitelabel_data() -> dict:
         "logo_url": None,
         "bg_color": "#090d16",
         "is_astrology_platform": False,
+        "community_feed_students_enabled": False,
     }
     if os.path.exists(PLATFORM_THEME_FILE):
         try:
@@ -51,6 +52,7 @@ def get_stored_whitelabel_data() -> dict:
                     "logo_url": data.get("logo_url") or None,
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
                     "is_astrology_platform": bool(data.get("is_astrology_platform", False)),
+                    "community_feed_students_enabled": bool(data.get("community_feed_students_enabled", False)),
                 }
         except Exception as e:
             logger.error(f"[WhiteLabel] Erro ao ler {PLATFORM_THEME_FILE}: {e}")
@@ -120,6 +122,9 @@ def update_whitelabel_settings(
                 detail="Apenas o Super Admin pode alterar a configuração de Astrologia / nicho da plataforma."
             )
         current["is_astrology_platform"] = bool(settings_in.is_astrology_platform)
+
+    if settings_in.community_feed_students_enabled is not None:
+        current["community_feed_students_enabled"] = bool(settings_in.community_feed_students_enabled)
 
     save_stored_whitelabel_data(current)
     logger.info(f"[WhiteLabel] Configurações atualizadas por {admin.email}: {current}")

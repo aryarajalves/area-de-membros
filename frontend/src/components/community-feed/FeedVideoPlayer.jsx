@@ -6,13 +6,16 @@ export default function FeedVideoPlayer({ videoUrl, thumbnailUrl, onOpenLightbox
 
   if (!videoUrl) return null;
 
+  const resolvedSrc = !thumbnailUrl && !videoUrl.includes('#') ? `${videoUrl}#t=0.1` : videoUrl;
+
   return (
     <div className="feed-video-player-container" data-testid="feed-video-player">
       <video
         ref={videoRef}
-        src={videoUrl}
+        src={resolvedSrc}
         poster={thumbnailUrl || undefined}
         controls
+        playsInline
         preload="metadata"
         className="feed-video-element"
         data-testid="feed-video-element"

@@ -1,11 +1,19 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.6`** | **Docker Hub: `backend-1.3.6` / `frontend-1.3.6`**
+> **Versão Oficial: `v1.3.7`** | **Docker Hub: `backend-1.3.7` / `frontend-1.3.7`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.3.7 (App Android Capacitor, Push Notifications FCM e Conformidade Play Store)
+- **📱 Base Android Nativa (Capacitor) & Push Notifications (FCM):**
+  - Empacotamento Android via Capacitor (`frontend/android/`) com serviço de registro/remoção de tokens FCM (`user_device_tokens`, `/api/v1/push/*`) e disparo automático em DMs e notificações da comunidade.
+- **🛡️ Conformidade Google Play Store:**
+  - Sistema de bloqueio entre usuários (`user_blocks`, `/api/v1/blocks`), páginas públicas de Privacidade (`/privacidade`), Termos (`/termos`) e Exclusão de Conta (`/excluir-conta`), além da blindagem de links de venda externos no app nativo.
+- **💬 Melhorias na Comunidade e Apresentações:**
+  - Modal interativo de quem reagiu às apresentações (`GET /api/v1/introductions/{post_id}/reactions`), alinhamento inteligente do dock de reações na borda direita, correção do MIME type e proxy Nginx para mídias do feed e liberação correta da aba `community-feed` para alunos.
 
 ### 🚀 Novidades da Versão v1.3.6 (Confirmação de Conta por Botão no E-mail com Login Automático)
 - **✉️ Validação de E-mail via Botão Clicável (Magic Link):**

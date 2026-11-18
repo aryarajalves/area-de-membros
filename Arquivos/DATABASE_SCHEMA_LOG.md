@@ -2,6 +2,36 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [18/11/2026] - Bloqueio entre Usuários (Conformidade UGC Play Store) em user_blocks
+- **Objetivo:** Permitir que usuários bloqueiem outros usuários na comunidade e DMs, ocultando posts/comentários e impedindo novas mensagens diretas.
+- **Tabela Criada:**
+  - `user_blocks`:
+    - `id`: SERIAL / INTEGER PRIMARY KEY
+    - `blocker_id`: INTEGER NOT NULL REFERENCES `users(id)` ON DELETE CASCADE (índice `ix_user_blocks_blocker_id`)
+    - `blocked_id`: INTEGER NOT NULL REFERENCES `users(id)` ON DELETE CASCADE (índice `ix_user_blocks_blocked_id`)
+    - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    - `CONSTRAINT uq_user_block_pair UNIQUE (blocker_id, blocked_id)`
+- **Script de Migração:** `backend/scripts/migrate_user_blocks.py`
+- **Auto-migração no Startup:** Instruções `CREATE TABLE IF NOT EXISTS user_blocks` e índices incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
+### [18/11/2026] - Tokens de Dispositivos para Push Notifications (FCM) em user_device_tokens
+- **Objetivo:** Armazenar tokens FCM dos dispositivos Android/iOS (Capacitor) vinculados a cada usuário para envio de notificações push nativas de comunidade e mensagens diretas (DMs).
+- **Tabela Criada:**
+  - `user_device_tokens`:
+    - `id`: SERIAL / INTEGER PRIMARY KEY
+    - `user_id`: INTEGER NOT NULL REFERENCES `users(id)` ON DELETE CASCADE (índice `ix_user_device_tokens_user_id`)
+    - `fcm_token`: VARCHAR(512) NOT NULL UNIQUE (índice `ix_user_device_tokens_fcm_token`)
+    - `platform`: VARCHAR(20) DEFAULT `'android'` NOT NULL
+    - `device_name`: VARCHAR(120) NULL
+    - `is_active`: BOOLEAN DEFAULT TRUE NOT NULL
+    - `created_at` / `updated_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+- **Script de Migração:** `backend/scripts/migrate_push_tokens.py`
+- **Auto-migração no Startup:** Instruções `CREATE TABLE IF NOT EXISTS user_device_tokens` e índices incluídos no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [15/11/2026] - Validação de E-mail via Link Único (Botão no E-mail) em registration_verifications
 - **Objetivo:** Substituir a digitação manual do código OTP de 6 dígitos por confirmação via link único (`verification_token`) com validade de 30 minutos para ambos os fluxos (Cadastro por Convite e Cadastro Público na Comunidade).
 - **Tabela Afetada:**

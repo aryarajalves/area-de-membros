@@ -4,6 +4,7 @@ import FeedLightboxModal from './FeedLightboxModal';
 import FeedLikesModal from './FeedLikesModal';
 import FeedPostInsightsModal from './FeedPostInsightsModal';
 import FeedReportModal from './FeedReportModal';
+import BlockUserConfirmModal from './BlockUserConfirmModal';
 
 export default function FeedPostModals({
   post,
@@ -20,6 +21,9 @@ export default function FeedPostModals({
   onCloseInsights,
   showReportModal,
   onCloseReport,
+  showBlockModal,
+  onCloseBlock,
+  onUserBlocked,
 }) {
   return (
     <>
@@ -57,6 +61,13 @@ export default function FeedPostModals({
         isOpen={showReportModal}
         postId={post.id}
         onClose={onCloseReport}
+      />
+
+      <BlockUserConfirmModal
+        isOpen={showBlockModal}
+        targetUser={post.author || (post.user_id ? { id: post.user_id, name: post.author_name } : null)}
+        onClose={onCloseBlock}
+        onBlocked={onUserBlocked}
       />
     </>
   );

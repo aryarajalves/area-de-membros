@@ -89,6 +89,23 @@ def notify_user(
             is_read=False,
         )
         db.add(notif)
+        try:
+            from app.services.push_notification_service import send_push_to_user
+
+            send_push_to_user(
+                db=db,
+                user_id=user_id,
+                title=title,
+                body=message or "",
+                data={
+                    "type": "community",
+                    "notification_type": notification_type,
+                    "post_id": str(post_id or ""),
+                    "comment_id": str(comment_id or ""),
+                },
+            )
+        except Exception as push_exc:
+            logger.warning(f"Falha ao enviar push de comunidade para usuário {user_id}: {push_exc}")
     except Exception as e:
         logger.warning(f"Erro ao criar notificação de comunidade: {e}")
 

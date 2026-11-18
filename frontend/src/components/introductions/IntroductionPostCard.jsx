@@ -176,6 +176,7 @@ export default function IntroductionPostCard({
             <ReactionPillSummary
               likesCount={post.likes_count}
               reactionsSummary={post.reactions_summary}
+              postId={post.id}
             />
           )}
 

@@ -6,6 +6,8 @@ import ProfileGamificationCard from './ProfileGamificationCard';
 import PhoneWithDdiInput from './PhoneWithDdiInput';
 import ZodiacBadge from '../common/ZodiacBadge';
 import useIsAstrologyPlatform from '../../hooks/useIsAstrologyPlatform';
+import DeleteAccountSection from './DeleteAccountSection';
+import BlockedUsersSection from './BlockedUsersSection';
 
 export default function PlatformProfileTab({
   currentUser,
@@ -464,6 +466,16 @@ export default function PlatformProfileTab({
           </button>
         </div>
       </form>
+
+      <BlockedUsersSection cardBorder={cardBorder} textColor={textColor} subTextColor={subTextColor} />
+      {!isSuperAdmin && (
+        <DeleteAccountSection
+          cardBorder={cardBorder}
+          textColor={textColor}
+          subTextColor={subTextColor}
+          isLightBg={isLightBg}
+        />
+      )}
     </div>
   );
 }

@@ -686,6 +686,10 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_lesson_transcriptions_generated_by_user_id ON lesson_transcriptions(generated_by_user_id);
                         CREATE INDEX IF NOT EXISTS ix_funnels_created_by_user_id ON funnels(created_by_user_id);
 
+                        CREATE TABLE IF NOT EXISTS user_device_tokens (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, fcm_token VARCHAR(512) NOT NULL UNIQUE, platform VARCHAR(20) NOT NULL DEFAULT 'android', device_name VARCHAR(120) NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL);
+                        CREATE INDEX IF NOT EXISTS ix_user_device_tokens_user_id ON user_device_tokens(user_id); CREATE INDEX IF NOT EXISTS ix_user_device_tokens_fcm_token ON user_device_tokens(fcm_token);
+                        CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_user_block_pair UNIQUE (blocker_id, blocked_id));
+                        CREATE INDEX IF NOT EXISTS ix_user_blocks_blocker_id ON user_blocks(blocker_id); CREATE INDEX IF NOT EXISTS ix_user_blocks_blocked_id ON user_blocks(blocked_id);
                     """))
                 else:
                     for col_sql in [
@@ -851,12 +855,17 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_notifications_comment_id ON community_notifications(comment_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_lesson_transcriptions_generated_by_user_id ON lesson_transcriptions(generated_by_user_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnels_created_by_user_id ON funnels(created_by_user_id)"))
+                        for _sql in (
+                            "CREATE TABLE IF NOT EXISTS user_device_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, fcm_token VARCHAR(512) NOT NULL UNIQUE, platform VARCHAR(20) NOT NULL DEFAULT 'android', device_name VARCHAR(120) NULL, is_active BOOLEAN NOT NULL DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)",
+                            "CREATE INDEX IF NOT EXISTS ix_user_device_tokens_user_id ON user_device_tokens(user_id)", "CREATE INDEX IF NOT EXISTS ix_user_device_tokens_fcm_token ON user_device_tokens(fcm_token)",
+                            "CREATE TABLE IF NOT EXISTS user_blocks (id INTEGER PRIMARY KEY AUTOINCREMENT, blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_user_block_pair UNIQUE (blocker_id, blocked_id))",
+                            "CREATE INDEX IF NOT EXISTS ix_user_blocks_blocker_id ON user_blocks(blocker_id)", "CREATE INDEX IF NOT EXISTS ix_user_blocks_blocked_id ON user_blocks(blocked_id)",
+                        ): conn.execute(text(_sql))
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
     except Exception as e:
         logger.warning(f"[MAIN] Aviso nas auto-migrações preventivas: {e}")
-
     # 3. Sincronização de credenciais do superadministrador
     try:
         logger.info("[MAIN] Sincronizando credenciais do superadministrador...")

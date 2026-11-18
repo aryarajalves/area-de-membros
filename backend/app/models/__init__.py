@@ -63,6 +63,8 @@ from app.models.community_stories import (
 from app.models.event import Event, EventAttendee
 from app.models.certificate import Certificate
 from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk, AiTutorSuggestion
+from app.models.push_token import UserDeviceToken
+from app.models.user_block import UserBlock
 
 __all__ = [
     "User",
@@ -129,4 +131,6 @@ __all__ = [
     "AiTutorMessage",
     "AiKnowledgeChunk",
     "AiTutorSuggestion",
+    "UserDeviceToken",
+    "UserBlock",
 ]

@@ -31,4 +31,12 @@ describe('FeedVideoPlayer Component', () => {
     fireEvent.click(zoomBtn);
     expect(onOpenLightbox).toHaveBeenCalledWith(0);
   });
+
+  it('appends #t=0.1 preview fragment and playsInline when thumbnailUrl is absent', () => {
+    render(<FeedVideoPlayer videoUrl="/api/v1/community/feed/media/clip.mp4" />);
+
+    const video = screen.getByTestId('feed-video-element');
+    expect(video).toHaveAttribute('src', '/api/v1/community/feed/media/clip.mp4#t=0.1');
+    expect(video).toHaveAttribute('playsinline');
+  });
 });

@@ -197,4 +197,62 @@ describe('PlatformWhiteLabelTab Component', () => {
       expect(mockAddToast).toHaveBeenCalledWith('Imagem da tela de login restaurada para o padrão!', 'success');
     });
   });
+
+  it('renderiza e permite alternar a visibilidade do Feed da Comunidade para alunos', async () => {
+    global.fetch = vi.fn().mockImplementation((url, options) => {
+      if (url === '/api/v1/whitelabel' && (!options || options.method === 'GET')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            platform_name: 'Minha Plataforma',
+            login_banner_url: null,
+            community_feed_students_enabled: false,
+          }),
+        });
+      }
+      if (url === '/api/v1/whitelabel' && options?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            platform_name: 'Minha Plataforma',
+            login_banner_url: null,
+            community_feed_students_enabled: true,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <PlatformWhiteLabelTab
+        cardBg="#1e2230"
+        cardBorder="1px solid #333"
+        textColor="#fff"
+        subTextColor="#888"
+        addToast={mockAddToast}
+      />
+    );
+
+    const switchBtn = await screen.findByTestId('switch-community-feed-students');
+    expect(switchBtn).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByTestId('community-feed-access-badge')).toHaveTextContent('Apenas Admins');
+
+    fireEvent.click(switchBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/whitelabel',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ community_feed_students_enabled: true }),
+        })
+      );
+      expect(switchBtn).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByTestId('community-feed-access-badge')).toHaveTextContent('Admins e Alunos');
+      expect(mockAddToast).toHaveBeenCalledWith(
+        'Feed da Comunidade liberado para alunos visualizarem e publicarem!',
+        'success'
+      );
+    });
+  });
 });

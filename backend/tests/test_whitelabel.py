@@ -169,3 +169,27 @@ def test_superadmin_can_toggle_astrology_platform(superadmin_token):
     assert restore_res.json()["is_astrology_platform"] is False
 
 
+def test_admin_can_toggle_community_feed_students_enabled(admin_token):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # 1. Padrão inicial é False (apenas admins)
+    pub_res = client.get("/api/v1/whitelabel")
+    assert pub_res.status_code == 200
+    assert pub_res.json()["community_feed_students_enabled"] is False
+
+    # 2. Admin libera Feed da Comunidade para alunos
+    res = client.patch("/api/v1/whitelabel", json={"community_feed_students_enabled": True}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["community_feed_students_enabled"] is True
+
+    # 3. Confirma no endpoint público
+    pub_res2 = client.get("/api/v1/whitelabel")
+    assert pub_res2.status_code == 200
+    assert pub_res2.json()["community_feed_students_enabled"] is True
+
+    # 4. Restaura para False
+    restore_res = client.patch("/api/v1/whitelabel", json={"community_feed_students_enabled": False}, headers=headers)
+    assert restore_res.status_code == 200
+    assert restore_res.json()["community_feed_students_enabled"] is False
+
+

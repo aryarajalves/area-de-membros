@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ThumbsUp } from 'lucide-react';
+import IntroductionReactionsModal from './IntroductionReactionsModal';
 
 export const REACTION_DEFINITIONS = [
   { key: 'like', label: 'Curtir', emoji: '👍', color: '#60a5fa', glow: 'rgba(96, 165, 250, 0.3)' },
@@ -17,31 +18,50 @@ export function getReactionDef(key) {
 /**
  * Exibe o resumo visual das reações recebidas no post (pilha de emojis + total)
  */
-export function ReactionPillSummary({ likesCount = 0, reactionsSummary = [] }) {
+export function ReactionPillSummary({ likesCount = 0, reactionsSummary = [], postId = null }) {
+  const [showModal, setShowModal] = useState(false);
   if (!likesCount || likesCount <= 0) return null;
 
   // Seleciona até 3 emojis únicos presentes no post
   const displayTypes = reactionsSummary && reactionsSummary.length > 0 ? reactionsSummary.slice(0, 3) : ['like'];
 
   return (
-    <div className="reaction-pill-summary" data-testid="reaction-pill-summary">
-      <div className="reaction-emojis-stack">
-        {displayTypes.map((type, idx) => {
-          const def = getReactionDef(type);
-          return (
-            <span
-              key={type}
-              className="stacked-reaction-emoji"
-              style={{ zIndex: 10 - idx }}
-              title={def.label}
-            >
-              {def.emoji}
-            </span>
-          );
-        })}
+    <>
+      <div
+        className="reaction-pill-summary"
+        data-testid="reaction-pill-summary"
+        role={postId ? 'button' : undefined}
+        tabIndex={postId ? 0 : undefined}
+        title={postId ? 'Ver quem reagiu' : undefined}
+        style={postId ? { cursor: 'pointer' } : undefined}
+        onClick={postId ? (e) => { e.stopPropagation(); setShowModal(true); } : undefined}
+        onKeyDown={postId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowModal(true); } } : undefined}
+      >
+        <div className="reaction-emojis-stack">
+          {displayTypes.map((type, idx) => {
+            const def = getReactionDef(type);
+            return (
+              <span
+                key={type}
+                className="stacked-reaction-emoji"
+                style={{ zIndex: 10 - idx }}
+                title={def.label}
+              >
+                {def.emoji}
+              </span>
+            );
+          })}
+        </div>
+        <span className="reaction-count-text">{likesCount}</span>
       </div>
-      <span className="reaction-count-text">{likesCount}</span>
-    </div>
+      {postId && (
+        <IntroductionReactionsModal
+          isOpen={showModal}
+          postId={postId}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -57,6 +77,7 @@ export default function IntroductionReactionsBar({
   dataTestId = 'reaction-main-trigger-btn',
 }) {
   const [dockOpen, setDockOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const hoverTimeoutRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -66,6 +87,10 @@ export default function IntroductionReactionsBar({
     if (disabled) return;
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
+      const rect = containerRef.current?.getBoundingClientRect?.();
+      if (rect && typeof window !== 'undefined') {
+        setAlignRight(window.innerWidth - rect.left < 310);
+      }
       setDockOpen(true);
     }, 180);
   };
@@ -108,7 +133,7 @@ export default function IntroductionReactionsBar({
       {/* Dock Flutuante Estilo LinkedIn */}
       {dockOpen && (
         <div
-          className="linkedin-reactions-dock"
+          className={`linkedin-reactions-dock ${alignRight ? 'dock-align-right' : ''}`}
           data-testid="linkedin-reactions-dock"
           role="menu"
           aria-label="Escolher reação"

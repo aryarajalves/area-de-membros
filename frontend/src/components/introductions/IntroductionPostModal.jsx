@@ -317,6 +317,7 @@ export default function IntroductionPostModal({
                 <ReactionPillSummary
                   likesCount={post.likes_count}
                   reactionsSummary={post.reactions_summary}
+                  postId={post.id}
                 />
               ) : (
                 <span className="summary-likes-zero">Seja o primeiro a reagir</span>

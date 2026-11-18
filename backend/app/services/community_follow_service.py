@@ -13,14 +13,21 @@ def require_community_manager(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
-    Exige que o usuário seja administrador ou superadministrador para acessar o Feed Social em fase de testes.
+    Permite acesso ao Feed da Comunidade para administradores/superadmins ou para alunos
+    quando a opção WhiteLabel 'community_feed_students_enabled' estiver ativada.
     """
-    if current_user.role not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="O Feed da Comunidade está em fase de testes e acessível apenas para administradores."
-        )
-    return current_user
+    if current_user.role in ["admin", "superadmin"]:
+        return current_user
+
+    from app.api.v1.endpoints.whitelabel import get_stored_whitelabel_data
+    wl_data = get_stored_whitelabel_data()
+    if wl_data.get("community_feed_students_enabled", False):
+        return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="O Feed da Comunidade está acessível apenas para administradores."
+    )
 
 
 def get_user_follow_stats(db: Session, target_user_id: int, current_user_id: int) -> Tuple[int, int, bool]:

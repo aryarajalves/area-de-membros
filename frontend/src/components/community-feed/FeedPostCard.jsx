@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pin, MoreVertical, Trash2, Edit2, Check, X, BookOpen, Loader2, Flag, MapPin, Calendar, Send } from 'lucide-react';
+import { Pin, MoreVertical, Trash2, Edit2, Check, X, BookOpen, Loader2, Flag, MapPin, Calendar, Send, Ban } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import {
   toggleLikeFeedPost, togglePinFeedPost, updateFeedPost,
@@ -28,6 +28,7 @@ export default function FeedPostCard({
   const [comments, setComments] = useState(post.comments || []);
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const [showMenu, setShowMenu] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
 
   // Lightbox / Zoom
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -345,18 +346,23 @@ export default function FeedPostCard({
                   </button>
                 )}
                 {!isAuthor && (
-                  <button
-                    type="button"
-                    className="feed-menu-item warning"
-                    onClick={() => {
-                      setShowReportModal(true);
-                      setShowMenu(false);
-                    }}
-                    data-testid={`feed-report-btn-${post.id}`}
-                  >
-                    <Flag size={14} />
-                    Denunciar Publicação
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="feed-menu-item warning"
+                      onClick={() => {
+                        setShowReportModal(true);
+                        setShowMenu(false);
+                      }}
+                      data-testid={`feed-report-btn-${post.id}`}
+                    >
+                      <Flag size={14} />
+                      Denunciar Publicação
+                    </button>
+                    <button type="button" className="feed-menu-item danger" onClick={() => { setShowBlockModal(true); setShowMenu(false); }} data-testid={`feed-block-btn-${post.id}`}>
+                      <Ban size={14} /> Bloquear Usuário
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -483,6 +489,9 @@ export default function FeedPostCard({
         onCloseInsights={() => setShowInsightsModal(false)}
         showReportModal={showReportModal}
         onCloseReport={() => setShowReportModal(false)}
+        showBlockModal={showBlockModal}
+        onCloseBlock={() => setShowBlockModal(false)}
+        onUserBlocked={() => onPostDeleted?.(post.id)}
       />
     </>
   );

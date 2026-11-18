@@ -4,6 +4,7 @@ import EventCard from './EventCard';
 import EventFormModal from './EventFormModal';
 import DeleteEventConfirmModal from './DeleteEventConfirmModal';
 import { getEventStatus } from './googleCalendarHelper';
+import { isNativeApp } from '../../services/pushNotifications';
 import './events.css';
 
 export default function EventsManagement({
@@ -139,7 +140,7 @@ export default function EventsManagement({
   };
 
   const handleUnlockCourse = (event) => {
-    if (event.course_sales_page_url) {
+    if (!isNativeApp() && event.course_sales_page_url) {
       window.open(event.course_sales_page_url, '_blank');
     } else if (onNavigateTab) {
       onNavigateTab('courses');

@@ -515,5 +515,58 @@ def test_post_views_and_insights(student_user_1, student_user_2, regular_student
     assert admin_insights.json()["views_count"] == 1
 
 
+def test_get_feed_courses_returns_published_courses(student_user_1):
+    from app.models.course import Course
+    db = SessionLocal()
+    c_pub = Course(title="Curso Publicado Feed", is_published=True)
+    c_draft = Course(title="Curso Rascunho Feed", is_published=False)
+    db.add_all([c_pub, c_draft])
+    db.commit()
+    db.close()
+
+    headers = {"Authorization": f"Bearer {student_user_1['token']}"}
+    res = client.get("/api/v1/community/feed/courses", headers=headers)
+    assert res.status_code == 200
+    titles = [c["title"] for c in res.json()]
+    assert "Curso Publicado Feed" in titles
+    assert "Curso Rascunho Feed" not in titles
+
+
+def test_aluno_access_to_feed_controlled_by_whitelabel(student_user_1, regular_student_user):
+    headers_admin = {"Authorization": f"Bearer {student_user_1['token']}"}
+    headers_aluno = {"Authorization": f"Bearer {regular_student_user['token']}"}
+
+    # 1. Por padrão (community_feed_students_enabled=False), aluno recebe 403
+    res_blocked = client.get("/api/v1/community/feed", headers=headers_aluno)
+    assert res_blocked.status_code == 403
+
+    # 2. Admin ativa a opção no WhiteLabel
+    wl_on = client.patch(
+        "/api/v1/whitelabel",
+        json={"community_feed_students_enabled": True},
+        headers=headers_admin,
+    )
+    assert wl_on.status_code == 200
+
+    try:
+        # 3. Agora aluno consegue listar e publicar no feed
+        res_feed = client.get("/api/v1/community/feed", headers=headers_aluno)
+        assert res_feed.status_code == 200
+
+        res_post = client.post(
+            "/api/v1/community/feed",
+            json={"content": "Post de aluno liberado via WhiteLabel"},
+            headers=headers_aluno,
+        )
+        assert res_post.status_code == 201
+    finally:
+        # Restaura configuração padrão
+        client.patch(
+            "/api/v1/whitelabel",
+            json={"community_feed_students_enabled": False},
+            headers=headers_admin,
+        )
+
+
 
 

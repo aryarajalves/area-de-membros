@@ -5,6 +5,7 @@ import {
   GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass
 } from 'lucide-react';
 import { SidebarLinksGroup } from './navigation/UnifiedSectionSubTabs';
+import useCommunityFeedStudentsEnabled from '../hooks/useCommunityFeedStudentsEnabled';
 
 export default function Sidebar({
   activeTab = 'courses',
@@ -32,6 +33,7 @@ export default function Sidebar({
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
+  const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
 
@@ -153,7 +155,7 @@ export default function Sidebar({
       id: 'comunidade',
       title: 'Comunidade & Social',
       items: [
-        ...(isSuperAdmin || isAdmin
+        ...(isSuperAdmin || isAdmin || (communityFeedStudentsEnabled && isAluno)
           ? [{ id: 'community-feed', label: 'Feed da Comunidade', icon: Compass }]
           : []),
         ...(isSuperAdmin || isAdmin || isAluno

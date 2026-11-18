@@ -333,6 +333,29 @@ describe('App Component', () => {
     fireEvent.click(menuToggleBtn);
     expect(screen.queryByRole('complementary', { name: /menu lateral/i })).not.toBeInTheDocument();
   });
+
+  it('permite que aluno acesse o Feed da Comunidade sem redirecionar para cursos quando liberado', () => {
+    localStorage.setItem('auth_token', 'mock_token');
+    localStorage.setItem('community_feed_students_enabled', 'true');
+    localStorage.setItem('active_tab', 'community-feed');
+    localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 8,
+        name: 'Aluno Feed',
+        email: 'alunofeed@exemplo.com',
+        role: 'aluno',
+      })
+    );
+
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+
+    expect(localStorage.getItem('active_tab')).toBe('community-feed');
+  });
 });
 
 

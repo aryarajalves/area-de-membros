@@ -549,6 +549,38 @@ def toggle_like_introduction(
         )
 
 
+@router.get("/{post_id}/reactions", status_code=status.HTTP_200_OK)
+def list_introduction_reactions(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista todas as pessoas que reagiram a uma apresentação e seus respectivos tipos de reação."""
+    post = db.query(IntroductionPost).filter(IntroductionPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Apresentação não encontrada.")
+
+    rows = (
+        db.query(IntroductionLike, User)
+        .join(User, User.id == IntroductionLike.user_id)
+        .filter(IntroductionLike.post_id == post_id)
+        .order_by(IntroductionLike.created_at.desc())
+        .all()
+    )
+    reactions = [
+        {
+            "user_id": user.id,
+            "name": user.name,
+            "avatar_url": user.avatar_url,
+            "role": user.role,
+            "reaction_type": like.reaction_type or "like",
+            "created_at": like.created_at,
+        }
+        for like, user in rows
+    ]
+    return {"post_id": post_id, "total": len(reactions), "reactions": reactions}
+
+
 @router.post("/{post_id}/comments", response_model=IntroductionCommentOut, status_code=status.HTTP_201_CREATED)
 def add_comment_introduction(
     post_id: int,

@@ -384,4 +384,61 @@ describe('PlatformProfileTab Component', () => {
       expect(sentPayload.autoplay_enabled).toBe(false);
     });
   });
+
+  it('hides delete account section for Super Admin', () => {
+    renderProfileTab(mockSuperAdmin);
+    expect(screen.queryByTestId('delete-account-section')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-open-delete-account-modal')).not.toBeInTheDocument();
+  });
+
+  it('opens delete account confirmation modal for aluno and does not close on backdrop click', () => {
+    renderProfileTab(mockAluno);
+
+    const openBtn = screen.getByTestId('btn-open-delete-account-modal');
+    expect(openBtn).toBeInTheDocument();
+
+    fireEvent.click(openBtn);
+    const modal = screen.getByTestId('delete-account-confirm-modal');
+    expect(modal).toBeInTheDocument();
+
+    // Clicar no backdrop NÃO deve fechar o modal
+    fireEvent.click(modal);
+    expect(screen.getByTestId('delete-account-confirm-modal')).toBeInTheDocument();
+
+    // Clicar em Cancelar fecha o modal sem chamar DELETE
+    fireEvent.click(screen.getByTestId('btn-cancel-delete-account'));
+    expect(screen.queryByTestId('delete-account-confirm-modal')).not.toBeInTheDocument();
+  });
+
+  it('deletes and anonymizes account when aluno confirms in modal', async () => {
+    let deleteCalled = false;
+
+    global.fetch = vi.fn().mockImplementation((url, options) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/auth/me') && options?.method === 'DELETE') {
+        deleteCalled = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ message: 'Conta excluída e dados pessoais anonimizados com sucesso.' }),
+        });
+      }
+      if (urlStr.includes('/api/v1/gamification/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockRankingResponseAluno),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderProfileTab(mockAluno);
+
+    fireEvent.click(screen.getByTestId('btn-open-delete-account-modal'));
+    fireEvent.click(screen.getByTestId('btn-confirm-delete-account'));
+
+    await waitFor(() => {
+      expect(deleteCalled).toBe(true);
+      expect(localStorage.getItem('auth_token')).toBeNull();
+    });
+  });
 });

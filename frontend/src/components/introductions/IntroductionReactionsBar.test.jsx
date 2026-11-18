@@ -49,4 +49,45 @@ describe('IntroductionReactionsBar Component', () => {
     expect(screen.getByText('🔥')).toBeInTheDocument();
     expect(screen.getByText('🚀')).toBeInTheDocument();
   });
+
+  it('alinha o dock à direita quando o botão está próximo da borda direita da tela', async () => {
+    vi.useFakeTimers();
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1000 });
+
+    render(<IntroductionReactionsBar onToggleReaction={vi.fn()} />);
+    const wrapper = screen.getByTestId('reaction-main-trigger-btn').parentElement;
+    wrapper.getBoundingClientRect = () => ({ left: 820, right: 900, top: 200, bottom: 230, width: 80, height: 30 });
+
+    fireEvent.mouseEnter(wrapper);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+
+    const dock = screen.getByTestId('linkedin-reactions-dock');
+    expect(dock).toHaveClass('dock-align-right');
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
+    vi.useRealTimers();
+  });
+
+  it('abre o modal com a lista de pessoas ao clicar no resumo de reações quando postId é informado', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        post_id: 77,
+        total: 1,
+        reactions: [{ user_id: 10, name: 'Ana Silva', reaction_type: 'love', role: 'aluno' }],
+      }),
+    });
+
+    render(<ReactionPillSummary likesCount={1} reactionsSummary={['love']} postId={77} />);
+    fireEvent.click(screen.getByTestId('reaction-pill-summary'));
+
+    expect(await screen.findByTestId('introduction-reactions-modal')).toBeInTheDocument();
+    expect(await screen.findByText('Ana Silva')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('close-reactions-modal-btn'));
+    expect(screen.queryByTestId('introduction-reactions-modal')).not.toBeInTheDocument();
+  });
 });

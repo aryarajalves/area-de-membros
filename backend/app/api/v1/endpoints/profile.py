@@ -5,15 +5,17 @@ import os
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.logger import logger
 from app.core.security import get_password_hash
 from app.core.file_validation import validate_file_magic_bytes
 from app.services.auth_security_service import invalidate_user_sessions
 from app.models.user import User
 from app.schemas.user import UserResponse, UserProfileUpdate, UserPlaybackRateUpdate
 from app.api.v1.endpoints.users import get_current_user
-from app.services.storage import upload_media_file
+from app.services.storage import upload_media_file, delete_media_file
 
 router = APIRouter(prefix="/auth", tags=["Perfil do Usuário"])
 
@@ -196,3 +198,72 @@ def update_playback_rate(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.delete(
+    "/me",
+    summary="Excluir e Anonimizar Própria Conta (LGPD)",
+    description="Anonimiza os dados pessoais do usuário autenticado, desativa a conta e invalida sessões ativas. Bloqueado para Super Admin."
+)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Anonimiza os dados pessoais do usuário autenticado (LGPD) e encerra suas sessões."""
+    if current_user.role == "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A conta do Super Admin não pode ser excluída por esta tela."
+        )
+
+    user_id = current_user.id
+    previous_avatar = current_user.avatar_url
+    if previous_avatar:
+        try:
+            delete_media_file(previous_avatar)
+        except Exception as exc:
+            logger.warning(f"[LGPD] Falha ao remover avatar do usuário {user_id}: {exc}")
+
+    current_user.name = "Usuário excluído"
+    current_user.email = f"deleted_{user_id}_{uuid.uuid4().hex[:8]}@deleted.local"
+    current_user.phone = None
+    current_user.birth_date = None
+    current_user.avatar_url = None
+    current_user.bio = None
+    current_user.bio_link = None
+    current_user.hashed_password = get_password_hash(uuid.uuid4().hex + uuid.uuid4().hex)
+    current_user.is_active = False
+
+    invalidate_user_sessions(current_user, db)
+    logger.info(f"[LGPD] Conta do usuário ID {user_id} excluída e anonimizada pelo próprio titular.")
+
+    return {"message": "Conta excluída e dados pessoais anonimizados com sucesso."}
+
+
+class PublicAccountDeletionRequest(BaseModel):
+    email: EmailStr
+    reason: str = Field(default="", max_length=500)
+
+
+@router.post(
+    "/public-account-deletion",
+    status_code=status.HTTP_200_OK,
+    summary="Solicitação Pública de Exclusão de Conta (Play Store / LGPD)",
+    description="Permite que um usuário solicite a exclusão da sua conta via link web público sem precisar estar logado."
+)
+def request_public_account_deletion(
+    payload: PublicAccountDeletionRequest,
+    db: Session = Depends(get_db),
+):
+    """Registra solicitação pública de exclusão de conta sem vazar existência do e-mail."""
+    clean_email = str(payload.email).strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
+    if user and user.role != "superadmin":
+        logger.info(f"[LGPD] Solicitação pública de exclusão recebida para usuário ID {user.id} ({clean_email}).")
+    else:
+        logger.info(f"[LGPD] Solicitação pública de exclusão recebida para e-mail não elegível/não encontrado.")
+
+    return {
+        "status": "received",
+        "message": "Se o e-mail informado estiver cadastrado, sua solicitação de exclusão de conta foi registrada e será processada em até 48 horas.",
+    }

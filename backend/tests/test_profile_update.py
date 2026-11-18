@@ -141,3 +141,61 @@ def test_user_can_update_autoplay_enabled(seed_users):
     res_re = client.patch("/api/v1/auth/me", json={"autoplay_enabled": True}, headers=headers)
     assert res_re.status_code == 200
     assert res_re.json()["autoplay_enabled"] is True
+
+
+def test_superadmin_cannot_delete_own_account():
+    headers = get_headers(settings.SUPERADMIN_EMAIL, settings.SUPERADMIN_PASSWORD)
+    res = client.delete("/api/v1/auth/me", headers=headers)
+    assert res.status_code == 403
+    assert "Super Admin" in res.json()["detail"]
+
+
+def test_aluno_can_delete_and_anonymize_own_account():
+    db = TestingSessionLocal()
+    aluno = User(
+        email="aluno_lgpd@test.com",
+        name="Aluno LGPD",
+        role="aluno",
+        hashed_password=get_password_hash("AlunoPass12345!"),
+        is_active=True,
+        phone="85999990000",
+        bio="Minha bio pessoal",
+        bio_link="https://meusite.com",
+    )
+    db.add(aluno)
+    db.commit()
+    db.refresh(aluno)
+    aluno_id = aluno.id
+    db.close()
+
+    headers = get_headers("aluno_lgpd@test.com", "AlunoPass12345!")
+
+    res = client.delete("/api/v1/auth/me", headers=headers)
+    assert res.status_code == 200
+    assert "anonimizados" in res.json()["message"]
+
+    # Verifica anonimização no banco
+    db_check = TestingSessionLocal()
+    deleted_user = db_check.query(User).filter(User.id == aluno_id).first()
+    assert deleted_user is not None
+    assert deleted_user.name == "Usuário excluído"
+    assert deleted_user.email.startswith(f"deleted_{aluno_id}_")
+    assert deleted_user.email.endswith("@deleted.local")
+    assert deleted_user.phone is None
+    assert deleted_user.birth_date is None
+    assert deleted_user.avatar_url is None
+    assert deleted_user.bio is None
+    assert deleted_user.bio_link is None
+    assert deleted_user.is_active is False
+    db_check.close()
+
+    # Verifica que o token antigo foi invalidado
+    res_me = client.get("/api/v1/auth/me", headers=headers)
+    assert res_me.status_code == 401
+
+    # Verifica que login com e-mail antigo falha
+    res_login = client.post("/api/v1/auth/login", json={
+        "email": "aluno_lgpd@test.com",
+        "password": "AlunoPass12345!"
+    })
+    assert res_login.status_code == 401
