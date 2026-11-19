@@ -22,6 +22,22 @@ export default function AttachmentCardItem({
     e.preventDefault();
     if (accessing) return;
     setAccessing(true);
+
+    // Abre a nova aba sincronamente no momento do clique para evitar bloqueio de popup após o await fetch
+    const previewTab = window.open('about:blank', '_blank');
+    if (previewTab) {
+      try {
+        previewTab.opener = null;
+        if (previewTab.document) {
+          previewTab.document.title = att.title || 'Abrindo material...';
+          previewTab.document.body.innerHTML =
+            '<div style="background:#090d16;color:#cbd5e1;font-family:sans-serif;height:100vh;margin:0;display:flex;align-items:center;justify-content:center;">Carregando material...</div>';
+        }
+      } catch {
+        // Ignora caso o ambiente/teste use mock simples de window.open
+      }
+    }
+
     try {
       const token = localStorage.getItem('auth_token');
       const res = await fetch(`/api/v1/courses/attachments/${att.id}/access`, {
@@ -30,16 +46,26 @@ export default function AttachmentCardItem({
       if (!res.ok) throw new Error('Falha ao acessar material.');
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = att.title || 'material';
-        link.click();
+
+      if (previewTab && previewTab.location) {
+        if (typeof previewTab.location.replace === 'function') {
+          previewTab.location.replace(blobUrl);
+        } else {
+          previewTab.location.href = blobUrl;
+        }
+      } else {
+        const fallbackOpened = window.open(blobUrl, '_blank');
+        if (!fallbackOpened) {
+          window.location.assign(blobUrl);
+        }
       }
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch {
-      window.open(att.file_url, '_blank', 'noopener,noreferrer');
+      if (previewTab && previewTab.location) {
+        previewTab.location.href = att.file_url;
+      } else {
+        window.open(att.file_url, '_blank', 'noopener,noreferrer');
+      }
     } finally {
       setAccessing(false);
     }
@@ -140,7 +166,6 @@ export default function AttachmentCardItem({
           href={isProxiedStorage ? `/api/v1/courses/attachments/${att.id}/access` : att.file_url}
           target="_blank"
           rel="noopener noreferrer"
-          download={isHtml || isProxiedStorage ? undefined : (att.title || 'documento')}
           onClick={handleProxyAccess}
           className="primary-btn"
           style={{

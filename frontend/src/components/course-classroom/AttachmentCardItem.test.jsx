@@ -23,6 +23,7 @@ describe('AttachmentCardItem Component', () => {
       'href',
       'https://cdn.example.com/casas.pdf'
     );
+    expect(screen.getByTestId('access-attachment-btn-42')).not.toHaveAttribute('download');
     expect(screen.queryByTestId('rename-attachment-btn-42')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-attachment-btn-42')).not.toBeInTheDocument();
   });
@@ -54,7 +55,7 @@ describe('AttachmentCardItem Component', () => {
     expect(handleDelete).toHaveBeenCalledWith(mockAtt);
   });
 
-  it('usa proxy seguro do backend quando o anexo está hospedado no Backblaze B2', async () => {
+  it('usa proxy seguro do backend e abre na nova aba sem forçar download quando hospedado no Backblaze B2', async () => {
     localStorage.setItem('auth_token', 'jwt-aluno');
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -62,7 +63,8 @@ describe('AttachmentCardItem Component', () => {
     });
     URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/pdf-1');
     URL.revokeObjectURL = vi.fn();
-    window.open = vi.fn().mockReturnValue({});
+    const fakePreviewTab = { opener: window, location: { href: '', replace: vi.fn() } };
+    window.open = vi.fn().mockReturnValue(fakePreviewTab);
 
     const b2Att = {
       ...mockAtt,
@@ -73,14 +75,16 @@ describe('AttachmentCardItem Component', () => {
     render(<AttachmentCardItem attachment={b2Att} index={0} isManager={false} />);
     const btn = screen.getByTestId('access-attachment-btn-99');
     expect(btn).toHaveAttribute('href', '/api/v1/courses/attachments/99/access');
+    expect(btn).not.toHaveAttribute('download');
 
     fireEvent.click(btn);
+    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/v1/courses/attachments/99/access',
         expect.objectContaining({ headers: { Authorization: 'Bearer jwt-aluno' } }),
       );
+      expect(fakePreviewTab.location.replace).toHaveBeenCalledWith('blob:http://localhost/pdf-1');
     });
-    expect(window.open).toHaveBeenCalledWith('blob:http://localhost/pdf-1', '_blank', 'noopener,noreferrer');
   });
 });
