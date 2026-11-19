@@ -3,15 +3,32 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class SupportLessonItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+
+
+class SupportModuleItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    lessons: List[SupportLessonItem] = []
+
+
 class SupportCourseItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     title: str
+    item_type: Optional[str] = "course"
     thumbnail_url: Optional[str] = None
     is_support_locked: bool = False
     support_locked_until: Optional[datetime] = None
     support_locked_reason: Optional[str] = None
+    modules: List[SupportModuleItem] = []
 
 
 class SupportAuthor(BaseModel):
@@ -51,6 +68,11 @@ class SupportTopicListItem(BaseModel):
     title: str
     content: str
     image_url: Optional[str] = None
+    image_urls: List[str] = []
+    module_id: Optional[int] = None
+    lesson_id: Optional[int] = None
+    module_title: Optional[str] = None
+    lesson_title: Optional[str] = None
     status: str
     likes_count: int
     replies_count: int
@@ -71,6 +93,11 @@ class SupportTopicDetail(BaseModel):
     title: str
     content: str
     image_url: Optional[str] = None
+    image_urls: List[str] = []
+    module_id: Optional[int] = None
+    lesson_id: Optional[int] = None
+    module_title: Optional[str] = None
+    lesson_title: Optional[str] = None
     status: str
     likes_count: int
     liked_by_me: bool
@@ -97,6 +124,9 @@ class SupportTopicCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=200)
     content: str = Field(..., min_length=5)
     image_url: Optional[str] = None
+    image_urls: Optional[List[str]] = None
+    module_id: Optional[int] = None
+    lesson_id: Optional[int] = None
 
 
 class SupportReplyCreate(BaseModel):

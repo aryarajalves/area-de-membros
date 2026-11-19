@@ -8,7 +8,7 @@ from app.api.v1.endpoints import (
     infrastructure, course_upsell, events, course_lessons, certificates,
     lesson_mindmaps, tutor_ia, presence, chat_superadmin_dms,
     community_feed, community_stories, community_feed_interactions,
-    community_strikes, chat_reactions, push, user_blocks
+    community_strikes, chat_reactions, push, user_blocks, course_attachments
 )
 
 api_router = APIRouter()
@@ -21,6 +21,7 @@ api_router.include_router(logs.router, include_in_schema=False)
 api_router.include_router(lesson_interactions.router)
 api_router.include_router(media_uploads.router)
 api_router.include_router(course_lessons.router)
+api_router.include_router(course_attachments.router, prefix="/courses", tags=["Cursos e Módulos"])
 api_router.include_router(courses.router)
 api_router.include_router(course_sales.router)
 api_router.include_router(lesson_transcriptions.router)

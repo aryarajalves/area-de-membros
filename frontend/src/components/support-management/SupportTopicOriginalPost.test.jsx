@@ -81,4 +81,62 @@ describe('SupportTopicOriginalPost Component', () => {
     const statusBtn = screen.getByTestId('toggle-topic-status-btn');
     expect(statusBtn).toHaveTextContent('✓ Resolvida (Reabrir)');
   });
+
+  it('renders module and lesson context badges, allows clicking them to navigate to the lesson, and displays multiple attached images', async () => {
+    const handleImageClick = vi.fn();
+    const handleCloseModal = vi.fn();
+    const navEvents = [];
+    const lessonEvents = [];
+    const onNav = (e) => navEvents.push(e.detail);
+    const onLesson = (e) => lessonEvents.push(e.detail);
+    window.addEventListener('app:navigate_tab', onNav);
+    window.addEventListener('open_course_lesson', onLesson);
+
+    const multiMediaTopic = {
+      ...mockTopic,
+      course: { id: 10, title: 'Astrowake' },
+      module_id: 101,
+      lesson_id: 1002,
+      module_title: 'Módulo 1 - Fundamentos',
+      lesson_title: 'Aula 2 - Mapa Astral',
+      image_urls: [
+        'https://example.com/print1.png',
+        'https://example.com/print2.png',
+      ],
+    };
+
+    render(
+      <SupportTopicOriginalPost
+        topic={multiMediaTopic}
+        currentUser={mockUser}
+        onToggleLike={vi.fn()}
+        onToggleStatus={vi.fn()}
+        onImageClick={handleImageClick}
+        onCloseModal={handleCloseModal}
+      />
+    );
+
+    const modBadge = screen.getByTestId('detail-module-badge');
+    const lessonBadge = screen.getByTestId('detail-lesson-badge');
+    expect(modBadge).toHaveTextContent('Módulo: Módulo 1 - Fundamentos');
+    expect(lessonBadge).toHaveTextContent('Aula: Aula 2 - Mapa Astral');
+
+    fireEvent.click(lessonBadge);
+    expect(handleCloseModal).toHaveBeenCalledTimes(1);
+    expect(navEvents).toEqual([{ tab: 'courses' }]);
+
+    await new Promise((r) => setTimeout(r, 200));
+    expect(lessonEvents).toEqual([{ courseId: 10, moduleId: 101, lessonId: 1002 }]);
+
+    window.removeEventListener('app:navigate_tab', onNav);
+    window.removeEventListener('open_course_lesson', onLesson);
+
+    const img1 = screen.getByTestId('topic-attached-image');
+    const img2 = screen.getByTestId('topic-attached-image-1');
+    expect(img1).toBeInTheDocument();
+    expect(img2).toBeInTheDocument();
+
+    fireEvent.click(img2);
+    expect(handleImageClick).toHaveBeenCalledWith('https://example.com/print2.png', 'Como rodar o build no Docker?');
+  });
 });

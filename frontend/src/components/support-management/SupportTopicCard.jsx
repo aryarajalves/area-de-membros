@@ -101,9 +101,9 @@ export default function SupportTopicCard({
       data-testid={`support-topic-card-${topic.id}`}
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        padding: '16px 20px',
+        flexDirection: 'column',
+        gap: '12px',
+        padding: '16px 18px',
         backgroundColor: topic.is_pinned ? 'rgba(15, 23, 42, 0.65)' : 'rgba(30, 41, 59, 0.45)',
         border: topic.is_pinned ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
         boxShadow: topic.is_pinned ? '0 4px 20px rgba(56, 189, 248, 0.08)' : 'none',
@@ -121,12 +121,12 @@ export default function SupportTopicCard({
         e.currentTarget.style.borderColor = topic.is_pinned ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.08)';
       }}
     >
-      <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', width: '100%', minWidth: 0 }}>
         {/* Avatar Circular com iniciais */}
         <div
           style={{
-            width: '42px',
-            height: '42px',
+            width: '38px',
+            height: '38px',
             borderRadius: '50%',
             backgroundColor: '#0284c7',
             color: '#fff',
@@ -134,7 +134,7 @@ export default function SupportTopicCard({
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 700,
-            fontSize: '14px',
+            fontSize: '13px',
             flexShrink: 0,
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
@@ -142,23 +142,16 @@ export default function SupportTopicCard({
           {initials}
         </div>
 
-        {/* Informações da Dúvida */}
+        {/* Informações da Dúvida ocupando 100% da largura disponível */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
             {/* Badge de Tópico Fixado pelo Usuário */}
             {topic.is_pinned && (
               <span
                 style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(56, 189, 248, 0.18)',
-                  color: '#38bdf8',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px',
+                  backgroundColor: 'rgba(56, 189, 248, 0.18)', color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 data-testid={`topic-pinned-badge-${topic.id}`}
                 title="Dúvida fixada por você no topo (máximo 5)"
@@ -170,16 +163,9 @@ export default function SupportTopicCard({
 
             <span
               style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                color: '#38bdf8',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
+                fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px',
+                backgroundColor: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}
             >
               <BookOpen size={11} />
@@ -190,16 +176,9 @@ export default function SupportTopicCard({
             {topic.status === 'resolved' ? (
               <span
                 style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                  color: '#34d399',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399',
+                  border: '1px solid rgba(16, 185, 129, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 data-testid={`topic-status-badge-${topic.id}`}
               >
@@ -209,16 +188,9 @@ export default function SupportTopicCard({
             ) : topic.replies_count === 0 ? (
               <span
                 style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                  color: '#fbbf24',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24',
+                  border: '1px solid rgba(245, 158, 11, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 data-testid={`topic-status-badge-${topic.id}`}
               >
@@ -231,16 +203,9 @@ export default function SupportTopicCard({
             {topic.has_solution && (
               <span
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '2px 7px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(234, 179, 8, 0.15)',
-                  color: '#facc15',
-                  border: '1px solid rgba(234, 179, 8, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '6px',
+                  backgroundColor: 'rgba(234, 179, 8, 0.15)', color: '#facc15',
+                  border: '1px solid rgba(234, 179, 8, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 title="Esta dúvida possui uma Solução Oficial confirmada"
               >
@@ -250,36 +215,25 @@ export default function SupportTopicCard({
             )}
 
             {/* Indicador de Anexo de Imagem */}
-            {topic.image_url && (
+            {(topic.image_url || (topic.image_urls && topic.image_urls.length > 0)) && (
               <span
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  padding: '2px 6px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(148, 163, 184, 0.12)',
-                  color: '#cbd5e1',
-                  border: '1px solid rgba(148, 163, 184, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '6px',
+                  backgroundColor: 'rgba(148, 163, 184, 0.12)', color: '#cbd5e1',
+                  border: '1px solid rgba(148, 163, 184, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 title="Possui imagem/print anexo"
               >
                 <Image size={11} />
-                Anexo
+                {topic.image_urls?.length > 1 ? `Anexo (${topic.image_urls.length})` : 'Anexo'}
               </span>
             )}
 
             {['admin', 'superadmin'].includes(topic.author.role) && (
               <span
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  backgroundColor: 'rgba(234, 179, 8, 0.15)',
-                  color: '#eab308',
+                  fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px',
+                  backgroundColor: 'rgba(234, 179, 8, 0.15)', color: '#eab308',
                   border: '1px solid rgba(234, 179, 8, 0.3)',
                 }}
               >
@@ -293,7 +247,7 @@ export default function SupportTopicCard({
               fontSize: '15px',
               fontWeight: 600,
               color: '#f8fafc',
-              margin: '0 0 6px 0',
+              margin: '0 0 4px 0',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -302,38 +256,69 @@ export default function SupportTopicCard({
             {topic.title}
           </h3>
 
+          {/* Módulo / Aula em linha única discreta com reticências para não poluir no celular */}
+          {(topic.module_title || topic.lesson_title) && (
+            <div
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 500,
+                color: '#a78bfa',
+                marginBottom: '6px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '100%',
+              }}
+              data-testid={`topic-context-badge-${topic.id}`}
+              title={[topic.module_title, topic.lesson_title].filter(Boolean).join(' • ')}
+            >
+              📍 {[topic.module_title, topic.lesson_title].filter(Boolean).join(' • ')}
+            </div>
+          )}
+
           <p
             style={{
               fontSize: '13px',
               color: '#94a3b8',
-              margin: '0 0 8px 0',
+              margin: 0,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              lineHeight: '1.4',
+              lineHeight: '1.45',
             }}
           >
             {topic.content}
           </p>
-
-          {/* Subtítulo: Autor da última resposta ou tempo decorrido */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b' }}>
-            {topic.last_reply ? (
-              <span>
-                ↳ {topic.last_reply.author_name} respondeu {formatTimeAgo(topic.last_reply.created_at)}
-              </span>
-            ) : (
-              <span>
-                Postado por {topic.author.name} {formatTimeAgo(topic.created_at)}
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Ações e Contadores laterais */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: '12px' }}>
+      {/* Rodapé limpo: Autor/Data à esquerda e Botões de Ação à direita */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+          paddingTop: '10px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        }}
+      >
+        <div style={{ fontSize: '12px', color: '#64748b', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {topic.last_reply ? (
+            <span>
+              ↳ {topic.last_reply.author_name} respondeu {formatTimeAgo(topic.last_reply.created_at)}
+            </span>
+          ) : (
+            <span>
+              Postado por {topic.author.name} {formatTimeAgo(topic.created_at)}
+            </span>
+          )}
+        </div>
+
+        {/* Ações e Contadores */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: 'auto' }}>
         {/* Botão de Fixar / Desafixar Dúvida */}
         <button
           type="button"
@@ -487,6 +472,7 @@ export default function SupportTopicCard({
             <Trash2 size={16} />
           </button>
         )}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Image as ImageIcon, Upload, Loader2, BookOpen } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import {
+  SupportTopicContextFields,
+  SupportTopicMediaUploader,
+} from './SupportTopicContextAndMediaFields';
 
 export default function NewSupportTopicModal({
   isOpen,
@@ -9,77 +13,110 @@ export default function NewSupportTopicModal({
   onTopicCreated,
 }) {
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || '');
+  const [selectedModuleId, setSelectedModuleId] = useState('');
+  const [selectedLessonId, setSelectedLessonId] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const { addToast } = useToast();
 
+  const eligibleCourses = courses.filter((c) => {
+    if (c.item_type === 'tool') return true;
+    if (!Array.isArray(c.modules)) return true;
+    return c.modules.some((m) => Array.isArray(m.lessons) && m.lessons.length > 0);
+  });
+
   // Sincroniza o curso selecionado quando o modal é aberto ou quando a lista de cursos for carregada via API
   useEffect(() => {
     if (isOpen) {
-      if (courses && courses.length > 0) {
-        const exists = courses.some((c) => String(c.id) === String(selectedCourseId));
+      if (eligibleCourses.length > 0) {
+        const exists = eligibleCourses.some((c) => String(c.id) === String(selectedCourseId));
         if (!selectedCourseId || !exists) {
-          setSelectedCourseId(courses[0].id);
+          setSelectedCourseId(eligibleCourses[0].id);
+          setSelectedModuleId('');
+          setSelectedLessonId('');
         }
       } else {
         setSelectedCourseId('');
+        setSelectedModuleId('');
+        setSelectedLessonId('');
       }
     }
-  }, [isOpen, courses, selectedCourseId]);
+  }, [isOpen, eligibleCourses, selectedCourseId]);
 
   if (!isOpen) return null;
 
+  const effectiveCourseId = selectedCourseId || (eligibleCourses.length > 0 ? eligibleCourses[0].id : '');
+  const chosenCourse = eligibleCourses.find((c) => String(c.id) === String(effectiveCourseId));
+  const isToolApp = chosenCourse?.item_type === 'tool';
+
+  const handleCourseChange = (e) => {
+    setSelectedCourseId(e.target.value);
+    setSelectedModuleId('');
+    setSelectedLessonId('');
+  };
+
   const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    // Valida tipo
-    if (!file.type.startsWith('image/')) {
-      addToast('Selecione um arquivo de imagem válido (PNG, JPG, WEBP).', 'error');
-      return;
-    }
-
-    // Valida tamanho (até 10 MB)
-    if (file.size > 10 * 1024 * 1024) {
-      addToast('A imagem deve ter no máximo 10 MB.', 'error');
-      return;
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        addToast('Selecione um arquivo de imagem válido (PNG, JPG, WEBP).', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        addToast('Cada imagem deve ter no máximo 10 MB.', 'error');
+        return;
+      }
     }
 
     setUploadingImage(true);
     const token = localStorage.getItem('auth_token');
-    const formData = new FormData();
-    formData.append('file', file);
+    const uploaded = [];
 
     try {
-      const res = await fetch('/api/v1/support/upload-image', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Falha no upload da imagem.');
-      setImageUrl(data.image_url);
-      addToast('Imagem anexada com sucesso!', 'success');
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/v1/support/upload-image', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Falha no upload da imagem.');
+        if (data.image_url) uploaded.push(data.image_url);
+      }
+      if (uploaded.length > 0) {
+        setImageUrls((prev) => [...prev, ...uploaded]);
+        addToast(
+          uploaded.length > 1 ? `${uploaded.length} imagens anexadas com sucesso!` : 'Imagem anexada com sucesso!',
+          'success'
+        );
+      }
     } catch (err) {
       addToast(err.message || 'Erro ao enviar imagem.', 'error');
     } finally {
       setUploadingImage(false);
+      if (e.target) e.target.value = '';
     }
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setImageUrls((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const effectiveCourseId = selectedCourseId || (courses.length > 0 ? courses[0].id : null);
     if (!effectiveCourseId) {
       addToast('Selecione um curso para a sua dúvida.', 'error');
       return;
     }
-    const chosenCourse = courses.find((c) => String(c.id) === String(effectiveCourseId));
     if (chosenCourse?.is_support_locked) {
       addToast(chosenCourse.support_locked_reason || 'O suporte deste curso está temporariamente fechado.', 'error');
       return;
@@ -105,9 +142,12 @@ export default function NewSupportTopicModal({
         },
         body: JSON.stringify({
           course_id: Number(effectiveCourseId),
+          module_id: selectedModuleId ? Number(selectedModuleId) : null,
+          lesson_id: selectedLessonId ? Number(selectedLessonId) : null,
           title: title.trim(),
           content: content.trim(),
-          image_url: imageUrl || null,
+          image_url: imageUrls[0] || null,
+          image_urls: imageUrls,
         }),
       });
 
@@ -120,7 +160,9 @@ export default function NewSupportTopicModal({
       if (onTopicCreated) onTopicCreated(data);
       setTitle('');
       setContent('');
-      setImageUrl('');
+      setImageUrls([]);
+      setSelectedModuleId('');
+      setSelectedLessonId('');
       onClose();
     } catch (err) {
       addToast(err.message || 'Erro ao publicar dúvida.', 'error');
@@ -145,6 +187,7 @@ export default function NewSupportTopicModal({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
+        overflowY: 'auto',
       }}
       data-testid="new-support-topic-modal"
     >
@@ -153,6 +196,8 @@ export default function NewSupportTopicModal({
         style={{
           width: '100%',
           maxWidth: '620px',
+          maxHeight: '88vh',
+          margin: 'auto',
           backgroundColor: '#0f172a',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '16px',
@@ -165,12 +210,13 @@ export default function NewSupportTopicModal({
         {/* Cabeçalho do Modal */}
         <div
           style={{
-            padding: '18px 24px',
+            padding: '16px 24px',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             backgroundColor: 'rgba(30, 41, 59, 0.5)',
+            flexShrink: 0,
           }}
         >
           <div>
@@ -198,9 +244,20 @@ export default function NewSupportTopicModal({
           </button>
         </div>
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Dropdown de Curso (Apenas cursos aos quais o aluno tem acesso) */}
+        {/* Formulário com rolagem interna para não estourar topo/rodapé da tela */}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            overflowY: 'auto',
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          {/* Dropdown de Curso */}
           <div>
             <label
               htmlFor="support-course-select"
@@ -208,39 +265,48 @@ export default function NewSupportTopicModal({
             >
               Curso Relacionado <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <div style={{ position: 'relative' }}>
-              <select
-                id="support-course-select"
-                value={selectedCourseId || (courses.length > 0 ? courses[0].id : '')}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '14px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-                data-testid="support-course-select"
-              >
-                {courses.length === 0 ? (
-                  <option value="" disabled>Nenhum curso disponível com acesso liberado</option>
-                ) : (
-                  courses.map((c) => (
-                    <option key={c.id} value={c.id} style={{ backgroundColor: '#0f172a', color: '#fff' }}>
-                      {c.is_support_locked ? `🔒 ${c.title} (Suporte Fechado)` : c.title}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
+            <select
+              id="support-course-select"
+              value={effectiveCourseId}
+              onChange={handleCourseChange}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#f8fafc',
+                fontSize: '14px',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+              data-testid="support-course-select"
+            >
+              {eligibleCourses.length === 0 ? (
+                <option value="" disabled>Nenhum curso disponível com acesso liberado</option>
+              ) : (
+                eligibleCourses.map((c) => (
+                  <option key={c.id} value={c.id} style={{ backgroundColor: '#0f172a', color: '#fff' }}>
+                    {c.is_support_locked ? `🔒 ${c.title} (Suporte Fechado)` : c.title}
+                  </option>
+                ))
+              )}
+            </select>
             <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
               Você só pode abrir dúvidas nos cursos aos quais possui acesso ativo.
             </span>
           </div>
+
+          {/* Seletores Opcionais de Módulo e Aula (ocultos quando o item selecionado for um App/Ferramenta) */}
+          {!isToolApp && (
+            <SupportTopicContextFields
+              modules={chosenCourse?.modules || []}
+              selectedModuleId={selectedModuleId}
+              onModuleChange={setSelectedModuleId}
+              selectedLessonId={selectedLessonId}
+              onLessonChange={setSelectedLessonId}
+            />
+          )}
 
           {/* Título da Dúvida */}
           <div>
@@ -281,7 +347,7 @@ export default function NewSupportTopicModal({
             </label>
             <textarea
               id="support-content-input"
-              rows={5}
+              rows={4}
               placeholder="Descreva o que aconteceu, passos que você seguiu ou erros exibidos..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -301,88 +367,13 @@ export default function NewSupportTopicModal({
             />
           </div>
 
-          {/* Anexo de Imagem (Opcional) */}
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
-              Anexar Imagem ou Print (Opcional)
-            </label>
-
-            {imageUrl ? (
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'inline-block',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                }}
-              >
-                <img
-                  src={imageUrl}
-                  alt="Anexo da dúvida"
-                  style={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain', display: 'block' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setImageUrl('')}
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    right: '6px',
-                    background: 'rgba(239, 68, 68, 0.85)',
-                    border: 'none',
-                    borderRadius: '50%',
-                    color: '#fff',
-                    width: '26px',
-                    height: '26px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                  data-testid="remove-image-btn"
-                  title="Remover imagem"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  border: '1px dashed rgba(255, 255, 255, 0.25)',
-                  backgroundColor: 'rgba(30, 41, 59, 0.3)',
-                  cursor: uploadingImage ? 'not-allowed' : 'pointer',
-                  color: '#94a3b8',
-                  fontSize: '13px',
-                }}
-              >
-                <input
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                  style={{ display: 'none' }}
-                  data-testid="support-image-file-input"
-                />
-                {uploadingImage ? (
-                  <>
-                    <Loader2 size={18} className="spin-animation" color="#38bdf8" />
-                    <span>Enviando imagem...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={18} color="#38bdf8" />
-                    <span>Clique para enviar um print ou imagem (PNG, JPG, WEBP até 10 MB)</span>
-                  </>
-                )}
-              </label>
-            )}
-          </div>
+          {/* Upload de Múltiplas Imagens / Prints */}
+          <SupportTopicMediaUploader
+            imageUrls={imageUrls}
+            uploadingImage={uploadingImage}
+            onUploadImages={handleImageUpload}
+            onRemoveImage={handleRemoveImage}
+          />
 
           {/* Rodapé com Botões */}
           <div
@@ -391,9 +382,10 @@ export default function NewSupportTopicModal({
               alignItems: 'center',
               justifyContent: 'flex-end',
               gap: '12px',
-              marginTop: '10px',
-              paddingTop: '16px',
+              marginTop: '4px',
+              paddingTop: '14px',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              flexShrink: 0,
             }}
           >
             <button

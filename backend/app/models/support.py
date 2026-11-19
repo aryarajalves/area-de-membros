@@ -1,3 +1,4 @@
+import json
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -13,6 +14,11 @@ class SupportTopic(Base):
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
     image_url = Column(String(500), nullable=True)
+    image_urls_json = Column(Text, nullable=True)
+    module_id = Column(Integer, ForeignKey("modules.id", ondelete="SET NULL"), nullable=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="SET NULL"), nullable=True)
+    module_title = Column(String(255), nullable=True)
+    lesson_title = Column(String(255), nullable=True)
     status = Column(String(20), default="open")  # 'open', 'resolved', 'closed'
     likes_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -25,6 +31,17 @@ class SupportTopic(Base):
     likes = relationship("SupportTopicLike", back_populates="topic", cascade="all, delete-orphan")
     pins = relationship("SupportTopicPin", back_populates="topic", cascade="all, delete-orphan")
     favorites = relationship("SupportTopicFavorite", back_populates="topic", cascade="all, delete-orphan")
+
+    @property
+    def image_urls(self) -> list:
+        if self.image_urls_json:
+            try:
+                parsed = json.loads(self.image_urls_json)
+                if isinstance(parsed, list):
+                    return [str(u) for u in parsed if u]
+            except Exception:
+                pass
+        return [self.image_url] if self.image_url else []
 
 
 class SupportReply(Base):

@@ -2,6 +2,20 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [18/11/2026] - Múltiplas Mídias e Especificação de Módulo/Aula em support_topics
+- **Objetivo:** Permitir que o aluno anexe múltiplas imagens/prints e especifique opcionalmente o módulo e a aula ao relatar uma dúvida ou problema no suporte.
+- **Tabela Afetada:**
+  - `support_topics`:
+    - `image_urls_json`: TEXT NULL (lista JSON de URLs de imagens anexadas)
+    - `module_id`: INTEGER NULL REFERENCES `modules(id)` ON DELETE SET NULL
+    - `lesson_id`: INTEGER NULL REFERENCES `lessons(id)` ON DELETE SET NULL
+    - `module_title`: VARCHAR(255) NULL
+    - `lesson_title`: VARCHAR(255) NULL
+- **Script de Migração:** `backend/scripts/migrate_support_topics_context_media.py`
+- **Auto-migração no Startup:** Instruções `ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS ...` incluídas no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [18/11/2026] - Bloqueio entre Usuários (Conformidade UGC Play Store) em user_blocks
 - **Objetivo:** Permitir que usuários bloqueiem outros usuários na comunidade e DMs, ocultando posts/comentários e impedindo novas mensagens diretas.
 - **Tabela Criada:**

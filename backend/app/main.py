@@ -690,6 +690,7 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_user_device_tokens_user_id ON user_device_tokens(user_id); CREATE INDEX IF NOT EXISTS ix_user_device_tokens_fcm_token ON user_device_tokens(fcm_token);
                         CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_user_block_pair UNIQUE (blocker_id, blocked_id));
                         CREATE INDEX IF NOT EXISTS ix_user_blocks_blocker_id ON user_blocks(blocker_id); CREATE INDEX IF NOT EXISTS ix_user_blocks_blocked_id ON user_blocks(blocked_id);
+                        ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS image_urls_json TEXT; ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS module_id INTEGER; ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS lesson_id INTEGER; ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS module_title VARCHAR(255); ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS lesson_title VARCHAR(255);
                     """))
                 else:
                     for col_sql in [
@@ -860,7 +861,10 @@ async def lifespan(app: FastAPI):
                             "CREATE INDEX IF NOT EXISTS ix_user_device_tokens_user_id ON user_device_tokens(user_id)", "CREATE INDEX IF NOT EXISTS ix_user_device_tokens_fcm_token ON user_device_tokens(fcm_token)",
                             "CREATE TABLE IF NOT EXISTS user_blocks (id INTEGER PRIMARY KEY AUTOINCREMENT, blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_user_block_pair UNIQUE (blocker_id, blocked_id))",
                             "CREATE INDEX IF NOT EXISTS ix_user_blocks_blocker_id ON user_blocks(blocker_id)", "CREATE INDEX IF NOT EXISTS ix_user_blocks_blocked_id ON user_blocks(blocked_id)",
-                        ): conn.execute(text(_sql))
+                            "ALTER TABLE support_topics ADD COLUMN image_urls_json TEXT", "ALTER TABLE support_topics ADD COLUMN module_id INTEGER", "ALTER TABLE support_topics ADD COLUMN lesson_id INTEGER", "ALTER TABLE support_topics ADD COLUMN module_title VARCHAR(255)", "ALTER TABLE support_topics ADD COLUMN lesson_title VARCHAR(255)",
+                        ):
+                            try: conn.execute(text(_sql))
+                            except Exception: pass
                     except Exception:
                         pass
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
@@ -949,18 +953,8 @@ app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
 cors_origins_raw = (settings.CORS_ORIGINS or "*").strip()
-if cors_origins_raw == "*" or not cors_origins_raw:
-    cors_origins = ["*"]
-else:
-    cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_origins = ["*"] if (cors_origins_raw == "*" or not cors_origins_raw) else [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.middleware("http")
 async def add_security_headers_middleware(request: Request, call_next):

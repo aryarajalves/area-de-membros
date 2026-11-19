@@ -133,6 +133,10 @@ def list_introductions(
     """
     try:
         query = db.query(IntroductionPost).join(User, IntroductionPost.user_id == User.id)
+        from app.services.user_block_service import get_blocked_user_ids
+        blocked_ids = get_blocked_user_ids(db, current_user.id)
+        if blocked_ids:
+            query = query.filter(~IntroductionPost.user_id.in_(blocked_ids))
 
         if search:
             search_term = f"%{search.strip().lower()}%"

@@ -12,6 +12,7 @@ import FeedNotificationsModal from './FeedNotificationsModal';
 import FeedProfileModal from './FeedProfileModal';
 import CommunityStoriesBar from './CommunityStoriesBar';
 import FeedCategoryPills from './FeedCategoryPills';
+import FeedFilterBar from './FeedFilterBar';
 import FeedAdminModerationModal from './FeedAdminModerationModal';
 import FeedCommunityGuidelinesModal from './FeedCommunityGuidelinesModal';
 import FeedStrikesBanner from './FeedStrikesBanner';
@@ -182,19 +183,6 @@ export default function CommunityFeedManagement({ user }) {
     setTotalPosts((prev) => Math.max(0, prev - 1));
   };
 
-  const filterTabs = [
-    { id: 'all', label: 'Para Você / Geral', icon: Compass },
-    { id: 'popular', label: 'Mais Curtidos', icon: Flame },
-    { id: 'most_commented', label: 'Mais Comentados', icon: MessageSquare },
-    { id: 'most_saved', label: 'Mais Salvos', icon: BookmarkCheck },
-    { id: 'most_shared', label: 'Mais Compartilhados', icon: Share2 },
-    { id: 'following', label: 'Seguindo', icon: Users },
-    { id: 'my_course', label: 'Meu Curso', icon: BookOpen },
-    { id: 'my_posts', label: 'Minhas Publicações', icon: UserCheck },
-    { id: 'scheduled', label: 'Agendados', icon: Calendar },
-    { id: 'saved', label: 'Salvos por Mim', icon: Bookmark },
-  ];
-
   return (
     <div className="community-feed-page" data-testid="community-feed-management">
       {/* Cabeçalho da Comunidade */}
@@ -295,27 +283,13 @@ export default function CommunityFeedManagement({ user }) {
 
       {/* Filtros e Barra de Busca */}
       <div className="feed-nav-bar">
-        <div className="feed-filter-tabs">
-          {filterTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`feed-filter-tab ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveFilter(tab.id);
-                  setCurrentPage(1);
-                }}
-                data-testid={`feed-filter-tab-${tab.id}`}
-              >
-                <Icon size={16} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <FeedFilterBar
+          activeFilter={activeFilter}
+          onSelectFilter={(filterId) => {
+            setActiveFilter(filterId);
+            setCurrentPage(1);
+          }}
+        />
 
         <div className="feed-search-box">
           <Search size={15} className="feed-search-icon" />

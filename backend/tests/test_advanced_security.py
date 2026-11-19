@@ -94,16 +94,20 @@ def test_account_lockout_auto_expiration():
 
 
 def test_single_session_enforcement_for_students():
-    """Valida que apenas alunos têm a sessão anterior deslogada a cada login (anti-pirataria)."""
+    """Valida que o login normal preserva o token_version de alunos e admins (permitindo PC + App Mobile), invalidando apenas via invalidate_user_sessions."""
     db_mock = MagicMock()
 
     student = User(id=10, email="aluno@teste.com", role="aluno", token_version=1)
     ver_after_login_1 = enforce_single_session_on_login(student, db_mock)
-    assert ver_after_login_1 == 2
+    assert ver_after_login_1 == 1
     ver_after_login_2 = enforce_single_session_on_login(student, db_mock)
-    assert ver_after_login_2 == 3
+    assert ver_after_login_2 == 1
 
-    # Para administradores, a versão não é incrementada no login para permitir múltiplos dispositivos
+    # Ao trocar senha ou sofrer invalidação explícita, incrementa o token_version
+    ver_invalidated = invalidate_user_sessions(student, db_mock)
+    assert ver_invalidated == 2
+
+    # Para administradores, a versão também não é incrementada no login
     admin = User(id=20, email="admin@teste.com", role="admin", token_version=1)
     ver_admin_1 = enforce_single_session_on_login(admin, db_mock)
     assert ver_admin_1 == 1
@@ -177,3 +181,17 @@ def test_startup_security_check_detection():
     )
     assert strong_result["status"] == "ok"
     assert len(strong_result["warnings"]) == 0
+
+
+def test_default_token_expiration_is_one_week():
+    """Valida que o tempo padrão de expiração do token JWT no código é de 7 dias (10080 minutos)."""
+    from app.core.config import settings
+    from app.core.security import create_access_token, decode_access_token
+
+    assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 60 * 24 * 7
+    token = create_access_token({"sub": "99", "role": "aluno", "token_version": 1})
+    decoded = decode_access_token(token)
+    assert decoded is not None
+    remaining_sec = decoded["exp"] - datetime.now(timezone.utc).timestamp()
+    # Deve ter aproximadamente 7 dias (entre 6.9 e 7.1 dias)
+    assert 6.9 * 86400 < remaining_sec <= 7.1 * 86400

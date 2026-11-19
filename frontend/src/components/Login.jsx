@@ -250,6 +250,11 @@ export default function Login({ onLoginSuccess }) {
                 Criar conta
               </button>
             </p>
+            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', gap: '12px', fontSize: '0.75rem', color: '#94a3b8' }}>
+              <a href="/privacidade" style={{ color: '#64748b', textDecoration: 'underline' }}>Política de Privacidade</a>
+              <span>•</span>
+              <a href="/termos" style={{ color: '#64748b', textDecoration: 'underline' }}>Termos de Uso</a>
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { getReactionDef } from './IntroductionReactionsBar';
 
@@ -50,13 +51,13 @@ export default function IntroductionReactionsModal({ isOpen, postId, onClose }) 
     ? reactions
     : reactions.filter((r) => (r.reaction_type || 'like') === activeFilter);
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 100000,
-        background: 'rgba(0, 0, 0, 0.78)',
+        background: 'rgba(0, 0, 0, 0.82)',
         backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
@@ -186,4 +187,6 @@ export default function IntroductionReactionsModal({ isOpen, postId, onClose }) 
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

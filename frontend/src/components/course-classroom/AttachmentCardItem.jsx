@@ -1,5 +1,5 @@
-import React from 'react';
-import { ExternalLink, Trash2, Edit2, Brain } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, Trash2, Edit2, Brain, Loader2 } from 'lucide-react';
 import { formatFileSize, getFileIcon } from './LessonAttachmentsManager';
 
 export default function AttachmentCardItem({
@@ -10,8 +10,40 @@ export default function AttachmentCardItem({
   onRename,
   onDelete
 }) {
+  const [accessing, setAccessing] = useState(false);
   const isHtml = att.file_type?.toLowerCase() === 'html' || (att.file_url || '').toLowerCase().includes('.html');
   const isMindmap = isHtml || (att.title || '').toLowerCase().includes('mapa mental');
+  const isProxiedStorage = Boolean(
+    att.id && att.file_url && (att.file_url.includes('backblazeb2.com') || att.file_url.startsWith('/uploads/'))
+  );
+
+  const handleProxyAccess = async (e) => {
+    if (!isProxiedStorage) return;
+    e.preventDefault();
+    if (accessing) return;
+    setAccessing(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/v1/courses/attachments/${att.id}/access`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao acessar material.');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = att.title || 'material';
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch {
+      window.open(att.file_url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setAccessing(false);
+    }
+  };
 
   const cardBg = isLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
   const cardBorder = isLightBg ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)';
@@ -105,10 +137,11 @@ export default function AttachmentCardItem({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         <a
-          href={att.file_url}
+          href={isProxiedStorage ? `/api/v1/courses/attachments/${att.id}/access` : att.file_url}
           target="_blank"
           rel="noopener noreferrer"
-          download={isHtml ? undefined : (att.title || 'documento')}
+          download={isHtml || isProxiedStorage ? undefined : (att.title || 'documento')}
+          onClick={handleProxyAccess}
           className="primary-btn"
           style={{
             display: 'inline-flex',
@@ -117,14 +150,15 @@ export default function AttachmentCardItem({
             fontSize: '12px',
             padding: '7px 14px',
             textDecoration: 'none',
+            opacity: accessing ? 0.75 : 1,
             background: isMindmap ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : undefined,
             border: isMindmap ? '1px solid rgba(168, 85, 247, 0.5)' : undefined,
             boxShadow: isMindmap ? '0 2px 8px rgba(147, 51, 234, 0.3)' : undefined
           }}
           data-testid={`access-attachment-btn-${att.id || idx}`}
         >
-          <ExternalLink size={14} />
-          <span>{isMindmap ? 'Visualizar Mapa Mental ↗' : (isHtml ? 'Abrir em Nova Aba ↗' : 'Acessar')}</span>
+          {accessing ? <Loader2 size={14} className="spin" /> : <ExternalLink size={14} />}
+          <span>{accessing ? 'Abrindo...' : (isMindmap ? 'Visualizar Mapa Mental ↗' : (isHtml ? 'Abrir em Nova Aba ↗' : 'Acessar'))}</span>
         </a>
 
         {isManager && att.id && (

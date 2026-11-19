@@ -420,6 +420,7 @@ export default function SupportTopicDetailModal({
                   onToggleStatus={handleToggleStatus}
                   updatingStatus={updatingStatus}
                   onImageClick={(url, title) => setLightboxImage({ url, title })}
+                  onCloseModal={onClose}
                 />
 
                 {/* Lista de Respostas */}

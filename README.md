@@ -1,11 +1,22 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.7`** | **Docker Hub: `backend-1.3.7` / `frontend-1.3.7`**
+> **Versão Oficial: `v1.3.8`** | **Docker Hub: `backend-1.3.8` / `frontend-1.3.8`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.3.8 (Sessão de 7 Dias com Sliding Refresh, Suporte com Módulo/Aula Clicáveis & Múltiplas Mídias, Proxy Anti-SmartScreen e Filtros do Feed)
+- **🔐 Sessão Multi-Dispositivo Estável de 7 Dias (*Sliding Session*):**
+  - Validade padrão do token JWT ampliada para **7 dias (`10080` minutos)** direto no código (`config.py`), com renovação silenciosa em segundo plano (`POST /api/v1/auth/refresh` + `authInterceptor.js`), sincronização entre abas via `storage` e suporte simultâneo a PC + Celular / App Android sem desconexões abruptas.
+- **🙋‍♂️ Suporte com Seleção Busca-Rápida de Módulo/Aula, Redirecionamento Direto e Múltiplas Mídias:**
+  - Modal **Nova Publicação / Dúvida** com altura controlada (`maxHeight: 88vh`) e rolagem interna, filtragem automática de cursos com aulas ou Apps (`item_type == 'tool'`), seletores pesquisáveis por digitação de **Módulo (Opcional)** e **Aula Específica (Opcional)**, envio de **múltiplas imagens/prints** (`image_urls_json`), layout mobile limpo nos cards e clique direto no badge de Módulo/Aula para abrir a aula correspondente na sala de aula.
+  - Badge de notificação em tempo real no item **Suporte & Relatos** da barra lateral e na sub-aba **Comunidade de Suporte & Dúvidas** contabilizando dúvidas em aberto + relatos de aulas.
+- **🛡️ Proxy Autenticado de Materiais Complementares (Anti-SmartScreen):**
+  - Endpoint `GET /api/v1/courses/attachments/{attachment_id}/access` que transmite PDFs e materiais complementares diretamente pelo domínio próprio da plataforma, eliminando alertas falsos do Microsoft Defender SmartScreen sobre URLs brutas do Backblaze B2.
+- **📰 Filtros Agrupados do Feed da Comunidade e Layout Mobile do Chat:**
+  - Barra de filtros compacta em dropdowns (`FeedFilterBar.jsx`), exclusão de posts com pontuação zerada ao filtrar por *Mais Curtidos / Comentados / Salvos / Compartilhados* e ajuste do rodapé do Chat no mobile (`100dvh - 60px`).
 
 ### 🚀 Novidades da Versão v1.3.7 (App Android Capacitor, Push Notifications FCM e Conformidade Play Store)
 - **📱 Base Android Nativa (Capacitor) & Push Notifications (FCM):**

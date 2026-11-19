@@ -71,3 +71,26 @@ def test_public_account_deletion_request_does_not_leak_email_existence():
     )
     assert res_missing.status_code == 200
     assert res_missing.json() == res_exists.json()
+
+
+def test_blocked_user_hidden_from_introductions():
+    from app.models.introduction import IntroductionPost
+
+    id_a, headers_a = _make_user("intro_viewer@example.com", "Viewer")
+    id_b, _ = _make_user("intro_blocked@example.com", "Spammer")
+
+    db = TestingSessionLocal()
+    try:
+        db.add(IntroductionPost(user_id=id_b, title="Spam Intro", content="Conteúdo indesejado"))
+        db.commit()
+    finally:
+        db.close()
+
+    res_before = client.get("/api/v1/introductions", headers=headers_a)
+    assert res_before.status_code == 200
+    assert any(p["title"] == "Spam Intro" for p in res_before.json())
+
+    client.post(f"/api/v1/blocks/{id_b}", headers=headers_a)
+    res_after = client.get("/api/v1/introductions", headers=headers_a)
+    assert res_after.status_code == 200
+    assert not any(p["title"] == "Spam Intro" for p in res_after.json())

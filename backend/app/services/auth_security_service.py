@@ -107,14 +107,12 @@ def invalidate_user_sessions(user: User, db: Session) -> int:
 
 def enforce_single_session_on_login(user: User, db: Session) -> int:
     """
-    Para alunos (anti-pirataria), incrementa a versão do token a cada novo login.
-    Assim, qualquer login anterior em outro dispositivo/navegador é desconectado.
-    Para administradores, mantém o token_version atual para permitir múltiplos dispositivos.
+    Mantém o token_version atual do usuário no login normal para permitir que
+    alunos e administradores utilizem múltiplos dispositivos simultaneamente
+    (ex: Computador + Celular / App Android + Navegador) sem desconexões abruptas.
+    A invalidação de sessões (incremento de token_version) ocorre apenas quando
+    o usuário altera/redefine a senha, é bloqueado/inativado ou exclui a conta.
     """
-    if user.role == "aluno":
-        return invalidate_user_sessions(user, db)
-
-    # Para superadmin e admin, garante ao menos token_version = 1
     if user.token_version is None:
         user.token_version = 1
         db.commit()

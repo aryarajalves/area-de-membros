@@ -1,0 +1,7 @@
+{
+  "slug": "exemplo-expert",
+  "appId": "com.exemploexpert.comunidade",
+  "appName": "Comunidade Exemplo",
+  "apiBaseUrl": "https://back.crassus.com.br",
+  "androidScheme": "https"
+}

@@ -350,9 +350,15 @@ describe('Sidebar Component & Unified SubTabs', () => {
   it('alterna entre abas unificadas de Suporte & Relatos e Servidor & Logs', () => {
     const onSelectTab = vi.fn();
     const { unmount } = render(
-      <SupportReportsSubTabs activeTab="support" onSelectTab={onSelectTab} pendingReportsCount={2} />
+      <SupportReportsSubTabs
+        activeTab="support"
+        onSelectTab={onSelectTab}
+        pendingSupportCount={3}
+        pendingReportsCount={2}
+      />
     );
 
+    expect(screen.getByTestId('subtab-pending-support-badge')).toHaveTextContent('3');
     expect(screen.getByTestId('subtab-pending-reports-badge')).toHaveTextContent('2');
     fireEvent.click(screen.getByTestId('unified-subtab-lesson-reports'));
     expect(onSelectTab).toHaveBeenCalledWith('lesson-reports');

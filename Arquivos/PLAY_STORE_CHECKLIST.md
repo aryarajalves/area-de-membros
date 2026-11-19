@@ -53,8 +53,9 @@ Sem estes itens, a Google Play Store reprova o app na revisão:
 - [ ] **2. Gerar Chave de Assinatura (`keystore.jks`):**
   - Criar a `keystore` no Android Studio e guardar **em backup seguro (nuvem/cofre)** — se perder essa chave, não será possível enviar atualizações futuras do app.
 - [ ] **3. Sincronizar e Compilar:**
-  - Rodar na pasta `frontend/`:
+  - Rodar na pasta `frontend/` (substituindo `<slug>` pelo perfil em `frontend/apps-config/<slug>`):
     ```bash
+    npm run cap:prepare -- <slug>
     npm run build
     npx cap sync android
     ```

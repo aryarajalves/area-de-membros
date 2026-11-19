@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.models.user import User
-from app.models.course import Course, UserCourse
+from app.models.course import Course, UserCourse, Module, Lesson
 from tests.conftest import TestingSessionLocal, client
 
 def get_headers(email, password):
@@ -35,6 +35,20 @@ def seed_support_data():
     curso_bloqueado = Course(title="Curso Python", description="Aprenda Python", is_published=True)
     db.add_all([curso_liberado, curso_bloqueado])
     db.commit()
+    db.refresh(curso_liberado)
+    db.refresh(curso_bloqueado)
+
+    mod_react = Module(course_id=curso_liberado.id, title="Módulo 1", order_index=1)
+    mod_python = Module(course_id=curso_bloqueado.id, title="Módulo 1", order_index=1)
+    db.add_all([mod_react, mod_python])
+    db.commit()
+    db.refresh(mod_react)
+    db.refresh(mod_python)
+
+    db.add_all([
+        Lesson(module_id=mod_react.id, title="Aula 1 React", order_index=1),
+        Lesson(module_id=mod_python.id, title="Aula 1 Python", order_index=1),
+    ])
 
     uc = UserCourse(user_id=aluno1.id, course_id=curso_liberado.id)
     db.add(uc)

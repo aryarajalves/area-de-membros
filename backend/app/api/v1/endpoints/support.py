@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from typing import Optional, List
@@ -10,7 +11,7 @@ from app.core.database import get_db
 from app.core.logger import logger
 from app.api.v1.endpoints.users import get_current_user
 from app.models.user import User
-from app.models.course import Course, UserCourse
+from app.models.course import Course, UserCourse, Module, Lesson
 from app.models.support import SupportTopic, SupportReply, SupportTopicLike, SupportTopicPin, SupportTopicFavorite
 from app.schemas.support import (
     SupportCourseItem,
@@ -75,12 +76,18 @@ def get_my_courses_for_support(
             .order_by(Course.title.asc())
             .all()
         )
+    filtered_courses = []
     for c in courses:
+        is_app = (getattr(c, "item_type", None) or "course") == "tool"
+        has_lessons = any(len(m.lessons or []) > 0 for m in (c.modules or []))
+        if not is_app and not has_lessons:
+            continue
         s_locked, s_until, s_reason = is_course_channel_locked_for_user(db, current_user, c.id, "support")
         setattr(c, "is_support_locked", s_locked)
         setattr(c, "support_locked_until", s_until)
         setattr(c, "support_locked_reason", s_reason)
-    return courses
+        filtered_courses.append(c)
+    return filtered_courses
 
 
 @router.get(
@@ -264,6 +271,11 @@ def list_support_topics(
                 title=t.title,
                 content=t.content,
                 image_url=t.image_url,
+                image_urls=t.image_urls,
+                module_id=t.module_id,
+                lesson_id=t.lesson_id,
+                module_title=t.module_title,
+                lesson_title=t.lesson_title,
                 status=t.status or "open",
                 likes_count=t.likes_count or 0,
                 replies_count=replies_count,
@@ -328,12 +340,34 @@ def create_support_topic(
     if s_locked:
         raise HTTPException(status_code=403, detail=s_reason or "O suporte deste curso está temporariamente fechado.")
 
+    clean_urls = [u.strip() for u in (payload.image_urls or []) if u and u.strip()]
+    if not clean_urls and payload.image_url and payload.image_url.strip():
+        clean_urls = [payload.image_url.strip()]
+    primary_img = clean_urls[0] if clean_urls else None
+
+    mod_id, mod_title, les_id, les_title = None, None, None, None
+    if payload.module_id:
+        mod = db.query(Module).filter(Module.id == payload.module_id, Module.course_id == payload.course_id).first()
+        if mod:
+            mod_id, mod_title = mod.id, mod.title
+    if payload.lesson_id:
+        les = db.query(Lesson).join(Module, Lesson.module_id == Module.id).filter(Lesson.id == payload.lesson_id, Module.course_id == payload.course_id).first()
+        if les:
+            les_id, les_title = les.id, les.title
+            if not mod_id and les.module:
+                mod_id, mod_title = les.module.id, les.module.title
+
     topic = SupportTopic(
         user_id=current_user.id,
         course_id=payload.course_id,
         title=payload.title.strip(),
         content=payload.content.strip(),
-        image_url=payload.image_url,
+        image_url=primary_img,
+        image_urls_json=json.dumps(clean_urls) if clean_urls else None,
+        module_id=mod_id,
+        lesson_id=les_id,
+        module_title=mod_title,
+        lesson_title=les_title,
         status="open",
         likes_count=0,
     )
@@ -348,6 +382,11 @@ def create_support_topic(
         title=topic.title,
         content=topic.content,
         image_url=topic.image_url,
+        image_urls=topic.image_urls,
+        module_id=topic.module_id,
+        lesson_id=topic.lesson_id,
+        module_title=topic.module_title,
+        lesson_title=topic.lesson_title,
         status=topic.status,
         likes_count=0,
         replies_count=0,
@@ -445,6 +484,11 @@ def get_support_topic_detail(
         title=topic.title,
         content=topic.content,
         image_url=topic.image_url,
+        image_urls=topic.image_urls,
+        module_id=topic.module_id,
+        lesson_id=topic.lesson_id,
+        module_title=topic.module_title,
+        lesson_title=topic.lesson_title,
         status=topic.status or "open",
         likes_count=topic.likes_count or 0,
         liked_by_me=user_like is not None,

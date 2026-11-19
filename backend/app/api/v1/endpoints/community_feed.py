@@ -153,14 +153,16 @@ def get_feed(
         term = f"%{search.strip()}%"
         query = query.filter(or_(CommunityPost.content.ilike(term), CommunityPost.category.ilike(term)))
 
-    if filter in ("popular", "most_liked"):
-        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.likes_count.desc(), CommunityPost.created_at.desc())
-    elif filter == "most_commented":
-        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.comments_count.desc(), CommunityPost.created_at.desc())
-    elif filter == "most_saved":
-        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.bookmarks_count.desc(), CommunityPost.created_at.desc())
-    elif filter == "most_shared":
-        query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.shares_count.desc(), CommunityPost.created_at.desc())
+    engagement_columns = {
+        "popular": CommunityPost.likes_count,
+        "most_liked": CommunityPost.likes_count,
+        "most_commented": CommunityPost.comments_count,
+        "most_saved": CommunityPost.bookmarks_count,
+        "most_shared": CommunityPost.shares_count,
+    }
+    target_col = engagement_columns.get(filter)
+    if target_col is not None:
+        query = query.filter(target_col > 0).order_by(CommunityPost.is_pinned.desc(), target_col.desc(), CommunityPost.created_at.desc())
     else:
         query = query.order_by(CommunityPost.is_pinned.desc(), CommunityPost.created_at.desc())
 
@@ -513,13 +515,12 @@ def get_post_comments(
     """
     Retorna todos os comentários de uma publicação específica.
     """
-    comments = (
-        db.query(CommunityPostComment)
-        .options(joinedload(CommunityPostComment.user))
-        .filter(CommunityPostComment.post_id == post_id)
-        .order_by(CommunityPostComment.created_at.asc())
-        .all()
-    )
+    from app.services.user_block_service import get_blocked_user_ids
+    blocked_ids = get_blocked_user_ids(db, current_user.id)
+    q = db.query(CommunityPostComment).options(joinedload(CommunityPostComment.user)).filter(CommunityPostComment.post_id == post_id)
+    if blocked_ids:
+        q = q.filter(~CommunityPostComment.user_id.in_(blocked_ids))
+    comments = q.order_by(CommunityPostComment.created_at.asc()).all()
     return [_format_comment(c) for c in comments]
 
 
@@ -705,7 +706,7 @@ def get_feed_courses(
     """
     Retorna os cursos disponíveis para marcação de posts.
     """
-    courses = db.query(Course.id, Course.title).filter(Course.status == "published").order_by(Course.title.asc()).all()
+    courses = db.query(Course.id, Course.title).filter(Course.is_published == True).order_by(Course.title.asc()).all()
     return [{"id": c.id, "title": c.title} for c in courses]
 
 

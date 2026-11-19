@@ -86,8 +86,8 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
       data-testid="chat-management-view"
       style={{
         display: 'flex',
-        height: 'calc(100vh - 64px)',
-        minHeight: 'calc(100vh - 64px)',
+        height: 'calc(100dvh - 64px)',
+        minHeight: 0,
         maxHeight: 'calc(100vh - 64px)',
         width: '100%',
         backgroundColor: '#070b13',

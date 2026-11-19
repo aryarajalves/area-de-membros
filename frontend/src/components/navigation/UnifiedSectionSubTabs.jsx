@@ -2,18 +2,27 @@ import React from 'react';
 import { HelpCircle, AlertTriangle, Server, Database, Terminal, ChevronDown, ExternalLink } from 'lucide-react';
 import { getLinkIcon, getLinkColor } from '../platform-settings/linkIcons';
 
-export function SupportReportsSubTabs({ activeTab, onSelectTab, pendingReportsCount = 0, isLightBg = false }) {
+export function SupportReportsSubTabs({
+  activeTab,
+  onSelectTab,
+  pendingSupportCount = 0,
+  pendingReportsCount = 0,
+  isLightBg = false,
+}) {
   const tabs = [
     {
       id: 'support',
       label: 'Comunidade de Suporte & Dúvidas',
       icon: HelpCircle,
+      badge: pendingSupportCount,
+      badgeTestId: 'subtab-pending-support-badge',
     },
     {
       id: 'lesson-reports',
       label: 'Relatos de Aulas',
       icon: AlertTriangle,
       badge: pendingReportsCount,
+      badgeTestId: 'subtab-pending-reports-badge',
     },
   ];
 
@@ -75,7 +84,7 @@ export function SupportReportsSubTabs({ activeTab, onSelectTab, pendingReportsCo
             <span>{tab.label}</span>
             {tab.badge !== undefined && tab.badge > 0 && (
               <span
-                data-testid="subtab-pending-reports-badge"
+                data-testid={tab.badgeTestId || 'subtab-pending-reports-badge'}
                 style={{
                   backgroundColor: '#ef4444',
                   color: '#ffffff',

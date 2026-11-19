@@ -162,5 +162,25 @@ describe('SupportTopicCard Component', () => {
 
     expect(handleToggleFavorite).toHaveBeenCalledWith(42);
   });
+
+  it('renders module/lesson badge and multi-attachment count when present', () => {
+    const contextTopic = {
+      ...dummyTopic,
+      module_title: 'Módulo 1',
+      lesson_title: 'Aula 3',
+      image_url: 'https://example.com/1.png',
+      image_urls: ['https://example.com/1.png', 'https://example.com/2.png'],
+    };
+
+    render(
+      <SupportTopicCard
+        topic={contextTopic}
+        currentUser={{ id: 1, role: 'aluno' }}
+      />
+    );
+
+    expect(screen.getByTestId('topic-context-badge-42')).toHaveTextContent('Módulo 1 • Aula 3');
+    expect(screen.getByText('Anexo (2)')).toBeInTheDocument();
+  });
 });
 

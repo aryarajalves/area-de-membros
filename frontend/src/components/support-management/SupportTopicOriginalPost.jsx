@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, MessageSquare, CheckCircle2, HelpCircle, Star, ZoomIn } from 'lucide-react';
+import { Heart, MessageSquare, CheckCircle2, HelpCircle, Star, ZoomIn, Layers, PlayCircle, ExternalLink } from 'lucide-react';
 import { getInitials, formatTimeAgo } from './SupportTopicCard';
 
 export default function SupportTopicOriginalPost({
@@ -8,6 +8,7 @@ export default function SupportTopicOriginalPost({
   onToggleLike,
   onToggleStatus,
   onImageClick,
+  onCloseModal,
 }) {
   if (!topic) return null;
 
@@ -15,6 +16,25 @@ export default function SupportTopicOriginalPost({
   const isManager = ['superadmin', 'admin'].includes(currentUser?.role);
   const canManageStatus = isAuthor || isManager;
   const isResolved = topic.status === 'resolved';
+
+  const handleGoToModuleOrLesson = () => {
+    const courseId = topic.course?.id || topic.course_id;
+    if (!courseId) return;
+    if (onCloseModal) onCloseModal();
+    window.dispatchEvent(new CustomEvent('app:navigate_tab', { detail: { tab: 'courses' } }));
+    const dispatchOpen = () => {
+      window.dispatchEvent(
+        new CustomEvent('open_course_lesson', {
+          detail: {
+            courseId: Number(courseId),
+            moduleId: topic.module_id ? Number(topic.module_id) : null,
+            lessonId: topic.lesson_id ? Number(topic.lesson_id) : null,
+          },
+        })
+      );
+    };
+    setTimeout(dispatchOpen, 150);
+  };
 
   return (
     <div
@@ -119,55 +139,151 @@ export default function SupportTopicOriginalPost({
         )}
       </div>
 
-      <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: '0 0 12px 0' }}>
+      <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: '0 0 10px 0' }}>
         {topic.title}
       </h1>
+
+      {(topic.module_title || topic.lesson_title) && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginBottom: '12px',
+          }}
+          data-testid="topic-context-badges"
+        >
+          {topic.module_title && (
+            <button
+              type="button"
+              onClick={handleGoToModuleOrLesson}
+              title="Clique para abrir este módulo/aula no curso"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '6px 11px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(139, 92, 246, 0.16)',
+                color: '#c4b5fd',
+                border: '1px solid rgba(139, 92, 246, 0.4)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+              }}
+              data-testid="detail-module-badge"
+            >
+              <Layers size={13} style={{ flexShrink: 0 }} />
+              <span>Módulo: {topic.module_title}</span>
+              <ExternalLink size={12} style={{ flexShrink: 0, opacity: 0.8 }} />
+            </button>
+          )}
+          {topic.lesson_title && (
+            <button
+              type="button"
+              onClick={handleGoToModuleOrLesson}
+              title="Clique para ir direto para esta aula"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '6px 11px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(56, 189, 248, 0.16)',
+                color: '#7dd3fc',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+              }}
+              data-testid="detail-lesson-badge"
+            >
+              <PlayCircle size={13} style={{ flexShrink: 0 }} />
+              <span>Aula: {topic.lesson_title}</span>
+              <ExternalLink size={12} style={{ flexShrink: 0, opacity: 0.8 }} />
+            </button>
+          )}
+        </div>
+      )}
 
       <p style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6', margin: '0 0 16px 0', whiteSpace: 'pre-wrap' }}>
         {topic.content}
       </p>
 
-      {/* Imagem anexa com clique para Lightbox */}
-      {topic.image_url && (
-        <div
-          style={{
-            marginBottom: '16px',
-            borderRadius: '10px',
-            overflow: 'hidden',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            position: 'relative',
-            cursor: 'pointer',
-            display: 'inline-block',
-            maxWidth: '100%',
-          }}
-          onClick={() => onImageClick && onImageClick(topic.image_url, topic.title)}
-          title="Clique para ver a imagem em tela cheia"
-          data-testid="topic-attached-image"
-        >
-          <img
-            src={topic.image_url}
-            alt="Imagem da dúvida"
-            style={{ width: '100%', maxHeight: '360px', objectFit: 'contain', backgroundColor: '#020617', display: 'block' }}
-          />
+      {/* Galeria de Imagens anexas com clique para Lightbox */}
+      {(() => {
+        const allImages =
+          Array.isArray(topic.image_urls) && topic.image_urls.length > 0
+            ? topic.image_urls
+            : topic.image_url
+              ? [topic.image_url]
+              : [];
+        if (allImages.length === 0) return null;
+        return (
           <div
             style={{
-              position: 'absolute',
-              bottom: '8px',
-              right: '8px',
-              backgroundColor: 'rgba(0,0,0,0.65)',
-              color: '#fff',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
+              display: 'grid',
+              gridTemplateColumns: allImages.length > 1 ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr',
+              gap: '12px',
+              marginBottom: '16px',
             }}
+            data-testid="topic-attached-images-gallery"
           >
-            <ZoomIn size={13} /> Clique para ampliar
+            {allImages.map((imgUrl, idx) => (
+              <div
+                key={`${imgUrl}-${idx}`}
+                style={{
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  display: 'inline-block',
+                  maxWidth: '100%',
+                  backgroundColor: '#020617',
+                }}
+                onClick={() => onImageClick && onImageClick(imgUrl, topic.title)}
+                title="Clique para ver a imagem em tela cheia"
+                data-testid={idx === 0 ? 'topic-attached-image' : `topic-attached-image-${idx}`}
+              >
+                <img
+                  src={imgUrl}
+                  alt={`Imagem ${idx + 1} da dúvida`}
+                  style={{
+                    width: '100%',
+                    maxHeight: allImages.length > 1 ? '220px' : '360px',
+                    objectFit: 'contain',
+                    backgroundColor: '#020617',
+                    display: 'block',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    right: '8px',
+                    backgroundColor: 'rgba(0,0,0,0.65)',
+                    color: '#fff',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <ZoomIn size={13} /> Clique para ampliar
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Barra de Ações do Tópico */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>

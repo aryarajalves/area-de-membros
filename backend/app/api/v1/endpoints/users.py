@@ -182,6 +182,26 @@ def login(request: Request, login_data: UserLogin, db: Session = Depends(get_db)
     )
 
 @router.post(
+    "/refresh",
+    response_model=Token,
+    summary="Renovar Token de Acesso (Sliding Session)",
+    description="Emite um novo token JWT com validade renovada (7 dias) para o usuário autenticado ativo."
+)
+def refresh_access_token(
+    current_user: User = Depends(get_current_user),
+):
+    new_token = create_access_token(data={
+        "sub": str(current_user.id),
+        "role": current_user.role,
+        "token_version": current_user.token_version or 1,
+    })
+    return Token(
+        access_token=new_token,
+        token_type="bearer",
+        user=current_user,
+    )
+
+@router.post(
     "/logout",
     summary="Encerrar Sessão",
     description="Invalida os tokens de acesso atuais do usuário autenticado."

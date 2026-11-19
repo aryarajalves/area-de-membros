@@ -31,7 +31,7 @@ import CertificatePublicValidationPage from './components/certificates/Certifica
 import PublicComplianceRouter from './components/common/PublicComplianceRouter';
 import LevelUpWatcher from './components/gamification/LevelUpWatcher';
 import { useToast } from './context/ToastContext';
-import { AUTH_EXPIRED_EVENT } from './services/authInterceptor';
+import { AUTH_EXPIRED_EVENT, subscribeAuthStorageSync } from './services/authInterceptor';
 import { useUrlNavigation } from './hooks/useUrlNavigation';
 import useCommunityFeedStudentsEnabled from './hooks/useCommunityFeedStudentsEnabled';
 import { usePushNotifications, unregisterPushNotifications } from './hooks/usePushNotifications';
@@ -44,6 +44,7 @@ function App() {
   const [token, setToken] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
+  const [pendingSupportCount, setPendingSupportCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [isInsideCourse, setIsInsideCourse] = useState(false);
   const [isInsideFunnel, setIsInsideFunnel] = useState(false);
@@ -127,32 +128,25 @@ function App() {
       }
     }
 
-    // Ouvinte para logout automático quando o token expirar
+    // Ouvinte para logout automático quando o token expirar e sincronia entre abas
     const handleExpired = () => {
-      setUser(null);
-      setToken(null);
-      setShowLogoutModal(false);
+      setUser(null); setToken(null); setShowLogoutModal(false);
       addToast('Sua sessão expirou. Por favor, faça login novamente.', 'error');
     };
+    const unsubscribeStorage = subscribeAuthStorageSync({
+      onSessionUpdated: (newToken, newUser) => { setToken(newToken); if (newUser) setUser(newUser); },
+      onSessionCleared: () => { setUser(null); setToken(null); setShowLogoutModal(false); },
+    });
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
-    return () => {
-      window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
-    };
+    return () => { window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired); unsubscribeStorage(); };
   }, [addToast]);
 
   useEffect(() => {
-    const handleAppNavigateTab = (e) => {
-      const targetTab = e.detail?.tab;
-      if (targetTab) {
-        handleSelectTab(targetTab);
-      }
-    };
+    const handleAppNavigateTab = (e) => { if (e.detail?.tab) handleSelectTab(e.detail.tab); };
     window.addEventListener('app:navigate_tab', handleAppNavigateTab);
-    return () => {
-      window.removeEventListener('app:navigate_tab', handleAppNavigateTab);
-    };
-  }, []);
+    return () => window.removeEventListener('app:navigate_tab', handleAppNavigateTab);
+  }, [handleSelectTab]);
 
   useEffect(() => {
     const currentToken = token || localStorage.getItem('auth_token');
@@ -209,23 +203,26 @@ function App() {
 
   const fetchReportsSummary = useCallback(async () => {
     const currentToken = token || localStorage.getItem('auth_token');
+    if (!currentToken) return;
     const currentUserStr = localStorage.getItem('auth_user');
     let userRole = user?.role;
     if (!userRole && currentUserStr) {
       try { userRole = JSON.parse(currentUserStr).role; } catch { /* ignore */ }
     }
-    if (!currentToken || !['superadmin', 'admin'].includes(userRole)) return;
-    try {
-      const res = await fetch('/api/v1/courses/reports/summary', {
-        headers: { Authorization: `Bearer ${currentToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPendingReportsCount(data.pending_count || 0);
-      }
-    } catch {
-      // Ignora erro silenciosamente
+    const headers = { Authorization: `Bearer ${currentToken}` };
+    if (['superadmin', 'admin'].includes(userRole)) {
+      try {
+        const res = await fetch('/api/v1/courses/reports/summary', { headers });
+        if (res.ok) { const data = await res.json(); setPendingReportsCount(data.pending_count || 0); }
+      } catch { /* ignore */ }
     }
+    try {
+      const sRes = await fetch('/api/v1/support/stats', { headers });
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        setPendingSupportCount(Math.max(0, (sData.total_topics || 0) - (sData.resolved_count || 0)));
+      }
+    } catch { /* ignore */ }
   }, [token, user?.role]);
 
   const fetchChatUnreadSummary = useCallback(async () => {
@@ -257,9 +254,11 @@ function App() {
       }, 500);
     };
     window.addEventListener('chat_unread_updated', handleChatUnreadUpdate);
+    window.addEventListener('support_summary_updated', fetchReportsSummary);
 
     return () => {
       window.removeEventListener('chat_unread_updated', handleChatUnreadUpdate);
+      window.removeEventListener('support_summary_updated', fetchReportsSummary);
       if (debounceTimer) clearTimeout(debounceTimer);
     };
   }, [fetchPlatformTheme, fetchReportsSummary, fetchChatUnreadSummary]);
@@ -371,14 +370,11 @@ function App() {
           onSelectTab={handleSelectTab}
           user={user}
           onLogout={handlePromptLogout}
-          pendingReportsCount={pendingReportsCount}
+          pendingReportsCount={pendingReportsCount + pendingSupportCount}
           chatUnreadCount={chatUnreadCount}
           bgColor={memberAreaBgColor}
           isMobileOpen={isMobileMenuOpen}
-          onCloseMobile={() => {
-            setIsMobileMenuOpen(false);
-            if (isChatTab) setIsChatSidebarOpen(false);
-          }}
+          onCloseMobile={() => { setIsMobileMenuOpen(false); if (isChatTab) setIsChatSidebarOpen(false); }}
         />
       )}
       <main
@@ -429,6 +425,7 @@ function App() {
           <SupportReportsSubTabs
             activeTab={activeTab}
             onSelectTab={handleSelectTab}
+            pendingSupportCount={pendingSupportCount}
             pendingReportsCount={pendingReportsCount}
             isLightBg={isLightBg}
           />

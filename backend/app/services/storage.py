@@ -250,6 +250,29 @@ def delete_media_file(media_url: str) -> bool:
     return False
 
 
+def fetch_media_object(media_url: str):
+    """Baixa o stream de uma mídia armazenada no Backblaze B2 para entrega via proxy autenticado."""
+    if not media_url:
+        return None
+    s3 = get_s3_client()
+    if not s3 or not settings.B2_BUCKET_NAME:
+        return None
+
+    try:
+        if settings.B2_BUCKET_NAME in media_url and "AreaDeMembros/" in media_url:
+            s3_key = media_url.split(f"{settings.B2_BUCKET_NAME}/")[-1].split("?")[0]
+            obj = s3.get_object(Bucket=settings.B2_BUCKET_NAME, Key=s3_key)
+            return {
+                "body": obj["Body"],
+                "content_type": obj.get("ContentType"),
+                "content_length": obj.get("ContentLength"),
+            }
+    except Exception as e:
+        logger.error(f"Erro ao buscar mídia {media_url} no Backblaze B2: {e}")
+
+    return None
+
+
 _b2_cors_configured = False
 
 

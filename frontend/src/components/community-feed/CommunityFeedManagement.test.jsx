@@ -45,8 +45,15 @@ describe('CommunityFeedManagement Component', () => {
     expect(screen.getByTestId('feed-page-title')).toHaveTextContent('Feed da Comunidade');
     expect(screen.getByTestId('feed-filter-tab-all')).toBeInTheDocument();
     expect(screen.getByTestId('feed-filter-tab-following')).toBeInTheDocument();
-    expect(screen.getByTestId('feed-filter-tab-popular')).toBeInTheDocument();
     expect(screen.getByTestId('feed-filter-tab-my_course')).toBeInTheDocument();
+    expect(screen.getByTestId('feed-filter-group-engagement')).toBeInTheDocument();
+    expect(screen.getByTestId('feed-filter-group-personal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('feed-filter-group-engagement'));
+    expect(screen.getByTestId('feed-filter-tab-popular')).toBeInTheDocument();
+    expect(screen.getByTestId('feed-filter-tab-most_shared')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('feed-filter-group-personal'));
     expect(screen.getByTestId('feed-filter-tab-my_posts')).toBeInTheDocument();
     expect(screen.getByTestId('feed-search-input')).toBeInTheDocument();
   });

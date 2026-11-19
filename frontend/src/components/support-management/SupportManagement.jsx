@@ -34,14 +34,13 @@ export default function SupportManagement({ currentUser, bgColor }) {
     setLoadingStats(true);
     const token = localStorage.getItem('auth_token');
     try {
-      const res = await fetch('/api/v1/support/stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/v1/support/stats', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (res.ok) setStats(data);
-    } catch {
-      // Ignora erro silencioso
-    } finally {
+      if (res.ok) {
+        setStats(data);
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('support_summary_updated'));
+      }
+    } catch { /* Ignora erro silencioso */ } finally {
       setLoadingStats(false);
     }
   }, []);

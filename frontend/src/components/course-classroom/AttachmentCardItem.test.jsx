@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AttachmentCardItem from './AttachmentCardItem';
 
 describe('AttachmentCardItem Component', () => {
@@ -52,5 +52,35 @@ describe('AttachmentCardItem Component', () => {
 
     fireEvent.click(deleteBtn);
     expect(handleDelete).toHaveBeenCalledWith(mockAtt);
+  });
+
+  it('usa proxy seguro do backend quando o anexo está hospedado no Backblaze B2', async () => {
+    localStorage.setItem('auth_token', 'jwt-aluno');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['%PDF'], { type: 'application/pdf' }),
+    });
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/pdf-1');
+    URL.revokeObjectURL = vi.fn();
+    window.open = vi.fn().mockReturnValue({});
+
+    const b2Att = {
+      ...mockAtt,
+      id: 99,
+      file_url: 'https://s3.us-west-004.backblazeb2.com/zap-voice/AreaDeMembros/attachments/att_123.pdf',
+    };
+
+    render(<AttachmentCardItem attachment={b2Att} index={0} isManager={false} />);
+    const btn = screen.getByTestId('access-attachment-btn-99');
+    expect(btn).toHaveAttribute('href', '/api/v1/courses/attachments/99/access');
+
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/courses/attachments/99/access',
+        expect.objectContaining({ headers: { Authorization: 'Bearer jwt-aluno' } }),
+      );
+    });
+    expect(window.open).toHaveBeenCalledWith('blob:http://localhost/pdf-1', '_blank', 'noopener,noreferrer');
   });
 });

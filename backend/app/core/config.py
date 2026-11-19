@@ -8,8 +8,13 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecret-jwt-key-projeto-base-981273491")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     DM_ENCRYPTION_KEY: str = os.getenv("DM_ENCRYPTION_KEY", "")
+
+    def model_post_init(self, __context) -> None:
+        # Garante validade mínima de 7 dias (10080 min) mesmo se um .env legado tiver 1440 configurado
+        if self.ACCESS_TOKEN_EXPIRE_MINUTES < 60 * 24 * 7:
+            self.ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
     # Pepper for password hashing (kept secret on the server)
     SECURITY_PASSWORD_PEPPER: str = os.getenv("SECURITY_PASSWORD_PEPPER", "custom-pepper-salt-projeto-base-secure-key-2026")
