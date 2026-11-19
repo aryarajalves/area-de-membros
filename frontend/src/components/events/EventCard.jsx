@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Clock, Video, PlayCircle, ExternalLink, Lock,
-  Pencil, Trash2, CalendarPlus, CheckCircle2
+  Pencil, Trash2, CalendarPlus, CheckCircle2, Users
 } from 'lucide-react';
 import {
   formatBrasiliaDate,
@@ -9,6 +9,7 @@ import {
   generateGoogleCalendarUrl,
 } from './googleCalendarHelper';
 import ConfirmAttendanceModal from './ConfirmAttendanceModal';
+import EventAttendeesModal from './EventAttendeesModal';
 
 export default function EventCard({
   event,
@@ -22,6 +23,7 @@ export default function EventCard({
   const [attendeesCount, setAttendeesCount] = useState(event.attendees_count || 0);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isAttendeesModalOpen, setIsAttendeesModalOpen] = useState(false);
 
   useEffect(() => {
     setIsConfirmed(!!event.is_confirmed);
@@ -127,18 +129,9 @@ export default function EventCard({
           {status === 'live' && (
             <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: '#ef4444',
-                color: '#fff',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                letterSpacing: '0.04em',
-                boxShadow: '0 0 14px rgba(239, 68, 68, 0.7)',
-                animation: 'pulse 1.8s infinite',
+                display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '20px',
+                background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.04em',
+                boxShadow: '0 0 14px rgba(239, 68, 68, 0.7)', animation: 'pulse 1.8s infinite',
               }}
             >
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
@@ -149,16 +142,8 @@ export default function EventCard({
           {status === 'upcoming' && (
             <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: 'rgba(59, 130, 246, 0.85)',
-                color: '#fff',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                backdropFilter: 'blur(4px)',
+                display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px',
+                background: 'rgba(59, 130, 246, 0.85)', color: '#fff', fontSize: '0.75rem', fontWeight: '600', backdropFilter: 'blur(4px)',
               }}
             >
               <Clock size={12} />
@@ -169,16 +154,8 @@ export default function EventCard({
           {status === 'past' && (
             <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: 'rgba(100, 116, 139, 0.75)',
-                color: '#e2e8f0',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                backdropFilter: 'blur(4px)',
+                display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px',
+                background: 'rgba(100, 116, 139, 0.75)', color: '#e2e8f0', fontSize: '0.75rem', fontWeight: '600', backdropFilter: 'blur(4px)',
               }}
             >
               <CheckCircle2 size={12} />
@@ -189,16 +166,9 @@ export default function EventCard({
           {event.target_type === 'course' && (
             <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
-                borderRadius: '20px',
+                display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px',
                 background: event.has_access === false ? 'rgba(234, 179, 8, 0.9)' : 'rgba(16, 185, 129, 0.85)',
-                color: event.has_access === false ? '#0f172a' : '#fff',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                backdropFilter: 'blur(4px)',
+                color: event.has_access === false ? '#0f172a' : '#fff', fontSize: '0.75rem', fontWeight: '700', backdropFilter: 'blur(4px)',
               }}
             >
               <Lock size={11} />
@@ -212,18 +182,26 @@ export default function EventCard({
           <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: '6px' }}>
             <button
               type="button"
+              data-testid={`top-attendees-event-btn-${event.id}`}
+              onClick={() => setIsAttendeesModalOpen(true)}
+              title="Ver Participantes Confirmados"
+              style={{
+                padding: '7px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(16, 185, 129, 0.45)', color: '#34d399',
+                cursor: 'pointer', display: 'flex', backdropFilter: 'blur(4px)',
+              }}
+            >
+              <Users size={14} />
+            </button>
+            <button
+              type="button"
               data-testid={`edit-event-btn-${event.id}`}
               onClick={() => onEdit(event)}
               title="Editar Evento"
               style={{
-                padding: '7px',
-                borderRadius: '8px',
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#93c5fd',
-                cursor: 'pointer',
-                display: 'flex',
-                backdropFilter: 'blur(4px)',
+                padding: '7px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.15)', color: '#93c5fd',
+                cursor: 'pointer', display: 'flex', backdropFilter: 'blur(4px)',
               }}
             >
               <Pencil size={14} />
@@ -234,14 +212,9 @@ export default function EventCard({
               onClick={() => onDelete(event)}
               title="Excluir Evento"
               style={{
-                padding: '7px',
-                borderRadius: '8px',
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#f87171',
-                cursor: 'pointer',
-                display: 'flex',
-                backdropFilter: 'blur(4px)',
+                padding: '7px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(239, 68, 68, 0.4)', color: '#f87171',
+                cursor: 'pointer', display: 'flex', backdropFilter: 'blur(4px)',
               }}
             >
               <Trash2 size={14} />
@@ -437,6 +410,24 @@ export default function EventCard({
                 </button>
               )}
 
+              {/* Botão Exclusivo Admin / Super Admin: Ver Participantes Confirmados */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setIsAttendeesModalOpen(true)}
+                  data-testid={`view-attendees-btn-${event.id}`}
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: '8px',
+                    background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.35)',
+                    color: '#38bdf8', fontWeight: '600', fontSize: '0.82rem', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}
+                >
+                  <Users size={14} />
+                  <span>Ver Participantes ({attendeesCount})</span>
+                </button>
+              )}
+
               {/* Botão Adicionar ao Google Agenda (para eventos futuros ou ao vivo) */}
               {status !== 'past' && googleCalendarUrl && (
                 <a
@@ -445,20 +436,10 @@ export default function EventCard({
                   rel="noopener noreferrer"
                   data-testid={`add-calendar-btn-${event.id}`}
                   style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#cbd5e1',
-                    fontWeight: '500',
-                    fontSize: '0.82rem',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s',
+                    width: '100%', padding: '8px 12px', borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#cbd5e1', fontWeight: '500', fontSize: '0.82rem', textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   }}
                 >
                   <CalendarPlus size={14} color="#60a5fa" />
@@ -479,6 +460,16 @@ export default function EventCard({
         onCancel={() => setIsConfirmModalOpen(false)}
         isLoading={loadingConfirm}
       />
+
+      {/* Modal Exclusivo Admin/SuperAdmin para Visualizar Nomes dos Participantes Confirmados */}
+      {isAdmin && (
+        <EventAttendeesModal
+          isOpen={isAttendeesModalOpen}
+          event={event}
+          onClose={() => setIsAttendeesModalOpen(false)}
+          addToast={addToast}
+        />
+      )}
     </div>
   );
 }

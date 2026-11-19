@@ -10,7 +10,7 @@ from app.core.logger import logger
 from app.models.user import User
 from app.models.course import Course, UserCourse
 from app.models.event import Event, EventAttendee
-from app.schemas.event import EventCreate, EventUpdate, EventResponse
+from app.schemas.event import EventCreate, EventUpdate, EventResponse, EventAttendeeResponse
 from app.api.v1.endpoints.users import get_current_user, require_admin_or_superadmin
 from app.services.course_bundle_service import get_effective_user_course_ids
 
@@ -490,3 +490,38 @@ def toggle_confirm_attendance(
         "attendees_count": attendees_count,
         "message": message,
     }
+
+
+@router.get("/{event_id}/attendees", response_model=List[EventAttendeeResponse])
+def list_event_attendees(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Lista todos os usuários que confirmaram presença no evento (exclusivo para Admin e Super Admin).
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado.")
+
+    rows = (
+        db.query(EventAttendee, User)
+        .join(User, User.id == EventAttendee.user_id)
+        .filter(EventAttendee.event_id == event_id)
+        .order_by(EventAttendee.confirmed_at.desc(), EventAttendee.id.desc())
+        .all()
+    )
+
+    return [
+        EventAttendeeResponse(
+            user_id=user.id,
+            name=user.name or user.email,
+            email=user.email,
+            phone=getattr(user, "phone", None),
+            role=user.role or "aluno",
+            avatar_url=getattr(user, "avatar_url", None),
+            confirmed_at=att.confirmed_at,
+        )
+        for att, user in rows
+    ]

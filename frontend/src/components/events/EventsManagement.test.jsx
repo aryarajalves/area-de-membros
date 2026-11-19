@@ -232,6 +232,67 @@ describe('EventCard Component', () => {
     fireEvent.click(screen.getByTestId('cancel-attendance-modal-btn'));
     expect(screen.queryByTestId('confirm-attendance-modal')).not.toBeInTheDocument();
   });
+
+  it('exibe botão Ver Participantes apenas para admin/superadmin e abre modal com os nomes confirmados', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([
+        {
+          user_id: 101,
+          name: 'Carla Aluna',
+          email: 'carla@teste.com',
+          phone: '11999990000',
+          role: 'aluno',
+          confirmed_at: '2026-11-19T12:00:00.000Z',
+        },
+        {
+          user_id: 102,
+          name: 'Marcos Dev',
+          email: 'marcos@teste.com',
+          role: 'aluno',
+          confirmed_at: '2026-11-19T12:05:00.000Z',
+        },
+      ]),
+    }));
+
+    const { rerender } = render(
+      <EventCard
+        event={{ ...baseEvent, attendees_count: 2 }}
+        isAdmin={false}
+      />
+    );
+    expect(screen.queryByTestId('view-attendees-btn-1')).not.toBeInTheDocument();
+
+    rerender(
+      <EventCard
+        event={{ ...baseEvent, attendees_count: 2 }}
+        isAdmin={true}
+      />
+    );
+
+    const viewBtn = screen.getByTestId('view-attendees-btn-1');
+    expect(viewBtn).toHaveTextContent('Ver Participantes (2)');
+    fireEvent.click(viewBtn);
+
+    expect(screen.getByTestId('event-attendees-modal')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Carla Aluna')).toBeInTheDocument();
+      expect(screen.getByText('Marcos Dev')).toBeInTheDocument();
+      expect(screen.getByTestId('event-attendees-total-badge')).toHaveTextContent('2 confirmados');
+    });
+
+    // Filtra por busca
+    fireEvent.change(screen.getByTestId('search-event-attendees-input'), {
+      target: { value: 'Carla' },
+    });
+    expect(screen.getByText('Carla Aluna')).toBeInTheDocument();
+    expect(screen.queryByText('Marcos Dev')).not.toBeInTheDocument();
+
+    // Fecha modal
+    fireEvent.click(screen.getByTestId('close-event-attendees-modal-btn'));
+    expect(screen.queryByTestId('event-attendees-modal')).not.toBeInTheDocument();
+  });
 });
 
 describe('EventsManagement Component', () => {

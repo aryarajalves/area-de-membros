@@ -47,3 +47,15 @@ class EventResponse(EventBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EventAttendeeResponse(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    phone: Optional[str] = None
+    role: str = "aluno"
+    avatar_url: Optional[str] = None
+    confirmed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
