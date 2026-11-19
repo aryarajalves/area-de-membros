@@ -870,6 +870,12 @@ async def lifespan(app: FastAPI):
         logger.info("[MAIN] Auto-migrações preventivas concluídas com sucesso.")
     except Exception as e:
         logger.warning(f"[MAIN] Aviso nas auto-migrações preventivas: {e}")
+
+    # 1.2. Varredura automática de qualquer coluna faltante comparando Base.metadata vs Banco
+    try:
+        from app.services.auto_migration_service import sync_missing_columns
+        sync_missing_columns(engine, Base)
+    except Exception as e: logger.warning(f"[MAIN] Aviso na sincronização automática de colunas: {e}")
     # 3. Sincronização de credenciais do superadministrador
     try:
         logger.info("[MAIN] Sincronizando credenciais do superadministrador...")

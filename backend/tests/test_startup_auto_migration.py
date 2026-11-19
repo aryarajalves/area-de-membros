@@ -1,8 +1,37 @@
 import os
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, inspect, text
 from app.core.database import Base, engine
 from app.main import app, lifespan
+from app.services.auto_migration_service import sync_missing_columns
+
+
+def test_sync_missing_columns_creates_absent_columns_automatically():
+    """
+    Simula uma tabela existente sem algumas colunas novas no banco e valida que
+    `sync_missing_columns` cria automaticamente todas as colunas faltantes.
+    """
+    mem_engine = create_engine("sqlite:///:memory:")
+    with mem_engine.begin() as conn:
+        conn.execute(text("CREATE TABLE demo_items (id INTEGER PRIMARY KEY, name VARCHAR(100))"))
+
+    temp_meta = MetaData()
+    Table(
+        "demo_items",
+        temp_meta,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(100)),
+        Column("module_title", String(255)),
+        Column("extra_count", Integer, default=0),
+    )
+
+    added = sync_missing_columns(mem_engine, temp_meta)
+    assert "demo_items.module_title" in added
+    assert "demo_items.extra_count" in added
+
+    cols = {c["name"] for c in inspect(mem_engine).get_columns("demo_items")}
+    assert "module_title" in cols
+    assert "extra_count" in cols
 
 
 @pytest.mark.asyncio
