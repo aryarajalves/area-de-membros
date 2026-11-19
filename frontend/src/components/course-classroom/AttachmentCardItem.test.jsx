@@ -63,7 +63,12 @@ describe('AttachmentCardItem Component', () => {
     });
     URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/pdf-1');
     URL.revokeObjectURL = vi.fn();
-    const fakePreviewTab = { opener: window, location: { href: '', replace: vi.fn() } };
+    const docWriteSpy = vi.fn();
+    const fakePreviewTab = {
+      opener: window,
+      location: { href: '', replace: vi.fn() },
+      document: { open: vi.fn(), write: docWriteSpy, close: vi.fn() },
+    };
     window.open = vi.fn().mockReturnValue(fakePreviewTab);
 
     const b2Att = {
@@ -79,6 +84,7 @@ describe('AttachmentCardItem Component', () => {
 
     fireEvent.click(btn);
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(docWriteSpy).toHaveBeenCalledWith(expect.stringContaining('Preparando e abrindo seu material com segurança...'));
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/v1/courses/attachments/99/access',

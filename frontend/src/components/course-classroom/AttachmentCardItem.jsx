@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ExternalLink, Trash2, Edit2, Brain, Loader2 } from 'lucide-react';
 import { formatFileSize, getFileIcon } from './LessonAttachmentsManager';
+import { buildAttachmentLoadingHtml } from './attachmentPreviewHtml';
 
 export default function AttachmentCardItem({
   attachment: att,
@@ -29,9 +30,15 @@ export default function AttachmentCardItem({
       try {
         previewTab.opener = null;
         if (previewTab.document) {
-          previewTab.document.title = att.title || 'Abrindo material...';
-          previewTab.document.body.innerHTML =
-            '<div style="background:#090d16;color:#cbd5e1;font-family:sans-serif;height:100vh;margin:0;display:flex;align-items:center;justify-content:center;">Carregando material...</div>';
+          previewTab.document.open();
+          previewTab.document.write(
+            buildAttachmentLoadingHtml({
+              title: att.title || 'Material Complementar',
+              fileType: isMindmap ? 'MAPA MENTAL IA' : (att.file_type || 'Arquivo'),
+              fileSize: att.file_size_bytes > 0 ? formatFileSize(att.file_size_bytes) : '',
+            })
+          );
+          previewTab.document.close();
         }
       } catch {
         // Ignora caso o ambiente/teste use mock simples de window.open
