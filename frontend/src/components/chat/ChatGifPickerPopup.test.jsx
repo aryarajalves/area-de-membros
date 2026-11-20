@@ -56,4 +56,19 @@ describe('ChatGifPickerPopup Component', () => {
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('usa previewUrl leve, no-referrer, fallback no erro e barra de categorias sem achatamento', () => {
+    render(
+      <ChatGifPickerPopup onSelectGif={vi.fn()} onClose={vi.fn()} />
+    );
+
+    expect(screen.getByTestId('gif-categories-bar')).toHaveStyle({ flexShrink: '0' });
+
+    const firstImg = screen.getByAltText('Palmas entusiasmadas');
+    expect(firstImg).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(firstImg.getAttribute('src')).toContain('200w.gif');
+
+    fireEvent.error(firstImg);
+    expect(firstImg.getAttribute('src')).toContain('giphy.gif');
+  });
 });

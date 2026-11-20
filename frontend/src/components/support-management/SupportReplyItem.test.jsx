@@ -70,4 +70,18 @@ describe('SupportReplyItem Component', () => {
     const solutionBtn = screen.getByTestId('toggle-solution-btn-501');
     expect(solutionBtn).toHaveTextContent('Solução');
   });
+
+  it('previne achatamento do avatar e quebra de linha no botão de solução no mobile', () => {
+    render(
+      <SupportReplyItem
+        reply={mockReply}
+        currentUser={mockCurrentUser}
+        topicAuthorId={1}
+        onToggleSolution={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('reply-avatar-501')).toHaveStyle({ flexShrink: '0' });
+    expect(screen.getByTestId('toggle-solution-btn-501')).toHaveStyle({ whiteSpace: 'nowrap' });
+  });
 });

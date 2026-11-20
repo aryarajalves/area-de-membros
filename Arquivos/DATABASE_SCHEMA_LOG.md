@@ -2,6 +2,16 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [20/11/2026] - Perfil Aluno Interno (is_internal_student) em users
+- **Objetivo:** Permitir marcar usuários como "Aluno Interno" (administradores/equipe visualizando a plataforma como aluno sem aparecer na tela de Gestão de Alunos nem nas exportações/métricas de alunos).
+- **Tabela Afetada:**
+  - `users`:
+    - `is_internal_student`: BOOLEAN DEFAULT FALSE NOT NULL
+- **Script de Migração:** `backend/scripts/migrate_add_is_internal_student.py`
+- **Auto-migração no Startup:** Instrução `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_internal_student BOOLEAN DEFAULT FALSE NOT NULL` incluída no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+
+---
+
 ### [18/11/2026] - Múltiplas Mídias e Especificação de Módulo/Aula em support_topics
 - **Objetivo:** Permitir que o aluno anexe múltiplas imagens/prints e especifique opcionalmente o módulo e a aula ao relatar uma dúvida ou problema no suporte.
 - **Tabela Afetada:**

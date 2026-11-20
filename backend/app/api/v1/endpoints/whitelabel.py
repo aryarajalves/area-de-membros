@@ -1,7 +1,8 @@
 import os
 import json
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -11,6 +12,7 @@ from app.models.course import Course
 from app.schemas.whitelabel import WhiteLabelConfig, WhiteLabelUpdate
 from app.api.v1.endpoints.users import get_current_user
 from app.services.storage import upload_media_file, delete_media_file
+from app.services.image_optimizer import optimize_image
 
 router = APIRouter()
 
@@ -38,6 +40,7 @@ def get_stored_whitelabel_data() -> dict:
         "platform_name": "Área de Membros",
         "login_banner_url": None,
         "logo_url": None,
+        "logo_size": "medium",
         "bg_color": "#090d16",
         "is_astrology_platform": False,
         "community_feed_students_enabled": False,
@@ -50,6 +53,7 @@ def get_stored_whitelabel_data() -> dict:
                     "platform_name": data.get("platform_name") or default_data["platform_name"],
                     "login_banner_url": data.get("login_banner_url") or None,
                     "logo_url": data.get("logo_url") or None,
+                    "logo_size": data.get("logo_size") or default_data["logo_size"],
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
                     "is_astrology_platform": bool(data.get("is_astrology_platform", False)),
                     "community_feed_students_enabled": bool(data.get("community_feed_students_enabled", False)),
@@ -82,6 +86,58 @@ def get_whitelabel_settings():
     return get_stored_whitelabel_data()
 
 
+@router.get("/manifest.webmanifest")
+def get_dynamic_manifest():
+    """
+    Gera o Web App Manifest (PWA) dinamicamente com o nome, cor de tema e logotipo WhiteLabel.
+    """
+    data = get_stored_whitelabel_data()
+    platform_name = (data.get("platform_name") or "Área de Membros").strip() or "Área de Membros"
+    bg_color = data.get("bg_color") or "#090d16"
+    logo_url = data.get("logo_url")
+
+    icons = []
+    if logo_url:
+        icons.append({
+            "src": logo_url,
+            "sizes": "192x192",
+            "purpose": "any",
+        })
+        icons.append({
+            "src": logo_url,
+            "sizes": "512x512",
+            "purpose": "any",
+        })
+    icons.extend([
+        {
+            "src": "/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable",
+        },
+        {
+            "src": "/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable",
+        },
+    ])
+
+    manifest = {
+        "name": platform_name,
+        "short_name": platform_name[:24],
+        "description": f"Acesse seus cursos e conteúdos em {platform_name}.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait-primary",
+        "theme_color": bg_color,
+        "background_color": bg_color,
+        "icons": icons,
+    }
+    return JSONResponse(content=manifest, media_type="application/manifest+json")
+
+
 @router.patch("", response_model=WhiteLabelConfig)
 def update_whitelabel_settings(
     settings_in: WhiteLabelUpdate,
@@ -103,6 +159,9 @@ def update_whitelabel_settings(
 
     if settings_in.logo_url is not None:
         current["logo_url"] = settings_in.logo_url.strip() if settings_in.logo_url.strip() else None
+
+    if settings_in.logo_size is not None:
+        current["logo_size"] = settings_in.logo_size
 
     if settings_in.bg_color is not None:
         clean_color = settings_in.bg_color.strip()
@@ -207,12 +266,13 @@ def reset_login_banner(
 
 @router.post("/logo", response_model=WhiteLabelConfig)
 async def upload_platform_logo(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     admin: User = Depends(require_admin_or_superadmin),
 ):
     """
     Faz upload de um novo logotipo da plataforma (PNG, JPG, WEBP, SVG).
-    Armazena no Backblaze B2 com fallback local.
+    Otimiza automaticamente imagens raster para carregamento rápido e armazena no Backblaze B2 com fallback local.
     """
     allowed_extensions = [".jpg", ".jpeg", ".png", ".webp", ".svg"]
     file_ext = os.path.splitext(file.filename)[1].lower()
@@ -224,12 +284,24 @@ async def upload_platform_logo(
 
     try:
         content = await file.read()
-        unique_filename = f"platform_logo_{uuid.uuid4().hex[:12]}{file_ext}"
+        upload_bytes = content
+        upload_content_type = file.content_type or "image/png"
+        out_ext = file_ext
+
+        if file_ext != ".svg":
+            upload_bytes, upload_content_type, out_ext = optimize_image(
+                content,
+                max_width=256,
+                quality=85,
+                output_format="WEBP",
+            )
+
+        unique_filename = f"platform_logo_{uuid.uuid4().hex[:12]}{out_ext}"
 
         b2_url = upload_media_file(
-            file_bytes=content,
+            file_bytes=upload_bytes,
             filename=unique_filename,
-            content_type=file.content_type or "image/png",
+            content_type=upload_content_type,
             folder="AreaDeMembros/logos/"
         )
 
@@ -238,18 +310,18 @@ async def upload_platform_logo(
         else:
             local_path = os.path.join(THUMBNAILS_DIR, unique_filename)
             with open(local_path, "wb") as f:
-                f.write(content)
+                f.write(upload_bytes)
             logo_url = f"/api/v1/courses/thumbnails/{unique_filename}"
 
         current = get_stored_whitelabel_data()
         old_url = current.get("logo_url")
         if old_url:
-            delete_media_file(old_url)
+            background_tasks.add_task(delete_media_file, old_url)
 
         current["logo_url"] = logo_url
         save_stored_whitelabel_data(current)
 
-        logger.info(f"[WhiteLabel] Novo logotipo enviado por {admin.email}: {logo_url}")
+        logger.info(f"[WhiteLabel] Novo logotipo enviado por {admin.email} ({len(content)}B -> {len(upload_bytes)}B): {logo_url}")
         return current
     except Exception as exc:
         logger.error(f"[WhiteLabel] Erro no upload de logotipo: {exc}")

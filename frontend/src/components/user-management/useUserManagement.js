@@ -165,7 +165,13 @@ export function useUserManagement(currentUser) {
 
   const handleOpenEdit = (user) => {
     setEditingUser(user);
-    setSelectedRole(user.role === 'user' ? 'aluno' : user.role);
+    const effectiveRole =
+      user.role === 'user'
+        ? 'aluno'
+        : user.role === 'aluno' && user.is_internal_student
+          ? 'aluno_interno'
+          : user.role;
+    setSelectedRole(effectiveRole);
     setSelectedCourseIds(user.course_ids || []);
     const map = {};
     (user.course_access || []).forEach((item) => {
@@ -187,6 +193,7 @@ export function useUserManagement(currentUser) {
       access_duration: courseAccessMap[cid] || 'lifetime',
     }));
     try {
+      const isStudentProfile = selectedRole === 'aluno' || selectedRole === 'aluno_interno';
       const res = await fetch(`/api/v1/auth/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: {
@@ -195,8 +202,8 @@ export function useUserManagement(currentUser) {
         },
         body: JSON.stringify({
           role: selectedRole,
-          course_ids: selectedRole === 'aluno' ? selectedCourseIds : [],
-          course_access: selectedRole === 'aluno' ? courseAccessList : [],
+          course_ids: isStudentProfile ? selectedCourseIds : [],
+          course_access: isStudentProfile ? courseAccessList : [],
         }),
       });
 

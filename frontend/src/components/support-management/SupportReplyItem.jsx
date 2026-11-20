@@ -23,7 +23,7 @@ export default function SupportReplyItem({
   return (
     <div
       style={{
-        padding: '16px 18px',
+        padding: 'clamp(12px, 3vw, 16px) clamp(12px, 3vw, 18px)',
         backgroundColor: isSolution
           ? 'rgba(234, 179, 8, 0.08)'
           : reply.is_instructor_reply
@@ -38,9 +38,10 @@ export default function SupportReplyItem({
       }}
       data-testid={`reply-item-${reply.id}`}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           <div
+            data-testid={`reply-avatar-${reply.id}`}
             style={{
               width: '34px',
               height: '34px',
@@ -52,6 +53,7 @@ export default function SupportReplyItem({
               justifyContent: 'center',
               fontWeight: 700,
               fontSize: '12px',
+              flexShrink: 0,
             }}
           >
             {getInitials(reply.author.name)}
@@ -104,7 +106,7 @@ export default function SupportReplyItem({
         </div>
 
         {/* Botões de Ação na Resposta */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, flexWrap: 'wrap' }}>
           {canManageSolution && onToggleSolution && (
             <button
               type="button"
@@ -113,10 +115,11 @@ export default function SupportReplyItem({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '4px 8px',
+                padding: '4px 10px',
                 borderRadius: '6px',
                 fontSize: '11px',
                 fontWeight: 600,
+                whiteSpace: 'nowrap',
                 backgroundColor: isSolution ? 'rgba(234, 179, 8, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                 color: isSolution ? '#facc15' : '#94a3b8',
                 border: isSolution ? '1px solid rgba(234, 179, 8, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',

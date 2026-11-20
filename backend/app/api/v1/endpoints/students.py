@@ -243,6 +243,7 @@ def list_students(
     engagement_level: Optional[str] = Query(None, description="Nível de engajamento: low (0-35%), medium (36-70%), high (71-100%)"),
     min_progress: Optional[int] = Query(None, ge=0, le=100, description="Progresso mínimo (%)"),
     max_progress: Optional[int] = Query(None, ge=0, le=100, description="Progresso máximo (%)"),
+    rpg_level: Optional[str] = Query(None, description="Filtra por nível RPG (1-20) ou elo (tier:Bronze, etc.)"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -252,7 +253,10 @@ def list_students(
     Lista alunos da plataforma com seus cursos vinculados, filtros e ordenação avançada.
     """
     try:
-        query = db.query(User).filter(User.role == "aluno")
+        query = db.query(User).filter(
+            User.role == "aluno",
+            or_(User.is_internal_student == False, User.is_internal_student.is_(None)),
+        )
 
         if only_online:
             online_ids = list(get_online_user_ids())
@@ -303,6 +307,7 @@ def list_students(
             (engagement_level and engagement_level.strip().lower() in ["low", "medium", "high"])
             or min_progress is not None
             or max_progress is not None
+            or (rpg_level and rpg_level.strip())
         )
 
         # Ordenação
@@ -331,6 +336,7 @@ def list_students(
                     engagement_level=engagement_level,
                     min_progress=min_progress,
                     max_progress=max_progress,
+                    rpg_level=rpg_level,
                 )
                 total = len(all_items)
                 pages = ceil(total / limit) if total > 0 else 1
@@ -346,6 +352,7 @@ def list_students(
                 engagement_level=engagement_level,
                 min_progress=min_progress,
                 max_progress=max_progress,
+                rpg_level=rpg_level,
             )
 
             if order_by == "progress_desc":
@@ -399,7 +406,15 @@ def export_students(
     Exporta todos os alunos da plataforma com detalhes de acesso e progresso em CSV ou XLSX.
     """
     try:
-        students = db.query(User).filter(User.role == "aluno").order_by(User.name.asc()).all()
+        students = (
+            db.query(User)
+            .filter(
+                User.role == "aluno",
+                or_(User.is_internal_student == False, User.is_internal_student.is_(None)),
+            )
+            .order_by(User.name.asc())
+            .all()
+        )
         student_items = _build_students_details(students, db)
         students_dicts = [s.model_dump() for s in student_items]
 

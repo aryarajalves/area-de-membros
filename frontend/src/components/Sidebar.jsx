@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, LogOut, GraduationCap, Settings, UserCheck, Webhook,
   HelpCircle, X, MessagesSquare, MessageSquareQuote, Trophy,
-  GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass
+  GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass, Smartphone
 } from 'lucide-react';
 import { SidebarLinksGroup } from './navigation/UnifiedSectionSubTabs';
 import useCommunityFeedStudentsEnabled from '../hooks/useCommunityFeedStudentsEnabled';
+import usePwaInstall from '../hooks/usePwaInstall';
+import PwaInstallInstructionsModal from './pwa/PwaInstallInstructionsModal';
+import { getLogoSizePx, DEFAULT_LOGO_SIZE } from '../utils/logoSizeUtils';
 
 export default function Sidebar({
   activeTab = 'courses',
@@ -21,6 +24,7 @@ export default function Sidebar({
   const [platformLinks, setPlatformLinks] = useState([]);
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
   const [platformLogo, setPlatformLogo] = useState(() => localStorage.getItem('platform_logo') || null);
+  const [platformLogoSize, setPlatformLogoSize] = useState(() => localStorage.getItem('platform_logo_size') || DEFAULT_LOGO_SIZE);
   const [collapsedCategories, setCollapsedCategories] = useState(() => {
     try {
       const saved = localStorage.getItem('sidebar_collapsed_categories');
@@ -34,6 +38,13 @@ export default function Sidebar({
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
   const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
+  const {
+    isIos,
+    canShowSidebarButton,
+    showInstructionsModal,
+    handleInstallClick,
+    closeInstructionsModal,
+  } = usePwaInstall();
 
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((bgColor || '').toLowerCase());
 
@@ -84,6 +95,10 @@ export default function Sidebar({
               localStorage.removeItem('platform_logo');
             }
           }
+          if (data?.logo_size) {
+            setPlatformLogoSize(data.logo_size);
+            localStorage.setItem('platform_logo_size', data.logo_size);
+          }
           if (data?.is_astrology_platform !== undefined) {
             localStorage.setItem('is_astrology_platform', String(Boolean(data.is_astrology_platform)));
           }
@@ -108,6 +123,10 @@ export default function Sidebar({
         } else {
           localStorage.removeItem('platform_logo');
         }
+      }
+      if (e?.detail?.logo_size) {
+        setPlatformLogoSize(e.detail.logo_size);
+        localStorage.setItem('platform_logo_size', e.detail.logo_size);
       }
       if (e?.detail?.is_astrology_platform !== undefined) {
         localStorage.setItem('is_astrology_platform', String(Boolean(e.detail.is_astrology_platform)));
@@ -245,7 +264,16 @@ export default function Sidebar({
             <div
               className={`logo-icon ${platformLogo ? 'custom-logo' : ''}`}
               data-testid="logo-icon"
-              style={platformLogo ? { backgroundColor: 'transparent', boxShadow: 'none' } : undefined}
+              style={
+                platformLogo
+                  ? {
+                      backgroundColor: 'transparent',
+                      boxShadow: 'none',
+                      width: `${getLogoSizePx(platformLogoSize)}px`,
+                      height: `${getLogoSizePx(platformLogoSize)}px`,
+                    }
+                  : undefined
+              }
             >
               {platformLogo ? (
                 <img
@@ -392,6 +420,35 @@ export default function Sidebar({
           className="sidebar-footer"
           style={{ borderTop: isLightBg ? '1px solid #f1f5f9' : '1px solid rgba(255, 255, 255, 0.08)' }}
         >
+          {canShowSidebarButton && (
+            <button
+              type="button"
+              onClick={() => {
+                handleInstallClick();
+                if (onCloseMobile) onCloseMobile();
+              }}
+              data-testid="sidebar-pwa-install-btn"
+              style={{
+                width: '100%',
+                marginBottom: '10px',
+                padding: '9px 12px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(14, 165, 233, 0.16) 100%)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                color: isLightBg ? '#0284c7' : '#38bdf8',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+              }}
+            >
+              <Smartphone size={16} />
+              <span>Instalar Atalho</span>
+            </button>
+          )}
           <div className="user-profile">
             {user?.avatar_url ? (
               <img
@@ -421,6 +478,11 @@ export default function Sidebar({
           </div>
         </div>
       </aside>
+      <PwaInstallInstructionsModal
+        isOpen={showInstructionsModal}
+        isIos={isIos}
+        onClose={closeInstructionsModal}
+      />
     </>
   );
 }

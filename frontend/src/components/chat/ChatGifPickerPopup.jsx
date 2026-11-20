@@ -62,6 +62,7 @@ export default function ChatGifPickerPopup({ onSelectGif, onClose }) {
           padding: '12px 14px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           backgroundColor: '#1e293b',
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -104,7 +105,7 @@ export default function ChatGifPickerPopup({ onSelectGif, onClose }) {
       </div>
 
       {/* Busca */}
-      <div style={{ padding: '10px 12px 6px 12px' }}>
+      <div style={{ padding: '10px 12px 6px 12px', flexShrink: 0 }}>
         <div
           style={{
             display: 'flex',
@@ -146,13 +147,16 @@ export default function ChatGifPickerPopup({ onSelectGif, onClose }) {
 
       {/* Categorias */}
       <div
+        data-testid="gif-categories-bar"
         style={{
           display: 'flex',
+          alignItems: 'center',
           gap: '6px',
-          padding: '6px 12px',
+          padding: '8px 12px',
           overflowX: 'auto',
           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
           scrollbarWidth: 'none',
+          flexShrink: 0,
         }}
       >
         {CHAT_GIF_CATEGORIES.map((cat) => {
@@ -239,9 +243,19 @@ export default function ChatGifPickerPopup({ onSelectGif, onClose }) {
               }}
             >
               <img
-                src={gif.url}
+                src={gif.previewUrl || gif.url}
                 alt={gif.title}
-                loading="lazy"
+                referrerPolicy="no-referrer"
+                decoding="async"
+                onError={(e) => {
+                  const imgEl = e.currentTarget;
+                  if (imgEl.dataset.fallbackTried !== 'true' && gif.url && imgEl.src !== gif.url) {
+                    imgEl.dataset.fallbackTried = 'true';
+                    imgEl.src = gif.url;
+                  } else {
+                    imgEl.style.display = 'none';
+                  }
+                }}
                 style={{
                   width: '100%',
                   height: '100%',

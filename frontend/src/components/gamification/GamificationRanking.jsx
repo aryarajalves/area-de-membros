@@ -151,7 +151,7 @@ export default function GamificationRanking({ user }) {
     <div
       className="gamification-ranking-page"
       style={{
-        padding: '28px 24px',
+        padding: 'clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)',
         maxWidth: '1280px',
         margin: '0 auto',
         color: '#f8fafc'
@@ -169,22 +169,47 @@ export default function GamificationRanking({ user }) {
           marginBottom: '28px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, maxWidth: '100%' }}>
           <div
             style={{
               background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(217, 119, 6, 0.15))',
               border: '1px solid rgba(234, 179, 8, 0.3)',
               padding: '12px',
               borderRadius: '16px',
-              color: '#facc15'
+              color: '#facc15',
+              flexShrink: 0,
             }}
           >
             <Trophy size={30} />
           </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1
+              data-testid="ranking-header-title"
+              style={{
+                margin: 0,
+                fontSize: 'clamp(1.3rem, 4vw, 1.75rem)',
+                fontWeight: 800,
+                color: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
               <span>Ranking da Comunidade</span>
-              <span style={{ fontSize: '0.8rem', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.3)', color: '#facc15', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>
+              <span
+                data-testid="ranking-period-badge"
+                style={{
+                  fontSize: '0.8rem',
+                  background: 'rgba(234, 179, 8, 0.15)',
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  color: '#facc15',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {rankingData?.month_name || 'Mensal'}
               </span>
             </h1>

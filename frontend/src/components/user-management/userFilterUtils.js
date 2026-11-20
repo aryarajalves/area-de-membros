@@ -85,7 +85,15 @@ export function filterUsersList(users = [], filters = {}) {
 
   return users.filter((u) => {
     // 1. Filtro de Perfil / Role
-    if (roleFilter !== 'all' && u.role !== roleFilter) {
+    if (roleFilter === 'aluno_interno') {
+      if (!(u.role === 'aluno' && Boolean(u.is_internal_student))) {
+        return false;
+      }
+    } else if (roleFilter === 'aluno') {
+      if (!(u.role === 'aluno' && !u.is_internal_student)) {
+        return false;
+      }
+    } else if (roleFilter !== 'all' && u.role !== roleFilter) {
       return false;
     }
 

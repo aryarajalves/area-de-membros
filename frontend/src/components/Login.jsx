@@ -5,15 +5,35 @@ import {
   Lock,
   Mail,
   AlertCircle,
+  CheckCircle2,
   ArrowRight,
 } from 'lucide-react';
 import loginBanner from '../assets/login-banner.jpg';
 import { useToast } from '../context/ToastContext';
 import PublicRegisterCard from './PublicRegisterCard';
+import { getLogoSizePx, DEFAULT_LOGO_SIZE } from '../utils/logoSizeUtils';
 
 export default function Login({ onLoginSuccess }) {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [inviteUsedNotice] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('convite') === 'usado';
+    } catch {
+      return false;
+    }
+  });
   const [email, setEmail] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlEmail = params.get('email');
+      if (urlEmail) {
+        localStorage.removeItem('prefill_login_email');
+        return urlEmail;
+      }
+    } catch {
+      // ignora
+    }
     const prefill = localStorage.getItem('prefill_login_email');
     if (prefill) {
       localStorage.removeItem('prefill_login_email');
@@ -29,6 +49,7 @@ export default function Login({ onLoginSuccess }) {
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
   const [bannerUrl, setBannerUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('platform_logo') || null);
+  const [logoSize, setLogoSize] = useState(() => localStorage.getItem('platform_logo_size') || DEFAULT_LOGO_SIZE);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -52,12 +73,45 @@ export default function Login({ onLoginSuccess }) {
             setLogoUrl(null);
             localStorage.removeItem('platform_logo');
           }
+          if (data.logo_size) {
+            setLogoSize(data.logo_size);
+            localStorage.setItem('platform_logo_size', data.logo_size);
+          }
         }
       } catch {
         // Silencioso em caso de offline
       }
     };
     fetchWhiteLabel();
+
+    const checkExistingSession = async () => {
+      const savedToken = localStorage.getItem('auth_token');
+      if (!savedToken) return;
+      try {
+        const res = await fetch('/api/v1/auth/me', {
+          headers: { Authorization: `Bearer ${savedToken}` },
+        });
+        if (!isMounted) return;
+        if (res && res.ok) {
+          const userData = await res.json();
+          localStorage.setItem('auth_user', JSON.stringify(userData));
+          if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) {
+            window.history.replaceState({}, document.title, '/');
+          }
+          if (onLoginSuccess) {
+            onLoginSuccess(userData, savedToken);
+          }
+        } else {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+      } catch {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+      }
+    };
+    checkExistingSession();
+
     return () => {
       isMounted = false;
     };
@@ -137,7 +191,19 @@ export default function Login({ onLoginSuccess }) {
       <div className="login-form-side">
         <div className="login-form-container">
           <div className="auth-header text-left">
-            <div className="auth-logo-badge" style={logoUrl ? { background: 'transparent', boxShadow: 'none' } : undefined}>
+            <div
+              className="auth-logo-badge"
+              style={
+                logoUrl
+                  ? {
+                      background: 'transparent',
+                      boxShadow: 'none',
+                      width: `${getLogoSizePx(logoSize)}px`,
+                      height: `${getLogoSizePx(logoSize)}px`,
+                    }
+                  : undefined
+              }
+            >
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -154,6 +220,30 @@ export default function Login({ onLoginSuccess }) {
             <h2>{platformName || 'Área de Membros'}</h2>
             <p>Informe suas credenciais para acessar o painel</p>
           </div>
+
+          {inviteUsedNotice && !error && (
+            <div
+              data-testid="login-invite-used-banner"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1e40af',
+                fontSize: '0.84rem',
+                lineHeight: 1.4,
+                marginBottom: '16px',
+              }}
+            >
+              <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: '1px', color: '#2563eb' }} />
+              <span>
+                Seu cadastro já foi concluído! Basta entrar com seu e-mail e senha para acessar a plataforma.
+              </span>
+            </div>
+          )}
 
           {error && (
             <div className="auth-error-banner" data-testid="login-error">

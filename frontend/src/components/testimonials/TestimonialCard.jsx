@@ -51,12 +51,15 @@ export default function TestimonialCard({
             ? '0 10px 25px -5px rgba(234, 179, 8, 0.15)'
             : '0 10px 20px -5px rgba(0, 0, 0, 0.3)',
         position: 'relative',
-        transition: 'all 0.2s ease-in-out'
+        transition: 'all 0.2s ease-in-out',
+        minWidth: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
       }}
       data-testid={`testimonial-card-${testimonial.id}`}
     >
       {/* Top Header: Autor + Badge Curso + Status */}
-      <div>
+      <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {testimonial.user?.avatar_url ? (
@@ -191,19 +194,22 @@ export default function TestimonialCard({
 
         {/* Título (se houver) */}
         {testimonial.title && (
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 700, color: '#f1f5f9', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
             "{testimonial.title}"
           </h4>
         )}
 
         {/* Conteúdo do Relato */}
         <p
+          data-testid={`testimonial-content-${testimonial.id}`}
           style={{
             margin: '0 0 16px 0',
             fontSize: '0.88rem',
             color: '#cbd5e1',
             lineHeight: 1.6,
-            whiteSpace: 'pre-wrap'
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {testimonial.content}
@@ -224,7 +230,7 @@ export default function TestimonialCard({
       >
         {/* Ações de Moderação (Admin) */}
         {isManager && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div data-testid={`moderation-actions-${testimonial.id}`} style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             {testimonial.status !== 'approved' && (
               <button
                 type="button"

@@ -107,4 +107,16 @@ describe('TopNavbar Component', () => {
     fireEvent.click(dmBtn);
     expect(screen.getByTestId('chat-dm-modal')).toHaveStyle({ zIndex: '1000002' });
   });
+
+  it('usa boxSizing border-box e truncamento no título para evitar corte do avatar na direita no mobile', () => {
+    render(<TopNavbar user={{ ...mockUser, role: 'superadmin' }} />);
+
+    expect(screen.getByTestId('mobile-header')).toHaveStyle({ boxSizing: 'border-box', maxWidth: '100%' });
+    expect(screen.getByTestId('topnavbar-brand-name')).toHaveStyle({
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    });
+    expect(screen.getByTestId('navbar-online-pill')).toHaveStyle({ whiteSpace: 'nowrap', flexShrink: '0' });
+  });
 });

@@ -176,6 +176,7 @@ export default function UserTableTab({
               <option value="superadmin">Super Admin</option>
               <option value="admin">Administrador (Admin)</option>
               <option value="aluno">Aluno</option>
+              <option value="aluno_interno">Aluno Interno</option>
             </select>
           </div>
 
@@ -363,8 +364,28 @@ export default function UserTableTab({
                       )}
                     </td>
                     <td>
-                      <span className={`badge badge-${u.role}`} data-testid={`badge-role-${u.id}`}>
-                        {u.role === 'superadmin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'aluno' ? 'Aluno' : 'Usuário'}
+                      <span
+                        className={`badge badge-${u.role}`}
+                        data-testid={`badge-role-${u.id}`}
+                        style={
+                          u.role === 'aluno' && u.is_internal_student
+                            ? {
+                                backgroundColor: 'rgba(139, 92, 246, 0.16)',
+                                color: '#c4b5fd',
+                                border: '1px solid rgba(139, 92, 246, 0.4)',
+                              }
+                            : undefined
+                        }
+                      >
+                        {u.role === 'superadmin'
+                          ? 'Super Admin'
+                          : u.role === 'admin'
+                            ? 'Admin'
+                            : u.role === 'aluno' && u.is_internal_student
+                              ? 'Aluno Interno'
+                              : u.role === 'aluno'
+                                ? 'Aluno'
+                                : 'Usuário'}
                       </span>
                     </td>
                     <td>

@@ -7,6 +7,16 @@ Plataforma de alta performance para **Área de Membros e Gestão de Cursos Onlin
 
 ## ✨ Principais Funcionalidades
 
+### 🚀 Novidades da Versão v1.3.9 (PWA Mobile, Redirecionamento Inteligente, Aluno Interno, Filtro por Nível e Melhorias Mobile)
+- **📱 Atalho PWA na Tela Inicial (Exclusivo Celular e Tablet):**
+  - Manifesto dinâmico (`GET /api/v1/whitelabel/manifest.webmanifest`) sincronizado com nome, cor e logotipo do WhiteLabel, Service Worker mínimo (`sw.js`) sem cache de API, detecção restrita a dispositivos móveis/tablets (e `localhost` em largura mobile), banner no topo com dispensa persistida, botão no menu lateral mobile e modal de instruções de 2 passos para iOS/Android.
+- **🔗 Redirecionamento Inteligente em Convites e Login:**
+  - Validação prévia de sessão via `/api/v1/auth/me` ao abrir links de convite ou login, redirecionando usuários já autenticados para a tela principal e direcionando convites já utilizados ou e-mails duplicados para `/login?convite=usado` com pré-preenchimento de e-mail.
+- **🛡️ Perfil Aluno Interno & Filtro por Nível RPG:**
+  - Novo perfil **Aluno Interno** (`is_internal_student`) na Gestão de Usuários para visualização como aluno sem aparecer na Gestão de Alunos nem no Ranking & Conquistas, além de dropdown de filtro por **Elo** ou **Nível RPG (1–20)** em Gestão de Alunos.
+- **🎨 WhiteLabel Logo Otimizada & Responsividade Mobile:**
+  - Compressão automática de logotipo (WebP máx. 256px no navegador e backend) + dropdown de tamanho da logo (`small`, `medium`, `large`, `xlarge`), paginação em **Participantes Confirmados** de eventos, correção de GIFs quebrados no chat e ajustes de responsividade na `TopNavbar`, DMs, Suporte, Depoimentos, Gestão de Alunos e Novo Evento.
+
 ### 🚀 Novidades da Versão v1.3.8 (Sessão de 7 Dias com Sliding Refresh, Suporte com Módulo/Aula Clicáveis & Múltiplas Mídias, Proxy Anti-SmartScreen e Filtros do Feed)
 - **🔐 Sessão Multi-Dispositivo Estável de 7 Dias (*Sliding Session*):**
   - Validade padrão do token JWT ampliada para **7 dias (`10080` minutos)** direto no código (`config.py`), com renovação silenciosa em segundo plano (`POST /api/v1/auth/refresh` + `authInterceptor.js`), sincronização entre abas via `storage` e suporte simultâneo a PC + Celular / App Android sem desconexões abruptas.

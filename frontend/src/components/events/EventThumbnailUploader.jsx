@@ -58,7 +58,7 @@ export default function EventThumbnailUploader({
       <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0', marginBottom: '6px' }}>
         Imagem de Capa / Thumbnail (Opcional)
       </label>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <div data-testid="event-thumb-upload-row" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="file"
           ref={fileInputRef}
@@ -83,6 +83,8 @@ export default function EventThumbnailUploader({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <Upload size={16} />
@@ -95,7 +97,9 @@ export default function EventThumbnailUploader({
           onChange={(e) => onChangeThumbnail(e.target.value)}
           placeholder="Ou cole a URL da imagem..."
           style={{
-            flex: 1,
+            flex: '1 1 200px',
+            minWidth: 0,
+            boxSizing: 'border-box',
             padding: '9px 12px',
             borderRadius: '8px',
             background: 'rgba(15, 23, 42, 0.6)',

@@ -80,6 +80,7 @@ describe('SupportTopicOriginalPost Component', () => {
     expect(screen.getByTestId('detail-resolved-badge')).toHaveTextContent('Resolvida');
     const statusBtn = screen.getByTestId('toggle-topic-status-btn');
     expect(statusBtn).toHaveTextContent('✓ Resolvida (Reabrir)');
+    expect(screen.getByTestId('original-post-avatar')).toHaveStyle({ flexShrink: '0' });
   });
 
   it('renders module and lesson context badges, allows clicking them to navigate to the lesson, and displays multiple attached images', async () => {

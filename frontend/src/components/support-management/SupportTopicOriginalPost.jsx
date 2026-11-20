@@ -42,13 +42,14 @@ export default function SupportTopicOriginalPost({
         backgroundColor: 'rgba(30, 41, 59, 0.4)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         borderRadius: '12px',
-        padding: '20px',
+        padding: 'clamp(14px, 3vw, 20px)',
       }}
       data-testid="support-topic-original-post"
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
           <div
+            data-testid="original-post-avatar"
             style={{
               width: '44px',
               height: '44px',
@@ -60,6 +61,7 @@ export default function SupportTopicOriginalPost({
               justifyContent: 'center',
               fontWeight: 700,
               fontSize: '15px',
+              flexShrink: 0,
             }}
           >
             {getInitials(topic.author.name)}

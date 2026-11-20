@@ -25,6 +25,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
   const [engagementLevel, setEngagementLevel] = useState('');
   const [minProgress, setMinProgress] = useState('');
   const [maxProgress, setMaxProgress] = useState('');
+  const [rpgLevel, setRpgLevel] = useState('');
   const [courses, setCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -105,15 +106,10 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
       if (onlyOnline) {
         params.append('only_online', 'true');
       }
-      if (engagementLevel) {
-        params.append('engagement_level', engagementLevel);
-      }
-      if (minProgress !== '' && !Number.isNaN(Number(minProgress))) {
-        params.append('min_progress', String(Math.min(100, Math.max(0, Number(minProgress)))));
-      }
-      if (maxProgress !== '' && !Number.isNaN(Number(maxProgress))) {
-        params.append('max_progress', String(Math.min(100, Math.max(0, Number(maxProgress)))));
-      }
+      if (engagementLevel) params.append('engagement_level', engagementLevel);
+      if (rpgLevel) params.append('rpg_level', rpgLevel);
+      if (minProgress !== '' && !Number.isNaN(Number(minProgress))) params.append('min_progress', String(Math.min(100, Math.max(0, Number(minProgress)))));
+      if (maxProgress !== '' && !Number.isNaN(Number(maxProgress))) params.append('max_progress', String(Math.min(100, Math.max(0, Number(maxProgress)))));
 
       const res = await fetch(`/api/v1/students?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -134,7 +130,7 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, onlyOnline, engagementLevel, minProgress, maxProgress, addToast]);
+  }, [page, limit, appliedSearch, orderBy, selectedCourseId, selectedMonth, selectedDate, onlyOnline, engagementLevel, rpgLevel, minProgress, maxProgress, addToast]);
 
   useEffect(() => {
     fetchStudents();
@@ -161,22 +157,14 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
     setSelectedDate('');
     setOnlyOnline(false);
     setEngagementLevel('');
+    setRpgLevel('');
     setMinProgress('');
     setMaxProgress('');
     setPage(1);
   };
 
   const hasActiveFilters = Boolean(
-    appliedSearch ||
-    search ||
-    orderBy !== 'recent' ||
-    selectedCourseId ||
-    selectedMonth ||
-    selectedDate ||
-    onlyOnline ||
-    engagementLevel ||
-    minProgress !== '' ||
-    maxProgress !== ''
+    appliedSearch || search || orderBy !== 'recent' || selectedCourseId || selectedMonth || selectedDate || onlyOnline || engagementLevel || rpgLevel || minProgress !== '' || maxProgress !== ''
   );
 
   const handleExport = async (format) => {
@@ -333,6 +321,8 @@ export default function StudentManagement({ bgColor = '#090d16' }) {
         setOnlyOnline={(val) => { setOnlyOnline(val); setPage(1); }}
         engagementLevel={engagementLevel}
         setEngagementLevel={(val) => { setEngagementLevel(val); setPage(1); }}
+        rpgLevel={rpgLevel}
+        setRpgLevel={(val) => { setRpgLevel(val); setPage(1); }}
         minProgress={minProgress}
         setMinProgress={(val) => { setMinProgress(val); setPage(1); }}
         maxProgress={maxProgress}

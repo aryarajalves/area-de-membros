@@ -19,6 +19,7 @@ export const CHAT_GIFS = [
     title: 'Palmas entusiasmadas',
     category: 'applause',
     url: 'https://media.giphy.com/media/l4q8cJzGdR9J8w3hS/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/l4q8cJzGdR9J8w3hS/200w.gif',
     tags: ['palmas', 'aplausos', 'parabens', 'top', 'clapping', 'bravo', 'show'],
   },
   {
@@ -26,6 +27,7 @@ export const CHAT_GIFS = [
     title: 'Leonardo DiCaprio aplaudindo',
     category: 'applause',
     url: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/g9582DNuQppxC/200w.gif',
     tags: ['palmas', 'leo', 'dicaprio', 'great', 'gatsby', 'brinde', 'champanhe'],
   },
   {
@@ -33,6 +35,7 @@ export const CHAT_GIFS = [
     title: 'Festa e confetes',
     category: 'celebrate',
     url: 'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/artj92V8o75VPL7AeQ/200w.gif',
     tags: ['festa', 'confete', 'comemoracao', 'vitoria', 'consegui', 'party'],
   },
   {
@@ -40,6 +43,7 @@ export const CHAT_GIFS = [
     title: 'Dança da vitória',
     category: 'celebrate',
     url: 'https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/blSTtZehjAZ8I/200w.gif',
     tags: ['vitoria', 'ganhei', 'sucesso', 'yes', 'comemorando', 'alegria'],
   },
   {
@@ -47,13 +51,15 @@ export const CHAT_GIFS = [
     title: 'Risada alta',
     category: 'laughter',
     url: 'https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/10JhviFuU2gWD6/200w.gif',
     tags: ['risos', 'haha', 'kkk', 'engracado', 'rindo', 'lol', 'laugh'],
   },
   {
     id: 'gif_laughter_2',
     title: 'Chorando de rir',
     category: 'laughter',
-    url: 'https://media.giphy.com/media/26n6Gx9moCpHU1HO8/giphy.gif',
+    url: 'https://media.giphy.com/media/CoDp6NnSmItoY/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/CoDp6NnSmItoY/200w.gif',
     tags: ['morrendo de rir', 'kkk', 'gargalhada', 'socorro', 'choro de rir'],
   },
   {
@@ -61,6 +67,7 @@ export const CHAT_GIFS = [
     title: 'Polegar para cima (Joinha)',
     category: 'agree',
     url: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/111ebonMs90YLu/200w.gif',
     tags: ['joinha', 'ok', 'concordo', 'sim', 'positivo', 'thumbs up', 'perfeito'],
   },
   {
@@ -68,6 +75,7 @@ export const CHAT_GIFS = [
     title: 'Aceno concordando',
     category: 'agree',
     url: 'https://media.giphy.com/media/NEvPzZ8bd1V4Y/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/NEvPzZ8bd1V4Y/200w.gif',
     tags: ['nod', 'concordo', 'exato', 'com certeza', 'isso mesmo', 'yes'],
   },
   {
@@ -75,6 +83,7 @@ export const CHAT_GIFS = [
     title: 'Mente explodindo',
     category: 'reaction',
     url: 'https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/26ufdipQqU2lhNA4g/200w.gif',
     tags: ['mind blown', 'uau', 'chocado', 'inacreditavel', 'incrivel', 'explosao'],
   },
   {
@@ -82,13 +91,15 @@ export const CHAT_GIFS = [
     title: 'Olhos arregalados e surpreso',
     category: 'reaction',
     url: 'https://media.giphy.com/media/5VKbvrjxpVJCM/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/5VKbvrjxpVJCM/200w.gif',
     tags: ['surpreso', 'uau', 'chocado', 'wow', 'impressionado'],
   },
   {
     id: 'gif_dance_1',
     title: 'Dança feliz',
     category: 'dance',
-    url: 'https://media.giphy.com/media/m4jqqrJlXN277MR8my/giphy.gif',
+    url: 'https://media.giphy.com/media/l3V0lsGtTMSB5YNgc/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/l3V0lsGtTMSB5YNgc/200w.gif',
     tags: ['danca', 'dancando', 'feliz', 'animado', 'dance', 'alegria'],
   },
   {

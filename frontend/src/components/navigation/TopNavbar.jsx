@@ -3,6 +3,7 @@ import { Bookmark, Menu, MessageSquare, Bell } from 'lucide-react';
 import FavoritesDropdown from '../favorites/FavoritesDropdown';
 import ChatDmModal from '../chat/ChatDmModal';
 import NotificationsModal from '../notifications/NotificationsModal';
+import OnlineUsersModal from './OnlineUsersModal';
 import { OnlineStatusDot } from '../common/OnlineStatusBadge';
 import { useTopNavbarSocket } from './useTopNavbarSocket';
 
@@ -20,6 +21,7 @@ export default function TopNavbar({
   const [unreadDmCount, setUnreadDmCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
   const [onlineStats, setOnlineStats] = useState({ total_online: 0, students_online: 0, superadmins_online: 0, admins_online: 0 });
   const [platformName, setPlatformName] = useState(() => localStorage.getItem('platform_name') || 'Área de Membros');
 
@@ -222,10 +224,13 @@ export default function TopNavbar({
       data-testid="mobile-header"
       style={{
         width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         height: '56px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: '8px',
         padding: '0 20px',
         backgroundColor: 'rgba(15, 23, 42, 0.75)',
         backdropFilter: 'blur(12px)',
@@ -237,7 +242,7 @@ export default function TopNavbar({
       }}
     >
       {/* Lado Esquerdo: Menu Mobile ou Título */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
         {onOpenMobileMenu && (
           <button
             type="button"
@@ -245,51 +250,40 @@ export default function TopNavbar({
             className="mobile-menu-btn"
             data-testid="mobile-menu-toggle-btn"
             aria-label="Abrir menu lateral"
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             <Menu size={20} />
           </button>
         )}
-        <div className="mobile-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }} data-testid="topnavbar-brand-name">
+        <div className="mobile-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden' }}>
+          <span
+            style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            data-testid="topnavbar-brand-name"
+          >
             {platformName || 'Área de Membros'}
           </span>
         </div>
       </div>
 
       {/* Lado Direito: Botão Favoritos, Dropdown e Avatar */}
-      <div className="topbar-right-group" style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
+      <div className="topbar-right-group" style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', flexShrink: 0 }}>
         {isManager && (
-          <div
+          <button
+            type="button"
+            onClick={() => setIsOnlineModalOpen(true)}
             data-testid="navbar-online-pill"
-            title={`${onlineStats.students_online || 0} aluno(s) e ${(onlineStats.superadmins_online || 0) + (onlineStats.admins_online || 0)} equipe online agora`}
+            title={`${onlineStats.students_online || 0} aluno(s) e ${(onlineStats.superadmins_online || 0) + (onlineStats.admins_online || 0)} equipe online agora — Clique para ver quem está online`}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 11px',
-              borderRadius: '20px',
-              backgroundColor: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              color: '#34d399',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'default',
-              userSelect: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 11px',
+              borderRadius: '20px', backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.35)', color: '#34d399',
+              fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none',
+              whiteSpace: 'nowrap', flexShrink: 0,
             }}
           >
-            <span
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor: '#10b981',
-                boxShadow: '0 0 6px #10b981',
-                flexShrink: 0,
-              }}
-            />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 6px #10b981', flexShrink: 0 }} />
             <span>{onlineStats.total_online || 0} online</span>
-          </div>
+          </button>
         )}
 
         <button
@@ -448,13 +442,22 @@ export default function TopNavbar({
         <ChatDmModal
           isOpen={isDmOpen}
           targetContact={dmTargetContact}
-          onClose={() => {
-            setIsDmOpen(false);
-            setDmTargetContact(null);
-            fetchUnreadDms();
-          }}
+          onClose={() => { setIsDmOpen(false); setDmTargetContact(null); fetchUnreadDms(); }}
           currentUser={user}
         />
+
+        {isManager && (
+          <OnlineUsersModal
+            isOpen={isOnlineModalOpen}
+            onClose={() => setIsOnlineModalOpen(false)}
+            onStatsSynced={fetchOnlineStats}
+            onStartDm={(contact) => {
+              setIsOnlineModalOpen(false);
+              setDmTargetContact(contact);
+              setIsDmOpen(true);
+            }}
+          />
+        )}
 
         {/* Avatar do Usuário */}
         <div style={{ position: 'relative', width: '32px', height: '32px', flexShrink: 0 }}>

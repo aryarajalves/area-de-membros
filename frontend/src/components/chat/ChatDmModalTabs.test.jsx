@@ -47,4 +47,21 @@ describe('ChatDmModalTabs', () => {
     fireEvent.click(screen.getByTestId('dm-tab-team-support'));
     expect(setActiveTab).toHaveBeenCalledWith('team_support');
   });
+
+  it('permite quebra de linha e rolagem sem cortar botões em telas mobile estreitas', () => {
+    render(
+      <ChatDmModalTabs
+        activeTab="inbox"
+        setActiveTab={vi.fn()}
+        unreadTotal={2}
+        currentUser={{ role: 'superadmin' }}
+        onStartNewConversation={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('dm-modal-tabs-container')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByTestId('dm-modal-tabs-scroll')).toHaveStyle({ overflowX: 'auto', flexWrap: 'wrap' });
+    expect(screen.getByTestId('dm-tab-unread')).toHaveStyle({ whiteSpace: 'nowrap', flexShrink: '0' });
+    expect(screen.getByTestId('dm-new-conversation-btn')).toHaveStyle({ whiteSpace: 'nowrap', flexShrink: '0' });
+  });
 });

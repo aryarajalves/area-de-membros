@@ -48,7 +48,10 @@ export default function StudentCourseProgressItem({ course, isLightBg, onOpenHis
           gap: '8px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 180px', minWidth: 0 }}>
+        <div
+          data-testid={`student-course-identity-${course.course_id}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 auto', minWidth: 0 }}
+        >
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}

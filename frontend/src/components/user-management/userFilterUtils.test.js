@@ -123,6 +123,19 @@ describe('userFilterUtils', () => {
       expect(res).toHaveLength(1);
       expect(res[0].id).toBe(2);
     });
+
+    it('separa corretamente Aluno comum de Aluno Interno no filtro por perfil', () => {
+      const usersWithInternal = [
+        { id: 10, name: 'Aluno Real', email: 'real@teste.com', role: 'aluno', is_internal_student: false },
+        { id: 11, name: 'Jordão Interno', email: 'interno@teste.com', role: 'aluno', is_internal_student: true },
+      ];
+
+      const onlyReal = filterUsersList(usersWithInternal, { roleFilter: 'aluno' });
+      expect(onlyReal.map((u) => u.id)).toEqual([10]);
+
+      const onlyInternal = filterUsersList(usersWithInternal, { roleFilter: 'aluno_interno' });
+      expect(onlyInternal.map((u) => u.id)).toEqual([11]);
+    });
   });
 
   describe('MONTH_OPTIONS', () => {

@@ -17,6 +17,7 @@ export default function PlatformWhiteLabelTab({
   const [platformName, setPlatformName] = useState('Área de Membros');
   const [loginBannerUrl, setLoginBannerUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [logoSize, setLogoSize] = useState('medium');
   const [isAstrologyPlatform, setIsAstrologyPlatform] = useState(false);
   const [communityFeedStudentsEnabled, setCommunityFeedStudentsEnabled] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -37,6 +38,7 @@ export default function PlatformWhiteLabelTab({
           setPlatformName(data.platform_name || 'Área de Membros');
           setLoginBannerUrl(data.login_banner_url || null);
           setLogoUrl(data.logo_url || null);
+          setLogoSize(data.logo_size || 'medium');
           setIsAstrologyPlatform(Boolean(data.is_astrology_platform));
           setCommunityFeedStudentsEnabled(Boolean(data.community_feed_students_enabled));
         }
@@ -248,6 +250,7 @@ export default function PlatformWhiteLabelTab({
         subTextColor={subTextColor}
         addToast={addToast}
         initialLogoUrl={logoUrl}
+        initialLogoSize={logoSize}
         onLogoUpdated={(newLogo) => setLogoUrl(newLogo)}
       />
 
@@ -275,7 +278,7 @@ export default function PlatformWhiteLabelTab({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 360px) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
+        <div data-testid="whitelabel-banner-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', alignItems: 'start' }}>
           {/* Pré-visualização da Imagem */}
           <div
             style={{
@@ -304,7 +307,7 @@ export default function PlatformWhiteLabelTab({
           </div>
 
           {/* Controles de Upload */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
             <div>
               <label
                 htmlFor="login-banner-file-input"

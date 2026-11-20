@@ -112,4 +112,30 @@ describe('UserModals & Short Trial Access Duration (Hours, Days, Custom)', () =>
     expect(formatCustomDuration(4, 8)).toBe('custom:4d_8h');
     expect(formatCustomDuration('0', '5')).toBe('custom:0d_5h');
   });
+
+  it('permite selecionar o perfil Aluno Interno no modal de alteração de perfil e exibe seleção de cursos', () => {
+    const mockSetSelectedRole = vi.fn();
+    render(
+      <EditUserRoleModal
+        isOpen={true}
+        onClose={vi.fn()}
+        editingUser={{ id: 8, name: 'Jordão', email: 'jords@teste.com' }}
+        selectedRole="aluno_interno"
+        setSelectedRole={mockSetSelectedRole}
+        courses={[{ id: 1, title: 'Curso Teste' }]}
+        selectedCourseIds={[]}
+        setSelectedCourseIds={vi.fn()}
+        courseAccessMap={{}}
+        setCourseAccessMap={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    const roleSelect = screen.getByTestId('edit-role-select');
+    expect(roleSelect).toHaveValue('aluno_interno');
+    expect(screen.getByTestId('edit-user-courses-section')).toBeInTheDocument();
+
+    fireEvent.change(roleSelect, { target: { value: 'admin' } });
+    expect(mockSetSelectedRole).toHaveBeenCalledWith('admin');
+  });
 });

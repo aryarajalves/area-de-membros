@@ -384,4 +384,35 @@ describe('EventAccessRuleSelector Multi-Course Component', () => {
     fireEvent.click(screen.getByTestId('event-course-option-2'));
     expect(onChangeCourseIds).toHaveBeenCalledWith([1, 2]);
   });
+
+  it('usa grids responsivos e flexWrap no modal de Novo Evento para não cortar campos no mobile', async () => {
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/v1/events')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      if (String(url).includes('/api/v1/courses')) {
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <EventsManagement
+        currentUser={{ id: 1, role: 'superadmin' }}
+        addToast={vi.fn()}
+      />
+    );
+
+    const newBtn = await screen.findByTestId('create-event-btn');
+    fireEvent.click(newBtn);
+
+    expect(screen.getByTestId('event-dates-grid')).toHaveStyle({
+      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+    });
+    expect(screen.getByTestId('event-links-grid')).toHaveStyle({
+      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+    });
+    expect(screen.getByTestId('event-thumb-upload-row')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByTestId('upload-event-thumb-btn')).toHaveStyle({ whiteSpace: 'nowrap' });
+  });
 });

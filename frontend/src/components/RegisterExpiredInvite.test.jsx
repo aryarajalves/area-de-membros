@@ -70,7 +70,7 @@ describe('Register Component - Expired Invite Redirection', () => {
           }),
         });
       }
-      if (typeof url === 'string' && url.includes('/api/v1/users/me')) {
+      if (typeof url === 'string' && url.includes('/api/v1/auth/me')) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ id: 10, email: 'aluno@ativo.com' }),

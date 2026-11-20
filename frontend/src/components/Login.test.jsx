@@ -239,4 +239,51 @@ describe('Login Component', () => {
     expect(emailInput.value).toBe('aryarajunity@gmail.com');
     expect(localStorage.getItem('prefill_login_email')).toBeNull();
   });
+
+  it('exibe aviso amigável e pré-preenche e-mail quando URL possui ?convite=usado', () => {
+    window.history.replaceState({}, '', '/login?convite=usado&email=aluno%40convite.com');
+
+    render(
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId('login-invite-used-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('login-email-input').value).toBe('aluno@convite.com');
+
+    window.history.replaceState({}, '', '/');
+  });
+
+  it('redireciona direto para o app se já houver sessão válida no navegador', async () => {
+    localStorage.setItem('auth_token', 'token-valido-login');
+    const onLoginSuccess = vi.fn();
+
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/v1/whitelabel') {
+        return Promise.resolve({ ok: true, json: async () => ({ platform_name: 'Área de Membros' }) });
+      }
+      if (url === '/api/v1/auth/me') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: 42, name: 'Aluno Ativo', email: 'ativo@teste.com', role: 'aluno' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Login onLoginSuccess={onLoginSuccess} />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(onLoginSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 42, email: 'ativo@teste.com' }),
+        'token-valido-login'
+      );
+    });
+    localStorage.clear();
+  });
 });

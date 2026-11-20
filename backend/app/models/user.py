@@ -13,6 +13,7 @@ class User(Base):
     name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="user") # 'superadmin', 'admin', 'user'
+    is_internal_student = Column(Boolean, default=False, nullable=False) # Aluno Interno (adm visualizando como aluno, oculto da tela de alunos)
     is_active = Column(Boolean, default=True)
     phone = Column(String, nullable=True) # WhatsApp / Telefone do usuário
     birth_date = Column(Date, nullable=True) # Data de nascimento do usuário (YYYY-MM-DD)

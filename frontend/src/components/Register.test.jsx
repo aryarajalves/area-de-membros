@@ -319,7 +319,7 @@ describe('Register Component', () => {
           }),
         });
       }
-      if (typeof url === 'string' && url.includes('/api/v1/users/me')) {
+      if (typeof url === 'string' && url.includes('/api/v1/auth/me')) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ id: 1, name: 'Lead Ativo', email: 'lead@teste.com' }),
@@ -407,7 +407,7 @@ describe('Register Component', () => {
           }),
         });
       }
-      if (typeof url === 'string' && url.includes('/api/v1/users/me')) {
+      if (typeof url === 'string' && url.includes('/api/v1/auth/me')) {
         return Promise.resolve({
           ok: false,
           status: 401,
@@ -433,6 +433,110 @@ describe('Register Component', () => {
     expect(onRedirectToHome).not.toHaveBeenCalled();
     expect(localStorage.getItem('auth_token')).toBeNull();
     expect(localStorage.getItem('prefill_login_email')).toBe('lead_expirado@teste.com');
+  });
+
+  it('redireciona para a tela principal antes de validar convite quando já existe sessão válida no navegador', async () => {
+    localStorage.setItem('auth_token', 'sessao-ativa-123');
+    localStorage.setItem('auth_user', JSON.stringify({ id: 5, name: 'Aluno Logado' }));
+
+    const onRedirectToHome = vi.fn();
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/api/v1/auth/me')) {
+        return Promise.resolve({ ok: true, json: async () => ({ id: 5, name: 'Aluno Logado' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ valid: true }) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register
+          token="convite-valido-123"
+          onRedirectToHome={onRedirectToHome}
+          onRedirectToLogin={onRedirectToLogin}
+        />
+      </ToastProvider>
+    );
+
+    await vi.waitFor(() => {
+      expect(onRedirectToHome).toHaveBeenCalled();
+    });
+    expect(onRedirectToLogin).not.toHaveBeenCalled();
+    const validateCalls = global.fetch.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/invites/validate')
+    );
+    expect(validateCalls).toHaveLength(0);
+  });
+
+  it('limpa token expirado e segue fluxo normal de validação do convite', async () => {
+    localStorage.setItem('auth_token', 'token-expirado-abc');
+    localStorage.setItem('auth_user', JSON.stringify({ id: 9 }));
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/api/v1/auth/me')) {
+        return Promise.resolve({ ok: false, status: 401, json: async () => ({ detail: 'Expirado' }) });
+      }
+      if (typeof url === 'string' && url.includes('/invites/validate')) {
+        return Promise.resolve({ ok: true, json: async () => ({ valid: true, role: 'aluno' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register token="convite-valido-apos-401" />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText('Criar Conta')).toBeInTheDocument();
+    expect(localStorage.getItem('auth_token')).toBeNull();
+  });
+
+  it('redireciona para /login?convite=usado com e-mail na URL quando o formulário retorna e-mail já cadastrado', async () => {
+    localStorage.clear();
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({ bg_color: '#090d16' }) });
+      }
+      if (typeof url === 'string' && url.includes('/invites/validate')) {
+        return Promise.resolve({ ok: true, json: async () => ({ valid: true, role: 'aluno' }) });
+      }
+      if (url === '/api/v1/auth/register') {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({ detail: 'Já existe um usuário cadastrado com este e-mail.' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <ToastProvider>
+        <Register token="convite-valido-email-dup" onRedirectToLogin={onRedirectToLogin} />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText('Criar Conta')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('reg-name-input'), { target: { value: 'Maria' } });
+    fireEvent.change(screen.getByTestId('reg-email-input'), { target: { value: 'maria@existente.com' } });
+    fireEvent.change(screen.getByTestId('reg-phone-input'), { target: { value: '11999998888' } });
+    fireEvent.change(screen.getByTestId('reg-password-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+    fireEvent.change(screen.getByTestId('reg-password-confirm-input'), { target: { value: 'MinhaSenhaSegura123!' } });
+    fireEvent.click(screen.getByTestId('register-submit-btn'));
+
+    await vi.waitFor(() => {
+      expect(onRedirectToLogin).toHaveBeenCalledWith('/login?convite=usado&email=maria%40existente.com');
+    });
   });
 });
 

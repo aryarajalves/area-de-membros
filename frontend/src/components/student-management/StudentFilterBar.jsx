@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, RefreshCw, X, BookOpen, ArrowUpDown, Calendar, Filter, BarChart2, Percent } from 'lucide-react';
+import StudentRpgLevelFilterSelect from './StudentRpgLevelFilterSelect';
 
 export default function StudentFilterBar({
   search,
@@ -23,6 +24,8 @@ export default function StudentFilterBar({
   setMinProgress,
   maxProgress = '',
   setMaxProgress,
+  rpgLevel = '',
+  setRpgLevel,
   onResetFilters,
   hasActiveFilters,
   isLightBg,
@@ -383,7 +386,16 @@ export default function StudentFilterBar({
           </div>
         )}
 
-        {/* 7. Filtro por Progresso (%) */}
+        {/* 7. Filtro por Nível RPG */}
+        <StudentRpgLevelFilterSelect
+          rpgLevel={rpgLevel}
+          setRpgLevel={setRpgLevel}
+          inputBg={inputBg}
+          inputBorder={inputBorder}
+          textColor={textColor}
+        />
+
+        {/* 8. Filtro por Progresso (%) */}
         {setMinProgress && setMaxProgress && (
           <div
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}

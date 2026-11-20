@@ -596,8 +596,7 @@ async def lifespan(app: FastAPI):
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id);
                         CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id);
 
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS community_strikes_count INTEGER DEFAULT 0 NOT NULL;
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_community_banned BOOLEAN DEFAULT FALSE NOT NULL;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS community_strikes_count INTEGER DEFAULT 0 NOT NULL, ADD COLUMN IF NOT EXISTS is_community_banned BOOLEAN DEFAULT FALSE NOT NULL, ADD COLUMN IF NOT EXISTS is_internal_student BOOLEAN DEFAULT FALSE NOT NULL;
 
                         CREATE TABLE IF NOT EXISTS community_strikes (
                             id SERIAL PRIMARY KEY,
@@ -833,8 +832,8 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_post_views (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, CONSTRAINT uq_community_post_view UNIQUE (post_id, user_id))"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_post_id ON community_post_views(post_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_post_views_user_id ON community_post_views(user_id)"))
-                        conn.execute(text("ALTER TABLE users ADD COLUMN community_strikes_count INTEGER DEFAULT 0 NOT NULL"))
-                        conn.execute(text("ALTER TABLE users ADD COLUMN is_community_banned BOOLEAN DEFAULT 0 NOT NULL"))
+                        for stmt in ("ALTER TABLE users ADD COLUMN community_strikes_count INTEGER DEFAULT 0 NOT NULL", "ALTER TABLE users ADD COLUMN is_community_banned BOOLEAN DEFAULT 0 NOT NULL", "ALTER TABLE users ADD COLUMN is_internal_student BOOLEAN DEFAULT 0 NOT NULL"):
+                            conn.execute(text(stmt))
                         conn.execute(text("CREATE TABLE IF NOT EXISTS community_strikes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, moderator_id INTEGER REFERENCES users(id) ON DELETE SET NULL, post_id INTEGER REFERENCES community_posts(id) ON DELETE SET NULL, comment_id INTEGER REFERENCES community_post_comments(id) ON DELETE SET NULL, reason VARCHAR(255) NOT NULL, description TEXT NULL, strike_number INTEGER DEFAULT 1 NOT NULL, appeal_status VARCHAR(50) DEFAULT 'none' NOT NULL, appeal_reason TEXT NULL, appeal_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL, appeal_reviewed_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_user_id ON community_strikes(user_id)"))
                         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_community_strikes_appeal_status ON community_strikes(appeal_status)"))

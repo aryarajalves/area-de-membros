@@ -3,7 +3,14 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
+
+def _real_active_student_filters():
+    return (
+        User.role == "aluno",
+        User.is_active == True,
+        or_(User.is_internal_student == False, User.is_internal_student.is_(None)),
+    )
 
 from app.core.database import get_db
 from app.core.logger import logger
@@ -52,8 +59,8 @@ def get_ranking(
     # Define filtro temporal
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # 1. Total de alunos ativos disputando
-    total_participants = db.query(func.count(User.id)).filter(User.role == "aluno", User.is_active == True).scalar() or 0
+    # 1. Total de alunos ativos disputando (exclui alunos internos)
+    total_participants = db.query(func.count(User.id)).filter(*_real_active_student_filters()).scalar() or 0
     if total_participants == 0:
         return GamificationRankingResponse(
             period=period,
@@ -81,7 +88,7 @@ def get_ranking(
             func.coalesce(points_subq.c.total_pts, 0).label("pts")
         )
         .outerjoin(points_subq, User.id == points_subq.c.uid)
-        .filter(User.role == "aluno", User.is_active == True)
+        .filter(*_real_active_student_filters())
         .order_by(desc("pts"), User.id.asc())
         .limit(limit)
     )
@@ -155,8 +162,8 @@ def get_ranking(
         if is_me:
             my_position_item = item
 
-    # Se o usuário atual for aluno e não estiver entre os TOP N exibidos, calcula sua posição individual
-    if current_user.role == "aluno" and not my_position_item:
+    # Se o usuário atual for aluno real e não estiver entre os TOP N exibidos, calcula sua posição individual
+    if current_user.role == "aluno" and not getattr(current_user, "is_internal_student", False) and not my_position_item:
         my_pts_query = db.query(func.coalesce(func.sum(GamificationPoint.points), 0)).filter(
             GamificationPoint.user_id == current_user.id
         )
@@ -167,7 +174,7 @@ def get_ranking(
         higher_students_count = (
             db.query(func.count(points_subq.c.uid))
             .join(User, User.id == points_subq.c.uid)
-            .filter(User.role == "aluno", User.is_active == True, points_subq.c.total_pts > my_pts)
+            .filter(*_real_active_student_filters(), points_subq.c.total_pts > my_pts)
             .scalar() or 0
         )
         my_rank = higher_students_count + 1
@@ -446,8 +453,8 @@ def get_closed_ranking(
         end_dt = datetime(req_y, 12, 31, 23, 59, 59, 999999, tzinfo=timezone.utc)
         label = f"Ano de {req_y}"
 
-    # Buscar apenas alunos ativos
-    alunos = db.query(User).filter(User.role == "aluno", User.is_active == True).all()
+    # Buscar apenas alunos ativos (exclui alunos internos)
+    alunos = db.query(User).filter(*_real_active_student_filters()).all()
     aluno_ids = [a.id for a in alunos]
     aluno_map = {a.id: a for a in alunos}
 

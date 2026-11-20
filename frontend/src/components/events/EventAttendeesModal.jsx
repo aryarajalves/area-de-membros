@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Loader2, CheckCircle2, Mail, Phone } from 'lucide-react';
+import { Users, Search, Loader2, CheckCircle2, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatBrasiliaDate } from './googleCalendarHelper';
+
+const ATTENDEES_PER_PAGE = 5;
 
 function getInitials(name = '') {
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
@@ -13,6 +15,7 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!isOpen || !event?.id) return;
@@ -44,6 +47,7 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
     };
 
     setSearch('');
+    setCurrentPage(1);
     fetchAttendees();
     return () => {
       isMounted = false;
@@ -62,6 +66,13 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
         );
       })
     : attendees;
+
+  const totalPages = Math.max(1, Math.ceil(filteredAttendees.length / ATTENDEES_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedAttendees = filteredAttendees.slice(
+    (safePage - 1) * ATTENDEES_PER_PAGE,
+    safePage * ATTENDEES_PER_PAGE
+  );
 
   return (
     <div
@@ -185,7 +196,10 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Buscar participante por nome, e-mail ou telefone..."
               data-testid="search-event-attendees-input"
               style={{
@@ -244,7 +258,7 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
               </p>
             </div>
           ) : (
-            filteredAttendees.map((att) => (
+            paginatedAttendees.map((att) => (
               <div
                 key={att.user_id}
                 data-testid={`event-attendee-item-${att.user_id}`}
@@ -252,14 +266,15 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '12px',
+                  flexWrap: 'wrap',
+                  gap: '10px',
                   padding: '12px 14px',
                   borderRadius: '11px',
                   backgroundColor: 'rgba(30, 41, 59, 0.45)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 200px' }}>
                   {att.avatar_url ? (
                     <img
                       src={att.avatar_url}
@@ -345,14 +360,14 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
                         color: '#94a3b8',
                       }}
                     >
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Mail size={11} color="#64748b" />
-                        {att.email}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', minWidth: 0, maxWidth: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                        <Mail size={11} color="#64748b" style={{ flexShrink: 0 }} />
+                        <span>{att.email}</span>
                       </span>
                       {att.phone && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Phone size={11} color="#64748b" />
-                          {att.phone}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                          <Phone size={11} color="#64748b" style={{ flexShrink: 0 }} />
+                          <span>{att.phone}</span>
                         </span>
                       )}
                     </div>
@@ -366,6 +381,7 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
                       flexDirection: 'column',
                       alignItems: 'flex-end',
                       flexShrink: 0,
+                      marginLeft: 'auto',
                       fontSize: '11px',
                       color: '#64748b',
                     }}
@@ -389,17 +405,76 @@ export default function EventAttendeesModal({ isOpen, event, onClose, addToast }
           )}
         </div>
 
-        {/* Rodapé com Único Botão de Fechar */}
+        {/* Rodapé com Paginação e Único Botão de Fechar */}
         <div
           style={{
             padding: '14px 22px',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             backgroundColor: 'rgba(15, 23, 42, 0.9)',
             display: 'flex',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
+            justifyContent: filteredAttendees.length > 0 ? 'space-between' : 'flex-end',
+            flexWrap: 'wrap',
+            gap: '10px',
             flexShrink: 0,
           }}
         >
+          {filteredAttendees.length > 0 && (
+            <div
+              data-testid="attendees-pagination"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                data-testid="attendees-prev-page-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  backgroundColor: safePage <= 1 ? 'rgba(30, 41, 59, 0.35)' : 'rgba(30, 41, 59, 0.85)',
+                  color: safePage <= 1 ? '#64748b' : '#f8fafc',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <ChevronLeft size={14} /> Anterior
+              </button>
+              <span
+                data-testid="attendees-page-indicator"
+                style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}
+              >
+                Página {safePage} de {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                data-testid="attendees-next-page-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  backgroundColor: safePage >= totalPages ? 'rgba(30, 41, 59, 0.35)' : 'rgba(30, 41, 59, 0.85)',
+                  color: safePage >= totalPages ? '#64748b' : '#f8fafc',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Próxima <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={onClose}

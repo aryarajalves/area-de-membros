@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, RotateCcw, Eye, Sparkles } from 'lucide-react';
+import {
+  LOGO_SIZE_OPTIONS,
+  DEFAULT_LOGO_SIZE,
+  getLogoSizePx,
+  compressLogoFile,
+} from '../../utils/logoSizeUtils';
 
 export default function PlatformWhiteLabelLogoCard({
   cardBg,
@@ -8,17 +14,24 @@ export default function PlatformWhiteLabelLogoCard({
   subTextColor,
   addToast,
   initialLogoUrl = null,
+  initialLogoSize = DEFAULT_LOGO_SIZE,
   onLogoUpdated,
 }) {
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
+  const [logoSize, setLogoSize] = useState(initialLogoSize || DEFAULT_LOGO_SIZE);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [resettingLogo, setResettingLogo] = useState(false);
+  const [savingSize, setSavingSize] = useState(false);
 
   useEffect(() => {
     setLogoUrl(initialLogoUrl);
   }, [initialLogoUrl]);
+
+  useEffect(() => {
+    setLogoSize(initialLogoSize || DEFAULT_LOGO_SIZE);
+  }, [initialLogoSize]);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -35,8 +48,9 @@ export default function PlatformWhiteLabelLogoCard({
     const token = localStorage.getItem('auth_token');
 
     try {
+      const optimizedFile = await compressLogoFile(selectedFile);
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', optimizedFile);
 
       const res = await fetch('/api/v1/whitelabel/logo', {
         method: 'POST',
@@ -102,7 +116,44 @@ export default function PlatformWhiteLabelLogoCard({
     }
   };
 
+  const handleLogoSizeChange = async (e) => {
+    const newSize = e.target.value;
+    const prevSize = logoSize;
+    setLogoSize(newSize);
+    setSavingSize(true);
+    const token = localStorage.getItem('auth_token');
+
+    try {
+      const res = await fetch('/api/v1/whitelabel', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ logo_size: newSize }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const savedSize = data.logo_size || newSize;
+        setLogoSize(savedSize);
+        localStorage.setItem('platform_logo_size', savedSize);
+        window.dispatchEvent(new CustomEvent('whitelabel_updated', { detail: data }));
+        addToast('Tamanho do logotipo atualizado com sucesso!', 'success');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao salvar tamanho do logotipo.');
+      }
+    } catch (err) {
+      setLogoSize(prevSize);
+      addToast(err.message || 'Falha ao atualizar tamanho do logotipo.', 'error');
+    } finally {
+      setSavingSize(false);
+    }
+  };
+
   const activeDisplayLogo = previewUrl || logoUrl;
+  const previewSizePx = getLogoSizePx(logoSize);
 
   return (
     <div
@@ -129,7 +180,7 @@ export default function PlatformWhiteLabelLogoCard({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 320px) minmax(0, 1fr)', gap: '24px', alignItems: 'center' }}>
+      <div data-testid="whitelabel-logo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', alignItems: 'center' }}>
         {/* Pré-visualização da Logo */}
         <div
           style={{
@@ -171,9 +222,11 @@ export default function PlatformWhiteLabelLogoCard({
                 alt="Logotipo da Plataforma"
                 data-testid="platform-logo-preview-img"
                 style={{
-                  maxHeight: '56px',
+                  height: `${previewSizePx}px`,
+                  width: 'auto',
                   maxWidth: '100%',
                   objectFit: 'contain',
+                  transition: 'height 0.2s ease',
                 }}
               />
             ) : (
@@ -209,7 +262,7 @@ export default function PlatformWhiteLabelLogoCard({
         </div>
 
         {/* Controles de Upload */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
           <div>
             <label
               htmlFor="platform-logo-file-input"
@@ -241,8 +294,41 @@ export default function PlatformWhiteLabelLogoCard({
               style={{ display: 'none' }}
             />
             <small style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: subTextColor }}>
-              Formatos recomendados: PNG transparente, SVG ou WEBP (quadrado ou ícone com boa legibilidade).
+              Formatos recomendados: PNG transparente, SVG ou WEBP (otimizado automaticamente no envio).
             </small>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '280px' }}>
+            <label
+              htmlFor="platform-logo-size-select"
+              style={{ fontSize: '13px', fontWeight: 600, color: textColor }}
+            >
+              Tamanho do Logotipo
+            </label>
+            <select
+              id="platform-logo-size-select"
+              value={logoSize}
+              onChange={handleLogoSizeChange}
+              disabled={savingSize}
+              data-testid="platform-logo-size-select"
+              style={{
+                padding: '9px 12px',
+                borderRadius: '9px',
+                border: '1px solid rgba(148, 163, 184, 0.28)',
+                backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                color: textColor,
+                fontSize: '13.5px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              {LOGO_SIZE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {selectedFile && (

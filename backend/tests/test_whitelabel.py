@@ -193,3 +193,43 @@ def test_admin_can_toggle_community_feed_students_enabled(admin_token):
     assert restore_res.json()["community_feed_students_enabled"] is False
 
 
+def test_admin_can_update_logo_size_and_rejects_invalid_size(superadmin_token):
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+
+    # Tamanho inválido deve retornar 422
+    bad_res = client.patch("/api/v1/whitelabel", json={"logo_size": "gigante"}, headers=headers)
+    assert bad_res.status_code == 422
+
+    # Altera para large
+    res = client.patch("/api/v1/whitelabel", json={"logo_size": "large"}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["logo_size"] == "large"
+
+    # Confirma no endpoint público
+    pub_res = client.get("/api/v1/whitelabel")
+    assert pub_res.status_code == 200
+    assert pub_res.json()["logo_size"] == "large"
+
+    # Restaura para medium
+    restore_res = client.patch("/api/v1/whitelabel", json={"logo_size": "medium"}, headers=headers)
+    assert restore_res.status_code == 200
+    assert restore_res.json()["logo_size"] == "medium"
+
+
+def test_dynamic_manifest_reflects_whitelabel_name_and_logo(superadmin_token):
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+    client.patch("/api/v1/whitelabel", json={"platform_name": "Academia VIP"}, headers=headers)
+
+    res = client.get("/api/v1/whitelabel/manifest.webmanifest")
+    assert res.status_code == 200
+    assert "application/manifest+json" in res.headers.get("content-type", "")
+    manifest = res.json()
+    assert manifest["name"] == "Academia VIP"
+    assert manifest["display"] == "standalone"
+    assert manifest["start_url"] == "/"
+    assert len(manifest["icons"]) >= 2
+
+    # Restaura nome padrão
+    client.patch("/api/v1/whitelabel", json={"platform_name": "Área de Membros"}, headers=headers)
+
+

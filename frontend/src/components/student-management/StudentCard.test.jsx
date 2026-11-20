@@ -269,4 +269,14 @@ describe('StudentCard Component', () => {
     );
     expect(screen.getByTestId(`student-engagement-badge-${mockStudent.id}`)).toHaveTextContent('Engajamento: Alto');
   });
+
+  it('usa flex-basis auto na identidade do aluno para não gerar espaço vertical vazio no mobile', () => {
+    renderWithToast(<StudentCard student={mockStudent} isLightBg={false} />);
+    const identityEl = screen.getByTestId(`student-card-identity-${mockStudent.id}`);
+    expect(identityEl).toHaveStyle({ flex: '1 1 auto' });
+
+    // Expande a lista de cursos e valida também o item de curso
+    fireEvent.click(screen.getByTestId(`toggle-courses-btn-${mockStudent.id}`));
+    expect(screen.getByTestId('student-course-identity-1')).toHaveStyle({ flex: '1 1 auto' });
+  });
 });

@@ -30,6 +30,8 @@ import { EventsManagement } from './components/events';
 import CertificatePublicValidationPage from './components/certificates/CertificatePublicValidationPage';
 import PublicComplianceRouter from './components/common/PublicComplianceRouter';
 import LevelUpWatcher from './components/gamification/LevelUpWatcher';
+import PwaInstallPortal from './components/pwa/PwaInstallPortal';
+import { syncPwaWhiteLabelMeta } from './utils/pwaDeviceUtils';
 import { useToast } from './context/ToastContext';
 import { AUTH_EXPIRED_EVENT, subscribeAuthStorageSync } from './services/authInterceptor';
 import { useUrlNavigation } from './hooks/useUrlNavigation';
@@ -189,12 +191,11 @@ function App() {
           document.title = data.platform_name;
         }
         if (data?.logo_url !== undefined) {
-          if (data.logo_url) {
-            localStorage.setItem('platform_logo', data.logo_url);
-          } else {
-            localStorage.removeItem('platform_logo');
-          }
+          if (data.logo_url) localStorage.setItem('platform_logo', data.logo_url);
+          else localStorage.removeItem('platform_logo');
         }
+        if (data?.logo_size) localStorage.setItem('platform_logo_size', data.logo_size);
+        syncPwaWhiteLabelMeta({ platformName: data?.platform_name, logoUrl: data?.logo_url, bgColor: data?.bg_color });
       }
     } catch {
       // Ignora erro silenciosamente
@@ -271,6 +272,7 @@ function App() {
     }
   }, [user?.role, activeTab, alunoAllowedTabs]);
   const handleLoginSuccess = (loggedInUser, userToken) => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) { window.history.replaceState({}, document.title, '/'); setPathname('/'); }
     setUser(loggedInUser);
     setToken(userToken);
     if (loggedInUser?.role === 'aluno') {
@@ -333,17 +335,11 @@ function App() {
   // Se o caminho for de cadastro via convite (/register ou ?token=...)
   const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage && !isVerifyEmailPage);
   if (isRegisterPage) {
-    const handleRedirectFromInvite = () => {
-      if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
-      setPathname('/');
+    const handleRedirectFromInvite = (targetUrl = '/') => {
+      if (typeof window !== 'undefined') window.history.replaceState({}, document.title, targetUrl || '/');
+      setPathname(String(targetUrl || '/').split('?')[0] || '/');
     };
-    return (
-      <Register
-        onRegisterSuccess={() => { window.location.href = '/'; }}
-        onRedirectToHome={handleRedirectFromInvite}
-        onRedirectToLogin={handleRedirectFromInvite}
-      />
-    );
+    return <Register onRegisterSuccess={() => { window.location.href = '/'; }} onRedirectToHome={handleRedirectFromInvite} onRedirectToLogin={handleRedirectFromInvite} />;
   }
 
   // Se o usuário não está autenticado, exibe a tela de Login
@@ -402,6 +398,7 @@ function App() {
             bgColor={memberAreaBgColor}
           />
         )}
+        {!isFullView && <PwaInstallPortal />}
         {activeTab === 'home' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
           <HomeTutorials
             currentUser={user}

@@ -284,7 +284,7 @@ export default function SupportTopicDetailModal({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '16px',
+          padding: 'clamp(8px, 2.5vw, 16px)',
         }}
         data-testid="support-topic-detail-modal"
       >
@@ -306,7 +306,7 @@ export default function SupportTopicDetailModal({
           {/* Cabeçalho */}
           <div
             style={{
-              padding: '16px 22px',
+              padding: '14px clamp(14px, 3vw, 22px)',
               borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
@@ -400,7 +400,7 @@ export default function SupportTopicDetailModal({
           </div>
 
           {/* Corpo com Rolagem */}
-          <div style={{ padding: '22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ padding: 'clamp(14px, 3vw, 22px)', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '50px 0', color: '#94a3b8' }}>
                 <Loader2 size={32} className="spin-animation" style={{ margin: '0 auto 12px' }} />

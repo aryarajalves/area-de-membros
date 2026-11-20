@@ -365,4 +365,19 @@ describe('GamificationRanking Component', () => {
     expect(screen.getByTestId('podium-points-1')).toHaveTextContent('1.800');
     expect(screen.getAllByText('👑 Campeão do Ano').length).toBeGreaterThan(0);
   });
+
+  it('permite quebra de linha no cabeçalho de Ranking para o badge amarelo não cortar no mobile', async () => {
+    render(
+      <ToastProvider>
+        <GamificationRanking user={{ id: 10, role: 'aluno' }} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ranking-header-title')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('ranking-header-title')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByTestId('ranking-period-badge')).toHaveStyle({ whiteSpace: 'nowrap' });
+  });
 });

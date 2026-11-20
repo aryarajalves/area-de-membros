@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     name: str
     role: str
+    is_internal_student: Optional[bool] = False
     is_active: bool
     phone: Optional[str] = None
     birth_date: Optional[date] = None
@@ -42,7 +43,8 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
-    role: Literal["admin", "user", "aluno"]
+    role: Literal["admin", "user", "aluno", "aluno_interno"]
+    is_internal_student: Optional[bool] = None
     name: Optional[str] = None
     phone: Optional[str] = None
     birth_date: Optional[Union[date, str]] = None
@@ -68,7 +70,8 @@ class UserManualCreate(BaseModel):
     password: str
     phone: Optional[str] = None
     birth_date: Optional[Union[date, str]] = None
-    role: Literal["admin", "aluno"] = "aluno"
+    role: Literal["admin", "aluno", "aluno_interno"] = "aluno"
+    is_internal_student: Optional[bool] = None
     course_ids: Optional[List[int]] = None
     course_access: Optional[List[CourseAccessItem]] = None
 

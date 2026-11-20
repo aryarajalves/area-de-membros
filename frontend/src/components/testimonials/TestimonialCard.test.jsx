@@ -79,4 +79,24 @@ describe('TestimonialCard', () => {
     fireEvent.click(unpinBtn);
     expect(onToggleExample).toHaveBeenCalledWith(42, false);
   });
+
+  it('quebra palavras longas no texto do depoimento e permite wrap nos botões de moderação', () => {
+    render(
+      <TestimonialCard
+        testimonial={{
+          ...baseTestimonial,
+          status: 'pending',
+          content: 'nasjlakkldkllkdlkdakldkllkadlkladklakldaldlkkldaklldkla',
+        }}
+        currentUser={{ id: 1, role: 'superadmin' }}
+        onModerate={vi.fn()}
+        onToggleFeature={vi.fn()}
+        onToggleExample={vi.fn()}
+      />
+    );
+
+    const content = screen.getByTestId('testimonial-content-42');
+    expect(content).toHaveStyle({ overflowWrap: 'anywhere', wordBreak: 'break-word' });
+    expect(screen.getByTestId('moderation-actions-42')).toHaveStyle({ flexWrap: 'wrap' });
+  });
 });

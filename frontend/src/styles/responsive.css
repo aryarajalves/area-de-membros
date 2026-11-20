@@ -448,18 +448,18 @@
 @media (max-width: 640px) {
   .global-top-navbar {
     padding: 0 10px !important;
+    box-sizing: border-box !important;
+    gap: 6px !important;
   }
-
   .topbar-right-group {
-    gap: 8px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
   }
-
   .topbar-btn-text {
     display: none !important;
   }
-
   .topbar-action-btn {
-    padding: 7px 9px !important;
+    padding: 6px 8px !important;
     gap: 0 !important;
   }
 

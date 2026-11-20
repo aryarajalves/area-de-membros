@@ -117,7 +117,8 @@ export default function CreateUserManualModal({
       const activeToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
       const formattedPhoneWithDdi = phone.trim() ? `${selectedCountry.ddi} ${phone.trim()}` : null;
 
-      const courseAccessList = role === 'aluno'
+      const isStudentProfile = role === 'aluno' || role === 'aluno_interno';
+      const courseAccessList = isStudentProfile
         ? selectedCourseIds.map((cid) => ({
             course_id: cid,
             access_duration: courseAccessMap[cid] || 'lifetime',
@@ -130,7 +131,7 @@ export default function CreateUserManualModal({
         phone: formattedPhoneWithDdi,
         password: password.trim(),
         role,
-        course_ids: role === 'aluno' ? selectedCourseIds : [],
+        course_ids: isStudentProfile ? selectedCourseIds : [],
         course_access: courseAccessList,
       };
 
@@ -344,6 +345,7 @@ export default function CreateUserManualModal({
               data-testid="create-user-role-select"
             >
               <option value="aluno">Aluno</option>
+              <option value="aluno_interno">Aluno Interno</option>
               <option value="admin">Administrador (Admin)</option>
             </select>
             <small className="help-text">
@@ -351,8 +353,8 @@ export default function CreateUserManualModal({
             </small>
           </div>
 
-          {/* Cursos Liberados (quando Aluno) */}
-          {role === 'aluno' && (
+          {/* Cursos Liberados (quando Aluno ou Aluno Interno) */}
+          {(role === 'aluno' || role === 'aluno_interno') && (
             <div className="form-group" data-testid="create-user-courses-section" style={{ margin: 0 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <BookOpen size={15} color="#2563eb" />

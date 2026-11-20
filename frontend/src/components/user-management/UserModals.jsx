@@ -253,6 +253,7 @@ export function EditUserRoleModal({
               data-testid="edit-role-select"
             >
               <option value="aluno">Aluno</option>
+              <option value="aluno_interno">Aluno Interno</option>
               <option value="admin">Administrador (Admin)</option>
             </select>
             <small className="help-text">
@@ -260,7 +261,7 @@ export function EditUserRoleModal({
             </small>
           </div>
 
-          {selectedRole === 'aluno' && (
+          {(selectedRole === 'aluno' || selectedRole === 'aluno_interno') && (
             <div className="form-group" data-testid="edit-user-courses-section">
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <BookOpen size={15} color="#2563eb" />

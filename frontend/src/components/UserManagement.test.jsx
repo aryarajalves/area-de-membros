@@ -372,7 +372,7 @@ describe('UserManagement Component Tabs', () => {
     fireEvent.click(editBtn);
 
     const editRoleSelect = screen.getByTestId('edit-role-select');
-    expect(Array.from(editRoleSelect.options).map((o) => o.value)).toEqual(['aluno', 'admin']);
+    expect(Array.from(editRoleSelect.options).map((o) => o.value)).toEqual(['aluno', 'aluno_interno', 'admin']);
 
     // Verifica que o seletor de duração carregou com '6_months' e muda para '2_years'
     const durationSelect = screen.getByTestId('edit-course-duration-10');

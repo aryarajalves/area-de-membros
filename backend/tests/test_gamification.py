@@ -294,3 +294,46 @@ def test_closed_ranking_validation_and_top_10(setup_gamification_users):
     assert "Campeão do Mês" in data_closed["top_students"][0]["badge"]
 
 
+def test_internal_student_is_excluded_from_ranking(setup_gamification_users):
+    from datetime import datetime, timezone
+
+    db = TestingSessionLocal()
+    internal = db.query(User).filter(User.email == "aluno_interno_rank@test.com").first()
+    if not internal:
+        internal = User(
+            name="Interno Rank Test",
+            email="aluno_interno_rank@test.com",
+            role="aluno",
+            is_internal_student=True,
+            hashed_password=get_password_hash("Pass123!"),
+            is_active=True,
+        )
+        db.add(internal)
+        db.commit()
+        db.refresh(internal)
+
+    db.add(
+        GamificationPoint(
+            user_id=internal.id,
+            action="support_solution",
+            points=9999,
+            description="Pontos de teste interno",
+            created_at=datetime(2026, 9, 15, 12, 0, 0, tzinfo=timezone.utc),
+        )
+    )
+    db.commit()
+    internal_id = internal.id
+    db.close()
+
+    headers_a = get_headers("aluno_rank_a@test.com", "Pass123!")
+    res_rank = client.get("/api/v1/gamification/ranking?limit=100", headers=headers_a)
+    assert res_rank.status_code == 200
+    rank_ids = [s["user_id"] for s in res_rank.json()["ranking"]]
+    assert internal_id not in rank_ids
+
+    res_closed = client.get("/api/v1/gamification/closed-ranking?period_type=month&period_key=2026-09", headers=headers_a)
+    assert res_closed.status_code == 200
+    closed_ids = [s["user_id"] for s in res_closed.json()["top_students"]]
+    assert internal_id not in closed_ids
+
+

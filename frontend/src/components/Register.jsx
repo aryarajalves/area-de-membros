@@ -88,7 +88,41 @@ export default function Register({
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  const redirectToHome = (message, toastType = 'info') => {
+    addToast(message, toastType);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, '/');
+    }
+    if (onRedirectToHome) {
+      onRedirectToHome();
+    } else {
+      window.location.href = '/';
+    }
+  };
+
+  const redirectToLoginUsedInvite = (targetEmail, message = 'Sua conta já foi criada anteriormente com este convite. Faça login para acessar seus cursos.') => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    const cleanEmail = (targetEmail || '').trim();
+    if (cleanEmail) {
+      localStorage.setItem('prefill_login_email', cleanEmail);
+    }
+    addToast(message, 'info');
+    const loginUrl = cleanEmail
+      ? `/login?convite=usado&email=${encodeURIComponent(cleanEmail)}`
+      : '/login?convite=usado';
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, loginUrl);
+    }
+    if (onRedirectToLogin) {
+      onRedirectToLogin(loginUrl);
+    } else {
+      window.location.href = loginUrl;
+    }
+  };
+
   useEffect(() => {
+    let isMounted = true;
     let currentToken = initialToken;
     if (!currentToken) {
       const params = new URLSearchParams(window.location.search);
@@ -96,119 +130,73 @@ export default function Register({
       if (currentToken) setToken(currentToken);
     }
 
-    if (currentToken) {
+    const validateInviteFlow = async () => {
+      if (!currentToken) {
+        setInviteError('Nenhum código de convite informado.');
+        return;
+      }
+
       setLoading(true);
-      fetch(`/api/v1/auth/invites/validate?token=${currentToken}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.valid) {
-            setInviteInfo(data);
-          } else if (data.already_used || (data.detail && data.detail.includes('já foi utilizado'))) {
-            // O lead já possui conta criada com este convite!
-            const savedToken = localStorage.getItem('auth_token');
-            const savedUser = localStorage.getItem('auth_user');
-
-            const redirectToTarget = (isSessionActive) => {
-              if (isSessionActive) {
-                addToast('Você já possui uma conta ativa. Redirecionando para a tela principal...', 'success');
-                if (typeof window !== 'undefined') {
-                  window.history.replaceState({}, document.title, '/');
-                }
-                if (onRedirectToHome) {
-                  onRedirectToHome();
-                } else {
-                  window.location.href = '/';
-                }
-              } else {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
-                if (data.used_by_email) {
-                  localStorage.setItem('prefill_login_email', data.used_by_email);
-                }
-                addToast('Sua conta já foi criada anteriormente com este convite. Faça login para acessar seus cursos.', 'info');
-                if (typeof window !== 'undefined') {
-                  window.history.replaceState({}, document.title, '/');
-                }
-                if (onRedirectToLogin) {
-                  onRedirectToLogin();
-                } else {
-                  window.location.href = '/';
-                }
-              }
-            };
-
-            if (savedToken && savedUser) {
-              fetch('/api/v1/users/me', {
-                headers: { Authorization: `Bearer ${savedToken}` },
-              })
-                .then((meRes) => {
-                  redirectToTarget(Boolean(meRes && meRes.ok));
-                })
-                .catch(() => {
-                  redirectToTarget(false);
-                });
-            } else {
-              redirectToTarget(false);
+      try {
+        // 1. Verifica sessão existente antes de validar o convite ou exibir formulário
+        const savedToken = localStorage.getItem('auth_token');
+        if (savedToken) {
+          try {
+            const meRes = await fetch('/api/v1/auth/me', {
+              headers: { Authorization: `Bearer ${savedToken}` },
+            });
+            if (!isMounted) return;
+            if (meRes && meRes.ok) {
+              redirectToHome('Você já está logado! Redirecionando para a tela principal...', 'info');
+              return;
             }
-          } else if (data.is_expired || (data.detail && data.detail.includes('expirou'))) {
-            // O convite expirou! Redirecionar para login (ou home se tiver sessão ativa)
-            const savedToken = localStorage.getItem('auth_token');
-            const savedUser = localStorage.getItem('auth_user');
-
-            const redirectToTarget = (isSessionActive) => {
-              if (isSessionActive) {
-                addToast('Este convite expirou, mas você já possui uma sessão ativa. Redirecionando para a tela principal...', 'info');
-                if (typeof window !== 'undefined') {
-                  window.history.replaceState({}, document.title, '/');
-                }
-                if (onRedirectToHome) {
-                  onRedirectToHome();
-                } else {
-                  window.location.href = '/';
-                }
-              } else {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
-                addToast('Este convite expirou. Solicite um novo convite ao administrador do sistema.', 'error');
-                if (typeof window !== 'undefined') {
-                  window.history.replaceState({}, document.title, '/');
-                }
-                if (onRedirectToLogin) {
-                  onRedirectToLogin();
-                } else {
-                  window.location.href = '/';
-                }
-              }
-            };
-
-            if (savedToken && savedUser) {
-              fetch('/api/v1/users/me', {
-                headers: { Authorization: `Bearer ${savedToken}` },
-              })
-                .then((meRes) => {
-                  redirectToTarget(Boolean(meRes && meRes.ok));
-                })
-                .catch(() => {
-                  redirectToTarget(false);
-                });
-            } else {
-              redirectToTarget(false);
-            }
-          } else {
-            const err = data.detail || 'Convite inválido.';
-            setInviteError(err);
-            addToast(err, 'error');
+          } catch {
+            // Token inválido ou erro de rede na checagem: limpa e segue fluxo normal
           }
-        })
-        .catch(() => {
-          const err = 'Erro ao verificar convite.';
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+
+        // 2. Valida o token de convite
+        const res = await fetch(`/api/v1/auth/invites/validate?token=${currentToken}`);
+        const data = await res.json();
+        if (!isMounted) return;
+
+        if (data.valid) {
+          setInviteInfo(data);
+        } else if (data.already_used || (data.detail && data.detail.includes('já foi utilizado'))) {
+          redirectToLoginUsedInvite(data.used_by_email);
+        } else if (data.is_expired || (data.detail && data.detail.includes('expirou'))) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          addToast('Este convite expirou. Solicite um novo convite ao administrador do sistema.', 'error');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, document.title, '/login');
+          }
+          if (onRedirectToLogin) {
+            onRedirectToLogin('/login');
+          } else {
+            window.location.href = '/login';
+          }
+        } else {
+          const err = data.detail || 'Convite inválido.';
           setInviteError(err);
           addToast(err, 'error');
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setInviteError('Nenhum código de convite informado.');
-    }
+        }
+      } catch {
+        if (!isMounted) return;
+        const err = 'Erro ao verificar convite.';
+        setInviteError(err);
+        addToast(err, 'error');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    validateInviteFlow();
+    return () => {
+      isMounted = false;
+    };
   }, [initialToken]);
 
   const handleSubmit = async (e) => {
@@ -260,6 +248,19 @@ export default function Register({
       }
       if (!res.ok) {
         const errMsg = data.detail || 'Erro ao realizar cadastro.';
+        const lowerMsg = errMsg.toLowerCase();
+        const isEmailAlreadyRegistered =
+          lowerMsg.includes('já existe um usuário') ||
+          lowerMsg.includes('já cadastrado') ||
+          lowerMsg.includes('e-mail já') ||
+          lowerMsg.includes('email já');
+        if (isEmailAlreadyRegistered) {
+          redirectToLoginUsedInvite(
+            email,
+            'Este e-mail já está cadastrado! Redirecionando para a tela de login...'
+          );
+          return;
+        }
         addToast(errMsg, 'error');
         throw new Error(errMsg);
       }

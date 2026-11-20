@@ -27,12 +27,29 @@ def filter_students_by_progress(
     engagement_level: Optional[str] = None,
     min_progress: Optional[int] = None,
     max_progress: Optional[int] = None,
+    rpg_level: Optional[str] = None,
 ) -> List[StudentListItem]:
-    """Filtra a lista de alunos por nível de engajamento e/ou faixa percentual de progresso."""
+    """Filtra a lista de alunos por nível de engajamento, faixa percentual de progresso e/ou nível RPG."""
     normalized_level = engagement_level.strip().lower() if engagement_level else None
     valid_level = normalized_level if normalized_level in ("low", "medium", "high") else None
 
-    if valid_level is None and min_progress is None and max_progress is None:
+    raw_rpg = rpg_level.strip() if rpg_level else ""
+    target_tier: Optional[str] = None
+    target_level_num: Optional[int] = None
+    if raw_rpg.lower().startswith("tier:"):
+        target_tier = raw_rpg.split(":", 1)[1].strip().lower() or None
+    elif raw_rpg.isdigit():
+        parsed_lvl = int(raw_rpg)
+        if 1 <= parsed_lvl <= 20:
+            target_level_num = parsed_lvl
+
+    if (
+        valid_level is None
+        and min_progress is None
+        and max_progress is None
+        and target_tier is None
+        and target_level_num is None
+    ):
         return items
 
     filtered: List[StudentListItem] = []
@@ -43,6 +60,10 @@ def filter_students_by_progress(
         if min_progress is not None and progress < min_progress:
             continue
         if max_progress is not None and progress > max_progress:
+            continue
+        if target_tier is not None and (student.level_tier or "").strip().lower() != target_tier:
+            continue
+        if target_level_num is not None and int(student.level or 1) != target_level_num:
             continue
         filtered.append(student)
 

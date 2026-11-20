@@ -184,3 +184,53 @@ def test_student_filters_and_ordering():
     range_emails = [st["email"] for st in res_range.json()["items"]]
     assert "ana@teste.com" in range_emails
     assert "ziraldo@teste.com" not in range_emails
+
+    # 9. Teste Filtro por Nível RPG específico (rpg_level=1 -> Bronze I) e por Elo (tier:Bronze / tier:Ouro)
+    res_lvl1 = client.get("/api/v1/students?rpg_level=1", headers=headers)
+    assert res_lvl1.status_code == 200
+    lvl1_emails = [st["email"] for st in res_lvl1.json()["items"]]
+    assert "ana@teste.com" in lvl1_emails
+
+    res_bronze = client.get("/api/v1/students?rpg_level=tier:Bronze", headers=headers)
+    assert res_bronze.status_code == 200
+    assert "ana@teste.com" in [st["email"] for st in res_bronze.json()["items"]]
+
+    res_ouro = client.get("/api/v1/students?rpg_level=tier:Ouro", headers=headers)
+    assert res_ouro.status_code == 200
+    assert "ana@teste.com" not in [st["email"] for st in res_ouro.json()["items"]]
+
+    # 10. Teste Aluno Interno: pode ser criado/alterado via /auth/users, mas NÃO aparece na tela de Alunos (/students)
+    internal_email = "alunointerno@teste.com"
+    internal_user = db.query(User).filter(User.email == internal_email).first()
+    if not internal_user:
+        create_res = client.post(
+            "/api/v1/auth/users",
+            json={
+                "name": "Jordão Interno",
+                "email": internal_email,
+                "password": "StrongPassword123!",
+                "role": "aluno_interno",
+            },
+            headers=headers,
+        )
+        assert create_res.status_code == 201
+        created_data = create_res.json()
+        assert created_data["role"] == "aluno"
+        assert created_data["is_internal_student"] is True
+        internal_id = created_data["id"]
+    else:
+        internal_id = internal_user.id
+        patch_res = client.patch(
+            f"/api/v1/auth/users/{internal_id}",
+            json={"role": "aluno_interno"},
+            headers=headers,
+        )
+        assert patch_res.status_code == 200
+        assert patch_res.json()["is_internal_student"] is True
+
+    res_students_all = client.get("/api/v1/students?limit=200", headers=headers)
+    assert res_students_all.status_code == 200
+    assert internal_email not in [st["email"] for st in res_students_all.json()["items"]]
+
+    # Limpa usuário interno de teste
+    client.delete(f"/api/v1/auth/users/{internal_id}", headers=headers)

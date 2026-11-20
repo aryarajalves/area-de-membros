@@ -10,22 +10,38 @@ export default function ChatDmModalTabs({
 }) {
   return (
     <div
+      data-testid="dm-modal-tabs-container"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '8px',
         padding: '8px 16px',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         backgroundColor: '#0c1322',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div
+        data-testid="dm-modal-tabs-scroll"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          flexWrap: 'wrap',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: '100%',
+        }}
+      >
         <button
           type="button"
           onClick={() => setActiveTab('inbox')}
           data-testid="dm-tab-inbox"
           style={{
-            padding: '6px 14px',
+            padding: '6px 12px',
             borderRadius: '8px',
             fontSize: '0.8rem',
             fontWeight: 600,
@@ -36,6 +52,8 @@ export default function ChatDmModalTabs({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <Inbox size={14} />
@@ -47,7 +65,7 @@ export default function ChatDmModalTabs({
           onClick={() => setActiveTab('unread')}
           data-testid="dm-tab-unread"
           style={{
-            padding: '6px 14px',
+            padding: '6px 12px',
             borderRadius: '8px',
             fontSize: '0.8rem',
             fontWeight: 600,
@@ -58,6 +76,8 @@ export default function ChatDmModalTabs({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <BellOff size={14} />
@@ -84,7 +104,7 @@ export default function ChatDmModalTabs({
             onClick={() => setActiveTab('team_support')}
             data-testid="dm-tab-team-support"
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '0.8rem',
               fontWeight: 600,
@@ -95,6 +115,8 @@ export default function ChatDmModalTabs({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             <Users size={14} />
@@ -121,6 +143,8 @@ export default function ChatDmModalTabs({
           color: '#38bdf8',
           cursor: 'pointer',
           transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
         }}
       >
         <UserPlus size={14} />

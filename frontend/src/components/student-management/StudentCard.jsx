@@ -65,7 +65,10 @@ export default function StudentCard({ student, isLightBg, onRefreshStudents }) {
           gap: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: '1 1 280px', minWidth: 0 }}>
+        <div
+          data-testid={`student-card-identity-${student.id}`}
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: '1 1 auto', minWidth: 0 }}
+        >
           <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
             {student.avatar_url ? (
               <img

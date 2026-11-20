@@ -420,6 +420,35 @@ describe('StudentManagement Component', () => {
       expect(calls.some((u) => u.includes('/api/v1/students?') && u.includes('min_progress=51'))).toBe(true);
     });
   });
+
+  it('filtra alunos por nível RPG ou Elo usando o dropdown de nível', async () => {
+    render(
+      <ToastProvider>
+        <StudentManagement />
+      </ToastProvider>
+    );
+
+    const levelSelect = await screen.findByTestId('filter-rpg-level-select');
+    expect(levelSelect).toBeInTheDocument();
+
+    // Seleciona Elo Ouro
+    fireEvent.change(levelSelect, { target: { value: 'tier:Ouro' } });
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls.map(([u]) => String(u));
+      expect(calls.some((u) => u.includes('/api/v1/students?') && u.includes('rpg_level=tier%3AOuro'))).toBe(true);
+    });
+
+    // Seleciona Nível específico 5 (Prata I)
+    fireEvent.change(levelSelect, { target: { value: '5' } });
+    await waitFor(() => {
+      const calls = global.fetch.mock.calls.map(([u]) => String(u));
+      expect(calls.some((u) => u.includes('/api/v1/students?') && u.includes('rpg_level=5'))).toBe(true);
+    });
+
+    // Limpar filtros volta para Todos
+    fireEvent.click(screen.getByTestId('reset-filters-btn'));
+    expect(levelSelect.value).toBe('');
+  });
 });
 
 

@@ -278,12 +278,16 @@ def create_user_manual(
             detail="Este e-mail já está cadastrado no sistema."
         )
 
-    # 2. Valida tipo de usuário
-    if user_in.role not in ["admin", "aluno"]:
+    # 2. Valida e normaliza tipo de usuário (inclui 'aluno_interno' -> role='aluno' + is_internal_student=True)
+    if user_in.role not in ["admin", "aluno", "aluno_interno"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Perfil inválido. Permitido apenas 'aluno' ou 'admin'."
+            detail="Perfil inválido. Permitido apenas 'aluno', 'aluno_interno' ou 'admin'."
         )
+    normalized_role = "aluno" if user_in.role == "aluno_interno" else user_in.role
+    is_internal = True if user_in.role == "aluno_interno" else bool(user_in.is_internal_student)
+    if normalized_role != "aluno":
+        is_internal = False
 
     # 3. Valida requisitos da senha (mínimo 12 caracteres, maiúscula, minúscula, número e símbolo especial)
     try:
@@ -304,7 +308,8 @@ def create_user_manual(
         phone=user_in.phone.strip() if user_in.phone else None,
         birth_date=user_in.birth_date,
         hashed_password=hashed_pwd,
-        role=user_in.role,
+        role=normalized_role,
+        is_internal_student=is_internal,
         is_active=True
     )
     db.add(new_user)
@@ -312,7 +317,7 @@ def create_user_manual(
 
     now = datetime.now(timezone.utc)
     # 6. Se for aluno e tiver cursos selecionados, vincula
-    if user_in.role == "aluno":
+    if normalized_role == "aluno":
         access_items = []
         if user_in.course_access is not None:
             access_items = user_in.course_access
@@ -383,11 +388,19 @@ def update_user(
             detail="Não é permitido editar as informações do Super Admin."
         )
 
-    # Apenas admin, user ou aluno podem ser atribuídos
-    if user_update.role not in ["admin", "user", "aluno"]:
+    # Apenas admin, user, aluno ou aluno_interno podem ser atribuídos
+    if user_update.role not in ["admin", "user", "aluno", "aluno_interno"]:
         raise HTTPException(status_code=400, detail="Perfil inválido.")
 
-    target_user.role = user_update.role
+    normalized_role = "aluno" if user_update.role == "aluno_interno" else user_update.role
+    is_internal = True if user_update.role == "aluno_interno" else (
+        bool(user_update.is_internal_student) if user_update.is_internal_student is not None else False
+    )
+    if normalized_role != "aluno":
+        is_internal = False
+
+    target_user.role = normalized_role
+    target_user.is_internal_student = is_internal
     if user_update.name is not None:
         target_user.name = user_update.name
     if user_update.phone is not None:
@@ -401,7 +414,7 @@ def update_user(
         existing_map = {uc.course_id: uc for uc in existing_ucs}
         db.query(UserCourse).filter(UserCourse.user_id == user_id).delete()
 
-        if user_update.role == "aluno":
+        if normalized_role == "aluno":
             now = datetime.now(timezone.utc)
             items_to_save = []
             if user_update.course_access is not None:

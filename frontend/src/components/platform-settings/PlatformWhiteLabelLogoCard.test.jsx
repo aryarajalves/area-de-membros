@@ -27,6 +27,9 @@ describe('PlatformWhiteLabelLogoCard Component', () => {
     );
 
     expect(screen.getByText('Logotipo da Plataforma (Barra Lateral / Topo)')).toBeInTheDocument();
+    expect(screen.getByTestId('whitelabel-logo-grid')).toHaveStyle({
+      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    });
     expect(screen.getByTestId('platform-logo-default-preview')).toBeInTheDocument();
     expect(screen.getByText('Logotipo Padrão do Sistema')).toBeInTheDocument();
     expect(screen.getByTestId('select-logo-file-label')).toBeInTheDocument();
@@ -141,6 +144,55 @@ describe('PlatformWhiteLabelLogoCard Component', () => {
       expect(localStorage.getItem('platform_logo')).toBeNull();
       expect(mockAddToast).toHaveBeenCalledWith('Logotipo restaurado para o padrão do sistema!', 'success');
       expect(mockOnLogoUpdated).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it('permite escolher o tamanho do logotipo no dropdown, atualiza a prévia e salva na API', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        platform_name: 'Área de Membros',
+        logo_url: 'https://cdn.example.com/logo.png',
+        logo_size: 'xlarge',
+      }),
+    });
+
+    const eventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    render(
+      <PlatformWhiteLabelLogoCard
+        cardBg="#1e2230"
+        cardBorder="1px solid #333"
+        textColor="#fff"
+        subTextColor="#888"
+        addToast={mockAddToast}
+        initialLogoUrl="https://cdn.example.com/logo.png"
+        initialLogoSize="medium"
+        onLogoUpdated={mockOnLogoUpdated}
+      />
+    );
+
+    const select = screen.getByTestId('platform-logo-size-select');
+    expect(select.value).toBe('medium');
+
+    fireEvent.change(select, { target: { value: 'xlarge' } });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/whitelabel',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer mock_token',
+          }),
+          body: JSON.stringify({ logo_size: 'xlarge' }),
+        })
+      );
+      expect(localStorage.getItem('platform_logo_size')).toBe('xlarge');
+      expect(screen.getByTestId('platform-logo-preview-img')).toHaveStyle({ height: '64px' });
+      expect(mockAddToast).toHaveBeenCalledWith('Tamanho do logotipo atualizado com sucesso!', 'success');
+      expect(eventSpy).toHaveBeenCalled();
     });
   });
 });

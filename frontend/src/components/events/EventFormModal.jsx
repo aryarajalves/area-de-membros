@@ -207,7 +207,7 @@ export default function EventFormModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 'clamp(14px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {/* Título */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0', marginBottom: '6px' }}>
@@ -240,7 +240,7 @@ export default function EventFormModal({
           />
 
           {/* Data e Horário (Início e Término) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div data-testid="event-dates-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0', marginBottom: '6px' }}>
                 Início (Horário de Brasília) *
@@ -253,6 +253,7 @@ export default function EventFormModal({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   background: 'rgba(15, 23, 42, 0.6)',
@@ -273,6 +274,7 @@ export default function EventFormModal({
                 onChange={(e) => setEndTime(e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   background: 'rgba(15, 23, 42, 0.6)',
@@ -285,7 +287,7 @@ export default function EventFormModal({
           </div>
 
           {/* Links (Transmissão e Gravação) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div data-testid="event-links-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0', marginBottom: '6px' }}>
                 Link da Transmissão Ao Vivo
@@ -298,6 +300,7 @@ export default function EventFormModal({
                 placeholder="Ex: https://zoom.us/j/... ou Meet"
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   background: 'rgba(15, 23, 42, 0.6)',
@@ -319,6 +322,7 @@ export default function EventFormModal({
                 placeholder="Ex: https://youtube.com/watch?v=..."
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   background: 'rgba(15, 23, 42, 0.6)',
