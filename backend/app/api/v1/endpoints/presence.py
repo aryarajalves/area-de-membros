@@ -20,9 +20,10 @@ router = APIRouter(tags=["Presença e Status Online"])
     description="Retorna a contagem de usuários online agrupados por perfis (Total, Super Admins, Admins, Alunos)."
 )
 def get_presence_stats(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Dict[str, int]:
-    return get_online_summary()
+    return get_online_summary(db=db)
 
 
 @router.get(

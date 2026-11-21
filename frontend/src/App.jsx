@@ -1,356 +1,64 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar';
-import Login from './components/Login';
-import UserManagement from './components/UserManagement';
-import AutomatedBackup from './components/AutomatedBackup';
-import LogManagement from './components/LogManagement';
-import { InfrastructureManagement } from './components/infrastructure';
-import CourseManagement from './components/CourseManagement';
-import LessonReportsManagement from './components/LessonReportsManagement';
-import PlatformSettings from './components/PlatformSettings';
-import StudentManagement from './components/student-management';
-import IntegrationManagement from './components/integration-management';
-import SupportManagement from './components/support-management/SupportManagement';
-import { ChatManagement } from './components/chat';
-import { TestimonialsManagement } from './components/testimonials';
-import { GamificationRanking } from './components/gamification';
-import Register from './components/Register';
-import ResetPassword from './components/ResetPassword';
-import VerifyEmailPage from './components/VerifyEmailPage';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import BackgroundUploadWidget from './components/common/BackgroundUploadWidget';
 import TopNavbar from './components/navigation/TopNavbar';
-import { SupportReportsSubTabs, ServerSystemSubTabs, RestrictedWelcomeScreen } from './components/navigation/UnifiedSectionSubTabs';
-import FunnelManagement from './components/funnels/FunnelManagement';
-import { HomeTutorials } from './components/home-tutorials';
-import { IntroductionManagement } from './components/introductions';
-import { CommunityFeedManagement } from './components/community-feed';
-import { EventsManagement } from './components/events';
-import CertificatePublicValidationPage from './components/certificates/CertificatePublicValidationPage';
-import PublicComplianceRouter from './components/common/PublicComplianceRouter';
+import PublicRoutesView from './components/navigation/PublicRoutesView';
+import AppTabContent from './components/navigation/AppTabContent';
 import LevelUpWatcher from './components/gamification/LevelUpWatcher';
 import PwaInstallPortal from './components/pwa/PwaInstallPortal';
-import { syncPwaWhiteLabelMeta } from './utils/pwaDeviceUtils';
 import { useToast } from './context/ToastContext';
-import { AUTH_EXPIRED_EVENT, subscribeAuthStorageSync } from './services/authInterceptor';
-import { useUrlNavigation } from './hooks/useUrlNavigation';
 import useCommunityFeedStudentsEnabled from './hooks/useCommunityFeedStudentsEnabled';
-import { usePushNotifications, unregisterPushNotifications } from './hooks/usePushNotifications';
-const ALUNO_ALLOWED_TABS = ['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings'];
+import { useAppSessionAndBadges } from './hooks/useAppSessionAndBadges';
 
 function App() {
-  const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
-  const alunoAllowedTabs = communityFeedStudentsEnabled ? [...ALUNO_ALLOWED_TABS, 'community-feed'] : ALUNO_ALLOWED_TABS;
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [pendingReportsCount, setPendingReportsCount] = useState(0);
-  const [pendingSupportCount, setPendingSupportCount] = useState(0);
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
-  const [isInsideCourse, setIsInsideCourse] = useState(false);
-  const [isInsideFunnel, setIsInsideFunnel] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(false);
-  const [memberAreaBgColor, setMemberAreaBgColor] = useState(() => {
-    return localStorage.getItem('member_area_bg_color') || '#090d16';
-  });
-  const [activeTab, setActiveTab] = useState(() => {
-    try {
-      const savedUserStr = localStorage.getItem('auth_user');
-      if (savedUserStr) {
-        const parsed = JSON.parse(savedUserStr);
-        if (parsed?.role === 'aluno') {
-          const savedTab = localStorage.getItem('active_tab') || 'courses';
-          return ALUNO_ALLOWED_TABS.includes(savedTab) ? savedTab : 'courses';
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return localStorage.getItem('active_tab') || 'courses';
-  });
-  const [pathname, setPathname] = useState(window.location.pathname);
   const { addToast } = useToast();
-  const hasInitialUrlRoute = useRef(
-    typeof window !== 'undefined' && Boolean(window.location.search && (window.location.search.includes('tab=') || window.location.search.includes('courseId=')))
+  const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
+  const {
+    user,
+    setUser,
+    token,
+    pathname,
+    setPathname,
+    activeTab,
+    memberAreaBgColor,
+    pendingReportsCount,
+    pendingSupportCount,
+    chatUnreadCount,
+    isInsideCourse,
+    setIsInsideCourse,
+    isInsideFunnel,
+    setIsInsideFunnel,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+    isChatSidebarOpen,
+    setIsChatSidebarOpen,
+    showLogoutModal,
+    setShowLogoutModal,
+    handleThemeColorChange,
+    handleSelectTab,
+    fetchReportsSummary,
+    handleLoginSuccess,
+    handlePromptLogout,
+    handleConfirmLogout,
+  } = useAppSessionAndBadges({ addToast, communityFeedStudentsEnabled });
+
+  const publicView = (
+    <PublicRoutesView
+      pathname={pathname}
+      setPathname={setPathname}
+      user={user}
+      token={token}
+      onLoginSuccess={handleLoginSuccess}
+    />
   );
 
-  const handleThemeColorChange = useCallback((newColor) => {
-    if (!newColor) return;
-    setMemberAreaBgColor(newColor);
-    localStorage.setItem('member_area_bg_color', newColor);
-  }, []);
-
-  const handleSelectTab = useCallback((tabId) => {
-    setIsInsideCourse(false);
-    setIsInsideFunnel(false);
-    setIsMobileMenuOpen(false);
-    // Ao acessar o Chat da Comunidade, fecha a barra lateral para dar foco total ao chat
-    if (tabId === 'chat') {
-      setIsChatSidebarOpen(false);
-    } else {
-      setIsChatSidebarOpen(true);
-    }
-    setActiveTab(tabId);
-    localStorage.setItem('active_tab', tabId);
-    if (typeof window !== 'undefined' && window.location.search) {
-      try {
-        const cleanPath = window.location.pathname || '/';
-        if (window.history && typeof window.history.replaceState === 'function') {
-          window.history.replaceState({}, document.title, cleanPath);
-        }
-      } catch {
-        // Ignora erro
-      }
-    }
-  }, []);
-
-  useUrlNavigation({ user, onSelectTab: handleSelectTab });
-
-  useEffect(() => {
-    // Check local storage for existing session
-    const savedToken = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        if (parsed?.role === 'aluno') {
-          const currentTab = localStorage.getItem('active_tab') || 'courses';
-          if (!alunoAllowedTabs.includes(currentTab)) {
-            setActiveTab('courses');
-            localStorage.setItem('active_tab', 'courses');
-          }
-          setIsInsideCourse(false);
-        }
-      } catch {
-        // ignore error
-      }
-    }
-
-    // Ouvinte para logout automático quando o token expirar e sincronia entre abas
-    const handleExpired = () => {
-      setUser(null); setToken(null); setShowLogoutModal(false);
-      addToast('Sua sessão expirou. Por favor, faça login novamente.', 'error');
-    };
-    const unsubscribeStorage = subscribeAuthStorageSync({
-      onSessionUpdated: (newToken, newUser) => { setToken(newToken); if (newUser) setUser(newUser); },
-      onSessionCleared: () => { setUser(null); setToken(null); setShowLogoutModal(false); },
-    });
-
-    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
-    return () => { window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired); unsubscribeStorage(); };
-  }, [addToast]);
-
-  useEffect(() => {
-    const handleAppNavigateTab = (e) => { if (e.detail?.tab) handleSelectTab(e.detail.tab); };
-    window.addEventListener('app:navigate_tab', handleAppNavigateTab);
-    return () => window.removeEventListener('app:navigate_tab', handleAppNavigateTab);
-  }, [handleSelectTab]);
-
-  useEffect(() => {
-    const currentToken = token || localStorage.getItem('auth_token');
-    if (!currentToken) return;
-
-    const checkInitialTutorials = async () => {
-      try {
-        if (hasInitialUrlRoute.current) return;
-        const res = await fetch('/api/v1/tutorials', { headers: { Authorization: `Bearer ${currentToken}` } });
-        if (res.ok) {
-          const tutorials = await res.json();
-          const savedTab = localStorage.getItem('active_tab');
-          if (tutorials && tutorials.length > 0) {
-            if (!savedTab || savedTab === 'home' || savedTab === 'courses') {
-              setActiveTab('home');
-              localStorage.setItem('active_tab', 'home');
-            }
-          } else if (!savedTab || savedTab === 'home') {
-            setActiveTab('courses');
-            localStorage.setItem('active_tab', 'courses');
-          }
-        }
-      } catch {
-        // Ignora silenciosamente
-      }
-    };
-    checkInitialTutorials();
-  }, [token]);
-
-  const fetchPlatformTheme = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/whitelabel');
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.bg_color) {
-          handleThemeColorChange(data.bg_color);
-        }
-        if (data?.platform_name) {
-          localStorage.setItem('platform_name', data.platform_name);
-          document.title = data.platform_name;
-        }
-        if (data?.logo_url !== undefined) {
-          if (data.logo_url) localStorage.setItem('platform_logo', data.logo_url);
-          else localStorage.removeItem('platform_logo');
-        }
-        if (data?.logo_size) localStorage.setItem('platform_logo_size', data.logo_size);
-        syncPwaWhiteLabelMeta({ platformName: data?.platform_name, logoUrl: data?.logo_url, bgColor: data?.bg_color });
-      }
-    } catch {
-      // Ignora erro silenciosamente
-    }
-  }, [handleThemeColorChange]);
-
-  const fetchReportsSummary = useCallback(async () => {
-    const currentToken = token || localStorage.getItem('auth_token');
-    if (!currentToken) return;
-    const currentUserStr = localStorage.getItem('auth_user');
-    let userRole = user?.role;
-    if (!userRole && currentUserStr) {
-      try { userRole = JSON.parse(currentUserStr).role; } catch { /* ignore */ }
-    }
-    const headers = { Authorization: `Bearer ${currentToken}` };
-    if (['superadmin', 'admin'].includes(userRole)) {
-      try {
-        const res = await fetch('/api/v1/courses/reports/summary', { headers });
-        if (res.ok) { const data = await res.json(); setPendingReportsCount(data.pending_count || 0); }
-      } catch { /* ignore */ }
-    }
-    try {
-      const sRes = await fetch('/api/v1/support/stats', { headers });
-      if (sRes.ok) {
-        const sData = await sRes.json();
-        setPendingSupportCount(Math.max(0, (sData.total_topics || 0) - (sData.resolved_count || 0)));
-      }
-    } catch { /* ignore */ }
-  }, [token, user?.role]);
-
-  const fetchChatUnreadSummary = useCallback(async () => {
-    const currentToken = token || localStorage.getItem('auth_token');
-    if (!currentToken) return;
-    try {
-      const res = await fetch('/api/v1/chat/unread-summary', {
-        headers: { Authorization: `Bearer ${currentToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setChatUnreadCount(data.total_unread || 0);
-      }
-    } catch {
-      // Ignora erro silenciosamente
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchPlatformTheme();
-    fetchReportsSummary();
-    fetchChatUnreadSummary();
-
-    let debounceTimer = null;
-    const handleChatUnreadUpdate = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        fetchChatUnreadSummary();
-      }, 500);
-    };
-    window.addEventListener('chat_unread_updated', handleChatUnreadUpdate);
-    window.addEventListener('support_summary_updated', fetchReportsSummary);
-
-    return () => {
-      window.removeEventListener('chat_unread_updated', handleChatUnreadUpdate);
-      window.removeEventListener('support_summary_updated', fetchReportsSummary);
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  }, [fetchPlatformTheme, fetchReportsSummary, fetchChatUnreadSummary]);
-
-  useEffect(() => {
-    if (user?.role === 'aluno' && !alunoAllowedTabs.includes(activeTab)) {
-      setActiveTab('courses');
-      localStorage.setItem('active_tab', 'courses');
-      setIsInsideCourse(false);
-    }
-  }, [user?.role, activeTab, alunoAllowedTabs]);
-  const handleLoginSuccess = (loggedInUser, userToken) => {
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) { window.history.replaceState({}, document.title, '/'); setPathname('/'); }
-    setUser(loggedInUser);
-    setToken(userToken);
-    if (loggedInUser?.role === 'aluno') {
-      const currentTab = localStorage.getItem('active_tab') || 'courses';
-      const initialTab = alunoAllowedTabs.includes(currentTab) ? currentTab : 'courses';
-      setActiveTab(initialTab);
-      localStorage.setItem('active_tab', initialTab);
-      setIsInsideCourse(false);
-    }
-  };
-  usePushNotifications({ token, setActiveTab });
-  const handlePromptLogout = () => { setIsMobileMenuOpen(false); setShowLogoutModal(true); };
-  const handleConfirmLogout = () => {
-    unregisterPushNotifications(token);
-    setShowLogoutModal(false);
-    ['auth_token', 'auth_user', 'active_tab', 'active_subtab_usermanagement'].forEach((k) => localStorage.removeItem(k));
-    setUser(null); setToken(null);
-  };
-  if (pathname.includes('/privacidade') || pathname.includes('/termos') || pathname.includes('/excluir-conta')) {
-    return <PublicComplianceRouter pathname={pathname} onBack={() => { window.history.replaceState({}, document.title, '/'); setPathname('/'); }} />;
-  }
-  // Validação pública de autenticidade de certificado via QR Code ou link (/validar-certificado/:code)
-  if (pathname.includes('/validar-certificado')) {
-    const certCode = pathname.split('/validar-certificado/')[1]?.split('/')[0]?.split('?')[0] || '';
-    return (
-      <CertificatePublicValidationPage
-        certificateCode={certCode}
-        onBackToPlatform={() => {
-          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
-          setPathname('/');
-        }}
-      />
-    );
+  if (!user || !token || pathname.includes('/privacidade') || pathname.includes('/termos') || pathname.includes('/excluir-conta') || pathname.includes('/validar-certificado') || pathname.includes('/verify-email') || pathname.includes('/reset-password') || pathname.includes('/register') || window.location.search.includes('token=')) {
+    return publicView;
   }
 
-  // Se o caminho for de confirmação de e-mail via link (/verify-email?token=...)
-  const isVerifyEmailPage = pathname.includes('/verify-email');
-  if (isVerifyEmailPage) {
-    return (
-      <VerifyEmailPage
-        onVerifiedSuccess={(verifiedUser, verifiedToken) => {
-          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
-          setPathname('/');
-          handleLoginSuccess(verifiedUser, verifiedToken);
-        }}
-        onBackToLogin={() => {
-          if (typeof window !== 'undefined') window.history.replaceState({}, document.title, '/');
-          setPathname('/');
-        }}
-      />
-    );
-  }
-
-  // Se o caminho for de redefinição de senha (/reset-password)
-  const isResetPasswordPage = pathname.includes('/reset-password');
-  if (isResetPasswordPage) {
-    return <ResetPassword onResetSuccess={() => { window.location.href = '/'; }} />;
-  }
-
-  // Se o caminho for de cadastro via convite (/register ou ?token=...)
-  const isRegisterPage = pathname.includes('/register') || (window.location.search.includes('token=') && !isResetPasswordPage && !isVerifyEmailPage);
-  if (isRegisterPage) {
-    const handleRedirectFromInvite = (targetUrl = '/') => {
-      if (typeof window !== 'undefined') window.history.replaceState({}, document.title, targetUrl || '/');
-      setPathname(String(targetUrl || '/').split('?')[0] || '/');
-    };
-    return <Register onRegisterSuccess={() => { window.location.href = '/'; }} onRedirectToHome={handleRedirectFromInvite} onRedirectToLogin={handleRedirectFromInvite} />;
-  }
-
-  // Se o usuário não está autenticado, exibe a tela de Login
-  if (!user || !token) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  // Se autenticado, exibe a tela inicial com a Sidebar e as funcionalidades
   const isSuperAdmin = user?.role === 'superadmin';
   const isLightBg = ['#f8fafc', '#ffffff', '#f1f5f9'].includes((memberAreaBgColor || '').toLowerCase());
-
   const isFullView = isInsideCourse;
   const isChatTab = activeTab === 'chat';
   const isHideSidebar = isFullView || isInsideFunnel || (isChatTab && !isChatSidebarOpen);
@@ -370,7 +78,10 @@ function App() {
           chatUnreadCount={chatUnreadCount}
           bgColor={memberAreaBgColor}
           isMobileOpen={isMobileMenuOpen}
-          onCloseMobile={() => { setIsMobileMenuOpen(false); if (isChatTab) setIsChatSidebarOpen(false); }}
+          onCloseMobile={() => {
+            setIsMobileMenuOpen(false);
+            if (isChatTab) setIsChatSidebarOpen(false);
+          }}
         />
       )}
       <main
@@ -382,7 +93,7 @@ function App() {
             ? { padding: 0, width: '100%', maxWidth: '100%' }
             : {}),
           ...(activeTab === 'chat' || isInsideFunnel ? { overflow: 'hidden' } : {}),
-          ...(isFullView ? { height: '100%', minHeight: '100%' } : {})
+          ...(isFullView ? { height: '100%', minHeight: '100%' } : {}),
         }}
       >
         {!isFullView && (
@@ -390,100 +101,36 @@ function App() {
             user={user}
             onNavigateTab={handleSelectTab}
             onOpenMobileMenu={() => {
-              if (activeTab === 'chat') {
-                setIsChatSidebarOpen((prev) => !prev);
-              }
+              if (activeTab === 'chat') setIsChatSidebarOpen((prev) => !prev);
               setIsMobileMenuOpen((prev) => !prev);
             }}
             bgColor={memberAreaBgColor}
           />
         )}
         {!isFullView && <PwaInstallPortal />}
-        {activeTab === 'home' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <HomeTutorials
-            currentUser={user}
-            addToast={addToast}
-            onGoToCourses={() => handleSelectTab('courses')}
-          />
-        )}
-        {activeTab === 'events' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <EventsManagement currentUser={user} bgColor={memberAreaBgColor} addToast={addToast} onNavigateTab={handleSelectTab} />
-        )}
-        {activeTab === 'courses' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <CourseManagement
-            currentUser={user}
-            onCourseViewChange={setIsInsideCourse}
-            bgColor={memberAreaBgColor}
-            onThemeColorChange={handleThemeColorChange}
-            onNavigateTab={handleSelectTab}
-          />
-        )}
-        {['support', 'lesson-reports'].includes(activeTab) && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <SupportReportsSubTabs
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            pendingSupportCount={pendingSupportCount}
-            pendingReportsCount={pendingReportsCount}
-            isLightBg={isLightBg}
-          />
-        )}
-        {activeTab === 'support' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <SupportManagement currentUser={user} bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'chat' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <ChatManagement currentUser={user} bgColor={memberAreaBgColor} onBack={() => handleSelectTab('courses')} />
-        )}
-        {activeTab === 'testimonials' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <TestimonialsManagement user={user} bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'introductions' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <IntroductionManagement user={user} bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'community-feed' && (['superadmin', 'admin'].includes(user?.role) || (communityFeedStudentsEnabled && user?.role === 'aluno')) && (
-          <CommunityFeedManagement user={user} />
-        )}
-        {activeTab === 'ranking' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <GamificationRanking user={user} bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'lesson-reports' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <LessonReportsManagement
-            currentUser={user}
-            onUpdateSummary={fetchReportsSummary}
-            bgColor={memberAreaBgColor}
-          />
-        )}
-        {activeTab === 'students' && ['superadmin', 'admin'].includes(user?.role) && (
-          <StudentManagement bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'users' && ['superadmin', 'admin'].includes(user?.role) && (
-          <UserManagement currentUser={user} bgColor={memberAreaBgColor} />
-        )}
-        {activeTab === 'funnels' && ['superadmin', 'admin'].includes(user?.role) && <FunnelManagement onFunnelViewChange={setIsInsideFunnel} />}
-        {activeTab === 'integrations' && ['superadmin', 'admin'].includes(user?.role) && <IntegrationManagement bgColor={memberAreaBgColor} />}
-        {activeTab === 'settings' && ['superadmin', 'admin', 'aluno'].includes(user?.role) && (
-          <PlatformSettings
-            currentUser={user} bgColor={memberAreaBgColor} onThemeColorChange={handleThemeColorChange}
-            onUserUpdated={(u) => { setUser(u); localStorage.setItem('auth_user', JSON.stringify(u)); }}
-            onNavigateTab={handleSelectTab}
-          />
-        )}
-        {isSuperAdmin && ['infrastructure', 'backup', 'logs'].includes(activeTab) && (
-          <ServerSystemSubTabs activeTab={activeTab} onSelectTab={handleSelectTab} isLightBg={isLightBg} />
-        )}
-        {isSuperAdmin && (
-          <>
-            {activeTab === 'backup' && <AutomatedBackup currentUser={user} bgColor={memberAreaBgColor} />}
-            {activeTab === 'logs' && <LogManagement currentUser={user} bgColor={memberAreaBgColor} />}
-            {activeTab === 'infrastructure' && <InfrastructureManagement currentUser={user} onSelectTab={handleSelectTab} bgColor={memberAreaBgColor} />}
-          </>
-        )}
-        {!isSuperAdmin && !(
-          (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports', ...(communityFeedStudentsEnabled ? ['community-feed'] : [])].includes(activeTab) && ['admin', 'aluno'].includes(user?.role)) ||
-          (['students', 'users', 'funnels', 'integrations', 'community-feed'].includes(activeTab) && user?.role === 'admin') ||
-          (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role))
-        ) && <RestrictedWelcomeScreen user={user} />}
+        <AppTabContent
+          activeTab={activeTab}
+          user={user}
+          setUser={setUser}
+          isSuperAdmin={isSuperAdmin}
+          isLightBg={isLightBg}
+          memberAreaBgColor={memberAreaBgColor}
+          pendingSupportCount={pendingSupportCount}
+          pendingReportsCount={pendingReportsCount}
+          communityFeedStudentsEnabled={communityFeedStudentsEnabled}
+          addToast={addToast}
+          handleSelectTab={handleSelectTab}
+          handleThemeColorChange={handleThemeColorChange}
+          fetchReportsSummary={fetchReportsSummary}
+          setIsInsideCourse={setIsInsideCourse}
+          setIsInsideFunnel={setIsInsideFunnel}
+        />
       </main>
-      <LogoutConfirmModal isOpen={showLogoutModal} onConfirm={handleConfirmLogout} onClose={() => setShowLogoutModal(false)} />
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onConfirm={handleConfirmLogout}
+        onClose={() => setShowLogoutModal(false)}
+      />
       <BackgroundUploadWidget />
       <LevelUpWatcher currentUser={user} />
     </div>

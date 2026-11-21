@@ -22,13 +22,17 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
+  flex: 1 1 320px;
+  min-width: 0;
   max-width: 580px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .intro-search-input-wrapper {
   position: relative;
-  flex: 1;
+  flex: 1 1 220px;
+  min-width: 0;
   display: flex;
   align-items: center;
 }
@@ -76,6 +80,9 @@
   position: relative;
   display: flex;
   align-items: center;
+  flex: 0 1 260px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .intro-filter-icon {
@@ -86,6 +93,10 @@
 }
 
 .intro-niche-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 9px 12px 9px 30px;
   background: rgba(15, 23, 42, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -93,6 +104,28 @@
   color: #cbd5e1;
   font-size: 0.85rem;
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .intro-filter-bar-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .intro-filter-center {
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .intro-search-input-wrapper,
+  .intro-niche-select-wrapper {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 .intro-niche-select:focus {

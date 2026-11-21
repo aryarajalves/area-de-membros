@@ -27,8 +27,12 @@ export default function TopNavbar({
 
   const isManager = user?.role === 'superadmin' || user?.role === 'admin';
 
-  const fetchOnlineStats = useCallback(async () => {
+  const fetchOnlineStats = useCallback(async (syncedStats = null) => {
     if (!isManager) return;
+    if (syncedStats && typeof syncedStats.total_online === 'number') {
+      setOnlineStats(syncedStats);
+      return;
+    }
     try {
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (!token) return;

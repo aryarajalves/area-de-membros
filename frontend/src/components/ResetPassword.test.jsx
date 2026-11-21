@@ -1,11 +1,16 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ResetPassword from './ResetPassword';
 import { ToastProvider } from '../context/ToastContext';
 
 global.fetch = vi.fn();
 
 describe('ResetPassword Component', () => {
+  beforeEach(() => {
+    global.fetch.mockReset();
+    localStorage.clear();
+  });
+
   it('validates token and enforces 12+ chars, upper, lower, number, special char', async () => {
     global.fetch.mockImplementation((url) => {
       if (url.includes('/validate')) {
@@ -72,5 +77,99 @@ describe('ResetPassword Component', () => {
     // Submissão bem-sucedida
     fireEvent.click(submitBtn);
     expect(await screen.findByText('Senha atualizada com sucesso!')).toBeInTheDocument();
+  });
+
+  it('redirects to home if user already has an active session', async () => {
+    localStorage.setItem('auth_token', 'active-jwt-token');
+    const onRedirectToHome = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (url.includes('/api/v1/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: 1, email: 'aluno@teste.com' }),
+        });
+      }
+      if (url.includes('platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      }
+      return Promise.reject(new Error('Should not validate reset token when logged in'));
+    });
+
+    render(
+      <ToastProvider>
+        <ResetPassword token="used-reset-token" onRedirectToHome={onRedirectToHome} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(onRedirectToHome).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('redirects to login and prefills email when reset link was already used', async () => {
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (url.includes('/api/v1/auth/reset-password/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: false,
+            already_used: true,
+            email: 'aluno@teste.com',
+            detail: 'Este link de redefinição já foi utilizado.',
+          }),
+        });
+      }
+      if (url.includes('platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      }
+      return Promise.reject(new Error('Unknown url'));
+    });
+
+    render(
+      <ToastProvider>
+        <ResetPassword token="used-reset-token" onRedirectToLogin={onRedirectToLogin} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(onRedirectToLogin).toHaveBeenCalledWith('/login?email=aluno%40teste.com');
+    });
+    expect(localStorage.getItem('prefill_login_email')).toBe('aluno@teste.com');
+  });
+
+  it('redirects to login and prefills email when reset link is expired', async () => {
+    const onRedirectToLogin = vi.fn();
+
+    global.fetch.mockImplementation((url) => {
+      if (url.includes('/api/v1/auth/reset-password/validate')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: false,
+            is_expired: true,
+            email: 'expirado@teste.com',
+            detail: 'Este link de redefinição expirou.',
+          }),
+        });
+      }
+      if (url.includes('platform-theme')) {
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      }
+      return Promise.reject(new Error('Unknown url'));
+    });
+
+    render(
+      <ToastProvider>
+        <ResetPassword token="expired-reset-token" onRedirectToLogin={onRedirectToLogin} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(onRedirectToLogin).toHaveBeenCalledWith('/login?email=expirado%40teste.com');
+    });
+    expect(localStorage.getItem('prefill_login_email')).toBe('expirado@teste.com');
   });
 });

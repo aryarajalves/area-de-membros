@@ -3,9 +3,86 @@ Serviço de auto-sincronização preventiva de schema no startup.
 Inspeciona todas as tabelas e colunas definidas nos modelos SQLAlchemy (Base.metadata)
 e adiciona automaticamente qualquer coluna faltante no PostgreSQL ou SQLite.
 """
+from contextlib import contextmanager
 from typing import List
 from sqlalchemy import inspect, text
 from app.core.logger import logger
+
+STARTUP_MIGRATION_ADVISORY_LOCK_ID = 74829103
+
+
+@contextmanager
+def postgres_startup_migration_lock(engine, lock_id: int = STARTUP_MIGRATION_ADVISORY_LOCK_ID):
+    """
+    Serializa a rotina de limpeza e auto-migração no startup entre múltiplos workers Uvicorn
+    usando PostgreSQL Advisory Lock, evitando que um worker derrube ou cause lock/deadlock
+    nos DDLs de outro worker. Em outros bancos (ex.: SQLite), é um no-op.
+    """
+    is_postgres = "postgresql" in engine.dialect.name
+    if not is_postgres:
+        yield
+        return
+
+    conn = None
+    locked = False
+    try:
+        conn = engine.connect()
+        conn.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": lock_id})
+        conn.commit()
+        locked = True
+        logger.info("[MAIN] Advisory lock de startup adquirido no PostgreSQL.")
+    except Exception as exc:
+        logger.warning(f"[MAIN] Aviso ao adquirir advisory lock de startup: {exc}")
+
+    try:
+        yield
+    finally:
+        if conn is not None:
+            if locked:
+                try:
+                    conn.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
+                    conn.commit()
+                except Exception as exc:
+                    logger.warning(f"[MAIN] Aviso ao liberar advisory lock de startup: {exc}")
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def cleanup_stale_postgres_connections(engine, min_age_seconds: int = 30) -> int:
+    """
+    Encerra apenas conexões órfãs antigas no PostgreSQL ('idle in transaction' ou DDLs travados)
+    com idade superior a `min_age_seconds`, evitando encerrar conexões recém-abertas por outros workers.
+    """
+    if "postgresql" not in engine.dialect.name:
+        return 0
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid()
+                      AND state_change < NOW() - make_interval(secs => :min_age_seconds)
+                      AND (
+                          state IN ('idle in transaction', 'idle in transaction (aborted)')
+                          OR (state = 'active' AND query ILIKE 'ALTER TABLE%')
+                      );
+                """),
+                {"min_age_seconds": min_age_seconds},
+            )
+            terminated = len(result.fetchall()) if result.returns_rows else 0
+            conn.commit()
+            logger.info(
+                f"[MAIN] Conexões órfãs e transações pendentes no PostgreSQL limpas com sucesso ({terminated} encerradas)."
+            )
+            return terminated
+    except Exception as exc:
+        logger.warning(f"[MAIN] Aviso na verificação inicial de conexões do banco: {exc}")
+        return 0
 
 
 def _format_scalar_default(col, is_postgres: bool) -> str:

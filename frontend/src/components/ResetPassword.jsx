@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowRight, Check, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
-export default function ResetPassword({ token: initialToken, onResetSuccess }) {
+export default function ResetPassword({
+  token: initialToken,
+  onResetSuccess,
+  onRedirectToHome,
+  onRedirectToLogin,
+}) {
   const [token, setToken] = useState(initialToken || '');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -50,7 +55,41 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
   const isPasswordValid = rules.every((r) => r.valid);
   const passwordsMatch = password && passwordConfirm && password === passwordConfirm;
 
+  const redirectToHome = (message, toastType = 'info') => {
+    addToast(message, toastType);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, '/');
+    }
+    if (onRedirectToHome) {
+      onRedirectToHome('/');
+    } else {
+      window.location.href = '/';
+    }
+  };
+
+  const redirectToLogin = (targetEmail, message, toastType = 'info') => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    const cleanEmail = (targetEmail || '').trim();
+    if (cleanEmail) {
+      localStorage.setItem('prefill_login_email', cleanEmail);
+    }
+    addToast(message, toastType);
+    const loginUrl = cleanEmail
+      ? `/login?email=${encodeURIComponent(cleanEmail)}`
+      : '/login';
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, loginUrl);
+    }
+    if (onRedirectToLogin) {
+      onRedirectToLogin(loginUrl);
+    } else {
+      window.location.href = loginUrl;
+    }
+  };
+
   useEffect(() => {
+    let isMounted = true;
     let currentToken = initialToken;
     if (!currentToken) {
       const params = new URLSearchParams(window.location.search);
@@ -58,28 +97,71 @@ export default function ResetPassword({ token: initialToken, onResetSuccess }) {
       if (currentToken) setToken(currentToken);
     }
 
-    if (currentToken) {
-      fetch(`/api/v1/auth/reset-password/validate?token=${currentToken}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.valid) {
-            setTargetUser(data);
-          } else {
-            const err = data.detail || 'Link de redefinição inválido ou expirado.';
-            setTokenError(err);
-            addToast(err, 'error');
+    const validateResetFlow = async () => {
+      if (!currentToken) {
+        setTokenError('Nenhum código de redefinição informado.');
+        setValidating(false);
+        return;
+      }
+
+      try {
+        // 1. Verifica sessão existente antes de validar o link de redefinição
+        const savedToken = localStorage.getItem('auth_token');
+        if (savedToken) {
+          try {
+            const meRes = await fetch('/api/v1/auth/me', {
+              headers: { Authorization: `Bearer ${savedToken}` },
+            });
+            if (!isMounted) return;
+            if (meRes && meRes.ok) {
+              redirectToHome('Você já está logado! Redirecionando para a tela principal...', 'info');
+              return;
+            }
+          } catch {
+            // Token inválido ou erro de rede na checagem: limpa e segue fluxo normal
           }
-        })
-        .catch(() => {
-          const err = 'Erro ao verificar link de redefinição.';
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+
+        // 2. Valida o token de redefinição
+        const res = await fetch(`/api/v1/auth/reset-password/validate?token=${currentToken}`);
+        const data = await res.json();
+        if (!isMounted) return;
+
+        if (data.valid) {
+          setTargetUser(data);
+        } else if (data.already_used || (data.detail && data.detail.includes('já foi utilizado'))) {
+          redirectToLogin(
+            data.email,
+            'Este link de redefinição já foi utilizado. Faça login para acessar a plataforma.',
+            'info'
+          );
+        } else if (data.is_expired || (data.detail && data.detail.includes('expirou'))) {
+          redirectToLogin(
+            data.email,
+            'Este link de redefinição expirou. Solicite um novo link ao administrador ou faça login.',
+            'error'
+          );
+        } else {
+          const err = data.detail || 'Link de redefinição inválido ou expirado.';
           setTokenError(err);
           addToast(err, 'error');
-        })
-        .finally(() => setValidating(false));
-    } else {
-      setTokenError('Nenhum código de redefinição informado.');
-      setValidating(false);
-    }
+        }
+      } catch {
+        if (!isMounted) return;
+        const err = 'Erro ao verificar link de redefinição.';
+        setTokenError(err);
+        addToast(err, 'error');
+      } finally {
+        if (isMounted) setValidating(false);
+      }
+    };
+
+    validateResetFlow();
+    return () => {
+      isMounted = false;
+    };
   }, [initialToken]);
 
   const handleSubmit = async (e) => {

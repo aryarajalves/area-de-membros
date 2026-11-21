@@ -35,11 +35,37 @@ def is_user_online(user_id: int) -> bool:
     return user_id in get_online_user_ids()
 
 
-def get_online_summary() -> Dict[str, int]:
+def get_online_summary(db: Optional[Session] = None) -> Dict[str, int]:
     """
     Retorna métricas agregadas de membros online agrupadas por role.
-    Consulta o cluster Redis para abranger todos os workers e réplicas, mesclando com o estado local.
+    Quando `db` é fornecido, usa os mesmos IDs de `get_online_user_ids()` filtrando apenas
+    usuários ativos no banco para manter 100% de consistência com `/online-users`.
     """
+    if db is not None:
+        online_ids = list(get_online_user_ids())
+        if not online_ids:
+            return {
+                "total_online": 0,
+                "superadmins_online": 0,
+                "admins_online": 0,
+                "students_online": 0,
+            }
+        active_roles = [
+            (r[0] or "aluno").lower()
+            for r in db.query(User.role)
+            .filter(User.id.in_(online_ids), User.is_active == True)
+            .all()
+        ]
+        superadmins = sum(1 for r in active_roles if r == "superadmin")
+        admins = sum(1 for r in active_roles if r == "admin")
+        students = sum(1 for r in active_roles if r in ["aluno", "user"])
+        return {
+            "total_online": len(active_roles),
+            "superadmins_online": superadmins,
+            "admins_online": admins,
+            "students_online": students,
+        }
+
     roles_map: Dict[str, str] = {}
     if redis_service.is_redis_configured():
         try:

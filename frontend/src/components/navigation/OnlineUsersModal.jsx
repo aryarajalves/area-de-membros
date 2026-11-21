@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Users, Search, Loader2, RefreshCw, MessageSquare, Mail } from 'lucide-react';
+import HistoryPaginationBar from '../common/HistoryPaginationBar';
+
+const ONLINE_USERS_PER_PAGE = 10;
 
 function getInitials(name = '') {
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
@@ -14,6 +17,7 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'aluno' | 'team'
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchOnlineUsers = useCallback(async () => {
     setLoading(true);
@@ -24,8 +28,16 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
       });
       if (res.ok) {
         const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
-        if (onStatsSynced) onStatsSynced();
+        const safeList = Array.isArray(data) ? data : [];
+        setUsers(safeList);
+        if (onStatsSynced) {
+          onStatsSynced({
+            total_online: safeList.length,
+            superadmins_online: safeList.filter((u) => u.role === 'superadmin').length,
+            admins_online: safeList.filter((u) => u.role === 'admin').length,
+            students_online: safeList.filter((u) => u.role === 'aluno' || u.role === 'user').length,
+          });
+        }
       }
     } catch {
       // Silencioso
@@ -38,6 +50,7 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
     if (!isOpen) return;
     setSearch('');
     setRoleFilter('all');
+    setCurrentPage(1);
     fetchOnlineUsers();
   }, [isOpen, fetchOnlineUsers]);
 
@@ -52,6 +65,13 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
     }
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ONLINE_USERS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = filteredUsers.slice(
+    (safePage - 1) * ONLINE_USERS_PER_PAGE,
+    safePage * ONLINE_USERS_PER_PAGE
+  );
 
   const studentsCount = users.filter((u) => u.role === 'aluno').length;
   const teamCount = users.filter((u) => ['admin', 'superadmin'].includes(u.role)).length;
@@ -163,7 +183,10 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Buscar contato online por nome ou e-mail..."
               data-testid="search-online-users-input"
               style={{
@@ -190,7 +213,10 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setRoleFilter(tab.id)}
+                  onClick={() => {
+                    setRoleFilter(tab.id);
+                    setCurrentPage(1);
+                  }}
                   data-testid={`online-role-filter-${tab.id}`}
                   style={{
                     padding: '5px 12px',
@@ -245,7 +271,7 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
               </p>
             </div>
           ) : (
-            filteredUsers.map((u) => (
+            paginatedUsers.map((u) => (
               <div
                 key={u.id}
                 data-testid={`online-user-item-${u.id}`}
@@ -380,6 +406,19 @@ export default function OnlineUsersModal({ isOpen, onClose, onStartDm, onStatsSy
             ))
           )}
         </div>
+
+        {!loading && filteredUsers.length > ONLINE_USERS_PER_PAGE && (
+          <div style={{ padding: '0 22px 10px', flexShrink: 0 }}>
+            <HistoryPaginationBar
+              currentPage={safePage}
+              totalItems={filteredUsers.length}
+              pageSize={ONLINE_USERS_PER_PAGE}
+              onPageChange={setCurrentPage}
+              itemName="contatos"
+              testIdPrefix="online-users"
+            />
+          </div>
+        )}
 
         {/* Rodapé com Único Botão de Fechar */}
         <div

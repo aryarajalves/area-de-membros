@@ -1,4 +1,6 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import IntroductionFilterBar from './IntroductionFilterBar';
@@ -29,5 +31,33 @@ describe('IntroductionFilterBar Component', () => {
 
     fireEvent.click(screen.getByTestId('intro-new-post-btn'));
     expect(onOpenCreateModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('permite selecionar nicho longo e garante regras CSS contra overflow horizontal no dropdown', () => {
+    const onNicheChange = vi.fn();
+    const longNiche = 'Consultoria Estratégica de Tráfego Pago e Automação Comercial Avançada';
+
+    render(
+      <IntroductionFilterBar
+        searchTerm=""
+        onSearchChange={() => {}}
+        selectedNiche=""
+        onNicheChange={onNicheChange}
+        availableNiches={[longNiche]}
+        totalCount={1}
+        onOpenCreateModal={() => {}}
+      />
+    );
+
+    const select = screen.getByTestId('intro-niche-select');
+    fireEvent.change(select, { target: { value: longNiche } });
+    expect(onNicheChange).toHaveBeenCalledWith(longNiche);
+
+    const cssPath = path.resolve(__dirname, '../../styles/introductions/features.css');
+    const cssContent = fs.readFileSync(cssPath, 'utf-8');
+    expect(cssContent).toContain('flex-wrap: wrap');
+    expect(cssContent).toContain('max-width: 100%');
+    expect(cssContent).toContain('min-width: 0');
+    expect(cssContent).toContain('text-overflow: ellipsis');
   });
 });

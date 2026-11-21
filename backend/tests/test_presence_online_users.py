@@ -55,3 +55,13 @@ def test_list_online_users_admin_only_and_returns_connected_contacts():
     assert "Admin Presença" in names
     assert "João Online" in names
     assert "Pedro Offline" not in names
+
+    # /stats deve refletir exatamente os mesmos usuários ativos conectados (sem ficar zerado)
+    with patch("app.services.presence_service.get_online_user_ids", return_value={admin_id, student_id}):
+        res_stats = client.get("/api/v1/presence/stats", headers=h_admin)
+
+    assert res_stats.status_code == 200
+    stats = res_stats.json()
+    assert stats["total_online"] == 2
+    assert stats["admins_online"] == 1
+    assert stats["students_online"] == 1

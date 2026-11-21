@@ -569,17 +569,30 @@ def validate_reset_password_token(token: str, db: Session = Depends(get_db)):
     record = db.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
     if not record:
         return PasswordResetValidateResponse(valid=False, detail="Link de redefinição não encontrado.")
+
+    target_user = db.query(User).filter(User.id == record.user_id).first()
+    target_email = target_user.email if target_user else None
+
     if record.is_used:
-        return PasswordResetValidateResponse(valid=False, detail="Este link de redefinição já foi utilizado.")
+        return PasswordResetValidateResponse(
+            valid=False,
+            email=target_email,
+            detail="Este link de redefinição já foi utilizado.",
+            already_used=True,
+        )
     
     now = datetime.now(timezone.utc)
     exp = record.expires_at
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
     if now > exp:
-        return PasswordResetValidateResponse(valid=False, detail="Este link de redefinição expirou.")
+        return PasswordResetValidateResponse(
+            valid=False,
+            email=target_email,
+            detail="Este link de redefinição expirou.",
+            is_expired=True,
+        )
 
-    target_user = db.query(User).filter(User.id == record.user_id).first()
     if not target_user:
         return PasswordResetValidateResponse(valid=False, detail="Usuário associado não encontrado.")
 

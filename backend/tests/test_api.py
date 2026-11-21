@@ -303,6 +303,14 @@ def test_password_reset_flow():
     })
     assert login_new.status_code == 200
 
+    # 8. Validar token novamente após uso (deve retornar already_used=True e email)
+    reval_res = client.get(f"/api/v1/auth/reset-password/validate?token={reset_token}")
+    assert reval_res.status_code == 200
+    reval_data = reval_res.json()
+    assert reval_data["valid"] is False
+    assert reval_data["already_used"] is True
+    assert reval_data["email"] == "userteste@equipe.com"
+
 def test_argon2id_hash_and_pepper():
     from app.core.security import get_password_hash, verify_password
     plain = "MinhaSenhaSuperSecreta123!"

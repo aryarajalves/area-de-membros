@@ -233,3 +233,42 @@ def test_dynamic_manifest_reflects_whitelabel_name_and_logo(superadmin_token):
     client.patch("/api/v1/whitelabel", json={"platform_name": "Área de Membros"}, headers=headers)
 
 
+def test_pwa_app_name_and_icon_customization_in_manifest(superadmin_token):
+    headers = {"Authorization": f"Bearer {superadmin_token}"}
+
+    # 1. Atualiza pwa_app_name dedicado
+    patch_res = client.patch(
+        "/api/v1/whitelabel",
+        json={"platform_name": "Plataforma Web", "pwa_app_name": "App Celular VIP"},
+        headers=headers,
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["pwa_app_name"] == "App Celular VIP"
+
+    # 2. Faz upload de ícone PWA dedicado
+    tiny_png = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01"
+        b"\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    files = {"file": ("pwa_icon.png", tiny_png, "image/png")}
+    upload_res = client.post("/api/v1/whitelabel/pwa-icon", files=files, headers=headers)
+    assert upload_res.status_code == 200
+    pwa_icon_url = upload_res.json()["pwa_icon_url"]
+    assert pwa_icon_url is not None
+
+    # 3. Manifest deve priorizar pwa_app_name e pwa_icon_url
+    manifest_res = client.get("/api/v1/whitelabel/manifest.webmanifest")
+    assert manifest_res.status_code == 200
+    manifest = manifest_res.json()
+    assert manifest["name"] == "App Celular VIP"
+    assert manifest["short_name"] == "App Celular VIP"
+    assert manifest["icons"][0]["src"] == pwa_icon_url
+
+    # 4. Restaura ícone PWA e nome padrão
+    del_res = client.delete("/api/v1/whitelabel/pwa-icon", headers=headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["pwa_icon_url"] is None
+    client.patch("/api/v1/whitelabel", json={"platform_name": "Área de Membros", "pwa_app_name": ""}, headers=headers)
+
+

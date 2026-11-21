@@ -122,6 +122,19 @@ describe('pwaDeviceUtils', () => {
     expect(themeMeta.getAttribute('content')).toBe('#112233');
     expect(appleIcon.getAttribute('href')).toBe('https://cdn.test/logo.webp');
 
+    syncPwaWhiteLabelMeta(
+      {
+        platformName: 'Escola Alpha',
+        pwaAppName: 'App Alpha',
+        logoUrl: 'https://cdn.test/logo.webp',
+        pwaIconUrl: 'https://cdn.test/pwa-icon.png',
+      },
+      document
+    );
+
+    expect(titleMeta.getAttribute('content')).toBe('App Alpha');
+    expect(appleIcon.getAttribute('href')).toBe('https://cdn.test/pwa-icon.png');
+
     titleMeta.remove();
     themeMeta.remove();
     appleIcon.remove();

@@ -70,12 +70,16 @@ export function isStandaloneApp(win = typeof window !== 'undefined' ? window : n
   return false;
 }
 
-export function syncPwaWhiteLabelMeta({ platformName, logoUrl, bgColor } = {}, doc = typeof document !== 'undefined' ? document : null) {
+export function syncPwaWhiteLabelMeta(
+  { platformName, pwaAppName, logoUrl, pwaIconUrl, bgColor } = {},
+  doc = typeof document !== 'undefined' ? document : null
+) {
   if (!doc) return;
 
-  if (platformName) {
+  const effectiveTitle = (pwaAppName || platformName || '').trim();
+  if (effectiveTitle) {
     const titleMeta = doc.querySelector('meta[name="apple-mobile-web-app-title"]');
-    if (titleMeta) titleMeta.setAttribute('content', platformName);
+    if (titleMeta) titleMeta.setAttribute('content', effectiveTitle);
   }
 
   if (bgColor) {
@@ -83,8 +87,9 @@ export function syncPwaWhiteLabelMeta({ platformName, logoUrl, bgColor } = {}, d
     if (themeMeta) themeMeta.setAttribute('content', bgColor);
   }
 
-  if (logoUrl !== undefined) {
+  if (pwaIconUrl !== undefined || logoUrl !== undefined) {
+    const effectiveIcon = pwaIconUrl || logoUrl || '/apple-touch-icon.png';
     const appleIcon = doc.querySelector('link[rel="apple-touch-icon"]');
-    if (appleIcon) appleIcon.setAttribute('href', logoUrl || '/apple-touch-icon.png');
+    if (appleIcon) appleIcon.setAttribute('href', effectiveIcon);
   }
 }

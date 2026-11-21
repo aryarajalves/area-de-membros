@@ -237,6 +237,8 @@ class PasswordResetValidateResponse(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     detail: Optional[str] = None
+    already_used: bool = False
+    is_expired: bool = False
 
 class UserPlaybackRateUpdate(BaseModel):
     playback_rate: float

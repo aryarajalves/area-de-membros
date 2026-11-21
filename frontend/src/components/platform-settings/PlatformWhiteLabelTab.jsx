@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Image, Upload, RotateCcw, Check, Sparkles, HelpCircle, Eye } from 'lucide-react';
 import defaultLoginBanner from '../../assets/login-banner.jpg';
 import PlatformWhiteLabelLogoCard from './PlatformWhiteLabelLogoCard';
+import PlatformWhiteLabelPwaCard from './PlatformWhiteLabelPwaCard';
 import PlatformAstrologySettingsCard from './PlatformAstrologySettingsCard';
 import PlatformCommunityFeedSettingsCard from './PlatformCommunityFeedSettingsCard';
 
@@ -15,8 +16,10 @@ export default function PlatformWhiteLabelTab({
   onPlatformNameChange,
 }) {
   const [platformName, setPlatformName] = useState('Área de Membros');
+  const [pwaAppName, setPwaAppName] = useState('');
   const [loginBannerUrl, setLoginBannerUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [pwaIconUrl, setPwaIconUrl] = useState(null);
   const [logoSize, setLogoSize] = useState('medium');
   const [isAstrologyPlatform, setIsAstrologyPlatform] = useState(false);
   const [communityFeedStudentsEnabled, setCommunityFeedStudentsEnabled] = useState(false);
@@ -36,8 +39,10 @@ export default function PlatformWhiteLabelTab({
         if (res.ok && isMounted) {
           const data = await res.json();
           setPlatformName(data.platform_name || 'Área de Membros');
+          setPwaAppName(data.pwa_app_name || '');
           setLoginBannerUrl(data.login_banner_url || null);
           setLogoUrl(data.logo_url || null);
+          setPwaIconUrl(data.pwa_icon_url || null);
           setLogoSize(data.logo_size || 'medium');
           setIsAstrologyPlatform(Boolean(data.is_astrology_platform));
           setCommunityFeedStudentsEnabled(Boolean(data.community_feed_students_enabled));
@@ -252,6 +257,23 @@ export default function PlatformWhiteLabelTab({
         initialLogoUrl={logoUrl}
         initialLogoSize={logoSize}
         onLogoUpdated={(newLogo) => setLogoUrl(newLogo)}
+      />
+
+      {/* 2.5 Aplicativo Instalável (PWA - Celular) */}
+      <PlatformWhiteLabelPwaCard
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        addToast={addToast}
+        platformName={platformName}
+        logoUrl={logoUrl}
+        initialPwaAppName={pwaAppName}
+        initialPwaIconUrl={pwaIconUrl}
+        onPwaUpdated={(data) => {
+          if (data?.pwa_app_name !== undefined) setPwaAppName(data.pwa_app_name || '');
+          if (data?.pwa_icon_url !== undefined) setPwaIconUrl(data.pwa_icon_url || null);
+        }}
       />
 
       {/* 3. Imagem da Tela de Login */}

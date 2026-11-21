@@ -59,4 +59,55 @@ describe('OnlineUsersModal Component', () => {
     fireEvent.click(screen.getByTestId('close-online-users-modal-btn'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('sincroniza estatísticas ao carregar e pagina a lista com 10 contatos por página', async () => {
+    const manyUsers = Array.from({ length: 13 }, (_, idx) => ({
+      id: idx + 1,
+      name: `Contato Online ${idx + 1}`,
+      email: `contato${idx + 1}@test.com`,
+      role: idx < 2 ? 'admin' : 'aluno',
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => manyUsers,
+    });
+
+    const onStatsSynced = vi.fn();
+    render(
+      <OnlineUsersModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onStartDm={vi.fn()}
+        onStatsSynced={onStatsSynced}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Contato Online 1')).toBeInTheDocument();
+    });
+
+    expect(onStatsSynced).toHaveBeenCalledWith({
+      total_online: 13,
+      superadmins_online: 0,
+      admins_online: 2,
+      students_online: 11,
+    });
+
+    // Página 1 exibe 10 primeiros contatos, não o 11º
+    expect(screen.getByText('Contato Online 10')).toBeInTheDocument();
+    expect(screen.queryByText('Contato Online 11')).not.toBeInTheDocument();
+    expect(screen.getByTestId('online-users-pagination-bar')).toBeInTheDocument();
+
+    // Avança para página 2
+    fireEvent.click(screen.getByTestId('online-users-next-page-btn'));
+    expect(screen.queryByText('Contato Online 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Contato Online 11')).toBeInTheDocument();
+    expect(screen.getByText('Contato Online 13')).toBeInTheDocument();
+
+    // Filtrar por Equipe reseta para página 1
+    fireEvent.click(screen.getByTestId('online-role-filter-team'));
+    expect(screen.getByText('Contato Online 1')).toBeInTheDocument();
+    expect(screen.getByText('Contato Online 2')).toBeInTheDocument();
+  });
 });

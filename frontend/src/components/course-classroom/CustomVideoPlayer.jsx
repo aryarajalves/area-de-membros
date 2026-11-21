@@ -6,6 +6,7 @@ import VideoPlayerOverlays from './VideoPlayerOverlays';
 import VideoWatermark from './VideoWatermark';
 import NextLessonAutoPlayOverlay from './NextLessonAutoPlayOverlay';
 import usePlayerKeyboardShortcuts from './usePlayerKeyboardShortcuts';
+import { useVideoRetry } from './useVideoRetry';
 import { savePlaybackRateApi } from '../../services/playerPreferencesApi';
 
 const EMPTY_CHAPTERS = [];
@@ -59,11 +60,26 @@ export default function CustomVideoPlayer({
 
   useEffect(() => {
     return () => {
-      if (hideControlsTimeoutRef.current) {
-        clearTimeout(hideControlsTimeoutRef.current);
-      }
+      if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
     };
   }, []);
+
+  const {
+    resetRetryState,
+    handleRetry,
+    handleVideoError,
+    restorePositionIfPending,
+    markPlaybackHealthy,
+  } = useVideoRetry({
+    src,
+    videoRef,
+    currentTime,
+    isPlaying,
+    setIsLoading,
+    setIsBuffering,
+    setHasError,
+    setIsPlaying,
+  });
 
   // Duração de fallback a partir da aula cadastrada (caso video.duration seja Infinity/NaN em streams parciais)
   const fallbackDuration = parseDurationToSeconds(lessonDuration);
@@ -91,6 +107,7 @@ export default function CustomVideoPlayer({
     setCurrentTime(0);
     setDuration(fallbackDuration || 0);
     setShowAutoPlayOverlay(false);
+    resetRetryState();
 
     // Timeout de prontidão rápida: se a conexão externa demorar a disparar canplay,
     // não deixa o usuário bloqueado no spinner "Carregando aula..."
@@ -100,14 +117,6 @@ export default function CustomVideoPlayer({
 
     return () => clearTimeout(timer);
   }, [src, fallbackDuration]);
-
-  const handleRetry = () => {
-    setHasError(false);
-    setIsLoading(true);
-    if (videoRef.current) {
-      videoRef.current.load();
-    }
-  };
 
   // Inicializa e atualiza duração ao carregar metadados do vídeo
   const handleLoadedMetadata = () => {
@@ -123,9 +132,7 @@ export default function CustomVideoPlayer({
       } else if (fallbackDuration > 0) {
         setDuration(fallbackDuration);
       }
-      if (autoPlay) {
-        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-      }
+      restorePositionIfPending(autoPlay);
     }
   };
 
@@ -381,7 +388,7 @@ export default function CustomVideoPlayer({
         onProgress={updateBuffered}
         onCanPlay={() => { setIsLoading(false); setIsBuffering(false); updateBuffered(); }}
         onCanPlayThrough={() => { setIsLoading(false); setIsBuffering(false); updateBuffered(); }}
-        onPlaying={() => { setIsLoading(false); setIsBuffering(false); setIsPlaying(true); }}
+        onPlaying={() => { setIsLoading(false); setIsBuffering(false); setIsPlaying(true); markPlaybackHealthy(); }}
         onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
         onEnded={() => {
           setIsPlaying(false);
@@ -390,7 +397,7 @@ export default function CustomVideoPlayer({
           const isAutoplay = saved !== null ? saved !== 'false' : autoplayEnabled !== false;
           if (isAutoplay && nextLesson && onPlayNextLesson) setShowAutoPlayOverlay(true);
         }}
-        onError={() => { setIsLoading(false); setIsBuffering(false); setHasError(true); }}
+        onError={handleVideoError}
         onClick={togglePlay}
         style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
         data-testid="lesson-html5-video"

@@ -3,7 +3,13 @@ import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, inspect, text
 from app.core.database import Base, engine
 from app.main import app, lifespan
-from app.services.auto_migration_service import sync_missing_columns
+from unittest.mock import MagicMock
+from app.services.auto_migration_service import (
+    STARTUP_MIGRATION_ADVISORY_LOCK_ID,
+    cleanup_stale_postgres_connections,
+    postgres_startup_migration_lock,
+    sync_missing_columns,
+)
 
 
 def test_sync_missing_columns_creates_absent_columns_automatically():
@@ -66,3 +72,56 @@ async def test_main_lifespan_auto_migration_and_schema_integrity():
             db_cols = {c["name"] for c in insp.get_columns(table_name)}
             for col in table_obj.columns:
                 assert col.name in db_cols, f"Coluna {table_name}.{col.name} não foi criada automaticamente"
+
+
+def test_postgres_startup_migration_lock_acquires_and_releases_on_postgres():
+    """Garante que o advisory lock é adquirido antes e liberado mesmo em caso de erro."""
+    mock_engine = MagicMock()
+    mock_engine.dialect.name = "postgresql"
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value = mock_conn
+
+    with pytest.raises(RuntimeError):
+        with postgres_startup_migration_lock(mock_engine):
+            raise RuntimeError("Falha simulada")
+
+    executed_sql = [str(call.args[0]) for call in mock_conn.execute.call_args_list]
+    assert any("pg_advisory_lock" in sql for sql in executed_sql)
+    assert any("pg_advisory_unlock" in sql for sql in executed_sql)
+    assert mock_conn.execute.call_args_list[0].args[1] == {"lock_id": STARTUP_MIGRATION_ADVISORY_LOCK_ID}
+    mock_conn.close.assert_called_once()
+
+
+def test_postgres_startup_migration_lock_noop_on_sqlite():
+    """Garante que o advisory lock não faz nada em bancos não-PostgreSQL."""
+    mem_engine = create_engine("sqlite:///:memory:")
+    with postgres_startup_migration_lock(mem_engine):
+        assert True
+
+
+def test_cleanup_stale_postgres_connections_filters_by_age():
+    """Valida que apenas conexões antigas (min_age_seconds) são encerradas no PostgreSQL."""
+    mock_engine = MagicMock()
+    mock_engine.dialect.name = "postgresql"
+    mock_conn = MagicMock()
+    mock_result = MagicMock()
+    mock_result.returns_rows = True
+    mock_result.fetchall.return_value = [(1,), (2,)]
+    mock_conn.execute.return_value = mock_result
+    mock_engine.connect.return_value.__enter__.return_value = mock_conn
+
+    terminated = cleanup_stale_postgres_connections(mock_engine, min_age_seconds=45)
+
+    assert terminated == 2
+    sql_text = str(mock_conn.execute.call_args.args[0])
+    params = mock_conn.execute.call_args.args[1]
+    assert "pg_terminate_backend" in sql_text
+    assert "make_interval(secs => :min_age_seconds)" in sql_text
+    assert params == {"min_age_seconds": 45}
+    mock_conn.commit.assert_called_once()
+
+
+def test_cleanup_stale_postgres_connections_noop_on_sqlite():
+    """Garante retorno 0 em bancos não-PostgreSQL."""
+    mem_engine = create_engine("sqlite:///:memory:")
+    assert cleanup_stale_postgres_connections(mem_engine) == 0

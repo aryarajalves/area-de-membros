@@ -57,28 +57,18 @@ async def lifespan(app: FastAPI):
     except Exception as sec_e:
         logger.warning(f"[MAIN] Aviso na auditoria preventiva de chaves: {sec_e}")
 
-    # 0. Limpeza preventiva de conexões e transações órfãs no PostgreSQL (deploys anteriores)
-    try:
-        with engine.connect() as conn:
-            from sqlalchemy import text as sa_text
-            is_postgres = "postgresql" in engine.dialect.name
-            if is_postgres:
-                # Encerra conexões órfãs deixadas em 'idle in transaction' ou com DDLs pendentes
-                # Executado ANTES de qualquer DDL para evitar deadlocks de ACCESS EXCLUSIVE LOCK
-                conn.execute(sa_text("""
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = current_database()
-                      AND pid <> pg_backend_pid()
-                      AND (
-                          state IN ('idle in transaction', 'idle in transaction (aborted)')
-                          OR (state = 'active' AND query ILIKE 'ALTER TABLE%')
-                      );
-                """))
-                conn.commit()
-                logger.info("[MAIN] Conexões órfãs e transações pendentes no PostgreSQL limpas com sucesso.")
-    except Exception as e:
-        logger.warning(f"[MAIN] Aviso na verificação inicial de conexões do banco: {e}")
+    from contextlib import ExitStack
+    from app.services.auto_migration_service import (
+        cleanup_stale_postgres_connections,
+        postgres_startup_migration_lock,
+        sync_missing_columns,
+    )
+
+    _startup_lock_stack = ExitStack()
+    _startup_lock_stack.enter_context(postgres_startup_migration_lock(engine))
+
+    # 0. Limpeza preventiva de conexões e transações órfãs antigas no PostgreSQL (deploys anteriores)
+    cleanup_stale_postgres_connections(engine, min_age_seconds=30)
 
     # 1. Criação/Verificação das tabelas
     try:
@@ -872,9 +862,11 @@ async def lifespan(app: FastAPI):
 
     # 1.2. Varredura automática de qualquer coluna faltante comparando Base.metadata vs Banco
     try:
-        from app.services.auto_migration_service import sync_missing_columns
         sync_missing_columns(engine, Base)
-    except Exception as e: logger.warning(f"[MAIN] Aviso na sincronização automática de colunas: {e}")
+    except Exception as e:
+        logger.warning(f"[MAIN] Aviso na sincronização automática de colunas: {e}")
+    finally:
+        _startup_lock_stack.close()
     # 3. Sincronização de credenciais do superadministrador
     try:
         logger.info("[MAIN] Sincronizando credenciais do superadministrador...")

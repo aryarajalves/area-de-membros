@@ -38,8 +38,10 @@ def require_admin_or_superadmin(current_user: User = Depends(get_current_user)) 
 def get_stored_whitelabel_data() -> dict:
     default_data = {
         "platform_name": "Área de Membros",
+        "pwa_app_name": None,
         "login_banner_url": None,
         "logo_url": None,
+        "pwa_icon_url": None,
         "logo_size": "medium",
         "bg_color": "#090d16",
         "is_astrology_platform": False,
@@ -51,8 +53,10 @@ def get_stored_whitelabel_data() -> dict:
                 data = json.load(f)
                 return {
                     "platform_name": data.get("platform_name") or default_data["platform_name"],
+                    "pwa_app_name": data.get("pwa_app_name") or None,
                     "login_banner_url": data.get("login_banner_url") or None,
                     "logo_url": data.get("logo_url") or None,
+                    "pwa_icon_url": data.get("pwa_icon_url") or None,
                     "logo_size": data.get("logo_size") or default_data["logo_size"],
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
                     "is_astrology_platform": bool(data.get("is_astrology_platform", False)),
@@ -89,24 +93,25 @@ def get_whitelabel_settings():
 @router.get("/manifest.webmanifest")
 def get_dynamic_manifest():
     """
-    Gera o Web App Manifest (PWA) dinamicamente com o nome, cor de tema e logotipo WhiteLabel.
+    Gera o Web App Manifest (PWA) dinamicamente com o nome, cor de tema e ícone PWA WhiteLabel.
     """
     data = get_stored_whitelabel_data()
     platform_name = (data.get("platform_name") or "Área de Membros").strip() or "Área de Membros"
+    app_name = (data.get("pwa_app_name") or platform_name).strip() or platform_name
     bg_color = data.get("bg_color") or "#090d16"
-    logo_url = data.get("logo_url")
+    effective_icon = data.get("pwa_icon_url") or data.get("logo_url")
 
     icons = []
-    if logo_url:
+    if effective_icon:
         icons.append({
-            "src": logo_url,
+            "src": effective_icon,
             "sizes": "192x192",
             "purpose": "any",
         })
         icons.append({
-            "src": logo_url,
+            "src": effective_icon,
             "sizes": "512x512",
-            "purpose": "any",
+            "purpose": "any maskable" if data.get("pwa_icon_url") else "any",
         })
     icons.extend([
         {
@@ -124,9 +129,9 @@ def get_dynamic_manifest():
     ])
 
     manifest = {
-        "name": platform_name,
-        "short_name": platform_name[:24],
-        "description": f"Acesse seus cursos e conteúdos em {platform_name}.",
+        "name": app_name,
+        "short_name": app_name[:24],
+        "description": f"Acesse seus cursos e conteúdos em {app_name}.",
         "start_url": "/",
         "scope": "/",
         "display": "standalone",
@@ -154,11 +159,18 @@ def update_whitelabel_settings(
         clean_name = settings_in.platform_name.strip()
         current["platform_name"] = clean_name if clean_name else "Área de Membros"
 
+    if settings_in.pwa_app_name is not None:
+        clean_pwa_name = settings_in.pwa_app_name.strip()
+        current["pwa_app_name"] = clean_pwa_name if clean_pwa_name else None
+
     if settings_in.login_banner_url is not None:
         current["login_banner_url"] = settings_in.login_banner_url.strip() if settings_in.login_banner_url.strip() else None
 
     if settings_in.logo_url is not None:
         current["logo_url"] = settings_in.logo_url.strip() if settings_in.logo_url.strip() else None
+
+    if settings_in.pwa_icon_url is not None:
+        current["pwa_icon_url"] = settings_in.pwa_icon_url.strip() if settings_in.pwa_icon_url.strip() else None
 
     if settings_in.logo_size is not None:
         current["logo_size"] = settings_in.logo_size
@@ -346,5 +358,90 @@ def reset_platform_logo(
     current["logo_url"] = None
     save_stored_whitelabel_data(current)
     logger.info(f"[WhiteLabel] Logotipo da plataforma restaurado ao padrão por {admin.email}")
+    return current
+
+
+@router.post("/pwa-icon", response_model=WhiteLabelConfig)
+async def upload_pwa_icon(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    admin: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Faz upload do ícone personalizado do App PWA (PNG, JPG, WEBP, SVG).
+    Otimiza imagens raster para 512px PNG para máxima compatibilidade em Android e iOS.
+    """
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp", ".svg"]
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de imagem não suportado. Utilize: {', '.join(allowed_extensions)}"
+        )
+
+    try:
+        content = await file.read()
+        upload_bytes = content
+        upload_content_type = file.content_type or "image/png"
+        out_ext = file_ext
+
+        if file_ext != ".svg":
+            upload_bytes, upload_content_type, out_ext = optimize_image(
+                content,
+                max_width=512,
+                quality=90,
+                output_format="PNG",
+            )
+
+        unique_filename = f"pwa_icon_{uuid.uuid4().hex[:12]}{out_ext}"
+
+        b2_url = upload_media_file(
+            file_bytes=upload_bytes,
+            filename=unique_filename,
+            content_type=upload_content_type,
+            folder="AreaDeMembros/pwa_icons/"
+        )
+
+        if b2_url:
+            pwa_icon_url = b2_url
+        else:
+            local_path = os.path.join(THUMBNAILS_DIR, unique_filename)
+            with open(local_path, "wb") as f:
+                f.write(upload_bytes)
+            pwa_icon_url = f"/api/v1/courses/thumbnails/{unique_filename}"
+
+        current = get_stored_whitelabel_data()
+        old_url = current.get("pwa_icon_url")
+        if old_url:
+            background_tasks.add_task(delete_media_file, old_url)
+
+        current["pwa_icon_url"] = pwa_icon_url
+        save_stored_whitelabel_data(current)
+
+        logger.info(f"[WhiteLabel] Novo ícone PWA enviado por {admin.email}: {pwa_icon_url}")
+        return current
+    except Exception as exc:
+        logger.error(f"[WhiteLabel] Erro no upload de ícone PWA: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao realizar upload do ícone PWA."
+        )
+
+
+@router.delete("/pwa-icon", response_model=WhiteLabelConfig)
+def reset_pwa_icon(
+    admin: User = Depends(require_admin_or_superadmin),
+):
+    """
+    Remove o ícone PWA personalizado, voltando ao fallback (logo da plataforma ou ícone padrão).
+    """
+    current = get_stored_whitelabel_data()
+    old_url = current.get("pwa_icon_url")
+    if old_url:
+        delete_media_file(old_url)
+
+    current["pwa_icon_url"] = None
+    save_stored_whitelabel_data(current)
+    logger.info(f"[WhiteLabel] Ícone PWA restaurado ao padrão por {admin.email}")
     return current
 
