@@ -1,4 +1,4 @@
-// Service Worker mínimo para habilitar instalação PWA sem cachear chamadas de API
+// Service Worker mínimo para habilitar instalação PWA sem cachear APIs nem interceptar mídias/cross-origin
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -12,9 +12,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Nunca cacheia nem intercepta chamadas de API, WebSockets ou métodos não-GET
+  // Nunca intercepta cross-origin (CDN/Backblaze), Range Requests (streaming), APIs, WebSockets ou não-GET
   if (
     request.method !== 'GET' ||
+    url.origin !== self.location.origin ||
+    request.headers.has('range') ||
+    request.destination === 'video' ||
+    request.destination === 'audio' ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/ws/')
   ) {

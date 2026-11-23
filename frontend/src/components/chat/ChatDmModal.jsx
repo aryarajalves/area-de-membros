@@ -225,6 +225,19 @@ export default function ChatDmModal({
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/v1/chat/mark-all-read?scope=dms', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        setConversations((prev) => prev.map((c) => ({ ...c, unread_count: 0 })));
+        window.dispatchEvent(new CustomEvent('dm_updated'));
+        window.dispatchEvent(new CustomEvent('chat_unread_updated'));
+      }
+    } catch (err) { console.error('Erro ao marcar todas as DMs como lidas:', err); }
+  };
+
   const handleMarkAsRead = async () => {
     if (!selectedContact?.id) return;
     const token = getAuthToken();
@@ -435,45 +448,19 @@ export default function ChatDmModal({
           </div>
         </div>
 
-        {/* Abas Inbox / Não lidas + Botão Nova Conversa */}
         {!selectedContact && !isSelectingNewContact && (
-          <ChatDmModalTabs
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            unreadTotal={unreadTotal}
-            currentUser={currentUser}
-            onStartNewConversation={() => setIsSelectingNewContact(true)}
-          />
+          <ChatDmModalTabs activeTab={activeTab} setActiveTab={setActiveTab} unreadTotal={unreadTotal} currentUser={currentUser} onStartNewConversation={() => setIsSelectingNewContact(true)} onMarkAllRead={handleMarkAllAsRead} />
         )}
-
-        {/* Conteúdo: Seletor de Novo Contato OU Listagem de Conversas OU Chat Privado */}
         {isSelectingNewContact ? (
           <ChatDmNewContactSelector
-            onSelectContact={(contact) => {
-              setSelectedContact(contact);
-              setIsSelectingNewContact(false);
-            }}
+            onSelectContact={(contact) => { setSelectedContact(contact); setIsSelectingNewContact(false); }}
             onClose={() => setIsSelectingNewContact(false)}
           />
         ) : !selectedContact ? (
           activeTab === 'team_support' ? (
-            <ChatDmAdminSupportList
-              onSelectConversation={(thread) => {
-                setSelectedAdminThread(thread);
-                setSelectedContact(thread.student);
-                setIsSelectingNewContact(false);
-              }}
-            />
+            <ChatDmAdminSupportList onSelectConversation={(thread) => { setSelectedAdminThread(thread); setSelectedContact(thread.student); setIsSelectingNewContact(false); }} />
           ) : (
-            <ChatDmInboxList
-              conversations={conversations}
-              loading={loading}
-              activeTab={activeTab}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              onSelectContact={setSelectedContact}
-              onStartNewConversation={() => setIsSelectingNewContact(true)}
-            />
+            <ChatDmInboxList conversations={conversations} loading={loading} activeTab={activeTab} currentPage={currentPage} onPageChange={setCurrentPage} onSelectContact={setSelectedContact} onStartNewConversation={() => setIsSelectingNewContact(true)} />
           )
         ) : (
           <ChatDmConversationView

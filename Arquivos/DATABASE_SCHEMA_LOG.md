@@ -1441,3 +1441,22 @@ ecording_url: VARCHAR(1024).
 - **Script de Migração:** `backend/scripts/add_community_feed_features_v2.py`
 
 
+
+
+### 2026-11-23 — Mural de Freelancers / Contratação (`freelance_jobs`)
+- **Tabela Criada:** `freelance_jobs`
+  - `id`: SERIAL PRIMARY KEY
+  - `user_id`: INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  - `title`: VARCHAR(160) NOT NULL
+  - `description`: TEXT NOT NULL
+  - `category`: VARCHAR(60) NOT NULL
+  - `budget_type`: VARCHAR(20) NOT NULL DEFAULT 'negotiable' (`fixed` | `hourly` | `negotiable`)
+  - `budget_value`: VARCHAR(60) NULL
+  - `deadline`: VARCHAR(100) NULL
+  - `contact_whatsapp`: VARCHAR(30) NULL
+  - `status`: VARCHAR(20) NOT NULL DEFAULT 'open' (`open` | `closed`)
+  - `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+  - `updated_at`: TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+  - Índices: `ix_freelance_jobs_user_id`, `ix_freelance_jobs_category`, `ix_freelance_jobs_status`
+- **Auto-migração no Startup:** Incluído no `lifespan` de `backend/app/main.py` (PostgreSQL e SQLite).
+- **Script de Migração:** `backend/scripts/migrate_freelance_jobs.py`

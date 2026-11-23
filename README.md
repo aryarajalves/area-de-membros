@@ -1,11 +1,21 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.3.9`** | **Docker Hub: `backend-1.3.9` / `frontend-1.3.9`**
+> **Versão Oficial: `v1.4.2`** | **Docker Hub: `backend-1.4.2` / `frontend-1.4.2`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.4.2 (Vagas & Serviços, Thread em Popup, Chat Enxuto, Marcar Tudo como Lido e Filtros de Usuários)
+- **💼 Aba Vagas & Serviços (Mural de Freelancers) com Controle no WhiteLabel:**
+  - Nova seção na categoria *Comunidade & Social* (`freelance_jobs`, `/api/v1/freelance/*`) para publicar oportunidades de contratação, filtrar por categoria/status/minhas vagas e iniciar contato direto via DM interna ou WhatsApp.
+  - Acesso restrito a administradores e alunos com pelo menos 1 curso liberado (`has_access`), com toggle global **Acesso a Vagas & Serviços** (`freelance_enabled`) nas configurações de WhiteLabel.
+- **💬 Melhorias no Chat da Comunidade e DMs:**
+  - **Thread em Popup Centralizado:** respostas em threads abrem em modal centralizado sem espremer o chat principal, com envio de mídia isolado (sem duplicação de modal no drag & drop), curtidas sincronizadas e limpeza de botões de favoritar/fixar dentro de threads.
+  - **Header do Canal Enxuto:** botões secundários (`Favoritas`, `Mídias & Arquivos`, `Menções`, `DMs`, `Voltar aos Cursos`) agrupados no menu **`Mais`**, além de **mensagem fixada única** por canal e botão **`Marcar como lido` / `Marcar tudo como lido`** (`POST /api/v1/chat/mark-all-read`) nas DMs e canais.
+- **👥 Filtros Avançados na Gestão de Usuários:**
+  - Filtro por **Data específica** (`YYYY-MM-DD`) e **Ordenação** (`Mais recentes primeiro` / `Mais antigos primeiro`).
 
 ### 🚀 Novidades da Versão v1.3.9 (PWA Mobile, Redirecionamento Inteligente, Aluno Interno, Filtro por Nível e Melhorias Mobile)
 - **📱 Atalho PWA na Tela Inicial (Exclusivo Celular e Tablet):**

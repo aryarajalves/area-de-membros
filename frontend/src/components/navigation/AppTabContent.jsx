@@ -18,6 +18,8 @@ import { HomeTutorials } from '../home-tutorials';
 import { IntroductionManagement } from '../introductions';
 import { CommunityFeedManagement } from '../community-feed';
 import { EventsManagement } from '../events';
+import { FreelanceBoard } from '../freelance';
+import useFreelanceAccess from '../../hooks/useFreelanceAccess';
 
 /**
  * Renderiza o conteúdo correspondente à aba ativa do usuário autenticado
@@ -42,10 +44,11 @@ export default function AppTabContent({
 }) {
   const isAllRoles = ['superadmin', 'admin', 'aluno'].includes(user?.role);
   const isAdminOrSuper = ['superadmin', 'admin'].includes(user?.role);
+  const hasFreelanceAccess = useFreelanceAccess(user);
 
   const hasAccessToActiveTab =
     isSuperAdmin ||
-    (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports', ...(communityFeedStudentsEnabled ? ['community-feed'] : [])].includes(activeTab) &&
+    (['home', 'courses', 'events', 'support', 'chat', 'testimonials', 'introductions', 'ranking', 'lesson-reports', ...(hasFreelanceAccess ? ['freelance'] : []), ...(communityFeedStudentsEnabled ? ['community-feed'] : [])].includes(activeTab) &&
       ['admin', 'aluno'].includes(user?.role)) ||
     (['students', 'users', 'funnels', 'integrations', 'community-feed'].includes(activeTab) && user?.role === 'admin') ||
     (activeTab === 'settings' && ['admin', 'aluno'].includes(user?.role));
@@ -91,6 +94,9 @@ export default function AppTabContent({
       )}
       {activeTab === 'introductions' && isAllRoles && (
         <IntroductionManagement user={user} bgColor={memberAreaBgColor} />
+      )}
+      {activeTab === 'freelance' && hasFreelanceAccess && (
+        <FreelanceBoard currentUser={user} addToast={addToast} />
       )}
       {activeTab === 'community-feed' && (isAdminOrSuper || (communityFeedStudentsEnabled && user?.role === 'aluno')) && (
         <CommunityFeedManagement user={user} />

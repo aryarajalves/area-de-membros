@@ -6,7 +6,7 @@ import { usePushNotifications, unregisterPushNotifications } from './usePushNoti
 
 const ALUNO_ALLOWED_TABS = [
   'home', 'courses', 'events', 'support', 'chat',
-  'testimonials', 'ranking', 'introductions', 'lesson-reports', 'settings',
+  'testimonials', 'ranking', 'introductions', 'freelance', 'lesson-reports', 'settings',
 ];
 
 /**

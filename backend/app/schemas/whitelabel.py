@@ -12,6 +12,7 @@ class WhiteLabelConfig(BaseModel):
     bg_color: str = Field(default="#090d16", description="Cor de fundo global da plataforma")
     is_astrology_platform: bool = Field(default=False, description="Ativa recursos de Astrologia (Signos Zodiacais)")
     community_feed_students_enabled: bool = Field(default=False, description="Permite que alunos visualizem e publiquem no Feed da Comunidade")
+    freelance_enabled: bool = Field(default=True, description="Habilita ou oculta a aba de Vagas & Serviços na plataforma")
 
 
 class WhiteLabelUpdate(BaseModel):
@@ -24,3 +25,4 @@ class WhiteLabelUpdate(BaseModel):
     bg_color: Optional[str] = None
     is_astrology_platform: Optional[bool] = None
     community_feed_students_enabled: Optional[bool] = None
+    freelance_enabled: Optional[bool] = None

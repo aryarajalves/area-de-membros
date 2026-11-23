@@ -150,7 +150,7 @@ export default function ChatMessageItem({
           </span>
 
           {/* Badge de Mensagem Fixada */}
-          {message.is_pinned && (
+          {message.is_pinned && !isInsideThread && (
             <span
               style={{
                 fontSize: '0.6875rem',
@@ -394,39 +394,41 @@ export default function ChatMessageItem({
             <span>{message.likes_count || 0}</span>
           </button>
 
-          {/* Botão de Favoritar */}
-          <button
-            type="button"
-            onClick={() => onToggleFavorite && onToggleFavorite(message.id)}
-            title={message.is_favorited ? 'Remover dos favoritos' : 'Favoritar mensagem'}
-            data-testid={`favorite-msg-btn-${message.id}`}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: message.is_favorited ? '#f59e0b' : '#64748b',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '2px 4px',
-              borderRadius: '4px',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!message.is_favorited) e.currentTarget.style.color = '#f59e0b';
-            }}
-            onMouseLeave={(e) => {
-              if (!message.is_favorited) e.currentTarget.style.color = '#64748b';
-            }}
-          >
-            <Star
-              size={13}
-              color={message.is_favorited ? '#f59e0b' : 'currentColor'}
-              fill={message.is_favorited ? '#f59e0b' : 'none'}
-            />
-          </button>
+          {/* Botão de Favoritar (oculto dentro de threads) */}
+          {!isInsideThread && (
+            <button
+              type="button"
+              onClick={() => onToggleFavorite && onToggleFavorite(message.id)}
+              title={message.is_favorited ? 'Remover dos favoritos' : 'Favoritar mensagem'}
+              data-testid={`favorite-msg-btn-${message.id}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: message.is_favorited ? '#f59e0b' : '#64748b',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 4px',
+                borderRadius: '4px',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!message.is_favorited) e.currentTarget.style.color = '#f59e0b';
+              }}
+              onMouseLeave={(e) => {
+                if (!message.is_favorited) e.currentTarget.style.color = '#64748b';
+              }}
+            >
+              <Star
+                size={13}
+                color={message.is_favorited ? '#f59e0b' : 'currentColor'}
+                fill={message.is_favorited ? '#f59e0b' : 'none'}
+              />
+            </button>
+          )}
 
-          {/* Botão de Fixar / Desafixar (Apenas Admin/Superadmin) */}
-          {(currentUser?.role === 'admin' || currentUser?.role === 'superadmin') && (
+          {/* Botão de Fixar / Desafixar (Apenas Admin/Superadmin e fora de threads) */}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'superadmin') && !isInsideThread && onTogglePin && (
             <button
               type="button"
               onClick={() => onTogglePin && onTogglePin(message.id)}

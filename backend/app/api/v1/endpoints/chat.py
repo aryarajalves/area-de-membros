@@ -25,11 +25,8 @@ from app.services.chat_media_service import process_chat_media_upload, CHAT_MEDI
 from app.services.chat_dm_service import get_user_dm_conversations, get_dm_messages_history, mark_dm_as_read
 from app.services.chat_encryption_service import encrypt_dm_message, decrypt_dm_message
 from app.services.chat_unread_service import (
-    get_channel_last_read_map,
-    get_channel_unread_count,
-    get_user_chat_unread_summary,
-    mark_channel_as_read,
-    get_channel_items_list,
+    get_channel_last_read_map, get_channel_unread_count, get_user_chat_unread_summary,
+    mark_channel_as_read, get_channel_items_list, mark_all_chat_as_read,
 )
 from app.services.chat_query_service import (
     get_chat_media_gallery_items,
@@ -106,6 +103,11 @@ def get_unread_summary(
     current_user: User = Depends(get_current_user),
 ):
     return get_user_chat_unread_summary(db, current_user)
+
+
+@router.post("/mark-all-read", response_model=ChatUnreadSummaryResponse, summary="Marcar Tudo como Lido")
+def mark_all_read(scope: str = Query(default="all", pattern="^(all|dms|channels)$"), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return mark_all_chat_as_read(db, current_user, scope=scope)
 
 
 @router.post(
@@ -269,7 +271,8 @@ def get_pinned_message(
 
     query = db.query(ChatMessage).filter(
         ChatMessage.channel_type == channel_type,
-        ChatMessage.is_pinned == True
+        ChatMessage.is_pinned == True,
+        ChatMessage.parent_id.is_(None),
     )
     if channel_type == "course":
         query = query.filter(ChatMessage.course_id == course_id)
@@ -289,6 +292,7 @@ def get_pinned_message(
         id=msg.id,
         channel_type=msg.channel_type,
         course_id=msg.course_id,
+        parent_id=msg.parent_id,
         message=msg.message or "",
         media_url=msg.media_url,
         media_type=msg.media_type,
@@ -615,9 +619,15 @@ def toggle_pin_chat_message(
         msg.pinned_by_user_id = None
         logger.info(f"Mensagem ID {message_id} desafixada por {current_user.email}")
     else:
-        msg.is_pinned = True
-        msg.pinned_at = datetime.now(timezone.utc)
-        msg.pinned_by_user_id = current_user.id
+        unpin_q = db.query(ChatMessage).filter(ChatMessage.is_pinned == True, ChatMessage.id != msg.id)
+        if msg.parent_id is not None:
+            unpin_q = unpin_q.filter(ChatMessage.parent_id == msg.parent_id)
+        else:
+            unpin_q = unpin_q.filter(ChatMessage.channel_type == msg.channel_type, ChatMessage.parent_id.is_(None))
+            if msg.channel_type == "course":
+                unpin_q = unpin_q.filter(ChatMessage.course_id == msg.course_id)
+        unpin_q.update({"is_pinned": False, "pinned_at": None, "pinned_by_user_id": None}, synchronize_session=False)
+        msg.is_pinned, msg.pinned_at, msg.pinned_by_user_id = True, datetime.now(timezone.utc), current_user.id
         logger.info(f"Mensagem ID {message_id} fixada por {current_user.email}")
 
     db.commit()
@@ -630,35 +640,25 @@ def toggle_pin_chat_message(
     is_favorited = db.query(ChatMessageFavorite).filter(ChatMessageFavorite.message_id == msg.id, ChatMessageFavorite.user_id == current_user.id).first() is not None
 
     resp_pin = ChatMessageResponse(
-        id=msg.id,
-        channel_type=msg.channel_type,
-        course_id=msg.course_id,
-        message=msg.message or "",
-        media_url=msg.media_url,
-        media_type=msg.media_type,
-        is_pinned=msg.is_pinned,
-        pinned_at=msg.pinned_at,
-        pinned_by_user_id=msg.pinned_by_user_id,
-        likes_count=likes_count,
-        liked_by_me=liked_by_me,
-        is_favorited=is_favorited,
-        created_at=msg.created_at,
-        user=user_info,
-        can_delete=True,
+        id=msg.id, channel_type=msg.channel_type, course_id=msg.course_id, parent_id=msg.parent_id,
+        message=msg.message or "", media_url=msg.media_url, media_type=msg.media_type,
+        is_pinned=msg.is_pinned, pinned_at=msg.pinned_at, pinned_by_user_id=msg.pinned_by_user_id,
+        likes_count=likes_count, liked_by_me=liked_by_me, is_favorited=is_favorited,
+        created_at=msg.created_at, user=user_info, can_delete=True,
     )
     chat_manager.broadcast_sync(
         "message_pinned",
         {
             "message_id": msg.id,
+            "parent_id": msg.parent_id,
             "is_pinned": msg.is_pinned,
             "pinned_at": msg.pinned_at.isoformat() if msg.pinned_at else None,
-            "pinned_message": resp_pin.model_dump(mode="json") if msg.is_pinned else None,
+            "pinned_message": resp_pin.model_dump(mode="json") if (msg.is_pinned and msg.parent_id is None) else None,
         },
         channel_type=msg.channel_type,
         course_id=msg.course_id,
     )
     return resp_pin
-
 
 
 @router.delete(

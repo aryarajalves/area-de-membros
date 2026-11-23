@@ -1,5 +1,10 @@
 import { COUNTRY_DDI_LIST } from '../platform-settings/PhoneWithDdiInput';
 
+export const SORT_OPTIONS = [
+  { value: 'newest', label: 'Mais recentes primeiro' },
+  { value: 'oldest', label: 'Mais antigos primeiro' },
+];
+
 export const MONTH_OPTIONS = [
   { value: 'all', label: 'Todos os meses' },
   { value: '1', label: 'Janeiro' },
@@ -68,7 +73,37 @@ export function extractPhoneInfo(phone) {
 }
 
 /**
- * Filtra a lista de usuários por busca textual, role, ddi, ddd e mês de criação.
+ * Formata uma data ISO/Date para 'YYYY-MM-DD' no fuso local.
+ */
+function formatLocalDateKey(dateValue) {
+  if (!dateValue) return '';
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Ordena a lista de usuários por data de cadastro (mais recente ou mais antigo).
+ */
+export function sortUsersList(users = [], sortOrder = 'newest') {
+  return [...users].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    const validA = Number.isNaN(timeA) ? 0 : timeA;
+    const validB = Number.isNaN(timeB) ? 0 : timeB;
+
+    if (validA !== validB) {
+      return sortOrder === 'oldest' ? validA - validB : validB - validA;
+    }
+    return sortOrder === 'oldest' ? (a.id || 0) - (b.id || 0) : (b.id || 0) - (a.id || 0);
+  });
+}
+
+/**
+ * Filtra e ordena a lista de usuários por busca textual, role, ddi, ddd, mês, data específica e ordenação.
  */
 export function filterUsersList(users = [], filters = {}) {
   const {
@@ -77,13 +112,16 @@ export function filterUsersList(users = [], filters = {}) {
     ddiFilter = 'all',
     dddFilter = '',
     monthFilter = 'all',
+    dateFilter = '',
+    sortOrder = 'newest',
   } = filters;
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const searchDigits = normalizedSearch.replace(/\D/g, '');
   const cleanDddFilter = dddFilter.trim().replace(/\D/g, '');
+  const normalizedDateFilter = (dateFilter || '').trim();
 
-  return users.filter((u) => {
+  const filtered = users.filter((u) => {
     // 1. Filtro de Perfil / Role
     if (roleFilter === 'aluno_interno') {
       if (!(u.role === 'aluno' && Boolean(u.is_internal_student))) {
@@ -137,6 +175,15 @@ export function filterUsersList(users = [], filters = {}) {
       }
     }
 
+    // 7. Filtro por Data Específica (YYYY-MM-DD)
+    if (normalizedDateFilter) {
+      if (formatLocalDateKey(u.created_at) !== normalizedDateFilter) {
+        return false;
+      }
+    }
+
     return true;
   });
+
+  return sortUsersList(filtered, sortOrder);
 }

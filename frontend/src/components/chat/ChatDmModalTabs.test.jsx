@@ -64,4 +64,23 @@ describe('ChatDmModalTabs', () => {
     expect(screen.getByTestId('dm-tab-unread')).toHaveStyle({ whiteSpace: 'nowrap', flexShrink: '0' });
     expect(screen.getByTestId('dm-new-conversation-btn')).toHaveStyle({ whiteSpace: 'nowrap', flexShrink: '0' });
   });
+
+  it('exibe botão "Marcar como lido" quando unreadTotal > 0 e aciona onMarkAllRead', () => {
+    const handleMarkAll = vi.fn();
+    render(
+      <ChatDmModalTabs
+        activeTab="inbox"
+        setActiveTab={vi.fn()}
+        unreadTotal={1}
+        currentUser={{ role: 'superadmin' }}
+        onStartNewConversation={vi.fn()}
+        onMarkAllRead={handleMarkAll}
+      />
+    );
+
+    const btn = screen.getByTestId('dm-mark-all-read-btn');
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(handleMarkAll).toHaveBeenCalledTimes(1);
+  });
 });

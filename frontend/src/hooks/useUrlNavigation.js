@@ -7,6 +7,7 @@ const ALUNO_ALLOWED_TABS = [
   'chat',
   'testimonials',
   'introductions',
+  'freelance',
   'ranking',
   'settings',
 ];

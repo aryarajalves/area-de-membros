@@ -1,5 +1,5 @@
 import React from 'react';
-import { Inbox, BellOff, Users, UserPlus } from 'lucide-react';
+import { Inbox, BellOff, Users, UserPlus, CheckCheck } from 'lucide-react';
 
 export default function ChatDmModalTabs({
   activeTab,
@@ -7,6 +7,7 @@ export default function ChatDmModalTabs({
   unreadTotal,
   currentUser,
   onStartNewConversation,
+  onMarkAllRead,
 }) {
   return (
     <div
@@ -125,31 +126,60 @@ export default function ChatDmModalTabs({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onStartNewConversation}
-        data-testid="dm-new-conversation-btn"
-        title="Iniciar conversa privada com um aluno ou membro"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 12px',
-          borderRadius: '8px',
-          fontSize: '0.78rem',
-          fontWeight: 600,
-          backgroundColor: 'rgba(56, 189, 248, 0.15)',
-          border: '1px solid rgba(56, 189, 248, 0.4)',
-          color: '#38bdf8',
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
-      >
-        <UserPlus size={14} />
-        <span>Nova Conversa</span>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {unreadTotal > 0 && onMarkAllRead && (
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            data-testid="dm-mark-all-read-btn"
+            title="Marcar todas as DMs como lidas"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              backgroundColor: 'rgba(16, 185, 129, 0.14)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              color: '#34d399',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            <CheckCheck size={13} />
+            <span>Marcar como lido</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={onStartNewConversation}
+          data-testid="dm-new-conversation-btn"
+          title="Iniciar conversa privada com um aluno ou membro"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            color: '#38bdf8',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          <UserPlus size={14} />
+          <span>Nova Conversa</span>
+        </button>
+      </div>
     </div>
   );
 }

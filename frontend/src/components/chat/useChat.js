@@ -79,7 +79,7 @@ export function useChat(currentUser) {
       });
       if (res.ok) {
         const data = await res.json();
-        setPinnedMessage(data);
+        setPinnedMessage(data && !data.parent_id ? data : null);
       } else {
         setPinnedMessage(null);
       }
@@ -187,14 +187,15 @@ export function useChat(currentUser) {
   const handleSocketMessageDeleted = useCallback((delId) => {
     setMessages((prev) => prev.filter((m) => m.id !== delId));
     setPinnedMessage((current) => (current && current.id === delId ? null : current));
+    window.dispatchEvent(new CustomEvent('chat_message_deleted', { detail: delId }));
   }, []);
 
   const handleSocketMessageLiked = useCallback((data, user) => {
     const { message_id, likes_count, user_id, liked } = data;
+    const isMe = user?.id === user_id;
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== message_id) return m;
-        const isMe = user?.id === user_id;
         return {
           ...m,
           likes_count,
@@ -202,18 +203,25 @@ export function useChat(currentUser) {
         };
       })
     );
+    window.dispatchEvent(new CustomEvent('chat_message_liked', { detail: { message_id, likes_count, liked, isMe } }));
   }, []);
 
   const handleSocketMessagePinned = useCallback((data) => {
-    const { message_id, is_pinned, pinned_message } = data;
-    setMessages((prev) =>
-      prev.map((m) => (m.id === message_id ? { ...m, is_pinned } : m))
-    );
-    if (is_pinned && pinned_message) {
-      setPinnedMessage(pinned_message);
-    } else {
-      setPinnedMessage(null);
+    const { message_id, parent_id, is_pinned, pinned_message } = data;
+    if (parent_id) {
+      window.dispatchEvent(new CustomEvent('chat_thread_message_pinned', { detail: data }));
+      return;
     }
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === message_id
+          ? { ...m, is_pinned }
+          : is_pinned
+            ? { ...m, is_pinned: false }
+            : m
+      )
+    );
+    setPinnedMessage(is_pinned && pinned_message ? pinned_message : null);
   }, []);
 
   const handleSocketChannelActivity = useCallback((channel_type, course_id, messageData) => {
@@ -355,6 +363,7 @@ export function useChat(currentUser) {
             prev ? { ...prev, likes_count: data.likes_count, liked_by_me: data.liked } : null
           );
         }
+        return data;
       } else {
         const errData = await res.json().catch(() => ({}));
         addToast(errData.detail || 'Erro ao processar curtida.', 'error');
@@ -362,6 +371,7 @@ export function useChat(currentUser) {
     } catch (err) {
       console.error('Erro ao curtir mensagem:', err);
     }
+    return null;
   };
 
   // Favoritar ou desfavoritar mensagem
@@ -385,6 +395,7 @@ export function useChat(currentUser) {
           data.is_favorited ? 'Mensagem adicionada aos favoritos ⭐' : 'Mensagem removida dos favoritos',
           'success'
         );
+        return data;
       } else {
         const errData = await res.json().catch(() => ({}));
         addToast(errData.detail || 'Erro ao favoritar mensagem.', 'error');
@@ -392,6 +403,7 @@ export function useChat(currentUser) {
     } catch (err) {
       console.error('Erro ao favoritar mensagem:', err);
     }
+    return null;
   };
 
   // Fixar ou desafixar mensagem (gestores)
@@ -404,15 +416,24 @@ export function useChat(currentUser) {
       if (res.ok) {
         const updated = await res.json();
         setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? updated : m))
+          prev.map((m) =>
+            m.id === messageId
+              ? updated
+              : updated.is_pinned && !updated.parent_id
+                ? { ...m, is_pinned: false }
+                : m
+          )
         );
-        if (updated.is_pinned) {
+        if (updated.parent_id) {
+          addToast(updated.is_pinned ? 'Mensagem fixada na thread 📌' : 'Mensagem desafixada da thread', 'success');
+        } else if (updated.is_pinned) {
           setPinnedMessage(updated);
           addToast('Mensagem fixada no canal 📌', 'success');
         } else {
           setPinnedMessage(null);
           addToast('Mensagem desafixada do canal', 'success');
         }
+        return updated;
       } else {
         const errData = await res.json().catch(() => ({}));
         addToast(errData.detail || 'Não foi possível fixar/desafixar a mensagem.', 'error');
@@ -420,24 +441,17 @@ export function useChat(currentUser) {
     } catch (err) {
       console.error('Erro ao fixar mensagem:', err);
     }
+    return null;
   };
 
   // Abrir modal de confirmação de exclusão
   const promptDeleteMessage = (messageId) => {
-    setDeleteModalState({
-      isOpen: true,
-      messageId,
-      loading: false,
-    });
+    setDeleteModalState({ isOpen: true, messageId, loading: false });
   };
 
   // Fechar modal de confirmação
   const closeDeleteModal = () => {
-    setDeleteModalState({
-      isOpen: false,
-      messageId: null,
-      loading: false,
-    });
+    setDeleteModalState({ isOpen: false, messageId: null, loading: false });
   };
 
   // Confirmar exclusão de mensagem
@@ -458,6 +472,7 @@ export function useChat(currentUser) {
         if (pinnedMessage && pinnedMessage.id === messageId) {
           setPinnedMessage(null);
         }
+        window.dispatchEvent(new CustomEvent('chat_message_deleted', { detail: messageId }));
         addToast('Mensagem excluída com sucesso!', 'success');
         closeDeleteModal();
       } else {
@@ -473,24 +488,10 @@ export function useChat(currentUser) {
   };
 
   return {
-    channels,
-    selectedChannel,
-    setSelectedChannel,
-    messages,
-    loadingChannels,
-    loadingMessages,
-    sending,
-    sendMessage,
-    favoritesOnly,
-    setFavoritesOnly,
-    pinnedMessage,
-    toggleLike,
-    toggleFavorite,
-    togglePin,
-    deleteModalState,
-    promptDeleteMessage,
-    closeDeleteModal,
-    confirmDeleteMessage,
+    channels, selectedChannel, setSelectedChannel, messages, loadingChannels, loadingMessages,
+    sending, sendMessage, favoritesOnly, setFavoritesOnly, pinnedMessage,
+    toggleLike, toggleFavorite, togglePin, deleteModalState,
+    promptDeleteMessage, closeDeleteModal, confirmDeleteMessage,
     refetchChannels: fetchChannels,
     refetchMessages: () => fetchMessages(selectedChannel, favoritesOnly),
   };

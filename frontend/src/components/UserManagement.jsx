@@ -67,6 +67,10 @@ export default function UserManagement({ currentUser }) {
     setUserDddFilter,
     userMonthFilter,
     setUserMonthFilter,
+    userDateFilter,
+    setUserDateFilter,
+    userSortOrder,
+    setUserSortOrder,
     handleClearUserFilters,
     inviteStatusFilter,
     setInviteStatusFilter,
@@ -186,6 +190,10 @@ export default function UserManagement({ currentUser }) {
           setUserDddFilter={setUserDddFilter}
           userMonthFilter={userMonthFilter}
           setUserMonthFilter={setUserMonthFilter}
+          userDateFilter={userDateFilter}
+          setUserDateFilter={setUserDateFilter}
+          userSortOrder={userSortOrder}
+          setUserSortOrder={setUserSortOrder}
           handleClearUserFilters={handleClearUserFilters}
           selectedUserIds={selectedUserIds}
           setSelectedUserIds={setSelectedUserIds}

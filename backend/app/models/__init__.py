@@ -65,6 +65,7 @@ from app.models.certificate import Certificate
 from app.models.tutor_ia import AiTutorSetting, AiTutorMessage, AiKnowledgeChunk, AiTutorSuggestion
 from app.models.push_token import UserDeviceToken
 from app.models.user_block import UserBlock
+from app.models.freelance import FreelanceJob
 
 __all__ = [
     "User",

@@ -50,6 +50,8 @@ export function useUserManagement(currentUser) {
   const [userDdiFilter, setUserDdiFilter] = useState('all');
   const [userDddFilter, setUserDddFilter] = useState('');
   const [userMonthFilter, setUserMonthFilter] = useState('all');
+  const [userDateFilter, setUserDateFilter] = useState('');
+  const [userSortOrder, setUserSortOrder] = useState('newest');
   const [inviteStatusFilter, setInviteStatusFilter] = useState('all');
 
   const handleClearUserFilters = () => {
@@ -58,6 +60,8 @@ export function useUserManagement(currentUser) {
     setUserDdiFilter('all');
     setUserDddFilter('');
     setUserMonthFilter('all');
+    setUserDateFilter('');
+    setUserSortOrder('newest');
     setUsersPage(1);
     setSelectedUserIds([]);
   };
@@ -348,13 +352,15 @@ export function useUserManagement(currentUser) {
     });
   };
 
-  // Filtros
+  // Filtros e ordenação
   const filteredUsers = filterUsersList(users, {
     searchTerm: userSearchTerm,
     roleFilter: userRoleFilter,
     ddiFilter: userDdiFilter,
     dddFilter: userDddFilter,
     monthFilter: userMonthFilter,
+    dateFilter: userDateFilter,
+    sortOrder: userSortOrder,
   });
   const filteredInvites = invites.filter((inv) => {
     if (inviteStatusFilter === 'all') return true;
@@ -447,48 +453,18 @@ export function useUserManagement(currentUser) {
     handleRequestPasswordReset,
     copyResetLink,
     confirmDeleteModal,
-    closeConfirmDeleteModal,
-    handleDeleteUser,
-    handleBulkDeleteUsers,
-    handleDeleteInvite,
-    handleBulkDeleteInvites,
-    userRoleFilter,
-    setUserRoleFilter,
-    userSearchTerm,
-    setUserSearchTerm,
-    userDdiFilter,
-    setUserDdiFilter,
-    userDddFilter,
-    setUserDddFilter,
-    userMonthFilter,
-    setUserMonthFilter,
-    handleClearUserFilters,
-    inviteStatusFilter,
-    setInviteStatusFilter,
-    usersPage,
-    setUsersPage,
-    totalUserPages,
-    filteredUsers,
-    paginatedUsers,
-    invitesPage,
-    setInvitesPage,
-    totalInvitePages,
-    filteredInvites,
-    paginatedInvites,
-    PAGE_SIZE,
-    selectedUserIds,
-    setSelectedUserIds,
-    selectableUserIds,
-    isAllUsersSelected,
-    toggleSelectAllUsers,
-    toggleSelectUser,
-    selectedInviteIds,
-    setSelectedInviteIds,
-    paginatedInviteIds,
-    isAllInvitesSelected,
-    toggleSelectAllInvites,
-    toggleSelectInvite,
-    canCreate,
-    addToast,
+    closeConfirmDeleteModal, handleDeleteUser, handleBulkDeleteUsers,
+    handleDeleteInvite, handleBulkDeleteInvites,
+    userRoleFilter, setUserRoleFilter, userSearchTerm, setUserSearchTerm,
+    userDdiFilter, setUserDdiFilter, userDddFilter, setUserDddFilter,
+    userMonthFilter, setUserMonthFilter, userDateFilter, setUserDateFilter,
+    userSortOrder, setUserSortOrder, handleClearUserFilters,
+    inviteStatusFilter, setInviteStatusFilter,
+    usersPage, setUsersPage, totalUserPages, filteredUsers, paginatedUsers,
+    invitesPage, setInvitesPage, totalInvitePages, filteredInvites, paginatedInvites,
+    PAGE_SIZE, selectedUserIds, setSelectedUserIds, selectableUserIds, isAllUsersSelected,
+    toggleSelectAllUsers, toggleSelectUser, selectedInviteIds, setSelectedInviteIds,
+    paginatedInviteIds, isAllInvitesSelected, toggleSelectAllInvites, toggleSelectInvite,
+    canCreate, addToast,
   };
 }

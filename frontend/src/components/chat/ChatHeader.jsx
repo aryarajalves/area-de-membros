@@ -1,5 +1,5 @@
-import React from 'react';
-import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen, AtSign, Mail, Users } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Globe, BookOpen, Star, Pin, X, ArrowLeft, FolderOpen, AtSign, Mail, Users, MoreHorizontal } from 'lucide-react';
 
 export default function ChatHeader({
   selectedChannel,
@@ -17,11 +17,95 @@ export default function ChatHeader({
   onJumpToMessage,
   onBackToChannels,
 }) {
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsMoreMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMoreMenuOpen]);
+
   if (!selectedChannel) return null;
 
   const isGeneral = selectedChannel.type === 'general';
   const Icon = isGeneral ? Globe : BookOpen;
   const isManager = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+
+  const secondaryActions = [
+    {
+      key: 'favorites',
+      testId: 'chat-filter-favorites-btn',
+      label: favoritesOnly ? 'Favoritas (Ativo)' : 'Favoritas',
+      title: favoritesOnly ? 'Ver todas as mensagens' : 'Ver apenas mensagens favoritas',
+      icon: <Star size={14} fill={favoritesOnly ? '#fbbf24' : 'none'} color={favoritesOnly ? '#fbbf24' : '#94a3b8'} />,
+      color: favoritesOnly ? '#fbbf24' : '#e2e8f0',
+      activeBg: favoritesOnly ? 'rgba(245, 158, 11, 0.14)' : 'transparent',
+      onClick: onToggleFavoritesOnly,
+      visible: true,
+    },
+    {
+      key: 'media',
+      testId: 'chat-open-media-gallery-btn',
+      label: 'Mídias & Arquivos',
+      title: 'Abrir galeria de fotos, vídeos, áudios e documentos do canal',
+      icon: <FolderOpen size={14} color="#38bdf8" />,
+      color: '#e2e8f0',
+      activeBg: 'transparent',
+      onClick: onOpenMediaGallery,
+      visible: true,
+    },
+    {
+      key: 'mentions',
+      testId: 'chat-open-mentions-btn',
+      label: 'Menções',
+      title: 'Ver mensagens onde fui marcado',
+      icon: <AtSign size={14} color="#c084fc" />,
+      color: '#e2e8f0',
+      activeBg: 'transparent',
+      onClick: onOpenMentions,
+      visible: Boolean(onOpenMentions),
+    },
+    {
+      key: 'dms',
+      testId: 'chat-open-dm-btn',
+      label: 'DMs',
+      title: 'Ver Mensagens Diretas (DMs / Inbox)',
+      icon: <Mail size={14} color="#38bdf8" />,
+      color: '#e2e8f0',
+      activeBg: 'transparent',
+      onClick: onOpenDm,
+      visible: Boolean(onOpenDm),
+    },
+    {
+      key: 'back',
+      testId: 'chat-header-back-btn',
+      label: 'Voltar aos Cursos',
+      title: 'Voltar aos Cursos',
+      icon: <ArrowLeft size={14} color="#60a5fa" />,
+      color: '#cbd5e1',
+      activeBg: 'transparent',
+      onClick: onBack,
+      visible: Boolean(onBack),
+    },
+  ].filter((item) => item.visible);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -132,126 +216,18 @@ export default function ChatHeader({
           </div>
         </div>
 
-        {/* Controles da Direita: Filtro de Favoritas, Mídias, Menções, DMs e Indicador Ao Vivo */}
+        {/* Controles da Direita: Membros, Indicador Ao Vivo e Menu "Mais" */}
         <div
           className="chat-header-actions"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            flexShrink: 1,
-            flexWrap: 'wrap',
+            flexShrink: 0,
+            flexWrap: 'nowrap',
             justifyContent: 'flex-end',
           }}
         >
-          {/* Botão de Alternar Filtro de Favoritas */}
-          <button
-            type="button"
-            onClick={onToggleFavoritesOnly}
-            className="chat-header-action-btn"
-            data-testid="chat-filter-favorites-btn"
-            title={favoritesOnly ? 'Ver todas as mensagens' : 'Ver apenas mensagens favoritas'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              backgroundColor: favoritesOnly ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-              border: favoritesOnly ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: favoritesOnly ? '#fbbf24' : '#94a3b8',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Star size={13} fill={favoritesOnly ? '#fbbf24' : 'none'} />
-            <span className="chat-header-btn-text">Favoritas</span>
-          </button>
-
-          {/* Botão para Abrir Galeria de Mídias e Documentos */}
-          <button
-            type="button"
-            onClick={onOpenMediaGallery}
-            className="chat-header-action-btn"
-            data-testid="chat-open-media-gallery-btn"
-            title="Abrir galeria de fotos, vídeos, áudios e documentos do canal"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(56, 189, 248, 0.1)',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
-              color: '#38bdf8',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <FolderOpen size={13} />
-            <span className="chat-header-btn-text">Mídias & Arquivos</span>
-          </button>
-
-          {/* Botão para Abrir Notificações de Menções */}
-          {onOpenMentions && (
-            <button
-              type="button"
-              onClick={onOpenMentions}
-              className="chat-header-action-btn"
-              data-testid="chat-open-mentions-btn"
-              title="Ver mensagens onde fui marcado"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                border: '1px solid rgba(168, 85, 247, 0.25)',
-                color: '#c084fc',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <AtSign size={13} />
-              <span className="chat-header-btn-text">Menções</span>
-            </button>
-          )}
-
-          {/* Botão para Abrir DMs Privadas */}
-          {onOpenDm && (
-            <button
-              type="button"
-              onClick={onOpenDm}
-              className="chat-header-action-btn"
-              data-testid="chat-open-dm-btn"
-              title="Ver Mensagens Diretas (DMs / Inbox)"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                color: '#38bdf8',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Mail size={13} />
-              <span className="chat-header-btn-text">DMs</span>
-            </button>
-          )}
-
           {/* Botão para Alternar Barra Lateral de Membros */}
           {onToggleMembers && (
             <button
@@ -311,53 +287,122 @@ export default function ChatHeader({
                 fontWeight: 600,
                 color: '#34d399',
                 letterSpacing: '0.02em',
+                whiteSpace: 'nowrap',
               }}
             >
               Chat Ativo
             </span>
           </div>
 
-          {/* Botão de Voltar aos Cursos */}
-          {onBack && (
+          {/* Botão "Mais" com Dropdown para Ações Secundárias */}
+          <div ref={moreMenuRef} style={{ position: 'relative' }}>
             <button
               type="button"
-              onClick={onBack}
-              data-testid="chat-header-back-btn"
-              title="Voltar aos Cursos"
+              onClick={() => setIsMoreMenuOpen((prev) => !prev)}
+              className={`chat-header-action-btn ${isMoreMenuOpen ? 'active' : ''}`}
+              data-testid="chat-header-more-btn"
+              aria-expanded={isMoreMenuOpen}
+              aria-haspopup="menu"
+              title="Mais opções do canal"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 12px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#cbd5e1',
+                backgroundColor: isMoreMenuOpen ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+                border: isMoreMenuOpen ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: isMoreMenuOpen ? '#e0f2fe' : '#cbd5e1',
                 fontSize: '0.75rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
-                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                e.currentTarget.style.color = '#cbd5e1';
-              }}
             >
-              <ArrowLeft size={13} color="#60a5fa" />
-              <span>Voltar aos Cursos</span>
+              <MoreHorizontal size={14} />
+              <span className="chat-header-btn-text">Mais</span>
+              {favoritesOnly && (
+                <span
+                  data-testid="chat-header-more-active-dot"
+                  title="Filtro de favoritas ativo"
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: '#fbbf24',
+                    boxShadow: '0 0 6px #fbbf24',
+                  }}
+                />
+              )}
             </button>
-          )}
+
+            {isMoreMenuOpen && (
+              <div
+                role="menu"
+                data-testid="chat-header-more-menu"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  minWidth: '210px',
+                  padding: '6px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0f172a',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  boxShadow: '0 16px 36px rgba(0, 0, 0, 0.55)',
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                }}
+              >
+                {secondaryActions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    role="menuitem"
+                    data-testid={action.testId}
+                    title={action.title}
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      if (action.onClick) action.onClick();
+                    }}
+                    className="chat-header-action-btn"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: action.activeBg,
+                      color: action.color,
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = action.activeBg;
+                    }}
+                  >
+                    {action.icon}
+                    <span>{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Banner de Mensagem Fixada */}
-      {pinnedMessage && (
+      {/* Banner de Mensagem Fixada (apenas mensagens do canal, nunca respostas de thread) */}
+      {pinnedMessage && !pinnedMessage.parent_id && (
         <div
           data-testid="chat-pinned-message-banner"
           onClick={() => onJumpToMessage && onJumpToMessage(pinnedMessage.id)}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 
-export function useChatInputMedia({ onSendMessage, onClearText }) {
+export function useChatInputMedia({ onSendMessage, onClearText, disableGlobalDrop = false }) {
   const { addToast } = useToast();
   const [attachedMedia, setAttachedMedia] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -148,6 +148,10 @@ export function useChatInputMedia({ onSendMessage, onClearText }) {
 
   // Suporte a arrastar mídia para qualquer lugar da tela do chat sem piscar (zero flickering)
   useEffect(() => {
+    if (disableGlobalDrop) {
+      setIsDraggingOver(false);
+      return;
+    }
     let dragCounter = 0;
 
     const onWindowDragEnter = (e) => {
@@ -204,7 +208,7 @@ export function useChatInputMedia({ onSendMessage, onClearText }) {
       window.removeEventListener('dragover', onWindowDragOver);
       window.removeEventListener('drop', onWindowDrop);
     };
-  }, []);
+  }, [disableGlobalDrop]);
 
   const handleConfirmSendImageWithCaption = async (captionText) => {
     if (!pendingImageForCaption) return;

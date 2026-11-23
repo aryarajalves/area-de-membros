@@ -285,3 +285,39 @@ def get_channel_items_list(db: Session, current_user: User):
 
     return channels
 
+
+def mark_all_chat_as_read(db: Session, current_user: User, scope: str = "all") -> ChatUnreadSummaryResponse:
+    """Marca como lidas DMs, canais (geral + cursos) e/ou menções do usuário autenticado."""
+    if scope in ("all", "dms"):
+        db.query(ChatMessage).filter(
+            ChatMessage.channel_type == "dm",
+            ChatMessage.recipient_id == current_user.id,
+            ChatMessage.is_read == False,
+        ).update({"is_read": True}, synchronize_session=False)
+
+    if scope in ("all", "channels"):
+        mark_channel_as_read(db, current_user.id, "general")
+        if current_user.role in ("superadmin", "admin"):
+            course_ids = [c[0] for c in db.query(Course.id).all()]
+        else:
+            now = datetime.now(timezone.utc)
+            course_ids = [
+                cl[0]
+                for cl in db.query(UserCourse.course_id)
+                .filter(
+                    UserCourse.user_id == current_user.id,
+                    or_(UserCourse.expires_at.is_(None), UserCourse.expires_at > now),
+                )
+                .all()
+            ]
+        for cid in course_ids:
+            mark_channel_as_read(db, current_user.id, f"course_{cid}")
+
+        db.query(ChatMessageMention).filter(
+            ChatMessageMention.mentioned_user_id == current_user.id,
+            ChatMessageMention.is_read == False,
+        ).update({"is_read": True}, synchronize_session=False)
+
+    db.commit()
+    return get_user_chat_unread_summary(db, current_user)
+

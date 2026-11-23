@@ -20,15 +20,17 @@ describe('ChatHeader Component', () => {
     },
   };
 
-  it('renders channel name and live badge', () => {
+  it('renders channel name, live badge and "Mais" button with secondary actions collapsed by default', () => {
     render(<ChatHeader selectedChannel={mockChannel} />);
 
     expect(screen.getByText('Comunidade Geral')).toBeInTheDocument();
     expect(screen.getByText('Chat Ativo')).toBeInTheDocument();
-    expect(screen.getByText('Favoritas')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-header-more-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-header-more-menu')).not.toBeInTheDocument();
+    expect(screen.queryByText('Favoritas')).not.toBeInTheDocument();
   });
 
-  it('toggles favorites filter when clicked', () => {
+  it('toggles favorites filter when clicked inside "Mais" menu and closes menu', () => {
     const handleToggle = vi.fn();
     render(
       <ChatHeader
@@ -38,9 +40,35 @@ describe('ChatHeader Component', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
+    expect(screen.getByTestId('chat-header-more-menu')).toBeInTheDocument();
+
     const favBtn = screen.getByTestId('chat-filter-favorites-btn');
     fireEvent.click(favBtn);
     expect(handleToggle).toHaveBeenCalled();
+    expect(screen.queryByTestId('chat-header-more-menu')).not.toBeInTheDocument();
+  });
+
+  it('shows active indicator dot on "Mais" button when favoritesOnly is true and closes menu on Escape or outside click', () => {
+    render(
+      <ChatHeader
+        selectedChannel={mockChannel}
+        favoritesOnly={true}
+      />
+    );
+
+    expect(screen.getByTestId('chat-header-more-active-dot')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
+    expect(screen.getByTestId('chat-header-more-menu')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('chat-header-more-menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
+    expect(screen.getByTestId('chat-header-more-menu')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('chat-header-more-menu')).not.toBeInTheDocument();
   });
 
   it('renders pinned message banner when pinnedMessage is provided', () => {
@@ -60,6 +88,17 @@ describe('ChatHeader Component', () => {
     const unpinBtn = screen.getByTestId('unpin-message-banner-btn');
     fireEvent.click(unpinBtn);
     expect(handleUnpin).toHaveBeenCalledWith(99);
+  });
+
+  it('does not render pinned message banner when pinnedMessage is a thread reply (has parent_id)', () => {
+    render(
+      <ChatHeader
+        selectedChannel={mockChannel}
+        pinnedMessage={{ ...mockPinnedMessage, parent_id: 10 }}
+      />
+    );
+
+    expect(screen.queryByTestId('chat-pinned-message-banner')).not.toBeInTheDocument();
   });
 
   it('triggers onJumpToMessage when clicking the pinned message banner', () => {
@@ -96,7 +135,7 @@ describe('ChatHeader Component', () => {
     expect(handleJump).not.toHaveBeenCalled();
   });
 
-  it('renders back button and triggers onBack when provided', () => {
+  it('renders back button inside "Mais" menu and triggers onBack when provided', () => {
     const handleBack = vi.fn();
     render(
       <ChatHeader
@@ -105,13 +144,14 @@ describe('ChatHeader Component', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
     const backBtn = screen.getByTestId('chat-header-back-btn');
     expect(backBtn).toBeInTheDocument();
     fireEvent.click(backBtn);
     expect(handleBack).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers onOpenMediaGallery when media gallery button is clicked', () => {
+  it('triggers onOpenMediaGallery when media gallery button is clicked inside "Mais" menu', () => {
     const handleOpenGallery = vi.fn();
     render(
       <ChatHeader
@@ -120,6 +160,7 @@ describe('ChatHeader Component', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
     const mediaBtn = screen.getByTestId('chat-open-media-gallery-btn');
     expect(mediaBtn).toBeInTheDocument();
     expect(screen.getByText('Mídias & Arquivos')).toBeInTheDocument();
@@ -127,7 +168,7 @@ describe('ChatHeader Component', () => {
     expect(handleOpenGallery).toHaveBeenCalledTimes(1);
   });
 
-  it('renders all action buttons with responsive action classes and triggers mentions and DM callbacks', () => {
+  it('renders all action buttons with responsive action classes and triggers mentions and DM callbacks inside "Mais" menu', () => {
     const handleOpenMentions = vi.fn();
     const handleOpenDm = vi.fn();
     const handleBackToChannels = vi.fn();
@@ -152,14 +193,16 @@ describe('ChatHeader Component', () => {
     fireEvent.click(backChannelsBtn);
     expect(handleBackToChannels).toHaveBeenCalledTimes(1);
 
-    // Valida botão de menções
+    // Abre menu "Mais" e valida botão de menções
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
     const mentionsBtn = screen.getByTestId('chat-open-mentions-btn');
     expect(mentionsBtn).toBeInTheDocument();
     expect(mentionsBtn).toHaveClass('chat-header-action-btn');
     fireEvent.click(mentionsBtn);
     expect(handleOpenMentions).toHaveBeenCalledTimes(1);
 
-    // Valida botão de DMs
+    // Abre menu "Mais" novamente e valida botão de DMs
+    fireEvent.click(screen.getByTestId('chat-header-more-btn'));
     const dmBtn = screen.getByTestId('chat-open-dm-btn');
     expect(dmBtn).toBeInTheDocument();
     expect(dmBtn).toHaveClass('chat-header-action-btn');

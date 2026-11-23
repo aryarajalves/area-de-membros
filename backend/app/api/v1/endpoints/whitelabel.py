@@ -46,6 +46,7 @@ def get_stored_whitelabel_data() -> dict:
         "bg_color": "#090d16",
         "is_astrology_platform": False,
         "community_feed_students_enabled": False,
+        "freelance_enabled": True,
     }
     if os.path.exists(PLATFORM_THEME_FILE):
         try:
@@ -61,6 +62,7 @@ def get_stored_whitelabel_data() -> dict:
                     "bg_color": data.get("bg_color") or default_data["bg_color"],
                     "is_astrology_platform": bool(data.get("is_astrology_platform", False)),
                     "community_feed_students_enabled": bool(data.get("community_feed_students_enabled", False)),
+                    "freelance_enabled": bool(data.get("freelance_enabled", True)),
                 }
         except Exception as e:
             logger.error(f"[WhiteLabel] Erro ao ler {PLATFORM_THEME_FILE}: {e}")
@@ -196,6 +198,9 @@ def update_whitelabel_settings(
 
     if settings_in.community_feed_students_enabled is not None:
         current["community_feed_students_enabled"] = bool(settings_in.community_feed_students_enabled)
+
+    if settings_in.freelance_enabled is not None:
+        current["freelance_enabled"] = bool(settings_in.freelance_enabled)
 
     save_stored_whitelabel_data(current)
     logger.info(f"[WhiteLabel] Configurações atualizadas por {admin.email}: {current}")

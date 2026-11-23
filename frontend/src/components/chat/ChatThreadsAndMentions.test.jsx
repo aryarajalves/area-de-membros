@@ -50,6 +50,8 @@ describe('ChatThreadPanel & ChatMentionsModal Components', () => {
       </ToastProvider>
     );
 
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-thread-backdrop')).toBeInTheDocument();
     expect(screen.getByText('Thread')).toBeInTheDocument();
     expect(screen.getByText('Esta é a pergunta inicial da thread')).toBeInTheDocument();
 
@@ -57,9 +59,66 @@ describe('ChatThreadPanel & ChatMentionsModal Components', () => {
       expect(screen.getByText('Minha resposta na thread')).toBeInTheDocument();
     });
 
+    // Clicar no backdrop NÃO deve fechar o popup
+    fireEvent.click(screen.getByTestId('chat-thread-backdrop'));
+    expect(handleClose).not.toHaveBeenCalled();
+
     const closeBtn = screen.getByTestId('close-thread-panel-btn');
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates reply likes and hides favorite and pin actions inside thread', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          id: 11,
+          parent_id: 10,
+          channel_type: 'general',
+          message: 'Resposta para curtir na thread',
+          likes_count: 0,
+          liked_by_me: false,
+          is_pinned: true,
+          created_at: '2026-10-05T10:05:00Z',
+          user: { id: 2, name: 'Aluno João', role: 'aluno' },
+        },
+      ],
+    });
+
+    const handleToggleLike = vi.fn().mockResolvedValue({ likes_count: 1, liked: true });
+
+    render(
+      <ToastProvider>
+        <ChatThreadPanel
+          parentMessage={{ ...parentMessage, is_pinned: true }}
+          currentUser={{ id: 1, role: 'superadmin' }}
+          onClose={vi.fn()}
+          onToggleLike={handleToggleLike}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Resposta para curtir na thread')).toBeInTheDocument();
+    });
+
+    // Não deve exibir favoritar, fixar, badge Fixada nem banner de fixada dentro da thread
+    expect(screen.queryByTestId('favorite-msg-btn-10')).toBeNull();
+    expect(screen.queryByTestId('favorite-msg-btn-11')).toBeNull();
+    expect(screen.queryByTestId('pin-msg-btn-10')).toBeNull();
+    expect(screen.queryByTestId('pin-msg-btn-11')).toBeNull();
+    expect(screen.queryByTestId('pinned-badge-10')).toBeNull();
+    expect(screen.queryByTestId('pinned-badge-11')).toBeNull();
+    expect(screen.queryByTestId('thread-pinned-message-banner')).toBeNull();
+
+    // Reagir (curtir) à resposta da thread deve atualizar o contador localmente
+    const likeBtn = screen.getByTestId('like-msg-btn-11');
+    fireEvent.click(likeBtn);
+    await waitFor(() => {
+      expect(handleToggleLike).toHaveBeenCalledWith(11);
+      expect(likeBtn).toHaveTextContent('1');
+    });
   });
 
   it('renders ChatMentionsModal with mentions list and allows jump to message', async () => {

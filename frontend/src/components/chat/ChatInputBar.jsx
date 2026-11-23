@@ -23,6 +23,7 @@ export default function ChatInputBar({
   channelName = '',
   parentMessage = null,
   placeholder = '',
+  disableGlobalDrop = false,
 }) {
   const { addToast } = useToast();
   const [text, setText] = useState('');
@@ -64,6 +65,7 @@ export default function ChatInputBar({
   } = useChatInputMedia({
     onSendMessage,
     onClearText: () => setText(''),
+    disableGlobalDrop,
   });
 
   const getAuthToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Globe, BookOpen, Search, Sparkles, ArrowLeft, Lock } from 'lucide-react';
+import { MessageSquare, Globe, BookOpen, Search, Sparkles, ArrowLeft, Lock, CheckCheck } from 'lucide-react';
 
 export default function ChatSidebar({
   channels = [],
@@ -7,8 +7,31 @@ export default function ChatSidebar({
   onSelectChannel,
   loading = false,
   onBack,
+  onMarkAllRead,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [markingRead, setMarkingRead] = useState(false);
+
+  const handleMarkAllReadClick = async () => {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token || markingRead) return;
+    setMarkingRead(true);
+    try {
+      const res = await fetch('/api/v1/chat/mark-all-read?scope=all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent('chat_unread_updated'));
+        window.dispatchEvent(new CustomEvent('dm_updated'));
+        if (onMarkAllRead) onMarkAllRead();
+      }
+    } catch (err) {
+      console.error('Erro ao marcar tudo como lido:', err);
+    } finally {
+      setMarkingRead(false);
+    }
+  };
 
   const generalChannel = channels.find((c) => c.type === 'general');
   const courseChannels = channels.filter((c) => c.type === 'course');
@@ -117,6 +140,33 @@ export default function ChatSidebar({
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleMarkAllReadClick}
+          disabled={markingRead}
+          data-testid="chat-mark-all-read-btn"
+          title="Zerar notificações de canais e DMs não lidas"
+          style={{
+            width: '100%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '7px 10px',
+            marginBottom: '10px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.28)',
+            color: '#34d399',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            cursor: markingRead ? 'not-allowed' : 'pointer',
+          }}
+        >
+          <CheckCheck size={14} />
+          <span>{markingRead ? 'Marcando...' : 'Marcar tudo como lido'}</span>
+        </button>
 
         {/* Input de busca */}
         <div

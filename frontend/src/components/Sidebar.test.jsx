@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Sidebar from './Sidebar';
 import { SupportReportsSubTabs, ServerSystemSubTabs } from './navigation/UnifiedSectionSubTabs';
@@ -370,5 +370,48 @@ describe('Sidebar Component & Unified SubTabs', () => {
     expect(onSelectServerTab).toHaveBeenCalledWith('backup');
     fireEvent.click(screen.getByTestId('unified-subtab-logs'));
     expect(onSelectServerTab).toHaveBeenCalledWith('logs');
+  });
+
+  it('oculta a aba Freelancers para aluno sem curso e exibe quando tem curso liberado', async () => {
+    localStorage.setItem('auth_token', 'test-token');
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/v1/freelance/access')) {
+        return Promise.resolve({ ok: true, json: async () => ({ has_access: false }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    const { rerender } = render(
+      <Sidebar
+        activeTab="courses"
+        onSelectTab={vi.fn()}
+        user={{ id: 50, name: 'Naruto', role: 'aluno' }}
+        onLogout={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Vagas & Serviços')).not.toBeInTheDocument();
+    });
+
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/v1/freelance/access')) {
+        return Promise.resolve({ ok: true, json: async () => ({ has_access: true }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    rerender(
+      <Sidebar
+        activeTab="courses"
+        onSelectTab={vi.fn()}
+        user={{ id: 51, name: 'Sasuke', role: 'aluno' }}
+        onLogout={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Vagas & Serviços')).toBeInTheDocument();
+    });
   });
 });

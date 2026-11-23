@@ -108,6 +108,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
         }}
         loading={loadingChannels}
         onBack={onBack}
+        onMarkAllRead={refetchChannels}
       />
 
       {/* Painel Central da Conversa */}
@@ -235,6 +236,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
               onSendMessage={sendMessage}
               sending={sending}
               channelName={selectedChannel?.name}
+              disableGlobalDrop={Boolean(activeThreadMessage)}
             />
           </>
         )}

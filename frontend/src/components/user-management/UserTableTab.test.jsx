@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import UserTableTab from './UserTableTab';
 
@@ -112,5 +112,46 @@ describe('UserTableTab Component', () => {
 
     const actionCells = container.querySelectorAll('.table-actions-cell');
     expect(actionCells.length).toBeGreaterThan(0);
+  });
+
+  it('permite filtrar por data específica e alterar ordenação (mais recente / mais antigo)', () => {
+    const handleDateChange = vi.fn();
+    const handleSortChange = vi.fn();
+
+    render(
+      <UserTableTab
+        currentUser={{ id: 1, role: 'superadmin' }}
+        filteredUsers={mockUsers}
+        paginatedUsers={mockUsers}
+        userRoleFilter="all"
+        setUserRoleFilter={vi.fn()}
+        userDateFilter=""
+        setUserDateFilter={handleDateChange}
+        userSortOrder="newest"
+        setUserSortOrder={handleSortChange}
+        selectedUserIds={[]}
+        setSelectedUserIds={vi.fn()}
+        selectableUserIds={[2, 3]}
+        isAllUsersSelected={false}
+        toggleSelectAllUsers={vi.fn()}
+        toggleSelectUser={vi.fn()}
+        handleBulkDeleteUsers={vi.fn()}
+        handleOpenEdit={vi.fn()}
+        handleRequestPasswordReset={vi.fn()}
+        handleDeleteUser={vi.fn()}
+        usersPage={1}
+        setUsersPage={vi.fn()}
+        totalUserPages={1}
+        pageSize={20}
+      />
+    );
+
+    const dateInput = screen.getByTestId('filter-user-date-input');
+    fireEvent.change(dateInput, { target: { value: '2026-11-16' } });
+    expect(handleDateChange).toHaveBeenCalledWith('2026-11-16');
+
+    const sortSelect = screen.getByTestId('sort-user-order-select');
+    fireEvent.change(sortSelect, { target: { value: 'oldest' } });
+    expect(handleSortChange).toHaveBeenCalledWith('oldest');
   });
 });

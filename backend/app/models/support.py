@@ -15,8 +15,8 @@ class SupportTopic(Base):
     content = Column(Text, nullable=False)
     image_url = Column(String(500), nullable=True)
     image_urls_json = Column(Text, nullable=True)
-    module_id = Column(Integer, ForeignKey("modules.id", ondelete="SET NULL"), nullable=True)
-    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="SET NULL"), nullable=True)
+    module_id = Column(Integer, ForeignKey("modules.id", ondelete="SET NULL"), nullable=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="SET NULL"), nullable=True, index=True)
     module_title = Column(String(255), nullable=True)
     lesson_title = Column(String(255), nullable=True)
     status = Column(String(20), default="open")  # 'open', 'resolved', 'closed'

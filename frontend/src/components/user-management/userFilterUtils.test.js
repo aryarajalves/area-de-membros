@@ -105,13 +105,38 @@ describe('userFilterUtils', () => {
     });
 
     it('filtra pelos usuários criados no mês X (ex: Outubro = 10, Novembro = 11)', () => {
-      const resOct = filterUsersList(mockUsers, { monthFilter: '10' });
+      const resOct = filterUsersList(mockUsers, { monthFilter: '10', sortOrder: 'oldest' });
       expect(resOct).toHaveLength(2); // Usuários 1 e 3 criados em Outubro (10)
       expect(resOct.map((u) => u.id)).toEqual([1, 3]);
 
       const resNov = filterUsersList(mockUsers, { monthFilter: '11' });
       expect(resNov).toHaveLength(1); // Usuário 2 criado em Novembro (11)
       expect(resNov[0].id).toBe(2);
+    });
+
+    it('filtra por data específica (YYYY-MM-DD)', () => {
+      const firstDate = new Date(mockUsers[0].created_at);
+      const dateKey = `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, '0')}-${String(firstDate.getDate()).padStart(2, '0')}`;
+      const res = filterUsersList(mockUsers, { dateFilter: dateKey });
+      expect(res.map((u) => u.id)).toContain(mockUsers[0].id);
+      expect(res.every((u) => {
+        const d = new Date(u.created_at);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === dateKey;
+      })).toBe(true);
+    });
+
+    it('ordena do mais recente para o menos recente (newest) e o contrário (oldest)', () => {
+      const datedUsers = [
+        { id: 1, name: 'Antigo', created_at: '2026-10-06T12:00:00Z' },
+        { id: 2, name: 'Recente', created_at: '2026-11-16T12:00:00Z' },
+        { id: 3, name: 'Meio', created_at: '2026-10-13T12:00:00Z' },
+      ];
+
+      const newestFirst = filterUsersList(datedUsers, { sortOrder: 'newest' });
+      expect(newestFirst.map((u) => u.id)).toEqual([2, 3, 1]);
+
+      const oldestFirst = filterUsersList(datedUsers, { sortOrder: 'oldest' });
+      expect(oldestFirst.map((u) => u.id)).toEqual([1, 3, 2]);
     });
 
     it('combina busca, perfil e DDD simultaneamente', () => {

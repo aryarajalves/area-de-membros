@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, LogOut, GraduationCap, Settings, UserCheck, Webhook,
   HelpCircle, X, MessagesSquare, MessageSquareQuote, Trophy,
-  GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass, Smartphone
+  GitBranch, Home, Handshake, Server, Calendar, ChevronDown, Compass, Smartphone, Briefcase
 } from 'lucide-react';
 import { SidebarLinksGroup } from './navigation/UnifiedSectionSubTabs';
 import useCommunityFeedStudentsEnabled from '../hooks/useCommunityFeedStudentsEnabled';
+import useFreelanceAccess from '../hooks/useFreelanceAccess';
 import usePwaInstall from '../hooks/usePwaInstall';
 import PwaInstallInstructionsModal from './pwa/PwaInstallInstructionsModal';
 import { getLogoSizePx, DEFAULT_LOGO_SIZE } from '../utils/logoSizeUtils';
@@ -38,6 +39,7 @@ export default function Sidebar({
   const isAdmin = user?.role === 'admin';
   const isAluno = user?.role === 'aluno';
   const communityFeedStudentsEnabled = useCommunityFeedStudentsEnabled();
+  const hasFreelanceAccess = useFreelanceAccess(user);
   const {
     isIos,
     canShowSidebarButton,
@@ -188,6 +190,9 @@ export default function Sidebar({
           : []),
         ...(isSuperAdmin || isAdmin || isAluno
           ? [{ id: 'introductions', label: 'Apresente-se', icon: Handshake }]
+          : []),
+        ...((isSuperAdmin || isAdmin || isAluno) && hasFreelanceAccess
+          ? [{ id: 'freelance', label: 'Vagas & Serviços', icon: Briefcase }]
           : []),
       ],
     },

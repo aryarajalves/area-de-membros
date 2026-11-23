@@ -255,4 +255,48 @@ describe('PlatformWhiteLabelTab Component', () => {
       );
     });
   });
+
+  it('alterna o acesso a Vagas & Serviços no WhiteLabel via toggle', async () => {
+    const mockAddToast = vi.fn();
+    global.fetch = vi.fn((url, options = {}) => {
+      if (options.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ freelance_enabled: false }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          platform_name: 'Área de Membros',
+          freelance_enabled: true,
+        }),
+      });
+    });
+
+    render(
+      <PlatformWhiteLabelTab
+        currentUser={{ role: 'superadmin' }}
+        addToast={mockAddToast}
+      />
+    );
+
+    const toggleBtn = await screen.findByTestId('toggle-freelance-enabled-btn');
+    expect(toggleBtn).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('freelance-access-badge')).toHaveTextContent('Liberado');
+
+    fireEvent.click(toggleBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/whitelabel',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ freelance_enabled: false }),
+        })
+      );
+      expect(toggleBtn).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByTestId('freelance-access-badge')).toHaveTextContent('Oculto');
+    });
+  });
 });

@@ -5,6 +5,7 @@ import PlatformWhiteLabelLogoCard from './PlatformWhiteLabelLogoCard';
 import PlatformWhiteLabelPwaCard from './PlatformWhiteLabelPwaCard';
 import PlatformAstrologySettingsCard from './PlatformAstrologySettingsCard';
 import PlatformCommunityFeedSettingsCard from './PlatformCommunityFeedSettingsCard';
+import PlatformFreelanceSettingsCard from './PlatformFreelanceSettingsCard';
 
 export default function PlatformWhiteLabelTab({
   currentUser,
@@ -23,6 +24,7 @@ export default function PlatformWhiteLabelTab({
   const [logoSize, setLogoSize] = useState('medium');
   const [isAstrologyPlatform, setIsAstrologyPlatform] = useState(false);
   const [communityFeedStudentsEnabled, setCommunityFeedStudentsEnabled] = useState(false);
+  const [freelanceEnabled, setFreelanceEnabled] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +48,7 @@ export default function PlatformWhiteLabelTab({
           setLogoSize(data.logo_size || 'medium');
           setIsAstrologyPlatform(Boolean(data.is_astrology_platform));
           setCommunityFeedStudentsEnabled(Boolean(data.community_feed_students_enabled));
+          setFreelanceEnabled(data.freelance_enabled !== false);
         }
       } catch (err) {
         console.error('Erro ao carregar configurações WhiteLabel:', err);
@@ -411,6 +414,17 @@ export default function PlatformWhiteLabelTab({
         subTextColor={subTextColor}
         addToast={addToast}
         onSettingChange={(val) => setCommunityFeedStudentsEnabled(val)}
+      />
+
+      {/* Controle de Acesso a Vagas & Serviços */}
+      <PlatformFreelanceSettingsCard
+        freelanceEnabled={freelanceEnabled}
+        cardBg={cardBg}
+        cardBorder={cardBorder}
+        textColor={textColor}
+        subTextColor={subTextColor}
+        addToast={addToast}
+        onSettingChange={(val) => setFreelanceEnabled(val)}
       />
 
       {/* Módulo de Nicho / Astrologia (Exclusivo Super Admin) */}
