@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, PlayCircle, Clock, Globe } from 'lucide-react';
+import { Layers, PlayCircle, Clock, Globe, CheckCircle2, ArrowRight } from 'lucide-react';
 
 const LANG_FLAGS = {
   pt: '🇧🇷', en: '🇺🇸', es: '🇪🇸', fr: '🇫🇷', de: '🇩🇪', it: '🇮🇹', other: '🌐'
@@ -7,7 +7,7 @@ const LANG_FLAGS = {
 
 /**
  * Barra unificada no topo do Player:
- * - À esquerda: Partes da Aula (Parte 1, Parte 2, Parte 3...)
+ * - À esquerda: Partes da Aula (Parte 1, Parte 2, Parte 3...) com progresso individual e avanço rápido
  * - À direita: Seletor de Idioma (quando houver mais de 1 idioma cadastrado)
  */
 export default function LessonPartsBar({
@@ -17,10 +17,17 @@ export default function LessonPartsBar({
   languages = [],
   selectedLang = 'pt',
   onSelectLang,
-  isLightBg = false
+  isLightBg = false,
+  completedVideoIds = [],
+  progressPct = 0,
+  hasNextPart = false,
+  onGoToNextPart = null
 }) {
   const hasMultipleParts = Array.isArray(videos) && videos.length > 1;
   const hasMultipleLangs = Array.isArray(languages) && languages.length > 1;
+  const completedPartsCount = hasMultipleParts
+    ? videos.filter((v) => v.id && completedVideoIds.includes(v.id)).length
+    : 0;
 
   if (!hasMultipleParts && !hasMultipleLangs) {
     return null;
@@ -62,11 +69,30 @@ export default function LessonPartsBar({
             <span style={{ fontSize: '11px', color: subTextColor }}>
               ({videos.length} vídeos)
             </span>
+            <span
+              data-testid="lesson-parts-progress-badge"
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                backgroundColor: progressPct >= 100
+                  ? 'rgba(34, 197, 94, 0.16)'
+                  : (completedPartsCount > 0 ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.06)'),
+                color: progressPct >= 100 ? '#4ade80' : (completedPartsCount > 0 ? '#38bdf8' : subTextColor),
+                border: progressPct >= 100
+                  ? '1px solid rgba(34, 197, 94, 0.35)'
+                  : (completedPartsCount > 0 ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255,255,255,0.08)')
+              }}
+            >
+              {completedPartsCount}/{videos.length} ({progressPct}%)
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {videos.map((vid, idx) => {
               const isActive = idx === activeIndex;
+              const isPartDone = Boolean(vid.id && completedVideoIds.includes(vid.id));
               const partLabel = `Parte ${idx + 1}`;
               const titleSnippet = vid.title && vid.title.toLowerCase() !== partLabel.toLowerCase() ? vid.title : null;
               const duration = vid.duration || null;
@@ -82,13 +108,21 @@ export default function LessonPartsBar({
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
                     borderRadius: '8px', fontSize: '12px', fontWeight: isActive ? 700 : 500, cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    border: isActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                    backgroundColor: isActive ? 'rgba(56, 189, 248, 0.22)' : 'rgba(255, 255, 255, 0.04)',
-                    color: isActive ? '#ffffff' : textColor,
+                    border: isActive
+                      ? '1px solid #38bdf8'
+                      : (isPartDone ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)'),
+                    backgroundColor: isActive
+                      ? 'rgba(56, 189, 248, 0.22)'
+                      : (isPartDone ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.04)'),
+                    color: isActive ? '#ffffff' : (isPartDone ? '#4ade80' : textColor),
                     boxShadow: isActive ? '0 0 14px rgba(56, 189, 248, 0.35)' : 'none'
                   }}
                 >
-                  <PlayCircle size={13} color={isActive ? '#38bdf8' : subTextColor} style={{ flexShrink: 0 }} />
+                  {isPartDone ? (
+                    <CheckCircle2 size={13} color="#4ade80" style={{ flexShrink: 0 }} data-testid={`lesson-part-completed-${idx}`} />
+                  ) : (
+                    <PlayCircle size={13} color={isActive ? '#38bdf8' : subTextColor} style={{ flexShrink: 0 }} />
+                  )}
                   <span style={{ whiteSpace: 'nowrap' }}>{partLabel}</span>
                   {titleSnippet && (
                     <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85, fontSize: '11px' }}>
@@ -109,6 +143,24 @@ export default function LessonPartsBar({
                 </button>
               );
             })}
+            {hasNextPart && onGoToNextPart && (
+              <button
+                type="button"
+                onClick={onGoToNextPart}
+                data-testid="lesson-parts-next-btn"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px',
+                  borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                  border: '1px solid rgba(234, 179, 8, 0.5)',
+                  backgroundColor: 'rgba(234, 179, 8, 0.14)',
+                  color: '#facc15',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span>Próxima Parte ({activeIndex + 2}/{videos.length})</span>
+                <ArrowRight size={13} />
+              </button>
+            )}
           </div>
         </div>
       ) : (

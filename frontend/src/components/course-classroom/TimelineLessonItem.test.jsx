@@ -75,4 +75,44 @@ describe('TimelineLessonItem', () => {
     fireEvent.click(screen.getByTestId('delete-lesson-btn-101'));
     expect(onPromptDeleteLesson).toHaveBeenCalled();
   });
+
+  it('exibe badge de partes (2 partes / 1/2 50%) na lista lateral de aulas', () => {
+    const multiPartLesson = {
+      ...mockLesson,
+      videos: [
+        { id: 11, language: 'pt', title: 'Parte 1' },
+        { id: 12, language: 'pt', title: 'Parte 2' },
+      ],
+    };
+
+    const { rerender } = render(
+      <TimelineLessonItem
+        lesson={multiPartLesson}
+        idx={0}
+        isActive={true}
+        isCompleted={false}
+        completedVideoIds={[]}
+        isManager={false}
+        textColor="#ffffff"
+        subTextColor="#94a3b8"
+        onSelectLesson={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('lesson-parts-badge-101')).toHaveTextContent('2 partes');
+
+    rerender(
+      <TimelineLessonItem
+        lesson={multiPartLesson}
+        idx={0}
+        isActive={true}
+        isCompleted={false}
+        completedVideoIds={[11]}
+        isManager={false}
+        textColor="#ffffff"
+        subTextColor="#94a3b8"
+        onSelectLesson={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('lesson-parts-badge-101')).toHaveTextContent('1/2 (50%)');
+  });
 });

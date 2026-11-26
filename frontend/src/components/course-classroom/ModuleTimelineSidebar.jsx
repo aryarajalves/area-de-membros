@@ -16,6 +16,7 @@ export default function ModuleTimelineSidebar({
   selectedModule,
   activeLesson,
   completedLessonIds = [],
+  lessonPartsProgress = {},
   totalLessonsCount = 0,
   isManager = false,
   currentUser = null,
@@ -444,6 +445,7 @@ export default function ModuleTimelineSidebar({
                         idx={idx}
                         isActive={activeLesson?.id === lesson.id}
                         isCompleted={completedLessonIds.includes(lesson.id)}
+                        completedVideoIds={lessonPartsProgress[lesson.id] || []}
                         isManager={isManager}
                         isLightBg={isLightBg}
                         textColor={textColor}

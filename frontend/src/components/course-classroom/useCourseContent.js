@@ -8,6 +8,7 @@ export function useCourseContent(courseId) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [completedLessonIds, setCompletedLessonIds] = useState([]);
+  const [lessonPartsProgress, setLessonPartsProgress] = useState({});
   const { addToast } = useToast();
 
   const activeLessonRef = useRef(null);
@@ -25,6 +26,7 @@ export function useCourseContent(courseId) {
       if (res.ok) {
         const data = await res.json();
         setCompletedLessonIds(data.completed_lesson_ids || []);
+        setLessonPartsProgress(data.lesson_parts_progress || {});
       }
     } catch {
       // Ignora erro silenciosamente para não quebrar a tela de curso
@@ -391,7 +393,21 @@ export function useCourseContent(courseId) {
     }
   };
 
-  const handleToggleLessonComplete = (lessonId, isCompleted) => {
+  const handleToggleLessonComplete = (lessonId, isCompleted, partsMeta = null) => {
+    if (Array.isArray(partsMeta?.completedVideoIds)) {
+      setLessonPartsProgress((prev) => ({
+        ...prev,
+        [lessonId]: partsMeta.completedVideoIds,
+      }));
+    } else {
+      setLessonPartsProgress((prev) => {
+        if (isCompleted) return prev;
+        const copy = { ...prev };
+        delete copy[lessonId];
+        return copy;
+      });
+    }
+
     setCompletedLessonIds((prev) => {
       if (isCompleted) {
         return prev.includes(lessonId) ? prev : [...prev, lessonId];
@@ -400,8 +416,8 @@ export function useCourseContent(courseId) {
       }
     });
 
-    // Avança automaticamente para a próxima aula ao marcar como assistida (exceto se já estiver na última aula)
-    if (isCompleted) {
+    // Avança automaticamente para a próxima aula ao marcar como assistida (exceto se já estiver na última aula ou ainda houver partes)
+    if (isCompleted && !partsMeta?.stayInLesson) {
       const flatLessons = modules.flatMap((m) =>
         (m.lessons || []).map((l) => ({ ...l, module_id: l.module_id || m.id }))
       );
@@ -429,6 +445,7 @@ export function useCourseContent(courseId) {
     loading,
     actionLoading,
     completedLessonIds,
+    lessonPartsProgress,
     handleToggleLessonComplete,
     fetchCourseProgress,
     fetchCourseData,

@@ -6,6 +6,9 @@ version: "3.7"
 # Observações:
 # 1. O banco de dados PostgreSQL é externo (já existente na infraestrutura / Swarm).
 # 2. Todas as variáveis de ambiente estão declaradas explicitamente em cada serviço.
+# 3. O limite mínimo de 100.000 descritores (nofile) é elevado automaticamente no startup
+#    pelo Backend/Worker (ensure_min_nofile_limit) e pelo Frontend (worker_rlimit_nofile 100000
+#    + worker_connections 16384 em nginx-main.conf), sem depender de ulimits no YAML Swarm.
 # ==============================================================================
 
 services:
@@ -39,7 +42,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_backend:
     # Imagem oficial do Backend da Área de Membros
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.4.2}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.4.3}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Volumes do Backend (Uploads locais de arquivos e socket Docker para logs)
@@ -113,7 +116,7 @@ services:
       # Configuração Redis para WebSockets e Sessões ##########
       #########################################################
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - WORKERS=${WORKERS:-4}
+      - WORKERS=${WORKERS:-1}
 
       #########################################################
       # Configurações do Worker de Verificações Periódicas ####
@@ -150,7 +153,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_worker:
     # Utiliza a imagem do Backend com execução isolada das rotinas agendadas
-    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.4.2}
+    image: ${BACKEND_IMAGE:-aryalvesfernandes/area-de-membros:backend-1.4.3}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Comando de inicialização do Worker de rotinas periódicas
@@ -237,7 +240,7 @@ services:
   # ----------------------------------------------------------------------------
   area_aulas_frontend:
     # Imagem da aplicação Frontend (Nginx servindo dist/)
-    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.4.2}
+    image: ${FRONTEND_IMAGE:-aryalvesfernandes/area-de-membros:frontend-1.4.3}
     # Define o hostname do container no Swarm
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Redes do Swarm

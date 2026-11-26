@@ -24,7 +24,9 @@ export default function CustomVideoPlayer({
   nextLesson = null,
   onPlayNextLesson = null,
   autoPlay = false,
-  autoplayEnabled = true
+  autoplayEnabled = true,
+  isNextPart = false,
+  partProgressLabel = null
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -55,6 +57,7 @@ export default function CustomVideoPlayer({
   const [hasError, setHasError] = useState(false);
   const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
   const [showAutoPlayOverlay, setShowAutoPlayOverlay] = useState(false);
+  const [autoAdvanceOverlay, setAutoAdvanceOverlay] = useState(true);
 
   const hideControlsTimeoutRef = useRef(null);
 
@@ -65,21 +68,30 @@ export default function CustomVideoPlayer({
   }, []);
 
   const {
+    activeSrc,
+    isUsingProxyFallback,
+    networkDiagnosis,
+    switchToProxyFallback,
     resetRetryState,
     handleRetry,
     handleVideoError,
     restorePositionIfPending,
     markPlaybackHealthy,
+    isStalledTooLong,
   } = useVideoRetry({
     src,
+    title,
     videoRef,
     currentTime,
     isPlaying,
+    isBuffering,
     setIsLoading,
     setIsBuffering,
     setHasError,
     setIsPlaying,
   });
+
+  const effectiveVideoSrc = activeSrc || src;
 
   // Duração de fallback a partir da aula cadastrada (caso video.duration seja Infinity/NaN em streams parciais)
   const fallbackDuration = parseDurationToSeconds(lessonDuration);
@@ -208,6 +220,7 @@ export default function CustomVideoPlayer({
         setIsBuffering(false);
       }).catch(() => {
         setIsBuffering(false);
+        setIsPlaying(false);
       });
     } else {
       videoRef.current.pause();
@@ -355,22 +368,13 @@ export default function CustomVideoPlayer({
       onMouseMove={resetHideControlsTimer}
       onMouseEnter={() => setShowControls(true)}
       onContextMenu={(e) => e.preventDefault()}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#000000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden'
-      }}
+      style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
       data-testid="custom-video-player-container"
     >
       <video
         ref={videoRef}
-        key={src}
-        src={src}
+        key={effectiveVideoSrc}
+        src={effectiveVideoSrc}
         preload="auto"
         playsInline
         autoPlay={autoPlay}
@@ -395,7 +399,10 @@ export default function CustomVideoPlayer({
           setIsBuffering(false);
           const saved = typeof window !== 'undefined' ? localStorage.getItem('area_de_membros_autoplay_enabled') : null;
           const isAutoplay = saved !== null ? saved !== 'false' : autoplayEnabled !== false;
-          if (isAutoplay && nextLesson && onPlayNextLesson) setShowAutoPlayOverlay(true);
+          if (nextLesson && onPlayNextLesson && (isAutoplay || isNextPart)) {
+            setAutoAdvanceOverlay(isAutoplay);
+            setShowAutoPlayOverlay(true);
+          }
         }}
         onError={handleVideoError}
         onClick={togglePlay}
@@ -412,6 +419,9 @@ export default function CustomVideoPlayer({
       {showAutoPlayOverlay && nextLesson && (
         <NextLessonAutoPlayOverlay
           nextLesson={nextLesson}
+          isNextPart={isNextPart}
+          autoAdvance={autoAdvanceOverlay}
+          partProgressLabel={partProgressLabel}
           onPlayNext={() => {
             setShowAutoPlayOverlay(false);
             onPlayNextLesson?.();
@@ -424,11 +434,15 @@ export default function CustomVideoPlayer({
       <VideoPlayerOverlays
         isLoading={isLoading}
         isBuffering={isBuffering}
+        isStalledTooLong={isStalledTooLong}
         poster={poster}
         hasError={hasError}
         isPlaying={isPlaying}
         togglePlay={togglePlay}
         handleRetry={handleRetry}
+        networkDiagnosis={networkDiagnosis}
+        isUsingProxyFallback={isUsingProxyFallback}
+        onSwitchToProxy={switchToProxyFallback}
       />
 
       {/* Controles do Player Modularizados */}

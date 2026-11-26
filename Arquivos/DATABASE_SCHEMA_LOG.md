@@ -2,6 +2,16 @@
 
 Registro de migrações e atualizações estruturais do banco de dados (PostgreSQL/SQLite) do **Projeto Base**.
 
+### [26/11/2026] - Progresso Individual por Parte em Aulas Multi-Partes (`completed_video_ids_json` em `lesson_progress`)
+- **Objetivo:** Permitir marcar individualmente cada parte de vídeo (`lesson_videos.id`) concluída pelo aluno em aulas divididas em múltiplas partes (ex: Parte 1 = 50%, Parte 2 = 100%), evitando conclusão prematura da aula na primeira parte.
+- **Tabela Afetada:**
+  - `lesson_progress`:
+    - `completed_video_ids_json`: TEXT NULL (lista JSON de IDs das partes concluídas em `lesson_videos`)
+- **Script de Migração:** `backend/scripts/migrate_lesson_part_progress.py`
+- **Auto-migração no Startup:** Instrução `ALTER TABLE lesson_progress ADD COLUMN IF NOT EXISTS completed_video_ids_json TEXT NULL` incluída em `backend/app/services/startup_migrations.py` (chamado no `lifespan` de `backend/app/main.py`, PostgreSQL e SQLite).
+
+---
+
 ### [20/11/2026] - Perfil Aluno Interno (is_internal_student) em users
 - **Objetivo:** Permitir marcar usuários como "Aluno Interno" (administradores/equipe visualizando a plataforma como aluno sem aparecer na tela de Gestão de Alunos nem nas exportações/métricas de alunos).
 - **Tabela Afetada:**

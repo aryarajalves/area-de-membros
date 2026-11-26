@@ -51,6 +51,7 @@ export default function LessonPlayer({
   nextLesson,
   onSelectLesson,
   isCompleted = false,
+  lessonPartsProgress = {},
   onToggleComplete,
   isLightBg = false,
   onCloseModule,
@@ -184,6 +185,27 @@ export default function LessonPlayer({
     activeVideo?.is_transcribed === false
   );
 
+  const isMultiPart = currentLangVideos.length > 1;
+  const rawCompletedVids = lessonPartsProgress?.[lesson.id] || [];
+  const completedVideoIdsForLesson = rawCompletedVids.length > 0
+    ? rawCompletedVids
+    : (isCompleted ? currentLangVideos.map((v) => v.id).filter(Boolean) : []);
+  const hasNextPart = isMultiPart && safePartIdx < currentLangVideos.length - 1;
+  const nextPartVideo = hasNextPart ? currentLangVideos[safePartIdx + 1] : null;
+  const effectiveNextTarget = hasNextPart
+    ? {
+      id: nextPartVideo.id || `part-${safePartIdx + 2}`,
+      title: `Parte ${safePartIdx + 2}${nextPartVideo.title && !nextPartVideo.title.toLowerCase().startsWith('parte') ? ` — ${nextPartVideo.title}` : ''}`,
+      thumbnail_url: lesson.thumbnail_url || null
+    }
+    : nextLesson;
+  const completedPartsCount = currentLangVideos.filter((v) => v.id && completedVideoIdsForLesson.includes(v.id)).length;
+  const partsProgressPct = isMultiPart ? Math.round((completedPartsCount / currentLangVideos.length) * 100) : (isCompleted ? 100 : 0);
+  const partProgressLabel = hasNextPart
+    ? `Parte ${safePartIdx + 1} de ${currentLangVideos.length} concluída (${Math.round((Math.max(completedPartsCount, safePartIdx + 1) / currentLangVideos.length) * 100)}%)`
+    : null;
+  const isCurrentPartCompleted = Boolean(activeVideo?.id && completedVideoIdsForLesson.includes(activeVideo.id));
+
   const isComingSoon = isLessonComingSoon(lesson);
   const embedUrl = !isComingSoon ? getEmbedUrl(currentVideoUrl, currentVideoType) : null;
   const isDirectVideo = !isComingSoon && (
@@ -228,10 +250,15 @@ export default function LessonPlayer({
               userPlaybackRate={currentUser?.playback_rate}
               watermarkEnabled={watermarkEnabled}
               autoplayEnabled={currentUser?.autoplay_enabled !== false}
-              nextLesson={nextLesson}
+              nextLesson={effectiveNextTarget}
+              isNextPart={hasNextPart}
+              partProgressLabel={partProgressLabel}
               autoPlay={autoPlayActive}
               onPlayNextLesson={() => {
-                if (nextLesson && onSelectLesson) {
+                if (hasNextPart) {
+                  setAutoPlayActive(true);
+                  setActiveVideoIndex(safePartIdx + 1);
+                } else if (nextLesson && onSelectLesson) {
                   setAutoPlayActive(true);
                   onSelectLesson(nextLesson);
                 }
@@ -274,6 +301,10 @@ export default function LessonPlayer({
             selectedLang={selectedLang}
             onSelectLang={(code) => setSelectedLang(code)}
             isLightBg={false}
+            completedVideoIds={completedVideoIdsForLesson}
+            progressPct={partsProgressPct}
+            hasNextPart={hasNextPart}
+            onGoToNextPart={() => setActiveVideoIndex(safePartIdx + 1)}
           />
         )}
       </div>
@@ -416,6 +447,12 @@ export default function LessonPlayer({
             isCompleted={isCompleted}
             onToggleComplete={onToggleComplete}
             currentUser={currentUser}
+            activeVideoId={activeVideo?.id || null}
+            activePartNumber={safePartIdx + 1}
+            totalPartsCount={currentLangVideos.length || 1}
+            isCurrentPartCompleted={isCurrentPartCompleted}
+            hasNextPart={hasNextPart}
+            onAdvanceToNextPart={() => setActiveVideoIndex(safePartIdx + 1)}
           />
 
           {/* Navegação entre Aulas (Aula Anterior e Próxima Aula) */}

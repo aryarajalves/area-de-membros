@@ -7,7 +7,13 @@ export default function LessonActionToolbar({
   lessonId,
   isCompleted = false,
   onToggleComplete,
-  currentUser
+  currentUser,
+  activeVideoId = null,
+  activePartNumber = 1,
+  totalPartsCount = 1,
+  isCurrentPartCompleted = false,
+  hasNextPart = false,
+  onAdvanceToNextPart = null
 }) {
   const { addToast } = useToast();
   const [ratingData, setRatingData] = useState({ user_rating: 0, average_rating: 0, total_ratings: 0 });
@@ -90,26 +96,45 @@ export default function LessonActionToolbar({
     fetchRating();
   }, [courseId, lessonId]);
 
-  // Alterna status de aula assistida
+  const isMultiPart = totalPartsCount > 1 && Boolean(activeVideoId);
+
+  // Alterna status de aula (ou parte individual) assistida
   const handleToggleComplete = async () => {
     if (togglingProgress) return;
     setTogglingProgress(true);
     try {
-      const nextStatus = !isCompleted;
+      const nextStatus = isMultiPart ? !isCurrentPartCompleted : !isCompleted;
       const token = localStorage.getItem('auth_token');
+      const bodyPayload = isMultiPart
+        ? { is_completed: nextStatus, video_id: activeVideoId }
+        : { is_completed: nextStatus };
       const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/progress`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ is_completed: nextStatus })
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(bodyPayload)
       });
 
       if (res.ok) {
         const data = typeof res.json === 'function' ? await res.json().catch(() => ({})) : {};
-        if (onToggleComplete) onToggleComplete(lessonId, nextStatus);
-        if (nextStatus) {
+        const finalLessonCompleted = isMultiPart ? Boolean(data?.is_completed) : nextStatus;
+        if (onToggleComplete) {
+          if (isMultiPart) {
+            onToggleComplete(lessonId, finalLessonCompleted, {
+              completedVideoIds: data?.completed_video_ids || [],
+              stayInLesson: !finalLessonCompleted
+            });
+          } else {
+            onToggleComplete(lessonId, finalLessonCompleted);
+          }
+        }
+        if (isMultiPart && nextStatus && !finalLessonCompleted) {
+          const pct = data?.lesson_progress_pct ?? Math.round((activePartNumber / totalPartsCount) * 100);
+          addToast(
+            `Parte ${activePartNumber} de ${totalPartsCount} concluída (${pct}%)!${hasNextPart ? ` Carregando Parte ${activePartNumber + 1}...` : ''}`,
+            'success'
+          );
+          if (hasNextPart) onAdvanceToNextPart?.();
+        } else if (finalLessonCompleted) {
           const xp = data?.xp_awarded !== undefined ? Number(data.xp_awarded) : 15;
           const modXp = Number(data?.module_xp_awarded || 0);
           const courseXp = Number(data?.course_xp_awarded || 0);
@@ -119,11 +144,10 @@ export default function LessonActionToolbar({
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('app:check-level-up', { detail: { xpAlreadyToasted: xp + modXp + courseXp } }));
           }
+          addToast('Aula marcada como concluída! Parabéns!', 'success');
+        } else {
+          addToast(isMultiPart ? `Parte ${activePartNumber} desmarcada.` : 'Aula marcada como não assistida.', 'success');
         }
-        addToast(
-          nextStatus ? 'Aula marcada como concluída! Parabéns!' : 'Aula marcada como não assistida.',
-          'success'
-        );
       } else {
         addToast('Não foi possível atualizar o progresso da aula.', 'error');
       }
@@ -333,92 +357,45 @@ export default function LessonActionToolbar({
           <span>Relatar Problema</span>
         </button>
 
-        {/* 3. Botão de Conclusão da Aula (Pílula Verde Estilo Referência) */}
-        <button
-          type="button"
-          onClick={handleToggleComplete}
-          disabled={togglingProgress}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 18px',
-            borderRadius: '999px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: togglingProgress ? 'wait' : 'pointer',
-            border: isCompleted ? '1px solid rgba(34, 197, 94, 0.6)' : '1px solid rgba(34, 197, 94, 0.4)',
-            backgroundColor: isCompleted ? 'rgba(34, 197, 94, 0.22)' : 'rgba(34, 197, 94, 0.14)',
-            color: '#4ade80',
-            transition: 'all 0.15s ease'
-          }}
-          data-testid="toggle-lesson-complete-btn"
-        >
-          <span>{isCompleted ? 'Aula Concluída' : 'Marcar como Assistida'}</span>
-          <CheckCircle2
-            size={15}
-            color="#4ade80"
-            style={{ transition: 'color 0.15s ease' }}
-          />
-        </button>
+        {/* 3. Botão de Conclusão da Aula ou da Parte Ativa */}
+        {(() => {
+          const activeChecked = isMultiPart ? isCurrentPartCompleted : isCompleted;
+          const completeBtnLabel = isMultiPart
+            ? (isCurrentPartCompleted
+              ? `Parte ${activePartNumber}/${totalPartsCount} Concluída`
+              : (hasNextPart ? `Concluir Parte ${activePartNumber} e ir para Parte ${activePartNumber + 1}` : `Concluir Parte ${activePartNumber} e Finalizar Aula`))
+            : (isCompleted ? 'Aula Concluída' : 'Marcar como Assistida');
+          return (
+            <button
+              type="button"
+              onClick={handleToggleComplete}
+              disabled={togglingProgress}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 18px', borderRadius: '999px',
+                fontSize: '13px', fontWeight: 600, cursor: togglingProgress ? 'wait' : 'pointer',
+                border: activeChecked ? '1px solid rgba(34, 197, 94, 0.6)' : '1px solid rgba(34, 197, 94, 0.4)',
+                backgroundColor: activeChecked ? 'rgba(34, 197, 94, 0.22)' : 'rgba(34, 197, 94, 0.14)',
+                color: '#4ade80', transition: 'all 0.15s ease'
+              }}
+              data-testid="toggle-lesson-complete-btn"
+            >
+              <span>{completeBtnLabel}</span>
+              <CheckCircle2 size={15} color="#4ade80" style={{ transition: 'color 0.15s ease' }} />
+            </button>
+          );
+        })()}
       </div>
 
       {/* Modal de Relato de Problema */}
       {showReportModal && (
-        <div
-          className="custom-modal-overlay"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1200
-          }}
-          data-testid="lesson-report-modal"
-        >
-          <div
-            className="table-card"
-            style={{
-              maxWidth: '460px',
-              width: '90%',
-              padding: '24px',
-              borderRadius: '12px',
-              backgroundColor: '#ffffff'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="custom-modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} data-testid="lesson-report-modal">
+          <div className="table-card" style={{ maxWidth: '460px', width: '90%', padding: '24px', borderRadius: '12px', backgroundColor: '#ffffff' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: '#fee2e2',
-                  color: '#ef4444',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <AlertTriangle size={18} />
-                </div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#1e293b' }}>
-                  Relatar Problema na Aula
-                </h3>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={18} /></div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#1e293b' }}>Relatar Problema na Aula</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowReportModal(false)}
-                className="table-action-btn"
-                style={{ border: 'none', background: 'transparent' }}
-                data-testid="close-report-modal-btn"
-              >
-                <X size={18} />
-              </button>
+              <button type="button" onClick={() => setShowReportModal(false)} className="table-action-btn" style={{ border: 'none', background: 'transparent' }} data-testid="close-report-modal-btn"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSendReport}>

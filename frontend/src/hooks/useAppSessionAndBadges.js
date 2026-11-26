@@ -3,6 +3,7 @@ import { syncPwaWhiteLabelMeta } from '../utils/pwaDeviceUtils';
 import { AUTH_EXPIRED_EVENT, subscribeAuthStorageSync } from '../services/authInterceptor';
 import { useUrlNavigation } from './useUrlNavigation';
 import { usePushNotifications, unregisterPushNotifications } from './usePushNotifications';
+import { setSentryUser } from '../services/sentryService';
 
 const ALUNO_ALLOWED_TABS = [
   'home', 'courses', 'events', 'support', 'chat',
@@ -288,6 +289,10 @@ export function useAppSessionAndBadges({ addToast, communityFeedStudentsEnabled 
   };
 
   usePushNotifications({ token, setActiveTab });
+
+  useEffect(() => {
+    setSentryUser(user);
+  }, [user]);
 
   const handlePromptLogout = () => {
     setIsMobileMenuOpen(false);

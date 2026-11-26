@@ -46,3 +46,6 @@ pgvector>=0.2.0
 
 # Envio de Push Notifications nativas (Android/iOS) via Firebase Cloud Messaging (FCM)
 firebase-admin>=6.5.0
+
+# Monitoramento de erros, performance e rastreamento de exceções em produção (Sentry)
+sentry-sdk>=2.20.0

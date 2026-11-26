@@ -108,4 +108,32 @@ describe('Item 7 - NextLessonAutoPlayOverlay & Auto-Play estilo Netflix', () => 
     expect(onPlayNextLesson).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('next-lesson-autoplay-overlay')).not.toBeInTheDocument();
   });
+
+  it('quando existe Parte 2 e autoAdvance está desligado, exibe aviso manual de próxima parte sem dar play sozinho', () => {
+    const onPlayNextLesson = vi.fn();
+
+    render(
+      <CustomVideoPlayer
+        src="https://example.com/part1.mp4"
+        title="Sol - Parte 1"
+        autoplayEnabled={false}
+        isNextPart={true}
+        partProgressLabel="Parte 1 de 2 concluída (50%)"
+        nextLesson={{ id: 202, title: 'Parte 2 — Continuação' }}
+        onPlayNextLesson={onPlayNextLesson}
+      />
+    );
+
+    fireEvent.ended(screen.getByTestId('lesson-html5-video'));
+
+    expect(screen.getByTestId('next-lesson-autoplay-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('autoplay-countdown-label')).toHaveTextContent('Parte concluída! Continue na próxima parte');
+    expect(screen.getByTestId('autoplay-part-progress-badge')).toHaveTextContent('Parte 1 de 2 concluída (50%)');
+    expect(screen.getByTestId('autoplay-play-now-btn')).toHaveTextContent('Assistir Próxima Parte Agora');
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(onPlayNextLesson).not.toHaveBeenCalled();
+  });
 });

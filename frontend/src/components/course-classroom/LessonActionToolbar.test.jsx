@@ -308,5 +308,60 @@ describe('LessonActionToolbar Component', () => {
       expect(screen.getByText(/👑 \+250 XP de Bônus! \(Curso 100% concluído!\)/i)).toBeInTheDocument();
     });
   });
+
+  it('em aula multi-partes envia video_id da Parte 1, marca 50% e avança para Parte 2 sem concluir a aula', async () => {
+    const onToggleMock = vi.fn();
+    const onAdvanceMock = vi.fn();
+    global.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/progress') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            lesson_id: 101,
+            is_completed: false,
+            completed_video_ids: [501],
+            completed_parts_count: 1,
+            total_parts_count: 2,
+            lesson_progress_pct: 50
+          })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ user_rating: 0, average_rating: 0, total_ratings: 0 })
+      });
+    });
+
+    render(
+      <ToastProvider>
+        <LessonActionToolbar
+          {...defaultProps}
+          onToggleComplete={onToggleMock}
+          activeVideoId={501}
+          activePartNumber={1}
+          totalPartsCount={2}
+          isCurrentPartCompleted={false}
+          hasNextPart={true}
+          onAdvanceToNextPart={onAdvanceMock}
+        />
+      </ToastProvider>
+    );
+
+    const btn = screen.getByTestId('toggle-lesson-complete-btn');
+    expect(btn).toHaveTextContent('Concluir Parte 1 e ir para Parte 2');
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/v1/courses/1/lessons/101/progress',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ is_completed: true, video_id: 501 })
+        })
+      );
+      expect(onToggleMock).toHaveBeenCalledWith(101, false, { completedVideoIds: [501], stayInLesson: true });
+      expect(onAdvanceMock).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 

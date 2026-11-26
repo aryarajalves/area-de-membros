@@ -51,4 +51,31 @@ describe('LessonPartsBar Component', () => {
     fireEvent.click(part3Btn);
     expect(onSelectPart).toHaveBeenCalledWith(2, mockVideos[2]);
   });
+
+  it('exibe progresso parcial (1/2 - 50%), check na parte concluída e botão de Próxima Parte', () => {
+    const onGoToNextPart = vi.fn();
+    const mockVideos = [
+      { id: 101, title: 'Parte 1', duration: '12:30', video_url: 'https://b2.com/1.mp4' },
+      { id: 102, title: 'Parte 2', duration: '25:10', video_url: 'https://b2.com/2.mp4' },
+    ];
+
+    render(
+      <LessonPartsBar
+        videos={mockVideos}
+        activeIndex={0}
+        onSelectPart={vi.fn()}
+        completedVideoIds={[101]}
+        progressPct={50}
+        hasNextPart={true}
+        onGoToNextPart={onGoToNextPart}
+      />
+    );
+
+    expect(screen.getByTestId('lesson-parts-progress-badge')).toHaveTextContent('1/2 (50%)');
+    expect(screen.getByTestId('lesson-part-completed-0')).toBeInTheDocument();
+    const nextBtn = screen.getByTestId('lesson-parts-next-btn');
+    expect(nextBtn).toHaveTextContent('Próxima Parte (2/2)');
+    fireEvent.click(nextBtn);
+    expect(onGoToNextPart).toHaveBeenCalledTimes(1);
+  });
 });

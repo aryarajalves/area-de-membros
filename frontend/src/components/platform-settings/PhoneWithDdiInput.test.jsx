@@ -84,5 +84,27 @@ describe('PhoneWithDdiInput Component', () => {
       expect(select.value).toBe('+1');
       expect(input.value).toBe('4155552671');
     });
+
+    it('parses UAE (+971) and filters countries by typing in searchable dropdown', () => {
+      const parsedUae = parsePhoneAndDdi('+971 501234567');
+      expect(parsedUae.ddi).toBe('+971');
+      expect(parsedUae.number).toBe('501234567');
+
+      const handleChange = vi.fn();
+      render(<PhoneWithDdiInput value="+55 (11) 98888-7777" onChange={handleChange} />);
+
+      const trigger = screen.getByTestId('profile-ddi-trigger');
+      fireEvent.click(trigger);
+
+      const searchInput = screen.getByTestId('profile-ddi-search-input');
+      fireEvent.change(searchInput, { target: { value: 'emirados' } });
+
+      const uaeOption = screen.getByTestId('profile-ddi-option-AE');
+      expect(uaeOption).toHaveTextContent('Emirados Árabes Unidos');
+      expect(uaeOption).toHaveTextContent('+971');
+
+      fireEvent.click(uaeOption);
+      expect(handleChange).toHaveBeenCalledWith('+971 (11) 98888-7777');
+    });
   });
 });

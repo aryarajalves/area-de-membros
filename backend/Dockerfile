@@ -18,6 +18,6 @@ COPY . .
 
 EXPOSE 8000
 
-ENV WORKERS=4
+ENV WORKERS=1
 
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=* --workers ${WORKERS:-4}"]
+CMD ["sh", "-c", "if [ $(ulimit -n) -lt 100000 ] 2>/dev/null; then ulimit -n 100000 2>/dev/null || true; fi; exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=* --backlog 4096 --workers ${WORKERS:-1}"]

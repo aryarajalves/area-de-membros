@@ -21,6 +21,7 @@ if hasattr(sys.stdout, "buffer"):
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND_DIR = os.path.join(BASE_DIR, "backend")
 MAIN_PY_PATH = os.path.join(BACKEND_DIR, "app", "main.py")
+STARTUP_MIGRATIONS_PATH = os.path.join(BACKEND_DIR, "app", "services", "startup_migrations.py")
 
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
@@ -43,6 +44,10 @@ def parse_main_py_ddl():
 
     with open(MAIN_PY_PATH, "r", encoding="utf-8") as f:
         content = f.read()
+
+    if os.path.exists(STARTUP_MIGRATIONS_PATH):
+        with open(STARTUP_MIGRATIONS_PATH, "r", encoding="utf-8") as f:
+            content += "\n" + f.read()
 
     # Encontra todas as colunas migradas via ALTER TABLE ... ADD COLUMN
     # Suporta: ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} ...

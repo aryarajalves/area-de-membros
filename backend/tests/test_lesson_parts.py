@@ -1,12 +1,14 @@
 import json
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscription
+from app.models.course import Course, Module, Lesson, LessonVideo, LessonTranscription, UserCourse
+from app.models.user import User
+from app.core.security import get_password_hash
 from app.services.ai_multipart_transcription_service import (
     process_multipart_lesson_transcription,
     translate_lesson_transcription,
 )
-from tests.conftest import TestingSessionLocal
+from tests.conftest import TestingSessionLocal, client
 
 
 @pytest.fixture
@@ -209,3 +211,81 @@ def test_lesson_video_is_transcribed_property():
     assert v_done.is_transcribed is True
     assert v_new.is_transcribed is False
     assert v_changed.is_transcribed is False
+
+
+def test_lesson_multipart_progress_per_part(db):
+    aluno_email = "aluna_partes@teste.com"
+    aluno = db.query(User).filter(User.email == aluno_email).first()
+    if not aluno:
+        aluno = User(
+            name="Aluna Partes",
+            email=aluno_email,
+            hashed_password=get_password_hash("Senha123!"),
+            role="aluno",
+            is_active=True,
+        )
+        db.add(aluno)
+        db.commit()
+        db.refresh(aluno)
+
+    course = Course(title="Curso Progresso Partes", description="Desc", is_published=True)
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+
+    db.add(UserCourse(user_id=aluno.id, course_id=course.id))
+    module = Module(course_id=course.id, title="Módulo 1", order_index=1)
+    db.add(module)
+    db.commit()
+    db.refresh(module)
+
+    lesson = Lesson(module_id=module.id, title="Sol nos Signos", video_url="https://b2.com/sol1.mp4")
+    db.add(lesson)
+    db.commit()
+    db.refresh(lesson)
+
+    p1 = LessonVideo(lesson_id=lesson.id, order_index=0, language="pt", language_label="Português", title="Parte 1", video_url="https://b2.com/sol1.mp4")
+    p2 = LessonVideo(lesson_id=lesson.id, order_index=1, language="pt", language_label="Português", title="Parte 2", video_url="https://b2.com/sol2.mp4")
+    db.add_all([p1, p2])
+    db.commit()
+    db.refresh(p1)
+    db.refresh(p2)
+
+    login_res = client.post("/api/v1/auth/login", json={"email": aluno_email, "password": "Senha123!"})
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+
+    # 1. Marca apenas Parte 1 -> 50% (is_completed=False)
+    res1 = client.post(
+        f"/api/v1/courses/{course.id}/lessons/{lesson.id}/progress",
+        headers=headers,
+        json={"is_completed": True, "video_id": p1.id},
+    )
+    assert res1.status_code == 200
+    d1 = res1.json()
+    assert d1["is_completed"] is False
+    assert d1["completed_parts_count"] == 1
+    assert d1["total_parts_count"] == 2
+    assert d1["lesson_progress_pct"] == 50
+    assert d1["completed_video_ids"] == [p1.id]
+
+    prog_mid = client.get(f"/api/v1/courses/{course.id}/progress", headers=headers).json()
+    assert lesson.id not in prog_mid["completed_lesson_ids"]
+    assert prog_mid["lesson_parts_progress"][str(lesson.id)] == [p1.id]
+
+    # 2. Marca Parte 2 -> 100% (is_completed=True e aula concluída)
+    res2 = client.post(
+        f"/api/v1/courses/{course.id}/lessons/{lesson.id}/progress",
+        headers=headers,
+        json={"is_completed": True, "video_id": p2.id},
+    )
+    assert res2.status_code == 200
+    d2 = res2.json()
+    assert d2["is_completed"] is True
+    assert d2["completed_parts_count"] == 2
+    assert d2["total_parts_count"] == 2
+    assert d2["lesson_progress_pct"] == 100
+    assert set(d2["completed_video_ids"]) == {p1.id, p2.id}
+
+    prog_end = client.get(f"/api/v1/courses/{course.id}/progress", headers=headers).json()
+    assert lesson.id in prog_end["completed_lesson_ids"]
+

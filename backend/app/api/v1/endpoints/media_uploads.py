@@ -5,13 +5,14 @@ import os
 import uuid
 import threading
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, UploadFile, File
+from fastapi.responses import FileResponse, StreamingResponse
 from app.models.user import User
 from app.schemas.course import VideoUploadUrlRequest, VideoUploadUrlResponse
 from app.api.v1.endpoints.users import require_admin_or_superadmin
 from app.core.file_validation import validate_file_magic_bytes
 from app.core.logger import logger
+from app.services.cdn_service import extract_b2_s3_key, build_same_domain_proxy_url
 from app.services.image_optimizer import optimize_image
 from app.services.video_optimizer import (
     optimize_video_bytes,
@@ -22,7 +23,9 @@ from app.services.video_optimizer import (
 from app.services.storage import (
     upload_media_file,
     delete_media_file,
-    generate_presigned_upload_url
+    generate_presigned_upload_url,
+    fetch_media_object,
+    head_media_object
 )
 
 
@@ -345,6 +348,144 @@ def trigger_all_media_optimization(
     }
 
 
+def _get_video_media_type(filename_or_url: str) -> str:
+    clean = (filename_or_url or "").split("?", 1)[0].split("#", 1)[0]
+    ext = os.path.splitext(clean)[1].lower()
+    return {
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".mov": "video/quicktime",
+        ".mkv": "video/x-matroska",
+    }.get(ext, "video/mp4")
+
+
+def _resolve_validated_video_target(video_url: str):
+    """
+    Valida que a URL ou chave pertence estritamente a vídeos da plataforma (VIDEOS_DIR local ou AreaDeMembros/ no B2),
+    prevenindo SSRF para hosts externos ou path traversal ('..').
+    """
+    if not video_url or not isinstance(video_url, str):
+        raise HTTPException(status_code=400, detail="Parâmetro video_url é obrigatório.")
+    clean = video_url.strip()
+    if ".." in clean or "\\" in clean:
+        raise HTTPException(status_code=400, detail="Caminho de vídeo inválido.")
+
+    s3_key = extract_b2_s3_key(clean)
+    local_filename = None
+    if "/api/v1/courses/videos/" in clean:
+        local_filename = os.path.basename(clean.split("/api/v1/courses/videos/", 1)[-1].split("?", 1)[0])
+    elif s3_key:
+        local_filename = os.path.basename(s3_key)
+
+    if not s3_key and not local_filename:
+        raise HTTPException(status_code=400, detail="Origem de vídeo não autorizada para streaming via proxy.")
+
+    local_path = os.path.join(VIDEOS_DIR, local_filename) if local_filename else None
+    has_local = bool(local_path and os.path.isfile(local_path))
+    return clean, s3_key, local_path if has_local else None
+
+
+def _stream_proxy_response(target_url: str, range_header: Optional[str]):
+    """Entrega o vídeo pelo mesmo domínio da API com suporte a Byte-Range (206 Partial Content)."""
+    clean, s3_key, local_path = _resolve_validated_video_target(target_url)
+
+    if local_path:
+        return FileResponse(
+            local_path,
+            media_type=_get_video_media_type(local_path),
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        )
+
+    b2_obj = fetch_media_object(s3_key or clean, range_header=range_header)
+    if not b2_obj or not b2_obj.get("body"):
+        raise HTTPException(status_code=404, detail="Vídeo não encontrado no armazenamento.")
+
+    body = b2_obj["body"]
+
+    def iter_chunks():
+        try:
+            while True:
+                chunk = body.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            try:
+                body.close()
+            except Exception:
+                pass
+
+    headers = {
+        "Accept-Ranges": b2_obj.get("accept_ranges") or "bytes",
+        "Cache-Control": "public, max-age=31536000, immutable",
+    }
+    if b2_obj.get("content_length") is not None:
+        headers["Content-Length"] = str(b2_obj["content_length"])
+    if b2_obj.get("content_range"):
+        headers["Content-Range"] = b2_obj["content_range"]
+
+    return StreamingResponse(
+        iter_chunks(),
+        status_code=b2_obj.get("status_code", 200),
+        media_type=b2_obj.get("content_type") or _get_video_media_type(s3_key or clean),
+        headers=headers,
+    )
+
+
+@router.get(
+    "/video-stream-probe",
+    tags=["Aulas e Conteúdos"],
+    summary="Sonda de Disponibilidade e Rota Alternativa do Vídeo",
+    description="Verifica pelo servidor se o vídeo está acessível no armazenamento local ou Backblaze B2 e retorna a URL de proxy no mesmo domínio."
+)
+def probe_video_stream(video_url: str = Query(..., description="URL ou chave do vídeo para diagnóstico")):
+    """Diagnostica se a falha do player decorre de bloqueio de rede do aluno ou indisponibilidade do arquivo."""
+    clean, s3_key, local_path = _resolve_validated_video_target(video_url)
+    proxy_url = build_same_domain_proxy_url(clean) or f"/api/v1/courses/video-proxy?video_url={clean}"
+
+    if local_path:
+        return {
+            "reachable_from_server": True,
+            "storage": "local",
+            "proxy_url": proxy_url,
+            "content_length": os.path.getsize(local_path),
+            "content_type": _get_video_media_type(local_path),
+        }
+
+    meta = head_media_object(s3_key or clean)
+    if meta:
+        return {
+            "reachable_from_server": True,
+            "storage": "b2",
+            "proxy_url": proxy_url,
+            "content_length": meta.get("content_length"),
+            "content_type": meta.get("content_type") or _get_video_media_type(s3_key or clean),
+        }
+
+    return {
+        "reachable_from_server": False,
+        "storage": "none",
+        "proxy_url": proxy_url,
+        "content_length": None,
+        "content_type": None,
+    }
+
+
+@router.get("/video-proxy", include_in_schema=False)
+def proxy_video_by_query(request: Request, video_url: str = Query(...)):
+    """Entrega o stream do vídeo via query parameter no mesmo domínio da plataforma (suporta Byte-Range)."""
+    return _stream_proxy_response(video_url, request.headers.get("range"))
+
+
+@router.get("/video-proxy/{s3_path:path}", include_in_schema=False)
+def proxy_video_by_path(s3_path: str, request: Request):
+    """Entrega o stream do vídeo via caminho no mesmo domínio (usado por /cdn-videos/... via Nginx/Cloudflare)."""
+    return _stream_proxy_response(s3_path, request.headers.get("range"))
+
+
 @router.get("/videos/{filename}", include_in_schema=False)
 def get_video(filename: str):
     """Serve um arquivo de vídeo de aula armazenado localmente com streaming de mídia e Range Requests."""
@@ -353,14 +494,7 @@ def get_video(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Vídeo não encontrado.")
 
-    ext = os.path.splitext(safe_filename)[1].lower()
-    content_type_map = {
-        ".mp4": "video/mp4",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
-        ".mkv": "video/x-matroska"
-    }
-    media_type = content_type_map.get(ext, "video/mp4")
+    media_type = _get_video_media_type(safe_filename)
     return FileResponse(
         filepath,
         media_type=media_type,

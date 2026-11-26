@@ -10,19 +10,21 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { MONTH_OPTIONS, SORT_OPTIONS } from './userFilterUtils';
+import { COUNTRIES } from '../register/countryData';
 
 const DDI_OPTIONS = [
   { value: 'all', label: 'Todos os DDIs' },
-  { value: '+55', label: '🇧🇷 +55 (Brasil)' },
-  { value: '+1', label: '🇺🇸 +1 (EUA / Canadá)' },
-  { value: '+351', label: '🇵🇹 +351 (Portugal)' },
-  { value: '+34', label: '🇪🇸 +34 (Espanha)' },
-  { value: '+44', label: '🇬🇧 +44 (Reino Unido)' },
-  { value: '+244', label: '🇦🇴 +244 (Angola)' },
-  { value: '+258', label: '🇲🇿 +258 (Moçambique)' },
-  { value: '+54', label: '🇦🇷 +54 (Argentina)' },
-  { value: '+595', label: '🇵🇾 +595 (Paraguai)' },
-  { value: '+598', label: '🇺🇾 +598 (Uruguai)' },
+  ...Array.from(
+    COUNTRIES.reduce((acc, country) => {
+      if (!acc.has(country.ddi)) {
+        acc.set(country.ddi, {
+          value: country.ddi,
+          label: `${country.flag} ${country.ddi} (${country.name})`,
+        });
+      }
+      return acc;
+    }, new Map()).values()
+  ),
 ];
 
 export default function UserTableFiltersBar({

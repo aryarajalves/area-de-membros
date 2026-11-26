@@ -141,3 +141,14 @@ def test_infrastructure_api_endpoints(superadmin_user):
 
     finally:
         app.dependency_overrides.clear()
+
+
+def test_database_pool_metrics_default_workers_is_one(db_session, monkeypatch):
+    """Valida que get_database_pool_metrics assume WORKERS=1 por padrão quando não definido."""
+    monkeypatch.delenv("WORKERS", raising=False)
+    db_default = get_database_pool_metrics(db_session)
+    assert db_default["workers_count"] == 1
+
+    monkeypatch.setenv("WORKERS", "3")
+    db_custom = get_database_pool_metrics(db_session)
+    assert db_custom["workers_count"] == 3

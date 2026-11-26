@@ -270,6 +270,7 @@ class LessonProgress(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     is_completed = Column(Boolean, default=True, nullable=False)
+    completed_video_ids_json = Column(Text, nullable=True)
     completed_at = Column(DateTime, default=utc_now)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

@@ -1,11 +1,21 @@
 # Área de Membros - Plataforma de Cursos e Treinamentos
-> **Versão Oficial: `v1.4.2`** | **Docker Hub: `backend-1.4.2` / `frontend-1.4.2`**
+> **Versão Oficial: `v1.4.3`** | **Docker Hub: `backend-1.4.3` / `frontend-1.4.3`**
 
 Plataforma de alta performance para **Área de Membros e Gestão de Cursos Online**, construída com arquitetura moderna, responsiva e escalável utilizando **FastAPI (Backend em Python)**, **React + Vite (Frontend)**, banco de dados relacional **PostgreSQL**, armazenamento em nuvem no **Backblaze B2 (compatível com S3)** e orquestração completa via **Docker**.
 
 ---
 
 ## ✨ Principais Funcionalidades
+
+### 🚀 Novidades da Versão v1.4.3 (Sentry, Progresso por Parte em Aulas Multi-Partes e Escalabilidade)
+- **🔎 Monitoramento Sentry Integrado (Backend, Worker e Frontend):**
+  - Rastreamento centralizado de erros e performance (`sentry_setup.py`, `sentryService.js`, `AppErrorBoundary.jsx`) com envio do frontend via túnel autenticado na própria API.
+- **🎬 Progresso Individual por Parte e Player Resiliente:**
+  - Nova coluna `completed_video_ids_json` em `lesson_progress` (com auto-migração no startup e script `migrate_lesson_part_progress.py`) para concluir cada parte de aulas multi-partes individualmente, somada a melhorias de carregamento, retry e overlays no player.
+- **⚡ Escalabilidade, Limites Linux e Modularização de Startup:**
+  - Padrão de `WORKERS=1` por container (evitando multiplicação acidental de pools de banco), elevação automática de limite mínimo de **100.000 descritores Linux (`nofile`)** no Backend, Worker e Nginx (`worker_rlimit_nofile 100000`, `worker_connections 16384` e `gzip on`), modularização das auto-migrações em `startup_migrations.py` e documento `Arquivos/ROADMAP_ESCALABILIDADE_10K_ALUNOS.md`.
+- **📱 Ajustes em Telefone/DDI, Depoimentos e Filtros:**
+  - Aprimoramentos nos componentes `PhoneInputWithCountry`, `PhoneWithDdiInput`, `TestimonialCard`, `ChatManagement` e filtros de usuários, acompanhados de testes unitários.
 
 ### 🚀 Novidades da Versão v1.4.2 (Vagas & Serviços, Thread em Popup, Chat Enxuto, Marcar Tudo como Lido e Filtros de Usuários)
 - **💼 Aba Vagas & Serviços (Mural de Freelancers) com Controle no WhiteLabel:**

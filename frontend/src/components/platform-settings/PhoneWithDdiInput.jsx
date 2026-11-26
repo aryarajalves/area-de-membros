@@ -1,28 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Phone, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ChevronDown, Search, X } from 'lucide-react';
+import { COUNTRIES, filterCountries } from '../register/countryData';
 
-export const COUNTRY_DDI_LIST = [
-  { code: '+55', name: 'Brasil', flag: '🇧🇷', mask: true },
-  { code: '+1', name: 'Estados Unidos / Canadá', flag: '🇺🇸', mask: false },
-  { code: '+351', name: 'Portugal', flag: '🇵🇹', mask: false },
-  { code: '+244', name: 'Angola', flag: '🇦🇴', mask: false },
-  { code: '+258', name: 'Moçambique', flag: '🇲🇿', mask: false },
-  { code: '+34', name: 'Espanha', flag: '🇪🇸', mask: false },
-  { code: '+44', name: 'Reino Unido', flag: '🇬🇧', mask: false },
-  { code: '+39', name: 'Itália', flag: '🇮🇹', mask: false },
-  { code: '+49', name: 'Alemanha', flag: '🇩🇪', mask: false },
-  { code: '+33', name: 'França', flag: '🇫🇷', mask: false },
-  { code: '+54', name: 'Argentina', flag: '🇦🇷', mask: false },
-  { code: '+56', name: 'Chile', flag: '🇨🇱', mask: false },
-  { code: '+57', name: 'Colômbia', flag: '🇨🇴', mask: false },
-  { code: '+52', name: 'México', flag: '🇲🇽', mask: false },
-  { code: '+595', name: 'Paraguai', flag: '🇵🇾', mask: false },
-  { code: '+598', name: 'Uruguai', flag: '🇺🇾', mask: false },
-  { code: '+51', name: 'Peru', flag: '🇵🇪', mask: false },
-  { code: '+81', name: 'Japão', flag: '🇯🇵', mask: false },
-  { code: '+61', name: 'Austrália', flag: '🇦🇺', mask: false },
-  { code: '+41', name: 'Suíça', flag: '🇨🇭', mask: false },
-];
+export const COUNTRY_DDI_LIST = COUNTRIES.map((c) => ({
+  code: c.ddi,
+  isoCode: c.code,
+  name: c.name,
+  flag: c.flag,
+  mask: c.ddi === '+55',
+  keywords: c.keywords || '',
+}));
 
 export function formatBrazilianPhone(rawDigits) {
   const digits = (rawDigits || '').replace(/\D/g, '').slice(0, 11);
@@ -65,17 +52,72 @@ export default function PhoneWithDdiInput({
   isLightBg = false,
   textColor = '#f8fafc',
   subTextColor = '#94a3b8',
-  cardBorder = '1px solid rgba(255, 255, 255, 0.1)',
 }) {
   const initial = useMemo(() => parsePhoneAndDdi(value), [value]);
   const [selectedDdi, setSelectedDdi] = useState(initial.ddi);
+  const [selectedIsoCode, setSelectedIsoCode] = useState(
+    () => COUNTRY_DDI_LIST.find((c) => c.code === initial.ddi)?.isoCode || 'BR'
+  );
   const [phoneDigits, setPhoneDigits] = useState(initial.number);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const selectorWrapperRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const parsed = parsePhoneAndDdi(value);
     setSelectedDdi(parsed.ddi);
+    setSelectedIsoCode((prevIso) => {
+      const currentMatch = COUNTRY_DDI_LIST.find((c) => c.isoCode === prevIso && c.code === parsed.ddi);
+      if (currentMatch) return prevIso;
+      return COUNTRY_DDI_LIST.find((c) => c.code === parsed.ddi)?.isoCode || 'BR';
+    });
     setPhoneDigits(parsed.number);
   }, [value]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const focusTimer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 10);
+
+    const handleClickOutside = (event) => {
+      if (selectorWrapperRef.current && !selectorWrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(focusTimer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const filteredCountries = useMemo(() => {
+    const matches = filterCountries(COUNTRIES, searchQuery);
+    return matches.map((c) => ({
+      code: c.ddi,
+      isoCode: c.code,
+      name: c.name,
+      flag: c.flag,
+    }));
+  }, [searchQuery]);
+
+  const selectedCountry = useMemo(
+    () =>
+      COUNTRY_DDI_LIST.find((c) => c.isoCode === selectedIsoCode) ||
+      COUNTRY_DDI_LIST.find((c) => c.code === selectedDdi) ||
+      COUNTRY_DDI_LIST[0],
+    [selectedIsoCode, selectedDdi]
+  );
 
   const emitChange = (newDdi, newNumber) => {
     const cleanNum = (newNumber || '').trim();
@@ -87,14 +129,23 @@ export default function PhoneWithDdiInput({
     if (onChange) onChange(combined);
   };
 
-  const handleDdiChange = (e) => {
-    const newDdi = e.target.value;
+  const applyCountrySelection = (newDdi, newIsoCode = null) => {
     setSelectedDdi(newDdi);
-
-    // Se mudou para Brasil (+55), aplica máscara
+    if (newIsoCode) {
+      setSelectedIsoCode(newIsoCode);
+    } else {
+      const found = COUNTRY_DDI_LIST.find((c) => c.code === newDdi);
+      if (found) setSelectedIsoCode(found.isoCode);
+    }
     const formatted = newDdi === '+55' ? formatBrazilianPhone(phoneDigits) : phoneDigits;
     setPhoneDigits(formatted);
     emitChange(newDdi, formatted);
+    setIsOpen(false);
+    setSearchQuery('');
+  };
+
+  const handleDdiChange = (e) => {
+    applyCountrySelection(e.target.value);
   };
 
   const handleNumberChange = (e) => {
@@ -106,6 +157,8 @@ export default function PhoneWithDdiInput({
 
   const bgInput = isLightBg ? '#f8fafc' : 'rgba(15, 23, 42, 0.65)';
   const borderCol = isLightBg ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)';
+  const dropdownBg = isLightBg ? '#ffffff' : '#0f172a';
+  const mutedColor = isLightBg ? '#64748b' : '#94a3b8';
 
   return (
     <div
@@ -116,79 +169,183 @@ export default function PhoneWithDdiInput({
         maxWidth: '100%',
         boxSizing: 'border-box',
         borderRadius: '8px',
-        overflow: 'hidden',
         border: `1px solid ${borderCol}`,
         backgroundColor: bgInput,
         opacity: disabled ? 0.65 : 1,
       }}
       data-testid="phone-with-ddi-container"
     >
-      {/* Dropdown de DDI Compacto */}
+      {/* Dropdown de DDI com Busca */}
       <div
+        ref={selectorWrapperRef}
         style={{
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
           backgroundColor: isLightBg ? '#f1f5f9' : 'rgba(30, 41, 59, 0.7)',
           borderRight: `1px solid ${borderCol}`,
-          padding: '0 4px 0 8px',
-          width: '94px',
-          minWidth: '94px',
-          maxWidth: '94px',
+          borderTopLeftRadius: '7px',
+          borderBottomLeftRadius: '7px',
+          width: '102px',
+          minWidth: '102px',
           flexShrink: 0,
           boxSizing: 'border-box',
         }}
       >
-        <select
-          value={selectedDdi}
-          onChange={handleDdiChange}
+        <button
+          type="button"
           disabled={disabled}
-          data-testid="profile-ddi-select"
+          onClick={() => !disabled && setIsOpen((prev) => !prev)}
+          data-testid="profile-ddi-trigger"
           style={{
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            MozAppearance: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '4px',
+            width: '100%',
+            padding: '11px 8px',
             background: 'transparent',
             border: 'none',
             color: textColor,
             fontSize: '13px',
             fontWeight: 700,
-            padding: '11px 18px 11px 2px',
-            width: '100%',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            outline: 'none',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+            <span>{selectedCountry.flag}</span>
+            <span>{selectedDdi}</span>
+          </span>
+          <ChevronDown
+            size={13}
+            color={subTextColor}
+            style={{
+              transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s ease',
+            }}
+          />
+        </button>
+
+        {/* Select oculto para compatibilidade e acessibilidade */}
+        <select
+          value={selectedDdi}
+          onChange={handleDdiChange}
+          disabled={disabled}
+          data-testid="profile-ddi-select"
+          tabIndex={-1}
+          style={{
+            position: 'absolute',
+            width: 0,
+            height: 0,
+            opacity: 0,
+            pointerEvents: 'none',
           }}
         >
           {COUNTRY_DDI_LIST.map((c) => (
-            <option
-              key={c.code + c.name}
-              value={c.code}
-              style={{
-                backgroundColor: '#0f172a',
-                color: '#f8fafc',
-                padding: '6px 10px',
-              }}
-            >
+            <option key={c.isoCode} value={c.code}>
               {c.flag} {c.code} — {c.name}
             </option>
           ))}
         </select>
 
-        <ChevronDown
-          size={13}
-          color={subTextColor}
-          style={{
-            position: 'absolute',
-            right: '6px',
-            pointerEvents: 'none',
-          }}
-        />
+        {isOpen && (
+          <div
+            data-testid="profile-ddi-dropdown"
+            role="listbox"
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              left: 0,
+              width: 'min(310px, 84vw)',
+              backgroundColor: dropdownBg,
+              border: `1px solid ${borderCol}`,
+              borderRadius: '10px',
+              boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
+              zIndex: 60,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: `1px solid ${borderCol}` }}>
+              <Search size={14} color={mutedColor} style={{ flexShrink: 0 }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && filteredCountries.length > 0) {
+                    e.preventDefault();
+                    applyCountrySelection(filteredCountries[0].code, filteredCountries[0].isoCode);
+                  }
+                }}
+                placeholder="Buscar país ou DDI..."
+                data-testid="profile-ddi-search-input"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: textColor,
+                  fontSize: '12.5px',
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{ background: 'transparent', border: 'none', color: mutedColor, cursor: 'pointer', display: 'flex', padding: '2px' }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            <div style={{ maxHeight: '220px', overflowY: 'auto', padding: '4px' }}>
+              {filteredCountries.length === 0 ? (
+                <div style={{ padding: '12px', fontSize: '12.5px', color: mutedColor, textAlign: 'center' }}>
+                  Nenhum país encontrado
+                </div>
+              ) : (
+                filteredCountries.map((c) => {
+                  const isSelected = c.isoCode === selectedCountry.isoCode;
+                  return (
+                    <button
+                      key={c.isoCode}
+                      type="button"
+                      data-testid={`profile-ddi-option-${c.isoCode}`}
+                      onClick={() => applyCountrySelection(c.code, c.isoCode)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '7px 10px',
+                        border: 'none',
+                        borderRadius: '7px',
+                        backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
+                        color: textColor,
+                        fontSize: '12.5px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                        <span>{c.flag}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      </span>
+                      <span style={{ fontWeight: 600, color: '#38bdf8', flexShrink: 0 }}>{c.code}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Input de Telefone com Espaço Amplo para DDD e Número */}
+      {/* Input de Telefone */}
       <input
         type="text"
         value={phoneDigits}

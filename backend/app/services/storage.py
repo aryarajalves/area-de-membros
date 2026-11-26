@@ -250,23 +250,64 @@ def delete_media_file(media_url: str) -> bool:
     return False
 
 
-def fetch_media_object(media_url: str):
-    """Baixa o stream de uma mídia armazenada no Backblaze B2 para entrega via proxy autenticado."""
-    if not media_url:
+def _resolve_b2_s3_key(media_url: str):
+    """Resolve a chave S3 do Backblaze B2 de forma segura usando extract_b2_s3_key ou fallback por bucket."""
+    if not media_url or not isinstance(media_url, str):
+        return None
+    from app.services.cdn_service import extract_b2_s3_key
+    s3_key = extract_b2_s3_key(media_url)
+    if s3_key:
+        return s3_key
+    if settings.B2_BUCKET_NAME and settings.B2_BUCKET_NAME in media_url and "AreaDeMembros/" in media_url:
+        return media_url.split(f"{settings.B2_BUCKET_NAME}/")[-1].split("?")[0]
+    return None
+
+
+def head_media_object(media_url: str):
+    """Consulta metadados (existência, tamanho e content-type) de uma mídia no Backblaze B2."""
+    s3_key = _resolve_b2_s3_key(media_url)
+    if not s3_key:
+        return None
+    s3 = get_s3_client()
+    if not s3 or not settings.B2_BUCKET_NAME:
+        return None
+    try:
+        head = s3.head_object(Bucket=settings.B2_BUCKET_NAME, Key=s3_key)
+        return {
+            "s3_key": s3_key,
+            "content_type": head.get("ContentType") or "video/mp4",
+            "content_length": head.get("ContentLength"),
+            "accept_ranges": head.get("AcceptRanges") or "bytes",
+        }
+    except Exception as e:
+        logger.warning(f"[B2 Probe] Falha ao consultar metadados de {s3_key}: {e}")
+        return None
+
+
+def fetch_media_object(media_url: str, range_header: str = None):
+    """Baixa o stream de uma mídia armazenada no Backblaze B2 (com suporte a Byte-Range) para entrega via proxy."""
+    s3_key = _resolve_b2_s3_key(media_url)
+    if not s3_key:
         return None
     s3 = get_s3_client()
     if not s3 or not settings.B2_BUCKET_NAME:
         return None
 
     try:
-        if settings.B2_BUCKET_NAME in media_url and "AreaDeMembros/" in media_url:
-            s3_key = media_url.split(f"{settings.B2_BUCKET_NAME}/")[-1].split("?")[0]
-            obj = s3.get_object(Bucket=settings.B2_BUCKET_NAME, Key=s3_key)
-            return {
-                "body": obj["Body"],
-                "content_type": obj.get("ContentType"),
-                "content_length": obj.get("ContentLength"),
-            }
+        get_kwargs = {"Bucket": settings.B2_BUCKET_NAME, "Key": s3_key}
+        if range_header and isinstance(range_header, str) and range_header.strip().lower().startswith("bytes="):
+            get_kwargs["Range"] = range_header.strip()
+
+        obj = s3.get_object(**get_kwargs)
+        content_range = obj.get("ContentRange")
+        return {
+            "body": obj["Body"],
+            "content_type": obj.get("ContentType") or "video/mp4",
+            "content_length": obj.get("ContentLength"),
+            "content_range": content_range,
+            "accept_ranges": obj.get("AcceptRanges") or "bytes",
+            "status_code": 206 if (range_header and content_range) else 200,
+        }
     except Exception as e:
         logger.error(f"Erro ao buscar mídia {media_url} no Backblaze B2: {e}")
 
@@ -357,6 +398,9 @@ def generate_presigned_upload_url(filename: str, content_type: str, folder: str 
         else:
             endpoint = (settings.EFFECTIVE_B2_ENDPOINT_URL or "").rstrip("/")
             media_url = f"{endpoint}/{settings.B2_BUCKET_NAME}/{s3_key}"
+
+        from app.services.cdn_service import resolve_video_cdn_url
+        media_url = resolve_video_cdn_url(media_url)
 
         logger.info(f"[B2 Storage] Presigned URL gerada com sucesso para {s3_key}")
         return {

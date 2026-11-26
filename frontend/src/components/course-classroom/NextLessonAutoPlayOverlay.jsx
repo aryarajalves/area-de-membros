@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Play, X, FastForward } from 'lucide-react';
+import { Play, X, FastForward, CheckCircle2 } from 'lucide-react';
 
 export default function NextLessonAutoPlayOverlay({
   nextLesson,
   onPlayNext,
   onCancel,
-  countdownSeconds = 5
+  countdownSeconds = 5,
+  isNextPart = false,
+  autoAdvance = true,
+  partProgressLabel = null
 }) {
   const [secondsLeft, setSecondsLeft] = useState(countdownSeconds);
 
@@ -14,7 +17,7 @@ export default function NextLessonAutoPlayOverlay({
   }, [nextLesson, countdownSeconds]);
 
   useEffect(() => {
-    if (!nextLesson) return undefined;
+    if (!nextLesson || !autoAdvance) return undefined;
 
     if (secondsLeft <= 0) {
       onPlayNext?.();
@@ -26,12 +29,17 @@ export default function NextLessonAutoPlayOverlay({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [secondsLeft, nextLesson, onPlayNext]);
+  }, [secondsLeft, nextLesson, autoAdvance, onPlayNext]);
 
   if (!nextLesson) return null;
 
   const total = Math.max(1, countdownSeconds);
-  const progressPct = ((total - secondsLeft) / total) * 100;
+  const progressPct = autoAdvance ? ((total - secondsLeft) / total) * 100 : 100;
+  const headerLabel = autoAdvance
+    ? (isNextPart ? `Próxima parte em ${secondsLeft}s...` : `Próxima aula em ${secondsLeft}s...`)
+    : (isNextPart ? 'Parte concluída! Continue na próxima parte' : 'Aula concluída!');
+  const playButtonText = isNextPart ? 'Assistir Próxima Parte Agora' : 'Assistir Agora';
+  const cancelButtonText = autoAdvance ? 'Cancelar' : 'Fechar';
 
   return (
     <div
@@ -87,7 +95,7 @@ export default function NextLessonAutoPlayOverlay({
                 color: '#facc15'
               }}
             >
-              Próxima aula em {secondsLeft}s...
+              {headerLabel}
             </span>
           </div>
 
@@ -127,11 +135,34 @@ export default function NextLessonAutoPlayOverlay({
             style={{
               width: `${progressPct}%`,
               height: '100%',
-              background: 'linear-gradient(90deg, #eab308 0%, #facc15 100%)',
+              background: autoAdvance
+                ? 'linear-gradient(90deg, #eab308 0%, #facc15 100%)'
+                : 'linear-gradient(90deg, #38bdf8 0%, #22c55e 100%)',
               transition: 'width 1s linear'
             }}
           />
         </div>
+
+        {partProgressLabel && (
+          <div
+            data-testid="autoplay-part-progress-badge"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(34, 197, 94, 0.14)',
+              border: '1px solid rgba(34, 197, 94, 0.35)',
+              color: '#4ade80',
+              fontSize: '12px',
+              fontWeight: 700
+            }}
+          >
+            <CheckCircle2 size={14} />
+            <span>{partProgressLabel}</span>
+          </div>
+        )}
 
         {/* Detalhes da próxima aula */}
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
@@ -212,7 +243,7 @@ export default function NextLessonAutoPlayOverlay({
             }}
           >
             <Play size={15} fill="#0f172a" />
-            <span>Assistir Agora</span>
+            <span>{playButtonText}</span>
           </button>
 
           <button
@@ -230,7 +261,7 @@ export default function NextLessonAutoPlayOverlay({
               border: '1px solid rgba(148, 163, 184, 0.25)'
             }}
           >
-            Cancelar
+            {cancelButtonText}
           </button>
         </div>
       </div>

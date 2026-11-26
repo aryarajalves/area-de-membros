@@ -1,6 +1,6 @@
 import json
 from pydantic import BaseModel, ConfigDict, field_validator, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 # --- Schemas de Comentários de Aula (Lesson Comments) ---
@@ -61,6 +61,14 @@ class LessonVideoResponse(LessonVideoBase):
     lesson_id: int
     is_transcribed: bool = False
     created_at: datetime
+
+    @field_validator('video_url', mode='before')
+    @classmethod
+    def apply_video_cdn_url(cls, v):
+        if isinstance(v, str) and v.strip():
+            from app.services.cdn_service import resolve_video_cdn_url
+            return resolve_video_cdn_url(v)
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -138,6 +146,14 @@ class LessonResponse(LessonBase):
     updated_at: datetime
     videos: List[LessonVideoResponse] = []
     attachments: List[LessonAttachmentResponse] = []
+
+    @field_validator('video_url', mode='before')
+    @classmethod
+    def apply_video_cdn_url(cls, v):
+        if isinstance(v, str) and v.strip():
+            from app.services.cdn_service import resolve_video_cdn_url
+            return resolve_video_cdn_url(v)
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -265,12 +281,17 @@ class CourseDetailResponse(CourseResponse):
 # --- Schemas de Interações da Aula (Progresso, Avaliações e Relato de Problemas) ---
 class LessonProgressUpdate(BaseModel):
     is_completed: bool = True
+    video_id: Optional[int] = None
 
 class LessonProgressResponse(BaseModel):
     lesson_id: int
     user_id: int
     is_completed: bool
     completed_at: Optional[datetime] = None
+    completed_video_ids: List[int] = []
+    completed_parts_count: int = 0
+    total_parts_count: int = 0
+    lesson_progress_pct: int = 0
     xp_awarded: Optional[int] = 0
     module_xp_awarded: Optional[int] = 0
     course_xp_awarded: Optional[int] = 0
@@ -280,6 +301,7 @@ class LessonProgressResponse(BaseModel):
 class CourseProgressResponse(BaseModel):
     course_id: int
     completed_lesson_ids: List[int] = []
+    lesson_parts_progress: Dict[int, List[int]] = {}
 
 class LessonRatingUpdate(BaseModel):
     rating: int  # 0 a 5 (0 para remover avaliação)

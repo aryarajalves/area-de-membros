@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 const MIN_SWITCH_DISPLAY_MS = 450;
+const MAX_SWITCH_WAIT_MS = 4000;
 
 /**
  * Hook responsável por carregar as informações auxiliares da aula selecionada
@@ -32,8 +33,12 @@ export function useLessonSwitchLoader({ courseId, moduleId, lesson }) {
       return undefined;
     }
 
+    let safetyTimeout = null;
     if (isLessonSwitch) {
       setIsSwitchingLesson(true);
+      safetyTimeout = setTimeout(() => {
+        if (!cancelled) setIsSwitchingLesson(false);
+      }, MAX_SWITCH_WAIT_MS);
     }
 
     const minDelayPromise = isLessonSwitch
@@ -81,11 +86,13 @@ export function useLessonSwitchLoader({ courseId, moduleId, lesson }) {
     }
 
     Promise.allSettled([...requests, minDelayPromise]).finally(() => {
+      if (safetyTimeout) clearTimeout(safetyTimeout);
       if (!cancelled) setIsSwitchingLesson(false);
     });
 
     return () => {
       cancelled = true;
+      if (safetyTimeout) clearTimeout(safetyTimeout);
     };
   }, [courseId, moduleId, lesson?.id]);
 

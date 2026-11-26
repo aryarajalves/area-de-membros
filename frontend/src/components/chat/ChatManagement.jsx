@@ -46,6 +46,7 @@ export default function ChatManagement({ currentUser, bgColor, onBack }) {
     promptDeleteMessage,
     closeDeleteModal,
     confirmDeleteMessage,
+    refetchChannels,
   } = useChat(currentUser);
 
   const handleJumpToMessage = (messageId) => {

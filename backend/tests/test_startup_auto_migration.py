@@ -47,10 +47,14 @@ async def test_main_lifespan_auto_migration_and_schema_integrity():
     contém todas as tabelas e colunas novas (PostgreSQL e SQLite) e executa sem erros.
     """
     main_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "main.py")
+    migrations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "services", "startup_migrations.py")
     with open(main_path, "r", encoding="utf-8") as f:
         main_source = f.read()
+    if os.path.exists(migrations_path):
+        with open(migrations_path, "r", encoding="utf-8") as f:
+            main_source += "\n" + f.read()
 
-    # Verifica presença das instruções DDL obrigatórias no bloco de auto-migração de main.py
+    # Verifica presença das instruções DDL obrigatórias no bloco de auto-migração de startup
     required_ddl_snippets = [
         "CREATE TABLE IF NOT EXISTS user_device_tokens",
         "CREATE TABLE IF NOT EXISTS user_blocks",
@@ -59,6 +63,7 @@ async def test_main_lifespan_auto_migration_and_schema_integrity():
         "ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS lesson_id INTEGER",
         "ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS module_title VARCHAR(255)",
         "ALTER TABLE support_topics ADD COLUMN IF NOT EXISTS lesson_title VARCHAR(255)",
+        "ALTER TABLE lesson_progress ADD COLUMN IF NOT EXISTS completed_video_ids_json TEXT NULL",
     ]
     for snippet in required_ddl_snippets:
         assert snippet in main_source, f"DDL ausente do lifespan em main.py: {snippet}"

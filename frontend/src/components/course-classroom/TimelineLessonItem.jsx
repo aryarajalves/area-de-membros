@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, Lock } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle2, Clock, FileText, HelpCircle, Lock, Layers } from 'lucide-react';
 import { formatLessonDuration, isLessonComingSoon } from './lessonUtils';
 
 export default function TimelineLessonItem({
@@ -7,6 +7,7 @@ export default function TimelineLessonItem({
   idx,
   isActive,
   isCompleted,
+  completedVideoIds = [],
   isManager,
   isLightBg,
   textColor,
@@ -214,6 +215,35 @@ export default function TimelineLessonItem({
                   Quiz
                 </span>
               )}
+              {(() => {
+                const vids = Array.isArray(lesson.videos) ? lesson.videos : [];
+                const primaryLang = vids[0]?.language || 'pt';
+                const langVids = vids.filter((v) => (v.language || 'pt') === primaryLang);
+                if (langVids.length <= 1) return null;
+                const doneParts = langVids.filter((v) => v.id && completedVideoIds.includes(v.id)).length;
+                const partialPct = Math.round((doneParts / langVids.length) * 100);
+                const hasPartial = doneParts > 0 && !isCompleted;
+                return (
+                  <span
+                    data-testid={`lesson-parts-badge-${lesson.id}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      backgroundColor: hasPartial ? 'rgba(56, 189, 248, 0.16)' : 'rgba(148, 163, 184, 0.14)',
+                      color: hasPartial ? '#38bdf8' : subTextColor,
+                      border: hasPartial ? '1px solid rgba(56, 189, 248, 0.35)' : 'none'
+                    }}
+                  >
+                    <Layers size={9} />
+                    <span>{hasPartial ? `${doneParts}/${langVids.length} (${partialPct}%)` : `${langVids.length} partes`}</span>
+                  </span>
+                );
+              })()}
             </>
           )}
         </div>

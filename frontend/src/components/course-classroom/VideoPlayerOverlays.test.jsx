@@ -80,4 +80,79 @@ describe('VideoPlayerOverlays Component', () => {
     fireEvent.click(retryBtn);
     expect(handleRetry).toHaveBeenCalledTimes(1);
   });
+
+  it('renders reconnect and safe-proxy buttons when isBuffering and isStalledTooLong are true', () => {
+    const handleRetry = vi.fn();
+    const onSwitchToProxy = vi.fn();
+    render(
+      <VideoPlayerOverlays
+        isLoading={false}
+        isBuffering={true}
+        isStalledTooLong={true}
+        poster={null}
+        hasError={false}
+        isPlaying={false}
+        togglePlay={vi.fn()}
+        handleRetry={handleRetry}
+        isUsingProxyFallback={false}
+        onSwitchToProxy={onSwitchToProxy}
+      />
+    );
+
+    const reconnectBtn = screen.getByTestId('video-stalled-reconnect-btn');
+    expect(reconnectBtn).toBeInTheDocument();
+    expect(reconnectBtn).toHaveTextContent('Reconectar Vídeo');
+    fireEvent.click(reconnectBtn);
+    expect(handleRetry).toHaveBeenCalledTimes(1);
+
+    const proxyBtn = screen.getByTestId('video-switch-proxy-btn');
+    expect(proxyBtn).toBeInTheDocument();
+    expect(proxyBtn).toHaveTextContent('Usar Rota Segura');
+    fireEvent.click(proxyBtn);
+    expect(onSwitchToProxy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders corporate network diagnosis alert and active proxy badge on error screen', () => {
+    const onSwitchToProxy = vi.fn();
+    const { rerender } = render(
+      <VideoPlayerOverlays
+        isLoading={false}
+        isBuffering={false}
+        poster={null}
+        hasError={true}
+        isPlaying={false}
+        togglePlay={vi.fn()}
+        handleRetry={vi.fn()}
+        networkDiagnosis="corporate_block"
+        isUsingProxyFallback={false}
+        onSwitchToProxy={onSwitchToProxy}
+      />
+    );
+
+    const alertBox = screen.getByTestId('video-network-diagnosis-alert');
+    expect(alertBox).toBeInTheDocument();
+    expect(alertBox).toHaveTextContent(/bloqueio de rede corporativa/i);
+
+    const switchBtn = screen.getByTestId('video-switch-proxy-btn');
+    fireEvent.click(switchBtn);
+    expect(onSwitchToProxy).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <VideoPlayerOverlays
+        isLoading={false}
+        isBuffering={false}
+        poster={null}
+        hasError={true}
+        isPlaying={false}
+        togglePlay={vi.fn()}
+        handleRetry={vi.fn()}
+        networkDiagnosis="corporate_block"
+        isUsingProxyFallback={true}
+        onSwitchToProxy={onSwitchToProxy}
+      />
+    );
+
+    expect(screen.getByTestId('video-proxy-active-badge')).toHaveTextContent('Rota Segura Ativa');
+    expect(screen.queryByTestId('video-switch-proxy-btn')).not.toBeInTheDocument();
+  });
 });

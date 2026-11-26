@@ -71,6 +71,14 @@ class Settings(BaseSettings):
     # Configuração do Redis para concorrência, WebSockets distribuídos e presença
     REDIS_URL: str = os.getenv("REDIS_URL", "")
 
+    # Monitoramento de erros e performance (Sentry - Backend, Worker e Frontend via Túnel)
+    SENTRY_DSN_BACKEND: str = os.getenv("SENTRY_DSN_BACKEND", "") or os.getenv("SENTRY_DSN", "")
+    SENTRY_DSN_FRONTEND: str = os.getenv("SENTRY_DSN_FRONTEND", "")
+    SENTRY_ENVIRONMENT: str = os.getenv("SENTRY_ENVIRONMENT", "production")
+    SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2"))
+    SENTRY_REPLAYS_SESSION_SAMPLE_RATE: float = float(os.getenv("SENTRY_REPLAYS_SESSION_SAMPLE_RATE", "0.05"))
+    SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE: float = float(os.getenv("SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE", "1.0"))
+
     model_config = SettingsConfigDict(case_sensitive=True)
 
 settings = Settings()

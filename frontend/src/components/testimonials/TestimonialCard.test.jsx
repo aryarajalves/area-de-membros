@@ -40,6 +40,21 @@ describe('TestimonialCard', () => {
     expect(screen.getByText('Depoimento Exemplo')).toBeInTheDocument();
   });
 
+  it('exibe a data e o horário da publicação do depoimento', () => {
+    render(
+      <TestimonialCard
+        testimonial={baseTestimonial}
+        currentUser={{ id: 99, role: 'aluno' }}
+      />
+    );
+
+    const expectedTime = new Date(baseTestimonial.created_at).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    expect(screen.getByText(new RegExp(`às ${expectedTime}`))).toBeInTheDocument();
+  });
+
   it('shows Fixar/Remover Exemplo button only for managers and calls onToggleExample', () => {
     const onToggleExample = vi.fn();
 

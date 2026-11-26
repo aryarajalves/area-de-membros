@@ -166,6 +166,13 @@ def start_worker():
     logger.info("============================================================")
     logger.info("       INICIANDO SERVIÇO WORKER - ÁREA DE MEMBROS           ")
     logger.info("============================================================")
+    from app.core.sentry_setup import init_sentry
+    init_sentry("worker")
+    try:
+        from app.core.system_limits import ensure_min_nofile_limit
+        ensure_min_nofile_limit()
+    except Exception as lim_e:
+        logger.warning(f"[WORKER] Aviso ao ajustar limite de descritores (nofile): {lim_e}")
     logger.info(f"[WORKER] Frequência de verificação de renovação: {settings.WORKER_RENEWAL_CHECK_INTERVAL_HOURS}h")
 
     # Registra interceptadores de sinais de término do sistema

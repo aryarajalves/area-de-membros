@@ -32,7 +32,7 @@ export default function CourseClassroom({
   const { isTutorVisible } = useTutorVisibility(currentUser);
   const {
     course, modules, activeLesson, setActiveLesson, loading, actionLoading,
-    completedLessonIds, handleToggleLessonComplete, fetchCourseData,
+    completedLessonIds, lessonPartsProgress, handleToggleLessonComplete, fetchCourseData,
     handleSaveModule, handleDeleteModule, handleSaveLesson, handleDeleteLesson,
     uploadLessonVideo, uploadLessonThumbnail, prevLesson, nextLesson, totalLessonsCount
   } = useCourseContent(initialCourse.id);
@@ -178,7 +178,7 @@ export default function CourseClassroom({
   const renderTimelineSidebar = () => (
     <ModuleTimelineSidebar
       courseId={course?.id || initialCourse.id} modules={modules} selectedModule={selectedModule}
-      activeLesson={activeLesson} completedLessonIds={completedLessonIds} totalLessonsCount={totalLessonsCount}
+      activeLesson={activeLesson} completedLessonIds={completedLessonIds} lessonPartsProgress={lessonPartsProgress} totalLessonsCount={totalLessonsCount}
       isManager={isManager} currentUser={currentUser} isLightBg={isLightBg} onSelectModule={handleSelectModule}
       onSelectLesson={handleSelectLessonAndModule} onOpenCreateLesson={handleOpenCreateLesson}
       onOpenEditModule={handleOpenEditModule} onPromptDeleteModule={handlePromptDeleteModule}
@@ -381,6 +381,7 @@ export default function CourseClassroom({
                   nextLesson={nextLesson}
                   onSelectLesson={handleSelectLessonAndModule}
                   isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  lessonPartsProgress={lessonPartsProgress}
                   onToggleComplete={handleToggleLessonComplete}
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}
@@ -400,6 +401,7 @@ export default function CourseClassroom({
                   nextLesson={nextLesson}
                   onSelectLesson={handleSelectLessonAndModule}
                   isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  lessonPartsProgress={lessonPartsProgress}
                   onToggleComplete={handleToggleLessonComplete}
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}
@@ -423,6 +425,7 @@ export default function CourseClassroom({
                   targetCommentId={initialCommentId}
                   onSelectLesson={handleSelectLessonAndModule}
                   isCompleted={completedLessonIds?.includes(activeLesson?.id)}
+                  lessonPartsProgress={lessonPartsProgress}
                   onToggleComplete={handleToggleLessonComplete}
                   isLightBg={isLightBg}
                   onCloseModule={() => setSelectedModuleId(null)}

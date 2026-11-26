@@ -22,11 +22,14 @@ export default function TestimonialCard({
   const statusInfo = statusConfig[testimonial.status] || statusConfig.pending;
 
   const formattedDate = testimonial.created_at
-    ? new Date(testimonial.created_at).toLocaleDateString('pt-BR', {
+    ? `${new Date(testimonial.created_at).toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: 'short',
-        year: 'numeric'
-      })
+        year: 'numeric',
+      })} às ${new Date(testimonial.created_at).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`
     : '';
 
   return (

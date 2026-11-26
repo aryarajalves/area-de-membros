@@ -194,7 +194,7 @@ def get_hardware_metrics(db: Session) -> Dict[str, Any]:
 
 
 def get_database_pool_metrics(db: Session) -> Dict[str, Any]:
-    workers_count = int(os.getenv("WORKERS", "4") or 4)
+    workers_count = int(os.getenv("WORKERS", "1") or 1)
     pool_base_per_worker = int(getattr(settings, "DB_POOL_SIZE", 30) or 30)
     overflow_per_worker = int(getattr(settings, "DB_MAX_OVERFLOW", 20) or 20)
     capacity_per_worker = pool_base_per_worker + overflow_per_worker

@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.chat import ChatMessage
 from app.models.course import (
-    Course, UserCourse, Module, Lesson,
+    Course, UserCourse, Module, Lesson, LessonVideo,
     LessonProgress, LessonRating, LessonReport, LessonNote
 )
 from app.schemas.course import (
@@ -45,21 +46,33 @@ def verify_course_access(db: Session, user: User, course_id: int):
 # PROGRESSO DA AULA (MARCAR COMO ASSISTIDA / CONCLUÍDA)
 # ============================================================================
 
+def _parse_completed_video_ids(raw: Optional[str]) -> List[int]:
+    """Converte o JSON salvo em `completed_video_ids_json` para lista segura de inteiros."""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return [int(x) for x in parsed if str(x).isdigit()]
+    except Exception:
+        pass
+    return []
+
+
 @router.get(
     "/{course_id}/progress",
     response_model=CourseProgressResponse,
     summary="Obter Progresso Geral do Curso",
-    description="Retorna a lista de IDs de todas as aulas que o aluno já concluiu/assistiu no curso selecionado."
+    description="Retorna a lista de IDs de todas as aulas concluídas e o mapa de partes assistidas por aula."
 )
 def get_course_progress(
     course_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Retorna todas as aulas que o usuário atual já marcou como concluídas/assistidas neste curso."""
+    """Retorna todas as aulas concluídas e as partes individuais concluídas neste curso."""
     verify_course_access(db, current_user, course_id)
 
-    # Coleta todas as lessons do curso
     lesson_ids = [
         item[0] for item in db.query(Lesson.id)
         .join(Module, Lesson.module_id == Module.id)
@@ -67,23 +80,32 @@ def get_course_progress(
     ]
 
     if not lesson_ids:
-        return CourseProgressResponse(course_id=course_id, completed_lesson_ids=[])
+        return CourseProgressResponse(course_id=course_id, completed_lesson_ids=[], lesson_parts_progress={})
 
-    completed = db.query(LessonProgress.lesson_id).filter(
+    rows = db.query(LessonProgress).filter(
         LessonProgress.user_id == current_user.id,
-        LessonProgress.lesson_id.in_(lesson_ids),
-        LessonProgress.is_completed == True
+        LessonProgress.lesson_id.in_(lesson_ids)
     ).all()
 
-    completed_ids = [c[0] for c in completed]
-    return CourseProgressResponse(course_id=course_id, completed_lesson_ids=completed_ids)
+    completed_ids = [r.lesson_id for r in rows if r.is_completed]
+    lesson_parts_progress = {}
+    for r in rows:
+        vid_ids = _parse_completed_video_ids(r.completed_video_ids_json)
+        if vid_ids:
+            lesson_parts_progress[r.lesson_id] = vid_ids
+
+    return CourseProgressResponse(
+        course_id=course_id,
+        completed_lesson_ids=completed_ids,
+        lesson_parts_progress=lesson_parts_progress
+    )
 
 
 @router.post(
     "/{course_id}/lessons/{lesson_id}/progress",
     response_model=LessonProgressResponse,
-    summary="Marcar/Desmarcar Aula Concluída",
-    description="Alterna o status de conclusão da aula pelo aluno. Dispara automaticamente eventos de webhook quando marcos de 25%, 50%, 75% ou 100% são alcançados."
+    summary="Marcar/Desmarcar Aula ou Parte Concluída",
+    description="Alterna o status de conclusão da aula ou de uma parte específica (video_id). Dispara webhooks quando marcos de 25%, 50%, 75% ou 100% são alcançados."
 )
 def toggle_lesson_progress(
     course_id: int,
@@ -93,7 +115,7 @@ def toggle_lesson_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Marca ou desmarca a aula como assistida pelo usuário autenticado."""
+    """Marca ou desmarca a aula (ou uma parte específica em aulas multi-partes) como assistida."""
     verify_course_access(db, current_user, course_id)
 
     lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
@@ -104,8 +126,45 @@ def toggle_lesson_progress(
         LessonProgress.lesson_id == lesson_id,
         LessonProgress.user_id == current_user.id
     ).first()
+    was_completed_before = bool(record and record.is_completed)
 
-    target_status = progress_in.is_completed if progress_in is not None else (not record.is_completed if record else True)
+    all_lesson_videos = (
+        db.query(LessonVideo)
+        .filter(LessonVideo.lesson_id == lesson_id)
+        .order_by(LessonVideo.order_index.asc(), LessonVideo.id.asc())
+        .all()
+    )
+
+    video_id = progress_in.video_id if progress_in is not None else None
+    target_video = next((v for v in all_lesson_videos if v.id == video_id), None) if video_id is not None else None
+
+    if target_video is not None:
+        target_lang = target_video.language or "pt"
+        lang_videos = [v for v in all_lesson_videos if (v.language or "pt") == target_lang]
+        valid_ids = [v.id for v in lang_videos]
+        existing_ids = _parse_completed_video_ids(record.completed_video_ids_json) if record else []
+        if was_completed_before and not existing_ids:
+            existing_ids = list(valid_ids)
+
+        part_target = progress_in.is_completed if progress_in is not None else (video_id not in existing_ids)
+        if part_target and video_id not in existing_ids:
+            existing_ids.append(video_id)
+        elif not part_target and video_id in existing_ids:
+            existing_ids = [vid for vid in existing_ids if vid != video_id]
+
+        completed_in_lang = [vid for vid in existing_ids if vid in valid_ids]
+        total_parts = len(valid_ids)
+        target_status = bool(total_parts > 0 and len(completed_in_lang) >= total_parts)
+        lesson_progress_pct = int(round((len(completed_in_lang) / total_parts) * 100)) if total_parts > 0 else (100 if target_status else 0)
+        next_json_str = json.dumps(existing_ids)
+    else:
+        target_status = progress_in.is_completed if progress_in is not None else (not record.is_completed if record else True)
+        all_ids = [v.id for v in all_lesson_videos]
+        pt_videos = [v for v in all_lesson_videos if (v.language or "pt") == "pt"] or all_lesson_videos
+        completed_in_lang = [v.id for v in pt_videos] if target_status else []
+        total_parts = len(pt_videos)
+        lesson_progress_pct = 100 if target_status else 0
+        next_json_str = json.dumps(all_ids if target_status else [])
 
     # Coleta todas as lessons do curso para cálculo de marcos de progresso
     all_course_lesson_ids = [
@@ -126,6 +185,7 @@ def toggle_lesson_progress(
 
     if record:
         record.is_completed = target_status
+        record.completed_video_ids_json = next_json_str
         record.completed_at = utc_now() if target_status else None
         record.updated_at = utc_now()
     else:
@@ -133,15 +193,19 @@ def toggle_lesson_progress(
             lesson_id=lesson_id,
             user_id=current_user.id,
             is_completed=target_status,
+            completed_video_ids_json=next_json_str,
             completed_at=utc_now() if target_status else None
         )
         db.add(record)
 
     db.commit()
     db.refresh(record)
-    logger.info(f"Usuário {current_user.id} alterou progresso da aula {lesson_id} para {target_status}")
+    logger.info(
+        f"Usuário {current_user.id} alterou progresso da aula {lesson_id} "
+        f"(video_id={video_id}, concluida={target_status}, pct={lesson_progress_pct}%)"
+    )
 
-    # Gamificação: +15 pontos ao concluir aula, +60 ao concluir módulo, +250 ao concluir curso
+    # Gamificação: +15 pontos ao concluir aula (100%), +60 ao concluir módulo, +250 ao concluir curso
     xp_awarded = 0
     module_xp_awarded = 0
     course_xp_awarded = 0
@@ -199,28 +263,33 @@ def toggle_lesson_progress(
         except Exception as g_exc:
             logger.error(f"Erro ao atribuir pontos por aula/módulo/curso concluído: {g_exc}")
     else:
-        try:
-            from app.models.gamification import GamificationPoint
-            db.query(GamificationPoint).filter(
-                GamificationPoint.user_id == current_user.id,
-                GamificationPoint.action == "lesson_completed",
-                GamificationPoint.reference_id == lesson_id
-            ).delete(synchronize_session=False)
-            if lesson.module_id:
+        if was_completed_before:
+            try:
+                from app.models.gamification import GamificationPoint
                 db.query(GamificationPoint).filter(
                     GamificationPoint.user_id == current_user.id,
-                    GamificationPoint.action == "module_completed",
-                    GamificationPoint.reference_id == lesson.module_id
+                    GamificationPoint.action == "lesson_completed",
+                    GamificationPoint.reference_id == lesson_id
                 ).delete(synchronize_session=False)
-            db.query(GamificationPoint).filter(
-                GamificationPoint.user_id == current_user.id,
-                GamificationPoint.action == "course_completed",
-                GamificationPoint.reference_id == course_id
-            ).delete(synchronize_session=False)
-            db.commit()
-        except Exception as g_exc:
-            logger.error(f"Erro ao remover pontos de aula desmarcada: {g_exc}")
+                if lesson.module_id:
+                    db.query(GamificationPoint).filter(
+                        GamificationPoint.user_id == current_user.id,
+                        GamificationPoint.action == "module_completed",
+                        GamificationPoint.reference_id == lesson.module_id
+                    ).delete(synchronize_session=False)
+                db.query(GamificationPoint).filter(
+                    GamificationPoint.user_id == current_user.id,
+                    GamificationPoint.action == "course_completed",
+                    GamificationPoint.reference_id == course_id
+                ).delete(synchronize_session=False)
+                db.commit()
+            except Exception as g_exc:
+                logger.error(f"Erro ao remover pontos de aula desmarcada: {g_exc}")
 
+    setattr(record, "completed_video_ids", completed_in_lang)
+    setattr(record, "completed_parts_count", len(completed_in_lang))
+    setattr(record, "total_parts_count", total_parts)
+    setattr(record, "lesson_progress_pct", lesson_progress_pct)
     setattr(record, "xp_awarded", xp_awarded)
     setattr(record, "module_xp_awarded", module_xp_awarded)
     setattr(record, "course_xp_awarded", course_xp_awarded)
